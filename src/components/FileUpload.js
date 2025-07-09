@@ -8,6 +8,7 @@ const FileUpload = ({ onDataLoaded }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
+  const [success, setSuccess] = useState(false);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -106,6 +107,9 @@ const FileUpload = ({ onDataLoaded }) => {
       setStats(statistics);
       onDataLoaded({ personnel, vehicles, raw: jsonData });
       
+      // Başarı durumunu göster - kalıcı olarak
+      setSuccess(true);
+      
     } catch (err) {
       console.error('Excel dosyası işleme hatası:', err);
       setError('Excel dosyası işlenirken bir hata oluştu. Lütfen dosya formatını kontrol edin.');
@@ -118,24 +122,26 @@ const FileUpload = ({ onDataLoaded }) => {
     setFile(null);
     setStats(null);
     setError(null);
+    setSuccess(false);
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Upload Area */}
-      <div
-        className={`
-          relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300
-          ${isDragging 
-            ? 'border-green-400 bg-green-50 scale-105' 
-            : 'border-blue-400/50 bg-blue-50/30 hover:border-blue-400 hover:bg-blue-50/50'
-          }
-          ${loading ? 'pointer-events-none opacity-50' : ''}
-        `}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
+      {/* Upload Area - Sadece dosya yüklenmediyse göster */}
+      {!file && (
+        <div
+          className={`
+            relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300
+            ${isDragging 
+              ? 'border-green-400 bg-green-50 scale-105' 
+              : 'border-blue-400/50 bg-blue-50/30 hover:border-blue-400 hover:bg-blue-50/50'
+            }
+            ${loading ? 'pointer-events-none opacity-50' : ''}
+          `}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
         <div className="space-y-6">
           <div className="flex justify-center">
             <div className={`
@@ -182,6 +188,7 @@ const FileUpload = ({ onDataLoaded }) => {
           </div>
         )}
       </div>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -202,8 +209,64 @@ const FileUpload = ({ onDataLoaded }) => {
         </div>
       )}
 
+      {/* Success Message */}
+      {success && stats && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-8 animate-fade-in">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-10 h-10 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-green-800 mb-4">Başarıyla Yüklendi! 🎉</h3>
+            <p className="text-green-700 text-lg mb-6">
+              Excel dosyası başarıyla işlendi ve veriler sisteme aktarıldı.
+            </p>
+            
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
+                <Users className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-green-600">{stats.personnelCount}</p>
+                <p className="text-green-700 text-sm">Personel</p>
+              </div>
+              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
+                <Car className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-green-600">{stats.vehicleCount}</p>
+                <p className="text-green-700 text-sm">Araç</p>
+              </div>
+              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
+                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-white text-sm font-bold">Ş</span>
+                </div>
+                <p className="text-2xl font-bold text-green-600">{stats.driverCount}</p>
+                <p className="text-green-700 text-sm">Şoför</p>
+              </div>
+              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
+                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-white text-sm font-bold">S</span>
+                </div>
+                <p className="text-2xl font-bold text-green-600">{stats.shippingCount}</p>
+                <p className="text-green-700 text-sm">Sevkiyat Elemanı</p>
+              </div>
+            </div>
+            
+            <div className="bg-green-100 border border-green-300 rounded-lg p-4 mb-4">
+              <p className="text-green-800 font-medium">
+                ✅ Veriler hazır! Şimdi diğer aşamalara geçebilirsiniz.
+              </p>
+            </div>
+            
+            <button
+              onClick={clearFile}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+            >
+              <Upload className="w-5 h-5" />
+              Yeni Dosya Yükle
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* File Info */}
-      {file && (
+      {file && !success && (
         <div className="modern-card p-6 animate-fade-in">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
@@ -250,8 +313,9 @@ const FileUpload = ({ onDataLoaded }) => {
         </div>
       )}
 
-      {/* Expected Format Info */}
-      <div className="modern-card p-6">
+      {/* Expected Format Info - Sadece dosya yüklenmemişse göster */}
+      {!file && (
+        <div className="modern-card p-6">
         <h4 className="text-gray-900 font-semibold text-lg mb-4 flex items-center gap-2">
           <File className="w-5 h-5" />
           Beklenen Excel Formatı:
@@ -275,6 +339,7 @@ const FileUpload = ({ onDataLoaded }) => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

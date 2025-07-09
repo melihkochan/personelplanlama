@@ -4,6 +4,7 @@ import FileUpload from './components/FileUpload';
 import PersonelList from './components/PersonelList';
 import VardiyaPlanlama from './components/VardiyaPlanlama';
 import PlanDisplay from './components/PlanDisplay';
+import PerformanceAnalysis from './components/PerformanceAnalysis';
 import './App.css';
 
 function App() {
@@ -202,6 +203,32 @@ function App() {
                     </div>
                     <span>Plan Görüntüle</span>
                   </button>
+                  <div className="w-8 h-0.5 bg-gray-300 ml-2"></div>
+                </div>
+
+                {/* Step 5 - Analysis */}
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveTab('analysis')}
+                    className={`
+                      relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 font-medium
+                      ${activeTab === 'analysis' 
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className={`
+                      w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                      ${activeTab === 'analysis' 
+                        ? 'bg-white text-blue-600' 
+                        : 'bg-gray-200 text-gray-600'
+                      }
+                    `}>
+                      5
+                    </div>
+                    <span>Performans Analizi</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -237,6 +264,10 @@ function App() {
                 plan={generatedPlan}
                 onExport={handleExport}
               />
+            )}
+            
+            {activeTab === 'analysis' && (
+              <PerformanceAnalysis personnelData={personnelData} />
             )}
           </div>
         </main>

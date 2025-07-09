@@ -276,20 +276,37 @@ const VardiyaPlanlama = ({ personnelData, vehicleData, onPlanGenerated }) => {
 
         console.log(`\n=== GÜN ${day + 1} PLANLAMA BAŞLADI ===`);
         
-        // Şoför rotasyon algoritması - eşit dinlenme için
-        const workingDriversToday = [];
-        for (let i = 0; i < driversPerDay; i++) {
+        // DÜZELTİLMİŞ MANTIK: Normal rotasyon + acil durum desteği
+        // Önce rotasyon sırasına göre gerekli kadar şoför seç
+        const sortedDrivers = [];
+        for (let i = 0; i < totalDrivers; i++) {
           const driverIndex = (day + i) % totalDrivers;
-          workingDriversToday.push(drivers[driverIndex]);
+          sortedDrivers.push(drivers[driverIndex]);
         }
         
-        // Sevkiyat elemanları rotasyon
+        // İlk olarak sadece gerekli kadar şoför seç (rotasyon korunsun)
+        const baseWorkingDrivers = sortedDrivers.slice(0, driversPerDay);
+        
+        // Akıllı atama yaparken eğer yeterli değilse rezerv şoförler devreye girer
+        const reserveDrivers = sortedDrivers.slice(driversPerDay);
+        
+        let workingDriversToday = [...baseWorkingDrivers];
+        
+        // Sevkiyat elemanları da aynı mantık - normal rotasyon + rezerv
         const shuffledShippingStaff = [...shippingStaff];
         for (let i = 0; i < day; i++) {
           shuffledShippingStaff.push(shuffledShippingStaff.shift());
         }
         
-        console.log(`Gün ${day + 1} çalışan şoförler:`, workingDriversToday.map(d => d['ADI SOYADI'] || `${d.AD} ${d.SOYAD}`));
+        // Sevkiyat elemanları için rezerv sistemi (araç sayısı * 2 kişi temel)
+        const baseShippingCount = vehicles.length * 2;
+        const baseShippingStaff = shuffledShippingStaff.slice(0, baseShippingCount);
+        const reserveShippingStaff = shuffledShippingStaff.slice(baseShippingCount);
+        
+        console.log(`Gün ${day + 1} temel şoförler:`, baseWorkingDrivers.map(d => d['ADI SOYADI'] || `${d.AD} ${d.SOYAD}`));
+        console.log(`Gün ${day + 1} rezerv şoförler:`, reserveDrivers.map(d => d['ADI SOYADI'] || `${d.AD} ${d.SOYAD}`));
+        console.log(`Gün ${day + 1} temel sevkiyat:`, baseShippingStaff.map(s => s['ADI SOYADI'] || `${s.AD} ${s.SOYAD}`));
+        console.log(`Gün ${day + 1} rezerv sevkiyat:`, reserveShippingStaff.map(s => s['ADI SOYADI'] || `${s.AD} ${s.SOYAD}`));
         
         // Araç atama öncesi hazırlık
         const sabitSoforAssignments = [];
@@ -314,7 +331,7 @@ const VardiyaPlanlama = ({ personnelData, vehicleData, onPlanGenerated }) => {
         const makeSmartAssignments = () => {
           const assignments = [];
           const availableDrivers = [...workingDriversToday];
-          const availableShipping = [...shuffledShippingStaff];
+          const availableShipping = [...baseShippingStaff];
           
           // Araçları türe göre grupla
           const allVehicles = [...sabitSoforAssignments, ...normalVehicleAssignments];
@@ -368,6 +385,25 @@ const VardiyaPlanlama = ({ personnelData, vehicleData, onPlanGenerated }) => {
               }
             }
             
+            // Eğer hala şoför bulunmadıysa rezerv şoförlerden dene
+            if (!selectedDriver && reserveDrivers.length > 0) {
+              console.log(`⚠️ Rezerv şoför devreye giriyor: ${vehicle.PLAKA}`);
+              
+              selectedDriver = reserveDrivers.find(d => 
+                canAssignToVehicleType(normalizeName(d), vehicleType, false)
+              );
+              
+              if (selectedDriver) {
+                const driverName = normalizeName(selectedDriver);
+                driverDifficulty = getNextDifficultyForPerson(driverName, 'basit');
+                
+                // Rezerv listesinden çıkar ve working listesine ekle
+                const index = reserveDrivers.indexOf(selectedDriver);
+                reserveDrivers.splice(index, 1);
+                workingDriversToday.push(selectedDriver);
+              }
+            }
+            
             // Sevkiyat elemanı seçimi
             const shipping = [];
             for (let i = 0; i < 2; i++) {
@@ -375,8 +411,31 @@ const VardiyaPlanlama = ({ personnelData, vehicleData, onPlanGenerated }) => {
                 canAssignToVehicleType(normalizeName(s), vehicleType, false)
               );
               
+              let selectedShipping = null;
               if (availableShippingFiltered.length > 0) {
-                const selectedShipping = availableShippingFiltered[0];
+                selectedShipping = availableShippingFiltered[0];
+                
+                // Listeden çıkar
+                const index = availableShipping.indexOf(selectedShipping);
+                availableShipping.splice(index, 1);
+              } else if (reserveShippingStaff.length > 0) {
+                // Rezerv sevkiyat elemanı devreye gir
+                console.log(`⚠️ Rezerv sevkiyat elemanı devreye giriyor: ${vehicle.PLAKA} - ${i + 1}. kişi`);
+                
+                const reserveFiltered = reserveShippingStaff.filter(s => 
+                  canAssignToVehicleType(normalizeName(s), vehicleType, false)
+                );
+                
+                if (reserveFiltered.length > 0) {
+                  selectedShipping = reserveFiltered[0];
+                  
+                  // Rezerv listesinden çıkar
+                  const index = reserveShippingStaff.indexOf(selectedShipping);
+                  reserveShippingStaff.splice(index, 1);
+                }
+              }
+              
+              if (selectedShipping) {
                 const shippingName = normalizeName(selectedShipping);
                 const shippingDifficulty = getNextDifficultyForPerson(shippingName, 'basit');
                 
@@ -384,10 +443,6 @@ const VardiyaPlanlama = ({ personnelData, vehicleData, onPlanGenerated }) => {
                   person: selectedShipping,
                   difficulty: shippingDifficulty
                 });
-                
-                // Listeden çıkar
-                const index = availableShipping.indexOf(selectedShipping);
-                availableShipping.splice(index, 1);
                 
                 // Geçmiş güncelle
                 personnelDifficultyHistory[shippingName] = shippingDifficulty;
@@ -505,17 +560,21 @@ const VardiyaPlanlama = ({ personnelData, vehicleData, onPlanGenerated }) => {
           });
         }
         
-        // O gün gerçekten dinlenen şoförler (sadece gece vardiyasında çalışması gerekenler)
+        // O gün gerçekten dinlenen şoförler (çalışmayan şoförler)
         const actualRestingDrivers = drivers.filter(d => {
           const driverName = d['ADI SOYADI'] || `${d.AD} ${d.SOYAD}`;
           return !nightWorkingDriversToday.has(driverName);
         });
         
-        // O gün gerçekten dinlenen sevkiyat elemanları (sadece gece vardiyasında çalışması gerekenler)
+        console.log(`🏖️ Gün ${day + 1} dinlenen şoförler:`, actualRestingDrivers.map(d => d['ADI SOYADI'] || `${d.AD} ${d.SOYAD}`));
+        
+        // O gün gerçekten dinlenen sevkiyat elemanları (çalışmayan sevkiyat elemanları)
         const actualRestingShipping = shippingStaff.filter(s => {
           const shippingName = s['ADI SOYADI'] || `${s.AD} ${s.SOYAD}`;
           return !nightWorkingShippingToday.has(shippingName);
         });
+        
+        console.log(`🏖️ Gün ${day + 1} dinlenen sevkiyat elemanları:`, actualRestingShipping.map(s => s['ADI SOYADI'] || `${s.AD} ${s.SOYAD}`));
         
         restingPersonnel.drivers.push({
           date: dateStr,

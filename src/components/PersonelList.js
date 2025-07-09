@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Users, Car, Filter, UserCheck, Truck, MapPin, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Users, Car, Filter, UserCheck, Truck, MapPin, Calendar, ChevronDown, ChevronUp, Sun, Moon } from 'lucide-react';
 
 const PersonelList = ({ personnelData, vehicleData }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,8 +16,40 @@ const PersonelList = ({ personnelData, vehicleData }) => {
     return matchesSearch && matchesGorev;
   });
 
-  const soforCount = personnelData.filter(p => p.GOREV === 'ŞOFÖR').length;
-  const sevkiyatCount = personnelData.filter(p => p.GOREV === 'SEVKİYAT ELEMANI').length;
+  // Vardiya tipini belirle
+  const getVardiyaType = (vardiya) => {
+    if (!vardiya) return 'belirsiz';
+    
+    // İzin kontrolü
+    const normalizedVardiya = vardiya.toUpperCase();
+    if (normalizedVardiya.includes('YILLIK') || 
+        normalizedVardiya.includes('İZİN') || 
+        normalizedVardiya.includes('IZIN') ||
+        normalizedVardiya.includes('TATIL') ||
+        normalizedVardiya.includes('OFF')) {
+      return 'izin';
+    }
+    
+    if (vardiya.includes('22:00') || vardiya.includes('06:00')) return 'gece';
+    if (vardiya.includes('08:00') || vardiya.includes('16:00')) return 'gunduz';
+    return 'belirsiz';
+  };
+
+  // Şoför istatistikleri
+  const soforler = personnelData.filter(p => p.GOREV === 'ŞOFÖR');
+  const soforCount = soforler.length;
+  const soforGunduz = soforler.filter(p => getVardiyaType(p.Vardiya) === 'gunduz').length;
+  const soforGece = soforler.filter(p => getVardiyaType(p.Vardiya) === 'gece').length;
+  const soforIzin = soforler.filter(p => getVardiyaType(p.Vardiya) === 'izin').length;
+  const soforBelirsiz = soforler.filter(p => getVardiyaType(p.Vardiya) === 'belirsiz').length;
+
+  // Sevkiyat elemanı istatistikleri
+  const sevkiyatlar = personnelData.filter(p => p.GOREV === 'SEVKİYAT ELEMANI');
+  const sevkiyatCount = sevkiyatlar.length;
+  const sevkiyatGunduz = sevkiyatlar.filter(p => getVardiyaType(p.Vardiya) === 'gunduz').length;
+  const sevkiyatGece = sevkiyatlar.filter(p => getVardiyaType(p.Vardiya) === 'gece').length;
+  const sevkiyatIzin = sevkiyatlar.filter(p => getVardiyaType(p.Vardiya) === 'izin').length;
+  const sevkiyatBelirsiz = sevkiyatlar.filter(p => getVardiyaType(p.Vardiya) === 'belirsiz').length;
 
   const getVardiyaBadge = (vardiya) => {
     if (!vardiya) {
@@ -29,22 +61,34 @@ const PersonelList = ({ personnelData, vehicleData }) => {
       );
     }
     
+    const vardiyaType = getVardiyaType(vardiya);
+    
+    // İzinli durumu
+    if (vardiyaType === 'izin') {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 border border-gray-300">
+          <Calendar className="w-4 h-4 mr-1" />
+          🏖️ İzinli
+        </span>
+      );
+    }
+    
     // Gece vardiyası için mavi renk
-    if (vardiya.includes('22:00') || vardiya.includes('06:00')) {
+    if (vardiyaType === 'gece') {
       return (
         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-300">
-          <Calendar className="w-4 h-4 mr-1" />
-          {vardiya}
+          <Moon className="w-4 h-4 mr-1" />
+          🌙 Gece
         </span>
       );
     }
     
     // Gündüz vardiyası için turuncu renk
-    if (vardiya.includes('08:00') || vardiya.includes('16:00')) {
+    if (vardiyaType === 'gunduz') {
       return (
         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 border border-orange-300">
-          <Calendar className="w-4 h-4 mr-1" />
-          {vardiya}
+          <Sun className="w-4 h-4 mr-1" />
+          🌅 Gündüz
         </span>
       );
     }
@@ -110,19 +154,53 @@ const PersonelList = ({ personnelData, vehicleData }) => {
           <h3 className="text-2xl font-bold text-blue-600 mb-2">{personnelData.length}</h3>
           <p className="text-gray-600">Toplam Personel</p>
         </div>
+        
         <div className="modern-card border-l-4 border-green-500 p-6 text-center hover-glow-green transition-all duration-300">
           <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <UserCheck className="w-6 h-6 text-white" />
           </div>
           <h3 className="text-2xl font-bold text-green-600 mb-2">{soforCount}</h3>
-          <p className="text-gray-600">Şoför</p>
+          <p className="text-gray-600 mb-3">Şoför</p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
+              <Sun className="w-4 h-4 text-orange-500" />
+              <span>{soforGunduz} Gündüz</span>
+            </div>
+            <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
+              <Moon className="w-4 h-4 text-blue-500" />
+              <span>{soforGece} Gece</span>
+            </div>
+            {soforIzin > 0 && (
+              <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span>{soforIzin} İzinli</span>
+              </div>
+            )}
+          </div>
         </div>
+        
         <div className="modern-card border-l-4 border-purple-500 p-6 text-center hover-glow-purple transition-all duration-300">
           <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Truck className="w-6 h-6 text-white" />
           </div>
           <h3 className="text-2xl font-bold text-purple-600 mb-2">{sevkiyatCount}</h3>
-          <p className="text-gray-600">Sevkiyat Elemanı</p>
+          <p className="text-gray-600 mb-3">Sevkiyat Elemanı</p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
+              <Sun className="w-4 h-4 text-orange-500" />
+              <span>{sevkiyatGunduz} Gündüz</span>
+            </div>
+            <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
+              <Moon className="w-4 h-4 text-blue-500" />
+              <span>{sevkiyatGece} Gece</span>
+            </div>
+            {sevkiyatIzin > 0 && (
+              <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span>{sevkiyatIzin} İzinli</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -7,6 +7,7 @@ const PlanDisplay = ({ plan }) => {
   const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
   const [showWarnings, setShowWarnings] = useState(true);
   const [showRestingPersonnel, setShowRestingPersonnel] = useState(false);
+  const [showPersonnelSummary, setShowPersonnelSummary] = useState(true);
   const [showLastPlans, setShowLastPlans] = useState(false);
 
   if (!plan) {
@@ -90,6 +91,138 @@ const PlanDisplay = ({ plan }) => {
     );
   };
 
+  // Personel özet raporu göster
+  const renderPersonnelSummary = () => {
+    if (!showPersonnelSummary || !plan.personnelSummary) return null;
+
+    const personnel = Object.values(plan.personnelSummary);
+    if (personnel.length === 0) return null;
+
+    return (
+      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-blue-800 flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Personel Özet Raporu
+          </h3>
+          <button
+            onClick={() => setShowPersonnelSummary(false)}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+{(() => {
+          // Personelleri tipine göre gruplandır
+          const drivers = personnel.filter(p => p.type === 'Şoför');
+          const shippingStaff = personnel.filter(p => p.type === 'Sevkiyat');
+          
+          // Personel kartı bileşeni
+          const renderPersonelCard = (person, index) => (
+            <div key={index} className="bg-white border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                  person.type === 'Şoför' ? 'bg-blue-500' : 'bg-orange-500'
+                }`}>
+                  {person.type === 'Şoför' ? '🚚' : '👷'}
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800">{person.name}</h4>
+                  <p className="text-sm text-gray-600">{person.type}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Toplam Gün:</span>
+                  <span className="font-medium text-gray-800">{person.totalDays}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Gece Vardiya:</span>
+                  <span className="font-medium text-blue-600">{person.nightShifts} 🌙</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Gündüz Vardiya:</span>
+                  <span className="font-medium text-orange-600">{person.dayShifts} 🌅</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Dinlenme Günleri:</span>
+                  <span className="font-medium text-green-600">{person.restingDays || 0} 😴</span>
+                </div>
+                
+                {/* Araç Tipleri */}
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Araç Tipleri:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(person.vehicleTypes).map(([vehicleType, count]) => (
+                      <span key={vehicleType} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                        {vehicleType === 'Kamyonet' ? '🚐' : vehicleType === 'Panelvan' ? '📦' : vehicleType === 'Kamyon' ? '🚛' : '🚗'} {vehicleType}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Zorluk Seviyeleri */}
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Zorluk Seviyeleri:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(person.difficulties).map(([difficulty, count]) => (
+                      <span key={difficulty} className={`px-2 py-1 rounded-full text-xs ${
+                        difficulty === 'basit' ? 'bg-green-100 text-green-800' :
+                        difficulty === 'zor' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {difficulty === 'basit' ? '✅' : difficulty === 'zor' ? '🔥' : '⚠️'} {difficulty}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+          
+          return (
+            <div className="space-y-6">
+              {/* Şoförler Bölümü */}
+              {drivers.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">🚚</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-800">Şoförler ({drivers.length})</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {drivers.map((person, index) => renderPersonelCard(person, `driver-${index}`))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Sevkiyat Elemanları Bölümü */}
+              {shippingStaff.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">👷</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-800">Sevkiyat Elemanları ({shippingStaff.length})</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {shippingStaff.map((person, index) => renderPersonelCard(person, `shipping-${index}`))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+    );
+  };
+
   const toggleDateExpansion = (date) => {
     setExpandedDates(prev => ({
       ...prev,
@@ -140,6 +273,8 @@ const PlanDisplay = ({ plan }) => {
     return date.toLocaleDateString('tr-TR', options);
   };
 
+
+
   const getAllDates = () => {
     const dates = new Set();
     
@@ -151,8 +286,27 @@ const PlanDisplay = ({ plan }) => {
   };
 
   const renderNightShiftCard = (vehicleData, vehicleId, date) => {
-    const { vehicle, driver, shipping } = vehicleData;
+    const { vehicle, driver, shipping, assignedRegion } = vehicleData;
     const difficulty = getDifficultyInfo(vehicle);
+    
+    // Bölge için renk ve stil belirleme
+    const getRegionStyle = (region) => {
+      const styles = {
+        'Sakarya': { color: 'bg-red-100 text-red-800 border-red-200', icon: '🚛' },
+        'Kocaeli': { color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '🚛' },
+        'Gebze': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '🚐' },
+        'Kadıköy': { color: 'bg-green-100 text-green-800 border-green-200', icon: '🚐' },
+        'Şile': { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '🚐' },
+        'Ataşehir/Ümraniye/Üsküdar': { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: '🚐' },
+        'M.tepe/Kartal/Pendik': { color: 'bg-pink-100 text-pink-800 border-pink-200', icon: '🚐' },
+        'Beykoz/Ç.köy/S.tepe/S.beyliği': { color: 'bg-teal-100 text-teal-800 border-teal-200', icon: '🚐' },
+        'Balıkesir-Avşa': { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: '🚐' },
+        'Gündüz': { color: 'bg-amber-100 text-amber-800 border-amber-200', icon: '📦' }
+      };
+      return styles[region] || { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: '🚚' };
+    };
+    
+    const regionStyle = assignedRegion ? getRegionStyle(assignedRegion) : null;
     
     return (
       <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-300">
@@ -163,12 +317,9 @@ const PlanDisplay = ({ plan }) => {
           <div className="flex-1">
             <h4 className="font-bold text-gray-800">{vehicleId}</h4>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`px-2 py-1 rounded-full text-xs border ${difficulty.color}`}>
-                {difficulty.icon} {difficulty.level}
-              </span>
-              <span className="text-gray-600 text-sm">({difficulty.baseLocation})</span>
               <span className="text-blue-600 text-sm font-medium">{vehicle.vehicleType || 'Kamyon'}</span>
             </div>
+
           </div>
         </div>
 
@@ -331,6 +482,8 @@ const PlanDisplay = ({ plan }) => {
                         <p className="text-gray-600 text-sm font-medium">22:00 - 06:00</p>
                       </div>
                     </div>
+
+
                     
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {nightShiftData && Object.entries(nightShiftData).map(([vehicleId, vehicleData]) => (
@@ -791,6 +944,19 @@ const PlanDisplay = ({ plan }) => {
               </button>
             </div>
 
+            {/* Personel Özet Raporu */}
+            <button
+              onClick={() => setShowPersonnelSummary(!showPersonnelSummary)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                showPersonnelSummary
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Personel Özet Raporu
+            </button>
+
             {/* Dinlendirilmiş Personel */}
             <button
               onClick={() => setShowRestingPersonnel(!showRestingPersonnel)}
@@ -827,6 +993,9 @@ const PlanDisplay = ({ plan }) => {
 
       {/* Uyarılar */}
       {renderWarnings()}
+
+      {/* Personel Özet Raporu */}
+      {renderPersonnelSummary()}
 
       {/* Dinlendirilmiş Personel */}
       {renderRestingPersonnel()}

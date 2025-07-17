@@ -1,344 +1,863 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, File, CheckCircle, AlertCircle, X, FileSpreadsheet, Users, Car, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Upload, FileSpreadsheet, Check, X, AlertCircle, Eye, AlertTriangle, Info } from 'lucide-react';
+import { addPersonnel, addVehicle, addStore, getAllPersonnel, getAllVehicles, getAllStores } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
-const FileUpload = ({ onDataLoaded }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [success, setSuccess] = useState(false);
+const FileUpload = ({ onDataUpload }) => {
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState('');
+  const [previewData, setPreviewData] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [conflicts, setConflicts] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setFiles(selectedFiles);
+    setError('');
+    setResults(null);
+    setPreviewData(null);
+    setShowConfirmation(false);
+    setConflicts(null);
+  };
 
-  const handleDragLeave = useCallback((e) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
+  const processExcelFile = async (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          console.log('📊 Excel dosyası bilgileri:');
+          console.log('Sheet isimleri:', workbook.SheetNames);
+          
+          const sheetName = workbook.SheetNames[0];
+          console.log('Kullanılan sheet:', sheetName);
+          
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          console.log('Toplam satır sayısı:', jsonData.length);
+          console.log('İlk 3 satır:', jsonData.slice(0, 3));
+          
+          resolve(jsonData);
+        } catch (error) {
+          console.error('Excel okuma hatası:', error);
+          reject(error);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const processPersonnelData = (data) => {
+    const personnel = [];
     
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-          file.type === 'application/vnd.ms-excel') {
-        setFile(file);
-        processFile(file);
+    // Excel başlıklarını kontrol et
+    if (data.length > 0) {
+      console.log('🔍 Excel başlıkları (ilk satır):', Object.keys(data[0]));
+      console.log('🔍 İlk veri satırı:', data[0]);
+    }
+    
+    data.forEach((row, index) => {
+      if (index === 0) return; // Skip header row
+      
+      // Esnek kolon eşleştirme
+      const findColumn = (possibleNames) => {
+        for (let name of possibleNames) {
+          if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+            return String(row[name]).trim();
+          }
+        }
+        return null;
+      };
+      
+      const person = {
+        employee_code: findColumn(['B', 'Sicil No', 'SICIL_NO', 'SicilNo', 'Sicil', 'Employee Code', 'SICIL', 'Sicil_No']),
+        full_name: findColumn(['C', 'Ad Soyad', 'ADI SOYADI', 'AdSoyad', 'Full Name', 'İsim', 'Isim', 'AD_SOYAD', 'NAME']),
+        position: findColumn(['D', 'Pozisyon', 'POZISYON', 'Görev', 'GOREV', 'Position', 'Meslek', 'POZISYON', 'Job']),
+        shift_type: findColumn(['E', 'Vardiya', 'VARDIYA', 'Shift', 'Vardiya Türü', 'VARDIYA_TURU', 'VARDIYA_TIPI', 'SHIFT'])
+      };
+      
+      if (index < 5) { // İlk 5 satır için debug
+        console.log(`🔍 Personel ${index}:`, person);
+        console.log(`🔍 Excel satırı ${index} ham veri:`, row);
+      }
+      
+      // Personel ekleme kriterleri: full_name mutlaka olmalı
+      if (person.full_name) {
+        // Eğer employee_code yoksa, full_name'i kod olarak kullan (geçici çözüm)
+        if (!person.employee_code) {
+          person.employee_code = person.full_name;
+          console.log(`⚠️ Personel kodu bulunamadı, isim kod olarak kullanılıyor: ${person.full_name}`);
+        }
+        
+        personnel.push(person);
       } else {
-        setError('Lütfen geçerli bir Excel dosyası seçin (.xlsx veya .xls)');
+        console.log(`❌ Personel atlandı (isim yok): satır ${index}`, row);
+      }
+    });
+    
+    console.log(`✅ Toplam ${personnel.length} personel bulundu`);
+    
+    // Debug: İlk 3 personeli göster
+    if (personnel.length > 0) {
+      console.log('📋 İlk 3 personel:', personnel.slice(0, 3));
+    }
+    
+    return personnel;
+  };
+
+  const processVehicleData = (data) => {
+    const vehicles = [];
+    
+    // Excel başlıklarını kontrol et
+    if (data.length > 0) {
+      console.log('🚗 Araç verileri - Excel başlıkları:', Object.keys(data[0]));
+    }
+    
+    data.forEach((row, index) => {
+      if (index === 0) return; // Skip header row
+      
+      // Esnek kolon eşleştirme
+      const findColumn = (possibleNames) => {
+        for (let name of possibleNames) {
+          if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+            return row[name];
+          }
+        }
+        return null;
+      };
+      
+      const vehicle = {
+        license_plate: findColumn(['I', 'Plaka', 'PLAKA', 'License Plate', 'Plaka No', 'PLAKA_NO']),
+        vehicle_type: findColumn(['L', 'Araç Tipi', 'ARAC_TIPI', 'AracTipi', 'Vehicle Type', 'Tip', 'TIP', 'Araç Türü']),
+        first_driver: findColumn(['J', '1. Şoför', 'SOFOR1', 'Şoför1', 'First Driver', 'Birinci Şoför', 'BIRINCI_SOFOR']),
+        second_driver: findColumn(['K', '2. Şoför', 'SOFOR2', 'Şoför2', 'Second Driver', 'İkinci Şoför', 'IKINCI_SOFOR'])
+      };
+      
+      if (index < 5) { // İlk 5 satır için debug
+        console.log(`🚗 Araç ${index}:`, vehicle);
+      }
+      
+      if (vehicle.license_plate) {
+        vehicles.push(vehicle);
+      }
+    });
+    
+    console.log(`✅ Toplam ${vehicles.length} araç bulundu`);
+    return vehicles;
+  };
+
+  const processStoreData = (data) => {
+    const stores = [];
+    
+    // Excel başlıklarını kontrol et
+    if (data.length > 0) {
+      console.log('🏪 Mağaza verileri - Excel başlıkları:', Object.keys(data[0]));
+    }
+    
+    data.forEach((row, index) => {
+      if (index === 0) return; // Skip header row
+      
+      // Esnek kolon eşleştirme
+      const findColumn = (possibleNames) => {
+        for (let name of possibleNames) {
+          if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+            return row[name];
+          }
+        }
+        return null;
+      };
+      
+      const store = {
+        store_code: findColumn(['A', 'Kod', 'KOD', 'Store Code', 'Mağaza Kod', 'MAGAZA_KOD']),
+        store_name: findColumn(['B', 'Mağaza Adı', 'MAGAZA_ADI', 'Store Name', 'Mağaza İsmi', 'MAGAZA_ISMI']),
+        region: findColumn(['C', 'Bölge', 'BOLGE', 'Region', 'Bölge Adı', 'BOLGE_ADI']),
+        store_type: findColumn(['D', 'Tür', 'TUR', 'Store Type', 'Mağaza Türü', 'MAGAZA_TURU']) || 'Standart',
+        location: findColumn(['E', 'Konum', 'KONUM', 'Location', 'Adres', 'ADRES']),
+        region_manager: findColumn(['F', 'Bölge Müdürü', 'BOLGE_MUDURU', 'Region Manager', 'Bölge Yöneticisi']),
+        sales_manager: findColumn(['G', 'Satış Müdürü', 'SATIS_MUDURU', 'Sales Manager', 'Satış Yöneticisi']),
+        phone: findColumn(['H', 'Telefon', 'TELEFON', 'Phone', 'Tel', 'TEL']),
+        email: findColumn(['I', 'E-posta', 'EMAIL', 'E-mail', 'Mail', 'MAIL']),
+        staff_count: parseInt(findColumn(['J', 'Personel Sayısı', 'PERSONEL_SAYISI', 'Staff Count', 'Çalışan Sayısı']) || '0') || 0
+      };
+      
+      if (index < 5) { // İlk 5 satır için debug
+        console.log(`🏪 Mağaza ${index}:`, store);
+      }
+      
+      if (store.store_code && store.store_name) {
+        stores.push(store);
+      }
+    });
+    
+    console.log(`✅ Toplam ${stores.length} mağaza bulundu`);
+    return stores;
+  };
+
+  const saveToDatabase = async (personnel, vehicles, stores) => {
+    const results = {
+      personnel: { success: 0, error: 0 },
+      vehicles: { success: 0, error: 0 },
+      stores: { success: 0, error: 0 }
+    };
+
+    // Save personnel only if exists
+    if (personnel.length > 0) {
+      console.log(`💾 ${personnel.length} personel kaydediliyor...`);
+      for (const person of personnel) {
+        try {
+          const result = await addPersonnel(person);
+          if (result.success) {
+            results.personnel.success++;
+            console.log(`✅ Personel eklendi/güncellendi: ${person.full_name}`);
+          } else {
+            results.personnel.error++;
+            console.log(`❌ Personel hatası: ${person.full_name} - ${result.error}`);
+          }
+        } catch (error) {
+          results.personnel.error++;
+          console.log(`❌ Personel hatası: ${person.full_name} - ${error.message}`);
+        }
       }
     }
-  }, []);
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFile(file);
-      processFile(file);
+    // Save vehicles only if exists
+    if (vehicles.length > 0) {
+      console.log(`🚗 ${vehicles.length} araç kaydediliyor...`);
+      for (const vehicle of vehicles) {
+        try {
+          const result = await addVehicle(vehicle);
+          if (result.success) {
+            results.vehicles.success++;
+            console.log(`✅ Araç eklendi/güncellendi: ${vehicle.license_plate}`);
+          } else {
+            results.vehicles.error++;
+            console.log(`❌ Araç hatası: ${vehicle.license_plate} - ${result.error}`);
+          }
+        } catch (error) {
+          results.vehicles.error++;
+          console.log(`❌ Araç hatası: ${vehicle.license_plate} - ${error.message}`);
+        }
+      }
     }
+
+    // Save stores only if exists
+    if (stores.length > 0) {
+      console.log(`🏪 ${stores.length} mağaza kaydediliyor...`);
+      for (const store of stores) {
+        try {
+          const result = await addStore(store);
+          if (result.success) {
+            results.stores.success++;
+            console.log(`✅ Mağaza eklendi/güncellendi: ${store.store_name}`);
+          } else {
+            results.stores.error++;
+            console.log(`❌ Mağaza hatası: ${store.store_name} - ${result.error}`);
+          }
+        } catch (error) {
+          results.stores.error++;
+          console.log(`❌ Mağaza hatası: ${store.store_name} - ${error.message}`);
+        }
+      }
+    }
+
+    return results;
   };
 
-  const processFile = async (file) => {
-    setLoading(true);
-    setError(null);
+  const analyzeData = async (personnel, vehicles, stores) => {
+    const conflicts = {
+      personnel: { existing: [], new: [] },
+      vehicles: { existing: [], new: [] },
+      stores: { existing: [], new: [] }
+    };
 
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    // Mevcut verileri al
+    const [currentPersonnel, currentVehicles, currentStores] = await Promise.all([
+      getAllPersonnel(),
+      getAllVehicles(),
+      getAllStores()
+    ]);
 
-      console.log('Excel verisi okundu:', jsonData);
-
-      // Personel verilerini filtrele
-      const personnel = jsonData.filter(item => {
-        const job = item.GOREV?.toString()?.toUpperCase()?.trim() || 
-                   item.GÖREVİ?.toString()?.toUpperCase()?.trim() ||
-                   item.GÖREVI?.toString()?.toUpperCase()?.trim();
+    // Personel çakışmalarını kontrol et
+    if (personnel.length > 0) {
+      console.log('🔍 Mevcut personel verisi:', currentPersonnel.success ? currentPersonnel.data : 'Veri yok');
+      console.log('🔍 Excel personel verisi:', personnel);
+      
+      // Mevcut personel kodları - null ve undefined değerleri filtrele
+      const existingPersonnelCodes = new Set(
+        currentPersonnel.success ? 
+          currentPersonnel.data
+            .filter(p => p.employee_code && p.employee_code !== null && p.employee_code !== '')
+            .map(p => String(p.employee_code).trim()) : []
+      );
+      
+      // Mevcut personel isimlerini de kontrol et (fallback)
+      const existingPersonnelNames = new Set(
+        currentPersonnel.success ? 
+          currentPersonnel.data
+            .filter(p => p.full_name && p.full_name !== null && p.full_name !== '')
+            .map(p => String(p.full_name).trim().toLowerCase()) : []
+      );
+      
+      console.log('🔍 Mevcut personel kodları:', Array.from(existingPersonnelCodes));
+      console.log('🔍 Mevcut personel isimleri:', Array.from(existingPersonnelNames));
+      
+      personnel.forEach(person => {
+        const personCode = person.employee_code ? String(person.employee_code).trim() : null;
+        const personName = person.full_name ? String(person.full_name).trim().toLowerCase() : null;
         
-        return job && (job === 'ŞOFÖR' || job === 'SEVKİYAT ELEMANI');
-      }).map(item => {
-        // GOREV bilgisini normalize et
-        const job = item.GOREV?.toString()?.toUpperCase()?.trim() || 
-                   item.GÖREVİ?.toString()?.toUpperCase()?.trim() ||
-                   item.GÖREVI?.toString()?.toUpperCase()?.trim();
+        console.log(`🔍 Kontrol edilen personel: kod="${personCode}", isim="${personName}"`);
         
-        return {
-          ...item,
-          GOREV: job
-        };
-      });
-
-      // Araç verilerini çıkar
-      const vehicles = [];
-      jsonData.forEach(item => {
-        const plaka = item.Plaka || item.PLAKA;
-        if (plaka?.toString()?.trim()) {
-          const vehicle = {
-            PLAKA: plaka,
-            NOKTA: item.NOKTA || item.Nokta || 'Orta',
-            MAĞAZA: item.MAĞAZA || item.Mağaza || '',
-            SOFOR_1: item['1.Şoför'] || item['1.ŞOFÖR'] || '',
-            SOFOR_2: item['2.Şoför'] || item['2.ŞOFÖR'] || '',
-            SABIT_SOFOR: item['1.Şoför'] || item['1.ŞOFÖR'] || '', // 1.Şoför sabit kabul ediliyor
-            TIP: item.TIP || item.Tip || item.tip || 'Kamyon'
-          };
-          vehicles.push(vehicle);
+        let isExisting = false;
+        
+        // Önce employee_code ile kontrol et
+        if (personCode && existingPersonnelCodes.has(personCode)) {
+          isExisting = true;
+          console.log(`✅ Kod eşleşmesi bulundu: ${personCode}`);
+        }
+        // Kod yoksa veya eşleşmiyorsa isim ile kontrol et
+        else if (personName && existingPersonnelNames.has(personName)) {
+          isExisting = true;
+          console.log(`✅ İsim eşleşmesi bulundu: ${personName}`);
+        }
+        
+        if (isExisting) {
+          conflicts.personnel.existing.push(person);
+        } else {
+          conflicts.personnel.new.push(person);
         }
       });
+    }
 
-      // İstatistikler
-      const statistics = {
-        totalRows: jsonData.length,
-        personnelCount: personnel.length,
-        vehicleCount: vehicles.length,
-        driverCount: personnel.filter(p => p.GOREV === 'ŞOFÖR').length,
-        shippingCount: personnel.filter(p => p.GOREV === 'SEVKİYAT ELEMANI').length
-      };
+    // Araç çakışmalarını kontrol et
+    if (vehicles.length > 0) {
+      const existingVehiclePlates = new Set(
+        currentVehicles.success ? currentVehicles.data.map(v => v.license_plate) : []
+      );
+      
+      vehicles.forEach(vehicle => {
+        if (existingVehiclePlates.has(vehicle.license_plate)) {
+          conflicts.vehicles.existing.push(vehicle);
+        } else {
+          conflicts.vehicles.new.push(vehicle);
+        }
+      });
+    }
 
-      setStats(statistics);
-      onDataLoaded({ personnel, vehicles, raw: jsonData });
+    // Mağaza çakışmalarını kontrol et
+    if (stores.length > 0) {
+      const existingStoreCodes = new Set(
+        currentStores.success ? currentStores.data.map(s => s.store_code) : []
+      );
       
-      // Başarı durumunu göster - kalıcı olarak
-      setSuccess(true);
+      stores.forEach(store => {
+        if (existingStoreCodes.has(store.store_code)) {
+          conflicts.stores.existing.push(store);
+        } else {
+          conflicts.stores.new.push(store);
+        }
+      });
+    }
+
+    return conflicts;
+  };
+
+  const handleAnalyze = async () => {
+    if (files.length === 0) {
+      setError('Lütfen bir dosya seçin');
+      return;
+    }
+
+    setAnalyzing(true);
+    setError('');
+
+    try {
+      const file = files[0];
+      console.log('📁 Dosya analizi başlatılıyor:', file.name);
       
-    } catch (err) {
-      console.error('Excel dosyası işleme hatası:', err);
-      setError('Excel dosyası işlenirken bir hata oluştu. Lütfen dosya formatını kontrol edin.');
+      const data = await processExcelFile(file);
+      
+      console.log('🔍 Veri işleme başlatılıyor...');
+      const personnel = processPersonnelData(data);
+      const vehicles = processVehicleData(data);
+      const stores = processStoreData(data);
+
+      console.log('📊 İşleme sonuçları:', {
+        personel: personnel.length,
+        araç: vehicles.length,
+        mağaza: stores.length
+      });
+
+      if (personnel.length === 0 && vehicles.length === 0 && stores.length === 0) {
+        setError('Excel dosyasında geçerli veri bulunamadı. Lütfen dosya formatını kontrol edin.');
+        setAnalyzing(false);
+        return;
+      }
+
+      console.log('⚖️ Çakışma analizi başlatılıyor...');
+      const conflicts = await analyzeData(personnel, vehicles, stores);
+
+      setPreviewData({ personnel, vehicles, stores });
+      setConflicts(conflicts);
+      setShowConfirmation(true);
+
+    } catch (error) {
+      console.error('❌ Analysis error:', error);
+      setError('Dosya analizi sırasında hata oluştu: ' + error.message);
     } finally {
-      setLoading(false);
+      setAnalyzing(false);
     }
   };
 
-  const clearFile = () => {
-    setFile(null);
-    setStats(null);
-    setError(null);
-    setSuccess(false);
+  const handleConfirmedUpload = async (actionType) => {
+    if (!previewData) return;
+
+    setUploading(true);
+    setError('');
+
+    try {
+      let dataToUpload = { personnel: [], vehicles: [], stores: [] };
+
+      // ActionType'a göre hangi verileri yükleyeceğimizi belirle
+      if (actionType === 'new_only') {
+        dataToUpload = {
+          personnel: conflicts.personnel.new,
+          vehicles: conflicts.vehicles.new,
+          stores: conflicts.stores.new
+        };
+      } else if (actionType === 'update_only') {
+        dataToUpload = {
+          personnel: conflicts.personnel.existing,
+          vehicles: conflicts.vehicles.existing,
+          stores: conflicts.stores.existing
+        };
+      } else if (actionType === 'all') {
+        dataToUpload = previewData;
+      }
+
+      // Save to database
+      const dbResults = await saveToDatabase(
+        dataToUpload.personnel, 
+        dataToUpload.vehicles, 
+        dataToUpload.stores
+      );
+
+      // Update parent component
+      onDataUpload(dataToUpload);
+
+      // Create results
+      const processedDataTypes = [];
+      if (dataToUpload.personnel.length > 0) processedDataTypes.push(`${dataToUpload.personnel.length} personel`);
+      if (dataToUpload.vehicles.length > 0) processedDataTypes.push(`${dataToUpload.vehicles.length} araç`);
+      if (dataToUpload.stores.length > 0) processedDataTypes.push(`${dataToUpload.stores.length} mağaza`);
+
+      setResults({
+        personnel: dataToUpload.personnel.length,
+        vehicles: dataToUpload.vehicles.length,
+        stores: dataToUpload.stores.length,
+        database: dbResults,
+        processedDataTypes,
+        totalProcessed: dataToUpload.personnel.length + dataToUpload.vehicles.length + dataToUpload.stores.length,
+        actionType
+      });
+
+      setShowConfirmation(false);
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError(error.message || 'Dosya yüklenirken bir hata oluştu');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Upload Area - Sadece dosya yüklenmediyse göster */}
-      {!file && (
-        <div
-          className={`
-            relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300
-            ${isDragging 
-              ? 'border-green-400 bg-green-50 scale-105' 
-              : 'border-blue-400/50 bg-blue-50/30 hover:border-blue-400 hover:bg-blue-50/50'
-            }
-            ${loading ? 'pointer-events-none opacity-50' : ''}
-          `}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-        <div className="space-y-6">
-          <div className="flex justify-center">
-            <div className={`
-              w-20 h-20 rounded-full flex items-center justify-center
-              ${isDragging ? 'bg-green-500 animate-bounce' : 'bg-blue-500 animate-pulse'}
-            `}>
-              <Upload className="w-10 h-10 text-white" />
-            </div>
+    <div className="space-y-6">
+      {/* Upload Area */}
+      <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${
+        analyzing 
+          ? 'border-purple-400 bg-purple-50' :
+          uploading 
+          ? 'border-blue-400 bg-blue-50' 
+          : 'border-gray-300 hover:border-blue-400'
+      }`}>
+        <div className="flex flex-col items-center gap-4">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
+            analyzing 
+              ? 'bg-purple-200 animate-pulse' :
+              uploading 
+              ? 'bg-blue-200 animate-pulse' 
+              : 'bg-blue-100'
+          }`}>
+            {analyzing ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            ) : uploading ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            ) : (
+              <FileSpreadsheet className="w-8 h-8 text-blue-600" />
+            )}
           </div>
           
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              Excel dosyasını sürükleyin veya seçin
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {analyzing ? 'Dosya Analiz Ediliyor...' : 
+               uploading ? 'Veriler İşleniyor...' : 
+               'Excel Dosyası Yükleyin'}
             </h3>
-            <p className="text-gray-600 text-lg">
-              Desteklenen formatlar: .xlsx, .xls
+            <p className="text-gray-600 text-sm">
+              {analyzing 
+                ? 'Dosya içeriği analiz ediliyor ve mevcut verilerle karşılaştırılıyor...' :
+                uploading 
+                ? 'Lütfen bekleyin, dosyanız veritabanına kaydediliyor...' 
+                : 'Personel, araç ve mağaza bilgilerini içeren Excel dosyanızı buraya sürükleyin'
+              }
             </p>
           </div>
 
-          <div className="flex justify-center">
-            <label className="relative group cursor-pointer">
+          {!analyzing && !uploading && (
+            <>
               <input
                 type="file"
                 accept=".xlsx,.xls"
-                onChange={handleFileSelect}
+                onChange={handleFileChange}
                 className="hidden"
-                disabled={loading}
+                id="file-upload"
               />
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 
-                            text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 
-                            transform hover:scale-105 hover:shadow-neon">
-                Dosya Seçin
+              
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                Dosya Seç
+              </label>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Selected Files */}
+      {files.length > 0 && (
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h4 className="font-medium text-gray-900 mb-3">Seçilen Dosyalar</h4>
+          <div className="space-y-2">
+            {files.map((file, index) => (
+              <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg">
+                <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                <span className="text-sm text-gray-700">{file.name}</span>
+                <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
               </div>
-            </label>
+            ))}
           </div>
         </div>
+      )}
 
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-3xl">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-900 font-semibold">Dosya işleniyor...</p>
+      {/* Analyze Button */}
+      {files.length > 0 && !previewData && (
+        <button
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {analyzing ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <span>Analiz Ediliyor...</span>
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <Eye className="w-5 h-5" />
+              <span>Dosyayı Analiz Et</span>
+            </div>
+          )}
+        </button>
+      )}
+
+      {/* Reset Button */}
+      {previewData && !showConfirmation && (
+        <button
+          onClick={() => {
+            setPreviewData(null);
+            setConflicts(null);
+            setFiles([]);
+            setResults(null);
+            setError('');
+          }}
+          className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+        >
+          <FileSpreadsheet className="w-5 h-5" />
+          <span>Yeni Dosya Seç</span>
+        </button>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
-            <div>
-              <h4 className="text-red-800 font-semibold text-lg">Hata</h4>
-              <p className="text-red-700">{error}</p>
-            </div>
-            <button
-              onClick={() => setError(null)}
-              className="ml-auto text-red-600 hover:text-red-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <span className="text-red-700">{error}</span>
         </div>
       )}
 
-      {/* Success Message */}
-      {success && stats && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-8 animate-fade-in">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold text-green-800 mb-4">Başarıyla Yüklendi! 🎉</h3>
-            <p className="text-green-700 text-lg mb-6">
-              Excel dosyası başarıyla işlendi ve veriler sisteme aktarıldı.
+      {/* Results */}
+      {results && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Check className="w-5 h-5 text-green-500" />
+            <h4 className="font-medium text-green-900">Yükleme Başarılı!</h4>
+          </div>
+          
+          <div className="mb-4">
+            <p className="text-green-800 font-medium">
+              {results.processedDataTypes.length > 0 
+                ? `${results.processedDataTypes.join(', ')} başarıyla işlendi.`
+                : 'Hiç veri bulunamadı.'
+              }
             </p>
-            
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
-                <Users className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-600">{stats.personnelCount}</p>
-                <p className="text-green-700 text-sm">Personel</p>
-              </div>
-              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
-                <Car className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-600">{stats.vehicleCount}</p>
-                <p className="text-green-700 text-sm">Araç</p>
-              </div>
-              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
-                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white text-sm font-bold">Ş</span>
-                </div>
-                <p className="text-2xl font-bold text-green-600">{stats.driverCount}</p>
-                <p className="text-green-700 text-sm">Şoför</p>
-              </div>
-              <div className="bg-white/80 border border-green-200 rounded-xl p-4">
-                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white text-sm font-bold">S</span>
-                </div>
-                <p className="text-2xl font-bold text-green-600">{stats.shippingCount}</p>
-                <p className="text-green-700 text-sm">Sevkiyat Elemanı</p>
-              </div>
-            </div>
-            
-            <div className="bg-green-100 border border-green-300 rounded-lg p-4 mb-4">
-              <p className="text-green-800 font-medium">
-                ✅ Veriler hazır! Şimdi diğer aşamalara geçebilirsiniz.
+            {results.actionType && (
+              <p className="text-green-700 text-sm mt-1">
+                İşlem türü: {
+                  results.actionType === 'new_only' ? 'Sadece yeni kayıtlar eklendi' :
+                  results.actionType === 'update_only' ? 'Sadece mevcut kayıtlar güncellendi' :
+                  'Tüm kayıtlar işlendi (yeni + güncelleme)'
+                }
               </p>
-            </div>
-            
-            <button
-              onClick={clearFile}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
-            >
-              <Upload className="w-5 h-5" />
-              Yeni Dosya Yükle
-            </button>
+            )}
           </div>
-        </div>
-      )}
-
-      {/* File Info */}
-      {file && !success && (
-        <div className="modern-card p-6 animate-fade-in">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-              <FileSpreadsheet className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-gray-900 font-semibold text-lg">{file.name}</h4>
-              <p className="text-gray-600">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-            <button
-              onClick={clearFile}
-              className="text-gray-500 hover:text-red-500 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+          
+          {/* Sadece var olan veri tiplerini göster */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {results.personnel > 0 && (
+              <div className="text-center bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-2xl font-bold text-green-600">{results.personnel}</div>
+                <div className="text-sm text-green-700">Personel</div>
+              </div>
+            )}
+            {results.vehicles > 0 && (
+              <div className="text-center bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-2xl font-bold text-green-600">{results.vehicles}</div>
+                <div className="text-sm text-green-700">Araç</div>
+              </div>
+            )}
+            {results.stores > 0 && (
+              <div className="text-center bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-2xl font-bold text-green-600">{results.stores}</div>
+                <div className="text-sm text-green-700">Mağaza</div>
+              </div>
+            )}
           </div>
 
-          {stats && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 text-center">
-                <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-blue-400">{stats.personnelCount}</p>
-                <p className="text-gray-400 text-sm">Personel</p>
-              </div>
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-center">
-                <Car className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-purple-400">{stats.vehicleCount}</p>
-                <p className="text-gray-400 text-sm">Araç</p>
-              </div>
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
-                <CheckCircle className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-400">{stats.driverCount}</p>
-                <p className="text-gray-400 text-sm">Şoför</p>
-              </div>
-              <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 text-center">
-                <Calendar className="w-6 h-6 text-orange-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-orange-400">{stats.shippingCount}</p>
-                <p className="text-gray-400 text-sm">Sevkiyat Elemanı</p>
+          {/* Veritabanı sonuçları - sadece var olan veri tiplerini göster */}
+          {results.database && (
+            <div className="mt-4 pt-4 border-t border-green-200">
+              <div className="text-sm text-green-700">
+                <h5 className="font-medium text-green-800 mb-2">Veritabanı Durumu:</h5>
+                <div className="space-y-1">
+                  {results.personnel > 0 && (
+                    <div className="flex justify-between">
+                      <span>Personel:</span>
+                      <span className="font-medium">
+                        {results.database.personnel.success} eklendi/güncellendi
+                        {results.database.personnel.error > 0 && (
+                          <span className="text-red-600 ml-1">({results.database.personnel.error} hata)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {results.vehicles > 0 && (
+                    <div className="flex justify-between">
+                      <span>Araç:</span>
+                      <span className="font-medium">
+                        {results.database.vehicles.success} eklendi/güncellendi
+                        {results.database.vehicles.error > 0 && (
+                          <span className="text-red-600 ml-1">({results.database.vehicles.error} hata)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {results.stores > 0 && (
+                    <div className="flex justify-between">
+                      <span>Mağaza:</span>
+                      <span className="font-medium">
+                        {results.database.stores.success} eklendi/güncellendi
+                        {results.database.stores.error > 0 && (
+                          <span className="text-red-600 ml-1">({results.database.stores.error} hata)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Expected Format Info - Sadece dosya yüklenmemişse göster */}
-      {!file && (
-        <div className="modern-card p-6">
-        <h4 className="text-gray-900 font-semibold text-lg mb-4 flex items-center gap-2">
-          <File className="w-5 h-5" />
-          Beklenen Excel Formatı:
-        </h4>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <h5 className="text-blue-700 font-semibold">Personel Kolonları:</h5>
-            <ul className="text-gray-700 space-y-1">
-              <li>• <code className="text-blue-600 bg-blue-50 px-2 py-1 rounded">ADI SOYADI</code> - Personel adı</li>
-              <li>• <code className="text-blue-600 bg-blue-50 px-2 py-1 rounded">GOREV</code> - ŞOFÖR veya SEVKİYAT ELEMANI</li>
-              <li>• <code className="text-blue-600 bg-blue-50 px-2 py-1 rounded">Vardiya</code> - Vardiya bilgisi</li>
-            </ul>
-          </div>
-          <div className="space-y-3">
-            <h5 className="text-purple-700 font-semibold">Araç Bilgileri:</h5>
-            <ul className="text-gray-700 space-y-1">
-              <li>• <code className="text-purple-600 bg-purple-50 px-2 py-1 rounded">Plaka</code> - Araç plakası</li>
-              <li>• <code className="text-purple-600 bg-purple-50 px-2 py-1 rounded">NOKTA</code> - Yakin/Orta/Uzak</li>
-              <li>• <code className="text-purple-600 bg-purple-50 px-2 py-1 rounded">Şoför</code> - Sabit şoför</li>
-            </ul>
+      {/* Confirmation Modal */}
+      {showConfirmation && previewData && conflicts && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full m-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Excel Dosyası Analiz Sonucu</h3>
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Data Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {previewData.personnel.length > 0 && (
+                <div className="bg-blue-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2">Personel</h4>
+                  <div className="text-sm text-blue-700">
+                    <div className="flex justify-between">
+                      <span>Toplam:</span>
+                      <span className="font-medium">{previewData.personnel.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Yeni:</span>
+                      <span className="font-medium text-green-600">{conflicts.personnel.new.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Mevcut:</span>
+                      <span className="font-medium text-amber-600">{conflicts.personnel.existing.length}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {previewData.vehicles.length > 0 && (
+                <div className="bg-green-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-green-900 mb-2">Araç</h4>
+                  <div className="text-sm text-green-700">
+                    <div className="flex justify-between">
+                      <span>Toplam:</span>
+                      <span className="font-medium">{previewData.vehicles.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Yeni:</span>
+                      <span className="font-medium text-green-600">{conflicts.vehicles.new.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Mevcut:</span>
+                      <span className="font-medium text-amber-600">{conflicts.vehicles.existing.length}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {previewData.stores.length > 0 && (
+                <div className="bg-purple-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-purple-900 mb-2">Mağaza</h4>
+                  <div className="text-sm text-purple-700">
+                    <div className="flex justify-between">
+                      <span>Toplam:</span>
+                      <span className="font-medium">{previewData.stores.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Yeni:</span>
+                      <span className="font-medium text-green-600">{conflicts.stores.new.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Mevcut:</span>
+                      <span className="font-medium text-amber-600">{conflicts.stores.existing.length}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Conflict Warnings */}
+            {(conflicts.personnel.existing.length > 0 || conflicts.vehicles.existing.length > 0 || conflicts.stores.existing.length > 0) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  <h4 className="font-semibold text-amber-900">Çakışma Tespit Edildi</h4>
+                </div>
+                <p className="text-sm text-amber-800">
+                  Excel dosyasında bulunan bazı kayıtlar veritabanında zaten mevcut. 
+                  Aşağıdaki seçeneklerden birini seçerek devam edebilirsiniz.
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3">
+              <div className="text-sm text-gray-600 mb-2">
+                <strong>Ne yapmak istiyorsunuz?</strong>
+              </div>
+
+              {/* Only New Records */}
+              {(conflicts.personnel.new.length > 0 || conflicts.vehicles.new.length > 0 || conflicts.stores.new.length > 0) && (
+                <button
+                  onClick={() => handleConfirmedUpload('new_only')}
+                  disabled={uploading}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <Check className="w-5 h-5" />
+                  <span>Sadece Yeni Kayıtları Ekle</span>
+                  <span className="text-green-200">
+                    ({conflicts.personnel.new.length + conflicts.vehicles.new.length + conflicts.stores.new.length} kayıt)
+                  </span>
+                </button>
+              )}
+
+              {/* Only Update Existing */}
+              {(conflicts.personnel.existing.length > 0 || conflicts.vehicles.existing.length > 0 || conflicts.stores.existing.length > 0) && (
+                <button
+                  onClick={() => handleConfirmedUpload('update_only')}
+                  disabled={uploading}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 px-6 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  <span>Sadece Mevcut Kayıtları Güncelle</span>
+                  <span className="text-amber-200">
+                    ({conflicts.personnel.existing.length + conflicts.vehicles.existing.length + conflicts.stores.existing.length} kayıt)
+                  </span>
+                </button>
+              )}
+
+              {/* All Records */}
+              <button
+                onClick={() => handleConfirmedUpload('all')}
+                disabled={uploading}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                <span>Tüm Kayıtları İşle (Yeni + Güncelle)</span>
+                <span className="text-blue-200">
+                  ({previewData.personnel.length + previewData.vehicles.length + previewData.stores.length} kayıt)
+                </span>
+              </button>
+
+              {/* Cancel */}
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <X className="w-5 h-5" />
+                <span>İptal Et</span>
+              </button>
+            </div>
+
+            {uploading && (
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  <span className="text-blue-800">Veriler işleniyor, lütfen bekleyin...</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
       )}
     </div>
   );

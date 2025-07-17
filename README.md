@@ -2,144 +2,149 @@
 
 Modern web tabanlı personel vardiya planlama uygulaması. Şoför ve sevkiyat elemanları için haftalık çalışma planı oluşturur.
 
-## ✨ Özellikler
-
-- **📁 Excel Yükleme**: Drag & drop ile Excel dosyası yükleme
-- **👥 Personel Yönetimi**: Şoför ve sevkiyat elemanı listesi
-- **📅 Otomatik Planlama**: Haftalık vardiya planı oluşturma
-- **⭐ Özel Şoför Ataması**: Belirli araçlar için sabit şoför
-- **🔄 Dönüşümlü İzin**: Şoförler için adil izin sistemi
-- **📊 İstatistikler**: Detaylı raporlama ve analiz
-- **📱 Responsive Tasarım**: Mobil ve masaüstü uyumlu
-- **🖨️ Yazdırma**: Plan çıktısı alma
-- **💾 Export**: Planı metin dosyası olarak indirme
-
-## 🎯 Planlama Algoritması
-
-### Şoför Ataması
-- Özel şoförler öncelikli olarak atanır
-- Dönüşümlü izin sistemi (9 şoför varsa 1 kişi izinli)
-- Her gün farklı şoför izinli olur
-- Aynı şoför birden fazla araca atanmaz
-
-### Sevkiyat Elemanı
-- Her araç için 2 sevkiyat elemanı
-- Aynı kişi birden fazla araca atanmaz
-- Vardiya saatlerine göre dağılım
-- Çok kişi varsa günlük izin verilir
-
-### Araç Dağılımı
-- Yakın/Orta/Uzak nokta dengesi
-- Mağaza bazlı gruplandırma
-- Optimal rota planlaması
-
-## 📋 Excel Formatı
-
-### Personel Kolonları
-- **AD**: Personelin adı
-- **SOYAD**: Personelin soyadı
-- **GOREV**: ŞOFÖR veya SEVKIYAT ELEMANI
-- **VARDIYA**: 22:00 - 06:00 (Gece) veya 08:00 - 16:00 (Gündüz)
-
-### Araç Bilgileri
-- **PLAKA**: Araç plakası
-- **NOKTA**: Yakın, Orta veya Uzak
-- **ÖZEL_ŞOFÖR**: Sabit şoför adı soyadı (opsiyonel)
-- **MAĞAZA**: Mağaza adı (opsiyonel)
-
 ## 🚀 Kurulum
 
-### Gereksinimler
-- Node.js 14.0+ 
+### 1. Gereksinimler
+- Node.js (v14 veya üzeri)
 - npm veya yarn
+- Supabase hesabı
 
-### Kurulum Adımları
+### 2. Projeyi Klonlayın
+```bash
+git clone https://github.com/your-username/personel-planlama.git
+cd personel-planlama
+```
 
-1. **Bağımlılıkları yükle**
+### 3. Bağımlılıkları Yükleyin
 ```bash
 npm install
 ```
 
-2. **Geliştirme sunucusunu başlat**
+### 4. Supabase Yapılandırması
+
+#### a) Supabase Projesi Oluşturun
+1. https://supabase.com adresine gidin
+2. Yeni proje oluşturun
+3. Proje URL'si ve API anahtarınızı alın
+
+#### b) Veritabanı Tablolarını Oluşturun
+1. Supabase Dashboard'da SQL Editor'e gidin
+2. `database_setup.sql` dosyasındaki tüm SQL komutlarını çalıştırın
+
+#### c) Environment Variables
+Proje root dizininde `.env.local` dosyası oluşturun:
+
+```env
+# Supabase Environment Variables
+REACT_APP_SUPABASE_URL=https://your-project-id.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### 5. Uygulamayı Çalıştırın
 ```bash
 npm start
 ```
 
-3. **Tarayıcıda aç**
-```
-http://localhost:3000
-```
+## ✨ Özellikler
 
-## 🔧 Build
+### 🔐 Kullanıcı Girişi
+- Email/şifre ile giriş ve kayıt
+- Güvenli authentication sistemi
+- Kullanıcı oturum yönetimi
 
-Production build oluşturmak için:
+### 📁 Excel Yükleme ve Veri Yönetimi
+- **Drag & drop** ile Excel dosyası yükleme
+- **Sabit Veriler**: Personel, araç, mağaza bilgileri (bir kere yüklenir)
+- **Güncellenebilir Veriler**: Vardiya bilgileri (her Excel yüklemesinde güncellenir)
+- **Otomatik Senkronizasyon**: Veriler Supabase'e otomatik kaydedilir
 
-```bash
-npm run build
-```
+### 👥 Personel Yönetimi
+- Şoför ve sevkiyat elemanı listesi
+- Vardiya bilgileri (gece/gündüz/izin)
+- Personel performans analizi
+- Bölgesel çalışma dağılımı
 
-Build dosyaları `build/` klasörüne oluşturulur.
+### 🚚 Araç Yönetimi
+- Araç listesi ve tipi (Kamyon, Kamyonet, Panelvan)
+- Sabit şoför ataması
+- Araç-personel eşleştirme
 
-## 🎨 Teknolojiler
+### 🏪 Mağaza Yönetimi
+- Mağaza listesi ve konum bilgileri
+- Bölgesel mağaza dağılımı
+- Mağaza detay bilgileri
 
-- **React 18**: Modern UI framework
-- **Lucide React**: Modern ikonlar
-- **XLSX**: Excel dosyası işleme
-- **Date-fns**: Tarih işlemleri
-- **CSS3**: Modern styling ve animasyonlar
+### 📅 Akıllı Vardiya Planlama
+- **Otomatik Plan Oluşturma**: Haftalık vardiya planı
+- **Sabit Şoför Kontrolü**: Belirli araçlar için sabit şoför
+- **Rotasyon Sistemi**: Adaletli personel dağılımı
+- **Dinlenme Algoritması**: Personel dinlenme planı
+- **Bölgesel Dağılım**: Personelin farklı bölgelere eşit dağıtımı
 
-## 📱 Kullanım
+### 📊 Performans Analizi
+- Personel performans raporları
+- Bölgesel çalışma istatistikleri
+- Kasa/palet dağıtım analizi
+- Detaylı performans grafikleri
 
-### 1. Excel Dosyası Yükleme
-- "Excel Yükleme" sekmesinden dosyanızı yükleyin
-- Drag & drop veya dosya seçimi ile yükleme
-- Sistem otomatik olarak verileri analiz eder
+### 💾 Veri Kalıcılığı
+- Tüm veriler Supabase'de saklanır
+- Plan geçmişi kayıtları
+- Performans verisi birikimi
+- Yedekleme ve güvenlik
 
-### 2. Personel Listesi
-- Yüklenen personel listesini görüntüleyin
-- Şoför ve sevkiyat elemanlarını filtreleyin
-- Vardiya bazlı arama yapın
+## 🗄️ Veritabanı Yapısı
 
-### 3. Planlama
-- "Vardiya Planlama" sekmesine geçin
-- Başlangıç tarihini ve araç sayısını belirleyin
-- "Haftalık Plan Oluştur" butonuna tıklayın
+### Temel Tablolar
+- `users` - Kullanıcı bilgileri
+- `personnel` - Personel bilgileri (sabit)
+- `vehicles` - Araç bilgileri (sabit)
+- `stores` - Mağaza bilgileri (sabit)
+- `shifts` - Vardiya bilgileri (güncellenebilir)
+- `work_plans` - Çalışma planları
+- `work_assignments` - Personel atamaları
+- `performance_logs` - Performans kayıtları
 
-### 4. Plan Görüntüleme
-- Günlük veya haftalık görünümü seçin
-- Noktaya göre filtreleme yapın
-- Planı indirin veya yazdırın
+## 🔄 Veri Senkronizasyonu
 
-## 🛠️ Geliştirme
+### Excel Yükleme Sistemi
+1. **Personel Sayfası**: Personel bilgileri sabit olarak kaydedilir
+2. **Araç Sayfası**: Araç bilgileri sabit olarak kaydedilir
+3. **Mağaza Sayfası**: Mağaza bilgileri sabit olarak kaydedilir
+4. **Vardiya Güncelleme**: Her Excel yüklemesinde vardiya bilgileri güncellenir
 
-### Proje Yapısı
-```
-src/
-├── components/
-│   ├── FileUpload.js      # Excel yükleme
-│   ├── PersonelList.js    # Personel listesi
-│   ├── VardiyaPlanlama.js # Planlama algoritması
-│   └── PlanDisplay.js     # Plan görüntüleme
-├── App.js                 # Ana uygulama
-├── App.css               # Stil dosyası
-└── index.js              # Giriş noktası
-```
+### Plan Kayıt Sistemi
+- Oluşturulan planlar otomatik olarak veritabanına kaydedilir
+- Personel atama kayıtları tutulur
+- Performans verileri biriktirilir
 
-### Geliştirme Komutları
-```bash
-npm start        # Geliştirme sunucusu
-npm run build    # Production build
-npm test         # Testleri çalıştır
-```
+## 🔐 Güvenlik
 
-## 🎯 Gelecek Özellikler
+- **Row Level Security (RLS)** politikaları
+- Kullanıcı tabanlı erişim kontrolü
+- Şifrelenmiş veri saklama
+- Güvenli API erişimi
 
-- [ ] Backend entegrasyonu
-- [ ] Veritabanı desteği
-- [ ] Kullanıcı yetkilendirme
-- [ ] SMS/Email bildirimler
-- [ ] Mobil uygulama
-- [ ] Gelişmiş raporlar
-- [ ] API desteği
+## 🛠️ Teknolojiler
+
+- **Frontend**: React.js, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **File Processing**: XLSX.js
+- **Charts**: Chart.js (performans analizi için)
+
+## 📱 Responsive Tasarım
+
+- Masaüstü ve mobil uyumlu
+- Modern UI/UX tasarımı
+- Kolay kullanım arayüzü
+
+## 📞 Destek
+
+Herhangi bir sorunuz veya öneriniz varsa:
+- Email: melihkochan@gmail.com
+- Website: melihkochan.com
+
+---
 
 *🚚 Personel Planlama Sistemi ile verimli çalışma planları oluşturun!* 

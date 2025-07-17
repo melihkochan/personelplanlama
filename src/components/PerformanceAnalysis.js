@@ -181,11 +181,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           targetGroup[employee_name].totalStores += stores_visited;
         });
         
-        // Analiz formatına çevir - gerçek tarihler
+        // Analiz formatına çevir - gerçek tarihler (düzgün sıralanmış)
         const allDates = Array.from(allDatesSet).sort((a, b) => {
-          const [dayA, monthA, yearA] = a.split('.');
-          const [dayB, monthB, yearB] = b.split('.');
-          return new Date(`${yearA}-${monthA}-${dayA}`) - new Date(`${yearB}-${monthB}-${dayB}`);
+          // Tarih formatını düzgün parse et
+          const parseDate = (dateStr) => {
+            const [day, month, year] = dateStr.split('.');
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          };
+          
+          return parseDate(a) - parseDate(b);
         });
         
         console.log('📅 Gerçek tarihler:', allDates);
@@ -213,10 +217,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           // Tarih + shift kombinasyonu key'i oluştur (dayData ile tutarlı)
           let availableKey, displayDate, displayShift;
           
-          // Sheet_name varsa onu tarih olarak kullan
+          // Sheet_name varsa onu tarih olarak kullan, ama sadece tarih kısmını al
           if (sheet_name) {
-            displayDate = sheet_name;
-            console.log(`✅ Sheet_name kullanılıyor: "${sheet_name}"`);
+            // Sheet_name'de tarih+shift varsa sadece tarih kısmını al
+            if (sheet_name.includes('_')) {
+              displayDate = sheet_name.split('_')[0];
+            } else {
+              displayDate = sheet_name;
+            }
+            console.log(`✅ Sheet_name'den tarih çıkarıldı: "${displayDate}" (orijinal: "${sheet_name}")`);
           } else {
             displayDate = recordDate;
             console.log(`⚠️ Fallback tarih: "${recordDate}"`);
@@ -254,18 +263,26 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           availableDatesArray.push(combo);
         });
         
-        // Tarih+shift kombinasyonlarını sırala
+        // Tarih+shift kombinasyonlarını düzgün sırala
         availableDatesArray.sort((a, b) => {
-          const [dayA, monthA, yearA] = a.date.split('.');
-          const [dayB, monthB, yearB] = b.date.split('.');
-          const dateA = new Date(`${yearA}-${monthA}-${dayA}`);
-          const dateB = new Date(`${yearB}-${monthB}-${dayB}`);
+          // Tarih formatını düzgün parse et
+          const parseDate = (dateStr) => {
+            const [day, month, year] = dateStr.split('.');
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          };
           
-          if (dateA.getTime() === dateB.getTime()) {
-            // Aynı tarihse önce gündüz sonra gece
-            return a.shift === 'GÜNDÜZ' ? -1 : 1;
+          const dateA = parseDate(a.date);
+          const dateB = parseDate(b.date);
+          
+          // Önce tarihe göre sırala
+          if (dateA.getTime() !== dateB.getTime()) {
+            return dateA - dateB;
           }
-          return dateA - dateB;
+          
+          // Aynı tarihse önce gündüz sonra gece
+          if (a.shift === 'GÜNDÜZ' && b.shift === 'GECE') return -1;
+          if (a.shift === 'GECE' && b.shift === 'GÜNDÜZ') return 1;
+          return 0;
         });
         
         console.log('📅 Available dates FINAL:', availableDatesArray.length, 'adet tarih+shift kombinasyonu');
@@ -1107,14 +1124,16 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     
     console.log(`✅ Filtreleme tamamlandı: ${Object.keys(filteredResults.personnel).length} personel geçti`);
 
-    // Summary hesapla - seçili tarih+shift kombinasyonlarından
-    filteredResults.summary.gunduzDays = selectedDateShiftCombinations.filter(combo => 
-      combo.shift === 'GÜNDÜZ'
-    ).length;
+    // Summary hesapla - sadece gece vardiyası olan gün sayısı
+    const nightShiftDatesInSelection = new Set();
+    selectedDateShiftCombinations.forEach(combo => {
+      if (combo.shift === 'GECE') {
+        nightShiftDatesInSelection.add(combo.date);
+      }
+    });
     
-    filteredResults.summary.geceDays = selectedDateShiftCombinations.filter(combo => 
-      combo.shift === 'GECE'
-    ).length;
+    filteredResults.summary.gunduzDays = 0; // Gündüz günleri sayılmıyor
+    filteredResults.summary.geceDays = nightShiftDatesInSelection.size; // Sadece gece vardiyası olan gün sayısı
 
     filteredResults.summary.totalDeliveries = 
       Object.values(filteredResults.drivers).reduce((sum, driver) => sum + driver.totalTrips, 0) +
@@ -1127,6 +1146,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     filteredResults.summary.totalBoxes = 
       Object.values(filteredResults.drivers).reduce((sum, driver) => sum + driver.totalBoxes, 0) +
       Object.values(filteredResults.personnel).reduce((sum, person) => sum + person.totalBoxes, 0);
+
+    // Shift kombinasyonu sayısını ekle
+    filteredResults.summary.shiftCombinations = selectedDateShiftCombinations.length;
 
     return filteredResults;
   };
@@ -1151,52 +1173,135 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     }
   };
 
-  // Haftalık Gruplandırma - Tarih+shift kombinasyonları
+    // Haftalık Gruplandırma - Gece vardiyası olan günler bazında 6'lı gruplar
   const groupDatesByWeeks = (dateItems) => {
     const weeks = [];
     
-    // Benzersiz tarihleri çıkar (sadece tarih kısmı)
+    // Benzersiz tarihleri çıkar ve düzgün sırala
     const uniqueDatesMap = new Map();
     dateItems.forEach(item => {
       const dateKey = item.date;
       if (!uniqueDatesMap.has(dateKey)) {
+        // Tarih formatını düzgün parse et
+        const [day, month, year] = dateKey.split('.');
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
         uniqueDatesMap.set(dateKey, {
           date: dateKey,
+          dateObj: dateObj,
           shifts: []
         });
       }
       uniqueDatesMap.get(dateKey).shifts.push(item);
     });
     
-    // Benzersiz tarihleri sırala
+    // Benzersiz tarihleri kronolojik sırada sırala
     const sortedUniqueDates = Array.from(uniqueDatesMap.values()).sort((a, b) => {
-      const [dayA, monthA, yearA] = a.date.split('.');
-      const [dayB, monthB, yearB] = b.date.split('.');
-      const dateA = new Date(`${yearA}-${monthA}-${dayA}`);
-      const dateB = new Date(`${yearB}-${monthB}-${dayB}`);
-      return dateA - dateB;
+      return a.dateObj - b.dateObj;
     });
     
-    // 6'şarlı gruplara böl
-    for (let i = 0; i < sortedUniqueDates.length; i += 6) {
-      const weekUniqueDates = sortedUniqueDates.slice(i, i + 6);
-      const weekStartDate = weekUniqueDates[0].date;
-      const weekEndDate = weekUniqueDates[weekUniqueDates.length - 1].date;
+    // Sadece gece vardiyası olan günleri filtrele
+    const nightShiftDates = sortedUniqueDates.filter(dateInfo => 
+      dateInfo.shifts.some(shift => shift.shift === 'GECE')
+    );
+    
+    console.log('📅 Haftalık gruplandırma başlıyor (gece vardiyası bazında)');
+    console.log('📋 Benzersiz tarih sayısı:', sortedUniqueDates.length);
+    console.log('📋 Gece vardiyası olan gün sayısı:', nightShiftDates.length);
+    console.log('📋 Toplam shift kombinasyonu:', dateItems.length);
+    console.log('📋 Gece vardiyası olan günler:', nightShiftDates.map(d => d.date));
+    
+    // Gece vardiyası olan günleri 6'lı gruplar halinde böl
+    let currentWeek = [];
+    
+    nightShiftDates.forEach((dateInfo, index) => {
+      // Haftaya ekle
+      currentWeek.push(dateInfo);
       
-      // Bu haftadaki tüm shift kombinasyonlarını topla
-      const allShiftsInWeek = [];
-      weekUniqueDates.forEach(dateInfo => {
-        allShiftsInWeek.push(...dateInfo.shifts);
-      });
+      // Hafta şartları: 6 gece günü tamamlandı veya son gün
+      const isWeekComplete = currentWeek.length === 6;
+      const isLastDate = index === nightShiftDates.length - 1;
       
-      weeks.push({
-        id: `week-${weeks.length + 1}`,
-        label: `${weekStartDate} - ${weekEndDate}`,
-        dates: allShiftsInWeek, // Tüm tarih+shift kombinasyonları
-        dayCount: weekUniqueDates.length, // Benzersiz gün sayısı
-        uniqueDates: weekUniqueDates.map(d => d.date)
-      });
-    }
+      if (isWeekComplete || isLastDate) {
+        // Hafta içindeki tüm shift kombinasyonlarını topla
+        const allShiftsInWeek = [];
+        
+        // Mevcut hafta günlerini al (gece vardiyası olan günler)
+        const currentWeekDates = currentWeek.map(d => d.date);
+        
+        // Hafta tarih aralığını belirle
+        const weekRangeStart = currentWeek[0].date;
+        const weekRangeEnd = currentWeek[currentWeek.length - 1].date;
+        
+        // Tarih aralığını parse et
+        const parseDate = (dateStr) => {
+          const [day, month, year] = dateStr.split('.');
+          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        };
+        
+        const startDateObj = parseDate(weekRangeStart);
+        const endDateObj = parseDate(weekRangeEnd);
+        
+        console.log(`📅 Hafta ${weeks.length + 1} tarih aralığı: ${weekRangeStart} - ${weekRangeEnd}`);
+        console.log(`📋 Gece vardiyası olan günler:`, currentWeekDates);
+        
+        // Tüm tarihlerden hafta aralığındaki günleri filtrele (hem gece hem sadece gündüz)
+        sortedUniqueDates.forEach(dateInfo => {
+          const dateObj = dateInfo.dateObj;
+          
+          // Bu tarih hafta aralığında mı?
+          const isInWeekRange = dateObj >= startDateObj && dateObj <= endDateObj;
+          
+          if (isInWeekRange) {
+            // Her tarih için shift'leri kronolojik sırala
+            const sortedShifts = dateInfo.shifts.sort((a, b) => {
+              // Önce tarihe göre sırala (aynı tarih olacak zaten)
+              const dateA = new Date(parseInt(a.date.split('.')[2]), parseInt(a.date.split('.')[1]) - 1, parseInt(a.date.split('.')[0]));
+              const dateB = new Date(parseInt(b.date.split('.')[2]), parseInt(b.date.split('.')[1]) - 1, parseInt(b.date.split('.')[0]));
+              
+              if (dateA.getTime() !== dateB.getTime()) {
+                return dateA - dateB;
+              }
+              
+              // Aynı tarihse önce gündüz sonra gece
+              if (a.shift === 'GÜNDÜZ' && b.shift === 'GECE') return -1;
+              if (a.shift === 'GECE' && b.shift === 'GÜNDÜZ') return 1;
+              return 0;
+            });
+            
+            allShiftsInWeek.push(...sortedShifts);
+            
+            // Sadece gündüz vardiyası olan günleri logla
+            const hasOnlyDayShift = dateInfo.shifts.some(s => s.shift === 'GÜNDÜZ') && 
+                                  !dateInfo.shifts.some(s => s.shift === 'GECE');
+            if (hasOnlyDayShift) {
+              console.log(`📋 Sadece gündüz vardiyası olan gün eklendi: ${dateInfo.date}`);
+            }
+          }
+        });
+        
+        const weekStart = currentWeek[0].date;
+        const weekEnd = currentWeek[currentWeek.length - 1].date;
+        const uniqueDatesInWeek = currentWeek.map(d => d.date);
+        
+        const weekObj = {
+          id: `week-${weeks.length + 1}`,
+          label: `${weekStart} - ${weekEnd} (${currentWeek.length} gün)`,
+          dates: allShiftsInWeek, // Sıralı shift kombinasyonları (gece+gündüz)
+          dayCount: currentWeek.length, // Gece vardiyası olan gün sayısı
+          uniqueDates: uniqueDatesInWeek
+        };
+        
+        console.log(`📅 Hafta ${weeks.length + 1} oluşturuldu: ${weekObj.label}`);
+        console.log(`📋 Gece vardiyası olan günler (${currentWeek.length}):`, uniqueDatesInWeek);
+        console.log(`📋 Shift kombinasyonları (${allShiftsInWeek.length}):`, allShiftsInWeek.map(d => `${d.date} ${d.shift}`));
+        
+        weeks.push(weekObj);
+        
+        // Yeni hafta başlat
+        currentWeek = [];
+      }
+    });
     
     return weeks;
   };
@@ -1291,9 +1396,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-xs">Gündüz Günleri</p>
-              <p className="text-2xl font-bold">{filteredData.summary.gunduzDays}</p>
-              <p className="text-blue-200 text-xs">🌅 vardiya</p>
+              <p className="text-blue-100 text-xs">Toplam Gün</p>
+              <p className="text-2xl font-bold">{filteredData.summary.geceDays}</p>
+              <p className="text-blue-200 text-xs">🌙 gece vardiyası</p>
             </div>
             <Calendar className="w-10 h-10 text-blue-200" />
           </div>
@@ -1302,9 +1407,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-indigo-100 text-xs">Gece Günleri</p>
-              <p className="text-2xl font-bold">{filteredData.summary.geceDays}</p>
-              <p className="text-indigo-200 text-xs">🌙 vardiya</p>
+              <p className="text-indigo-100 text-xs">Shift Kombinasyonu</p>
+              <p className="text-2xl font-bold">{filteredData.summary.shiftCombinations}</p>
+              <p className="text-indigo-200 text-xs">🔄 gece+gündüz</p>
             </div>
             <Calendar className="w-10 h-10 text-indigo-200" />
           </div>
@@ -1727,7 +1832,28 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                                 <span className="text-xs text-gray-500">{week.dayCount} gün</span>
                               </div>
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {week.dates.map((dateItem) => (
+                                {week.dates
+                                  .sort((a, b) => {
+                                    // Tarih formatını düzgün parse et
+                                    const parseDate = (dateStr) => {
+                                      const [day, month, year] = dateStr.split('.');
+                                      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                    };
+                                    
+                                    const dateA = parseDate(a.date);
+                                    const dateB = parseDate(b.date);
+                                    
+                                    // Önce tarihe göre sırala
+                                    if (dateA.getTime() !== dateB.getTime()) {
+                                      return dateA - dateB;
+                                    }
+                                    
+                                    // Aynı tarihse önce gündüz sonra gece
+                                    if (a.shift === 'GÜNDÜZ' && b.shift === 'GECE') return -1;
+                                    if (a.shift === 'GECE' && b.shift === 'GÜNDÜZ') return 1;
+                                    return 0;
+                                  })
+                                  .map((dateItem) => (
                                   <span key={dateItem.id} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                     dateItem.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
                                   }`}>
@@ -1833,7 +1959,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {groupDatesByWeeks(availableDates).filter(week => selectedWeeks.includes(week.id)).map((week) => {
-                  const weekUniqueDates = week.uniqueDates; // Sadece benzersiz tarihler (01.07.2025 formatında)
+                  const weekShiftIds = week.dates.map(d => d.id); // Tarih+shift kombinasyonları (01.07.2025_GÜNDÜZ formatında)
                   const weekStats = {
                     totalTrips: 0,
                     totalPallets: 0,
@@ -1842,32 +1968,42 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     activePersonnel: 0
                   };
                   
-                  // Haftalık istatistikleri hesapla
+                  console.log(`📊 Haftalık istatistik hesaplama: ${week.label}`);
+                  console.log(`📋 Week shift IDs:`, weekShiftIds);
+                  
+                  // Haftalık istatistikleri hesapla - şoförler
                   Object.values(analysisData.drivers).forEach(driver => {
                     let hasTrips = false;
-                    Object.entries(driver.dayData || {}).forEach(([date, data]) => {
-                      if (weekUniqueDates.includes(date)) {
+                    Object.entries(driver.dayData || {}).forEach(([sheetName, data]) => {
+                      if (weekShiftIds.includes(sheetName)) {
                         weekStats.totalTrips += data.trips || 0;
                         weekStats.totalPallets += data.pallets || 0;
                         weekStats.totalBoxes += data.boxes || 0;
                         if (data.trips > 0) hasTrips = true;
+                        
+                        console.log(`✅ Şoför ${driver.name} - ${sheetName}: ${data.trips} sefer, ${data.pallets} palet, ${data.boxes} kasa`);
                       }
                     });
                     if (hasTrips) weekStats.activeDrivers++;
                   });
                   
+                  // Haftalık istatistikleri hesapla - personeller
                   Object.values(analysisData.personnel).forEach(person => {
                     let hasTrips = false;
-                    Object.entries(person.dayData || {}).forEach(([date, data]) => {
-                      if (weekUniqueDates.includes(date)) {
+                    Object.entries(person.dayData || {}).forEach(([sheetName, data]) => {
+                      if (weekShiftIds.includes(sheetName)) {
                         weekStats.totalTrips += data.trips || 0;
                         weekStats.totalPallets += data.pallets || 0;
                         weekStats.totalBoxes += data.boxes || 0;
                         if (data.trips > 0) hasTrips = true;
+                        
+                        console.log(`✅ Personel ${person.name} - ${sheetName}: ${data.trips} sefer, ${data.pallets} palet, ${data.boxes} kasa`);
                       }
                     });
                     if (hasTrips) weekStats.activePersonnel++;
                   });
+                  
+                  console.log(`📊 ${week.label} - Toplam: ${weekStats.totalTrips} sefer, ${weekStats.totalPallets} palet, ${weekStats.totalBoxes} kasa`);
                   
                   return (
                     <div key={week.id} className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">

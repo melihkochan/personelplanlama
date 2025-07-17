@@ -16,7 +16,13 @@ import './App.css';
 // Ana uygulama component'i (Authentication wrapper içinde)
 function MainApp() {
   const { user, isAuthenticated, loading, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState('home');
+  
+  // localStorage'dan aktif tab'i oku, yoksa 'home' kullan
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = localStorage.getItem('activeTab');
+    return savedTab || 'home';
+  });
+  
   const [personnelData, setPersonnelData] = useState([]);
   const [vehicleData, setVehicleData] = useState([]);
   const [storeData, setStoreData] = useState([]);
@@ -30,6 +36,12 @@ function MainApp() {
     stores: { loaded: false, count: 0, hasExisting: false }
   });
   const [notification, setNotification] = useState(null);
+
+  // Tab değiştiğinde localStorage'a kaydet
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    localStorage.setItem('activeTab', tabId);
+  };
 
   // Kullanıcı rolünü al
   useEffect(() => {
@@ -200,12 +212,14 @@ function MainApp() {
 
   const handlePlanGenerated = (plan) => {
     setGeneratedPlan(plan);
-    setActiveTab('display');
+    handleTabChange('display');
   };
 
   const handleLogout = async () => {
     const result = await signOut();
     if (result.success) {
+      // localStorage'ı temizle ve home'a dön
+      localStorage.removeItem('activeTab');
       setActiveTab('home');
       setPersonnelData([]);
       setVehicleData([]);
@@ -274,7 +288,7 @@ function MainApp() {
                   {navigationItems.map(item => (
                     <button
                       key={item.id}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => handleTabChange(item.id)}
                       className={`
                         flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
                         ${activeTab === item.id
@@ -308,7 +322,7 @@ function MainApp() {
                 {/* Admin Panel Button */}
                 {userRole === 'admin' && (
                   <button
-                    onClick={() => setActiveTab('admin')}
+                    onClick={() => handleTabChange('admin')}
                     className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 text-sm shadow-lg"
                   >
                     <Shield className="w-4 h-4" />
@@ -346,7 +360,7 @@ function MainApp() {
                   <button
                     key={item.id}
                     onClick={() => {
-                      setActiveTab(item.id);
+                      handleTabChange(item.id);
                       setMobileMenuOpen(false);
                     }}
                     className={`
@@ -369,7 +383,7 @@ function MainApp() {
                 {userRole === 'admin' && (
                   <button
                     onClick={() => {
-                      setActiveTab('admin');
+                      handleTabChange('admin');
                       setMobileMenuOpen(false);
                     }}
                     className="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg"
@@ -401,7 +415,7 @@ function MainApp() {
                 {navigationItems.map(item => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleTabChange(item.id)}
                     className={`
                       flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 relative
                       ${activeTab === item.id
@@ -586,7 +600,7 @@ function MainApp() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Hızlı Erişim</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <button
-                    onClick={() => setActiveTab('personnel')}
+                    onClick={() => handleTabChange('personnel')}
                     className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border hover:border-blue-300 hover:scale-105 transform text-left"
                   >
                     <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
@@ -597,7 +611,7 @@ function MainApp() {
                   </button>
 
                   <button
-                    onClick={() => setActiveTab('vehicles')}
+                    onClick={() => handleTabChange('vehicles')}
                     className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border hover:border-green-300 hover:scale-105 transform text-left"
                   >
                     <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
@@ -608,7 +622,7 @@ function MainApp() {
                   </button>
 
                   <button
-                    onClick={() => setActiveTab('planning')}
+                    onClick={() => handleTabChange('planning')}
                     className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border hover:border-purple-300 hover:scale-105 transform text-left"
                   >
                     <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
@@ -703,7 +717,7 @@ function MainApp() {
               personnelData={personnelData}
               vehicleData={vehicleData}
               storeData={storeData}
-              onNavigateToHome={() => setActiveTab('home')}
+              onNavigateToHome={() => handleTabChange('home')}
             />
           )}
 

@@ -9,6 +9,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   // State'ler
   const [analysisData, setAnalysisData] = useState(null);
   const [loadingPlans, setLoadingPlans] = useState(false);
+  const [initialDataLoading, setInitialDataLoading] = useState(true); // İlk veri yükleme durumu
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [selectedDates, setSelectedDates] = useState([]);
@@ -325,11 +326,27 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         setAnalysisData(analysisResults);
         console.log('🎯 setAnalysisData çağrıldı');
         
+        // İlk veri yükleme tamamlandı
+        setTimeout(() => {
+          setInitialDataLoading(false);
+          console.log('✅ İlk veri yükleme tamamlandı (performans verileri hazır)');
+        }, 300);
+        
       } else {
         console.log('ℹ️ Veritabanında performans verisi bulunamadı');
+        // Veri yoksa da loading'i bitir
+        setTimeout(() => {
+          setInitialDataLoading(false);
+          console.log('⚠️ Performans verisi yok, Excel yükleme ekranına geç');
+        }, 500);
       }
     } catch (error) {
       console.error('❌ Performans verileri yükleme hatası:', error);
+      // Hata durumunda da loading'i bitir
+      setTimeout(() => {
+        setInitialDataLoading(false);
+        console.log('❌ Hata nedeniyle Excel yükleme ekranına geç');
+      }, 500);
     }
   };
 
@@ -393,8 +410,16 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (personnelDatabase.length > 0) {
       console.log('✅ Personnel database yüklendi, performans verileri yükleniyor...');
       loadPerformanceDataFromDatabase();
+    } else {
+      // Personnel database boşsa Excel yükleme ekranını göster
+      console.log('⚠️ Personnel database boş, Excel yükleme ekranını göster');
+      setTimeout(() => {
+        setInitialDataLoading(false);
+      }, 1000);
     }
   }, [personnelDatabase.length]); // Length'e göre kontrol et, böylece döngü olmaz
+
+
 
   // Mağaza bilgisini bul
   const findStoreByCode = (storeCode) => {
@@ -1392,7 +1417,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (!filteredData) return null;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -1556,7 +1581,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <Package className="w-5 h-5" />
-            Personel Performans Analizi ({personnel.length} kişi)
+            Sevkiyat Elemanı Performans Analizi ({personnel.length} kişi)
           </h3>
           
           <div className="flex items-center gap-2">
@@ -1662,8 +1687,21 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <p className="text-gray-600 text-center">Şoför ve personel performansını analiz edin</p>
       </div>
 
+      {/* İlk veri yükleme durumu */}
+      {initialDataLoading && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+          <div className="text-center py-8">
+            <div className="flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Veriler Yükleniyor...</h3>
+            <p className="text-gray-600">Veritabanından performans verileri alınıyor.</p>
+          </div>
+        </div>
+      )}
+
       {/* DOSYA YÜKLEME */}
-      {!analysisData && (
+      {!initialDataLoading && !analysisData && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
           {!loadingPlans ? (
             <div className="flex items-center justify-center">
@@ -1732,60 +1770,72 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       )}
 
       {/* Analiz Sonuçları */}
-      {analysisData && (
+      {!initialDataLoading && analysisData && (
         <>
           {/* Filtreleme Paneli */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <Calendar className="w-6 h-6 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-800">Filtreleme Seçenekleri</h3>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+            {/* Üst Bar: Başlık + Görünüm Butonları */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-800">Filtreleme Seçenekleri</h3>
+              </div>
+              
+              <button
+                onClick={() => {
+                  const newWeeklyView = !weeklyView;
+                  setWeeklyView(newWeeklyView);
+                  // Haftalık görünüm aktif olduğunda tüm vardiyaları göster
+                  if (newWeeklyView) {
+                    setShiftFilter('all');
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  weeklyView ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {weeklyView ? '📅 Haftalık Görünüm' : '📊 Günlük Görünüm'}
+              </button>
             </div>
             
-            <div className="space-y-4">
-              {/* Vardiya Filtresi */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vardiya Seçimi</label>
-                <div className="flex gap-2">
-                  {[
-                    { key: 'all', label: 'Tüm Vardiyalar', color: 'bg-blue-500' },
-                    { key: 'day', label: '🌅 Gündüz', color: 'bg-yellow-500' },
-                    { key: 'night', label: '🌙 Gece', color: 'bg-blue-500' }
-                  ].map(({ key, label, color }) => (
-                    <button
-                      key={key}
-                      onClick={() => setShiftFilter(key)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        shiftFilter === key ? `${color} text-white` : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+            {/* Filtreler */}
+            <div className="space-y-3">
+              {/* Vardiya Filtresi - Sadece haftalık görünüm aktif değilken göster */}
+              {!weeklyView && (
+                <div className="flex items-center gap-4">
+                  <label className="text-sm font-medium text-gray-700 min-w-[100px]">Vardiya Seçimi</label>
+                  <div className="flex gap-2">
+                    {[
+                      { key: 'all', label: 'Tüm Vardiyalar', color: 'bg-blue-500' },
+                      { key: 'day', label: '🌅 Gündüz', color: 'bg-yellow-500' },
+                      { key: 'night', label: '🌙 Gece', color: 'bg-blue-500' }
+                    ].map(({ key, label, color }) => (
+                      <button
+                        key={key}
+                        onClick={() => setShiftFilter(key)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          shiftFilter === key ? `${color} text-white` : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Tarih Seçimi - Modern */}
+              {/* Tarih Seçimi */}
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-700">
                     Tarih Seçimi ({availableDates.length} gün)
                   </label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setWeeklyView(!weeklyView)}
-                      className={`px-6 py-3 rounded-xl text-base font-bold transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${
-                        weeklyView ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
-                    >
-                      {weeklyView ? '📅 Haftalık Görünüm' : '📊 Günlük Görünüm'}
-                    </button>
-                  </div>
                 </div>
 
                 {weeklyView ? (
                   // Haftalık Görünüm
-                  <div className="space-y-3">
-                    <div className="flex gap-2 mb-3">
+                  <div className="space-y-2">
+                    <div className="flex gap-2 mb-2">
                       <button
                         onClick={() => {
                           const weeks = groupDatesByWeeks(availableDates);
@@ -1807,7 +1857,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                       </button>
                     </div>
                     
-                    <div className="max-h-60 overflow-y-auto space-y-2">
+                    <div className="max-h-48 overflow-y-auto space-y-2">
                       {groupDatesByWeeks(availableDates).map((week) => (
                         <div key={week.id} className="border border-gray-200 rounded-lg p-3 bg-white">
                           <label className="flex items-center gap-3 cursor-pointer">
@@ -1824,7 +1874,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                                   setSelectedDates(selectedDates.filter(d => !weekDateIds.includes(d)));
                                 }
                               }}
-                              className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
                             />
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
@@ -1855,7 +1905,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                                   })
                                   .map((dateItem) => (
                                   <span key={dateItem.id} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    dateItem.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                                    dateItem.shift === 'GÜNDÜZ' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
                                   }`}>
                                     {dateItem.shift === 'GÜNDÜZ' ? '🌅' : '🌙'} {dateItem.date}
                                   </span>
@@ -1870,7 +1920,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 ) : (
                   // Günlük Görünüm
                   <div>
-                    <div className="flex gap-2 mb-3">
+                    <div className="flex gap-2 mb-2">
                       <button
                         onClick={() => setSelectedDates(availableDates.map(item => item.id))}
                         className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
@@ -1884,12 +1934,14 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         Tümünü Kaldır
                       </button>
                     </div>
-                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {availableDates.map((dateItem) => (
                           <div key={dateItem.id} className="relative">
                             <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
-                              selectedDates.includes(dateItem.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                              selectedDates.includes(dateItem.id) ? 
+                                (dateItem.shift === 'GECE' ? 'border-blue-500 bg-blue-50' : 'border-orange-500 bg-orange-50') :
+                                (dateItem.shift === 'GECE' ? 'border-gray-200 bg-white hover:border-blue-300' : 'border-gray-200 bg-white hover:border-orange-300')
                             }`}>
                               <input
                                 type="checkbox"
@@ -1901,13 +1953,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                                     setSelectedDates(selectedDates.filter(d => d !== dateItem.id));
                                   }
                                 }}
-                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                className={`w-5 h-5 rounded focus:ring-2 ${
+                                  dateItem.shift === 'GECE' ? 'text-blue-600 focus:ring-blue-500' : 'text-orange-600 focus:ring-orange-500'
+                                }`}
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium text-gray-900 truncate">{dateItem.date}</span>
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    dateItem.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                                    dateItem.shift === 'GÜNDÜZ' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
                                   }`}>
                                     {dateItem.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
                                   </span>
@@ -1922,9 +1976,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 )}
               </div>
 
-              {/* Seçim Özeti - Modern */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              {/* Seçim Özeti - Kompakt */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-blue-600">📅</span>
                     <span className="text-gray-700">Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {availableDates.length} tarih</span>
@@ -1939,7 +1993,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   </div>
                 </div>
                 {weeklyView && (
-                  <div className="mt-3 pt-3 border-t border-blue-200">
+                  <div className="mt-2 pt-2 border-t border-blue-200">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="text-orange-600">🗓️</span>
                       <span>Seçilen Haftalar: <span className="font-medium text-orange-600">{selectedWeeks.length}</span> / {groupDatesByWeeks(availableDates).length} hafta</span>
@@ -1952,12 +2006,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
           {/* Haftalık İstatistikler */}
           {weeklyView && selectedWeeks.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-              <div className="flex items-center gap-3 mb-4">
-                <BarChart3 className="w-6 h-6 text-purple-600" />
+            <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Haftalık İstatistikler</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 {groupDatesByWeeks(availableDates).filter(week => selectedWeeks.includes(week.id)).map((week) => {
                   const weekShiftIds = week.dates.map(d => d.id); // Tarih+shift kombinasyonları (01.07.2025_GÜNDÜZ formatında)
                   const weekStats = {
@@ -2041,7 +2095,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
           {renderSummaryCards()}
           
-          <div className="grid grid-cols-1 xl:grid-cols-1 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
             {renderDriverAnalysis()}
             {renderPersonnelAnalysis()}
           </div>

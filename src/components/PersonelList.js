@@ -474,11 +474,25 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
 
   const handleEditPersonnel = (person) => {
     setEditingPersonnel(person);
+    console.log('👤 Düzenlenecek personel RAW:', person);
+    console.log('📝 Vardiya bilgisi RAW:', person.shift_type);
+    console.log('📝 Vardiya bilgisi TYPE:', typeof person.shift_type);
+    console.log('📝 Vardiya bilgisi LENGTH:', person.shift_type ? person.shift_type.length : 'null');
+    console.log('📝 Vardiya bilgisi TRIM:', person.shift_type ? person.shift_type.trim() : 'null');
+    
+    // Vardiya bilgisini normalize et
+    const normalizedShiftType = person.shift_type ? person.shift_type.trim().toLowerCase() : 'gunduz';
+    console.log('📝 Normalized shift_type:', normalizedShiftType);
+    
+    const formShiftType = normalizedShiftType === 'gece' ? 'gece' : 
+                         normalizedShiftType === 'izin' ? 'izin' : 'gunduz';
+    console.log('📝 Form shift_type:', formShiftType);
+    
     setFormData({
       employee_code: person.employee_code || '',
       full_name: person.full_name || '',
       position: person.position || 'ŞOFÖR',
-      shift_type: person.shift_type || 'gunduz',
+      shift_type: formShiftType,
       is_active: person.is_active !== undefined ? person.is_active : true
       // experience_level kaldırıldı - veritabanında yok
       // performance_score kaldırıldı - veritabanında yok
@@ -1060,6 +1074,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 >
                   <option value="gunduz">Gündüz</option>
                   <option value="gece">Gece</option>
+                  <option value="izin">İzin</option>
                 </select>
               </div>
 
@@ -1150,6 +1165,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 >
                   <option value="gunduz">Gündüz</option>
                   <option value="gece">Gece</option>
+                  <option value="izin">İzin</option>
                 </select>
               </div>
 

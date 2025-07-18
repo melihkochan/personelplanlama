@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData } from '../services/supabase';
 
 const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole }) => {
-  console.log('🚀 PerformanceAnalysis BAŞLADI');
+  // PerformanceAnalysis başladı
   
   // State'ler
   const [analysisData, setAnalysisData] = useState(null);
@@ -40,20 +40,17 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   // Performans verilerini veritabanından yükle - BASIT YÖNTEM
   const loadPerformanceDataFromDatabase = async () => {
-    console.log('🔄 loadPerformanceDataFromDatabase çağrıldı');
-    console.log('👥 personnelDatabase.length:', personnelDatabase.length);
+    // loadPerformanceDataFromDatabase başladı
     
     if (!personnelDatabase.length) {
-      console.warn('Personnel database henüz yüklenmemiş');
+      // Personnel database henüz yüklenmemiş
       return;
     }
 
     try {
-      console.log('🔄 Personnel tablosundan veriler yükleniyor...');
       const result = await getPerformanceData();
       
       if (result.success && result.data.length > 0) {
-        console.log('📊 Performance_data tablosundan', result.data.length, 'kayıt geldi');
         
         // Performance_data'daki shift_type dağılımını kontrol et (tarih shift'i)
         const shiftDistribution = {};
@@ -67,15 +64,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           dateShiftCombos.add(`${date}_${shift}`);
         });
         
-        console.log('📊 Performance_data shift_type dağılımı:', shiftDistribution);
-        console.log('📅 Tarih-Shift kombinasyonları:', Array.from(dateShiftCombos).slice(0, 10));
-        
-        // İlk 5 kaydın shift_type'ını göster
-        console.log('📋 İlk 5 kayıt shift_type:', result.data.slice(0, 5).map(r => ({ 
-          date: new Date(r.date).toLocaleDateString('tr-TR'), 
-          name: r.employee_name, 
-          shift: r.shift_type 
-        })));
+        // Shift type dağılımı analizi
         
         // Basit format - şoför ve personel ayrımı
         const drivers = {};
@@ -88,7 +77,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         result.data.forEach(record => {
           const { employee_name, employee_code, date, trips = 0, pallets = 0, boxes = 0, stores_visited = 0, date_shift_type, store_codes, sheet_name } = record;
           
-          console.log(`🔍 Performance record işleniyor:`, { employee_name, date, trips, pallets, boxes, date_shift_type, sheet_name });
+          // Performance record işleniyor
           
           if (!employee_name) {
             console.warn(`⚠️ employee_name boş, kayıt atlanıyor`);
@@ -144,7 +133,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           groupedRecords[groupKey].trips += trips;
         });
         
-        console.log(`📊 Gruplandırma sonucu: ${Object.keys(groupedRecords).length} benzersiz çalışan-gün kombinasyonu`);
+                  // Gruplandırma tamamlandı
         
         // Şimdi gruplandırılmış kayıtları işle
         Object.values(groupedRecords).forEach(groupedRecord => {
@@ -157,7 +146,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             return;
           }
           
-          console.log(`✅ ${employee_name} eşleşti - Position: "${person.position}", Shift: "${person.shift_type}"`);
+          // Eşleşen personel bulundu
           
           // Şoför tespiti için daha geniş kontrol
           const positionLower = (person.position || '').toLowerCase().trim();
@@ -167,15 +156,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           const targetGroup = isDriver ? drivers : personnel;
           const groupName = isDriver ? 'driver' : 'personnel';
           
-          console.log(`🔍 Position analizi: "${person.position}" -> isDriver: ${isDriver}`);
-          console.log(`➡️ ${employee_name} -> ${groupName} grubuna eklendi`);
-          
           allDatesSet.add(formattedDate);
           
           if (!targetGroup[employee_name]) {
             // Personnel database'den shift_type'ı çek (personelin kendi vardiyası)
             const originalShift = person.shift_type || 'gunduz';
-            console.log(`🔍 ${employee_name} - ORIJINAL shift_type: "${originalShift}"`);
+            // Orijinal shift type analizi
             
             const shiftLower = originalShift.toLowerCase().trim();
             let personnelShiftDisplay;
@@ -187,8 +173,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             } else {
               personnelShiftDisplay = 'GÜNDÜZ';
             }
-            
-            console.log(`🔄 ${employee_name} - shift mapping: "${originalShift}" -> "${personnelShiftDisplay}"`);
             
             targetGroup[employee_name] = {
               name: employee_name,
@@ -215,7 +199,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           const uniqueStoreCount = stores.size;
           const storeArray = Array.from(stores);
           
-          console.log(`🏪 ${employee_name} (${dayDataKey}): ${uniqueStoreCount} benzersiz mağaza - ${storeArray.join(', ')}`);
+          // Benzersiz mağaza sayısı hesaplandı
           
           targetGroup[employee_name].dayData[dayDataKey].trips = uniqueStoreCount; // Benzersiz mağaza sayısı = sefer sayısı
           targetGroup[employee_name].dayData[dayDataKey].pallets += pallets;
@@ -240,7 +224,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           return parseDate(a) - parseDate(b);
         });
         
-        console.log('📅 Gerçek tarihler:', allDates);
+        // Gerçek tarihler belirlendi
         
         const analysisResults = {
           drivers,
@@ -273,7 +257,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             } else {
               displayDate = sheet_name;
             }
-            console.log(`✅ Sheet_name'den tarih çıkarıldı: "${displayDate}" (orijinal: "${sheet_name}")`);
+            // Tarih çıkarıldı
           } else {
             displayDate = recordDate;
             console.log(`⚠️ Fallback tarih: "${recordDate}"`);
@@ -288,7 +272,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           
           // Final key: tarih + shift (dayData ile aynı format)
           availableKey = `${displayDate}_${displayShift}`;
-          console.log(`✅ Available key: "${availableKey}" (tarih: ${displayDate}, shift: ${displayShift})`);
+                      // Available key oluşturuldu
         
           
           // Map ile benzersizliği garanti et - dayData ile uyumlu key'ler
@@ -300,9 +284,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               id: availableKey
             });
             
-            console.log(`✅ Available date eklendi: "${availableKey}"`);
+                          // Available date eklendi
           } else {
-            console.log(`🔄 "${availableKey}" zaten var, tekrar eklenmedi`);
+            // Zaten mevcut
           }
         });
         
@@ -333,10 +317,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           return 0;
         });
         
-        console.log('📅 Available dates FINAL:', availableDatesArray.length, 'adet tarih+shift kombinasyonu');
-        console.log('📅 Available dates:', availableDatesArray);
-        console.log('📅 AllDates (benzersiz tarihler):', allDates);
-        
+              // Available dates hazırlandı
         setAvailableDates(availableDatesArray);
         
         // Selected dates'i sadece ilk kez yüklendiğinde tümünü seç, sonra kullanıcının seçimini koru
@@ -345,54 +326,34 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         // Sadece selectedDates boşsa tümünü seç
         setSelectedDates(prevSelected => {
           if (prevSelected.length === 0) {
-            console.log('🎯 İlk yükleme: Tüm tarihleri seçiyorum');
             return allCombinationIds;
           } else {
-            console.log('🎯 Kullanıcı seçimi korunuyor:', prevSelected.length, 'tarih');
             // Mevcut seçimleri filtreleme (artık mevcut olmayan tarihleri temizle)
             const validSelections = prevSelected.filter(id => allCombinationIds.includes(id));
             return validSelections.length > 0 ? validSelections : allCombinationIds;
           }
         });
         
-        console.log('🎯 setAvailableDates ve setSelectedDates (akıllı) çağrıldı');
-        
-        console.log('✅ Basit format hazırlandı:', analysisResults);
-        console.log('👥 Şoför sayısı:', analysisResults.summary.totalDrivers);
-        console.log('👤 Personel sayısı:', analysisResults.summary.totalPersonnel);
-        console.log('📋 Drivers objesi:', Object.keys(analysisResults.drivers));
-        console.log('📋 Personnel objesi:', Object.keys(analysisResults.personnel));
-        
-        // Detay kontrol
-        if (Object.keys(analysisResults.personnel).length === 0) {
-          console.warn('⚠️ Personnel objesi boş! Neden?');
-          console.log('🔍 Performance data ilk 3 kayıt:', result.data.slice(0, 3));
-          console.log('🔍 Personnel database ilk 3 kayıt:', personnelDatabase.slice(0, 3));
-        }
+        // Basit format hazırlandı
         
         setAnalysisData(analysisResults);
-        console.log('🎯 setAnalysisData çağrıldı');
         
         // İlk veri yükleme tamamlandı
         setTimeout(() => {
           setInitialDataLoading(false);
-          console.log('✅ İlk veri yükleme tamamlandı (performans verileri hazır)');
         }, 300);
         
       } else {
-        console.log('ℹ️ Veritabanında performans verisi bulunamadı');
         // Veri yoksa da loading'i bitir
         setTimeout(() => {
           setInitialDataLoading(false);
-          console.log('⚠️ Performans verisi yok, Excel yükleme ekranına geç');
         }, 500);
       }
       } catch (error) {
-      console.error('❌ Performans verileri yükleme hatası:', error);
+      console.error('Performans verileri yükleme hatası:', error);
       // Hata durumunda da loading'i bitir
       setTimeout(() => {
         setInitialDataLoading(false);
-        console.log('❌ Hata nedeniyle Excel yükleme ekranına geç');
       }, 500);
     }
   };
@@ -404,7 +365,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         const result = await getAllPersonnel();
         if (result.success) {
           setPersonnelDatabase(result.data);
-          console.log('📊 Personnel veritabanından çekilen veriler:', result.data.length, 'kişi');
+          // Personnel veritabanı yüklendi
           
           // Personnel shift_type değerlerini kontrol et
           const personnelShifts = {};
@@ -415,32 +376,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             personnelShifts[shift] = (personnelShifts[shift] || 0) + 1;
             personnelPositions[position] = (personnelPositions[position] || 0) + 1;
           });
-          console.log('👥 Personnel shift_type dağılımı:', personnelShifts);
-          console.log('👥 Personnel position dağılımı:', personnelPositions);
-          
-          // Tüm shift_type değerlerini listele
-          const allShiftTypes = [...new Set(result.data.map(p => p.shift_type))];
-          console.log('👥 Tüm shift_type değerleri:', allShiftTypes);
-          
-          // Tüm position değerlerini listele
-          const allPositions = [...new Set(result.data.map(p => p.position))];
-          console.log('👥 Tüm position değerleri:', allPositions);
-          
-          // İlk 10 personelin detaylarını göster
-          console.log('👥 İlk 10 personnel detay:', result.data.slice(0, 10).map(p => ({ 
-            name: p.full_name, 
-            shift: p.shift_type,
-            position: p.position 
-          })));
-          
-          // Şoför pozisyonları ayrıca kontrol et
-          const drivers = result.data.filter(p => p.position && p.position.toLowerCase().includes('şoför'));
-          console.log('🚛 Bulunan şoförler:', drivers.length, 'kişi');
-          console.log('🚛 Şoför detayları:', drivers.map(d => ({ 
-            name: d.full_name, 
-            position: d.position, 
-            shift: d.shift_type 
-          })));
+          // Personnel shift ve position analizi
         } else {
           console.error('Personnel verileri yüklenemedi:', result.error);
         }
@@ -455,11 +391,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   // Personnel database yüklendiğinde performans verilerini yükle - sadece bir kez
   useEffect(() => {
     if (personnelDatabase.length > 0) {
-      console.log('✅ Personnel database yüklendi, performans verileri yükleniyor...');
+              // Personnel database yüklendi
       loadPerformanceDataFromDatabase();
     } else {
       // Personnel database boşsa Excel yükleme ekranını göster
-      console.log('⚠️ Personnel database boş, Excel yükleme ekranını göster');
+              // Personnel database boş
       setTimeout(() => {
         setInitialDataLoading(false);
       }, 1000);
@@ -490,11 +426,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   // Vardiya filtreleme - sadece shiftFilter değiştiğinde çalışsın
   useEffect(() => {
-    console.log('🔄 Vardiya filtreleme useEffect çağrıldı');
-    console.log('📋 availableDates.length:', availableDates.length);
-    console.log('🎯 shiftFilter:', shiftFilter);
-    console.log('🔍 analysisData:', analysisData);
-    
+          // Vardiya filtreleme
     if (availableDates.length > 0) {
       let filteredDateIds = [];
       
@@ -507,16 +439,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       }
       
       setSelectedDates(filteredDateIds);
-      console.log('✅ Filtrelenmiş tarihler seçildi:', filteredDateIds.length);
-    } else {
-      console.log('⚠️ availableDates boş, filtreleme yapılmadı');
     }
   }, [shiftFilter]); // availableDates bağımlılığını kaldırdım
   
   // AvailableDates yüklendiğinde selectedDates'i set et - basit versiyon
   useEffect(() => {
     if (availableDates.length > 0) {
-      console.log('📅 AvailableDates yüklendi, tüm tarihleri seçiyorum');
       const allIds = availableDates.map(item => item.id);
       setSelectedDates(allIds);
     }
@@ -524,11 +452,8 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   // Performans verilerini veritabanına kaydet
   const savePerformanceDataToDatabase = async (analysisResults) => {
-    try {
-      console.log('💾 Performans verileri veritabanına kaydediliyor...');
-      console.log('📊 Analysis results:', analysisResults);
-      console.log('👥 Personnel database count:', personnelDatabase.length);
-      console.log('👥 Personnel database shift_type örnekleri:', personnelDatabase.slice(0, 3).map(p => ({ name: p.full_name, shift: p.shift_type })));
+          try {
+        // Performans verileri veritabanına kaydediliyor
       
       const performanceDataArray = [];
       
@@ -626,7 +551,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         });
       });
       
-      console.log(`📊 Hazırlanan performans kayıtları: ${performanceDataArray.length}`);
+              // Performans kayıtları hazırlandı
       
       // Aynı tarih+employee_code olan kayıtları birleştir (ON CONFLICT hatası önlemek için)
       const groupedData = {};
@@ -645,15 +570,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       });
       
       const finalData = Object.values(groupedData);
-      console.log(`📊 Birleştirilmiş kayıtlar: ${finalData.length}`);
-      console.log('📋 İlk 3 kayıt örneği:', finalData.slice(0, 3));
+                      // Kayıtlar birleştirildi
       
       if (finalData.length > 0) {
-        console.log('🔄 bulkSavePerformanceData çağrılıyor...');
         const result = await bulkSavePerformanceData(finalData);
-        console.log('📡 bulkSavePerformanceData sonucu:', result);
         if (result.success) {
-          console.log('✅ Performans verileri veritabanına kaydedildi!');
+          // Performans verileri kaydedildi
           alert('✅ Performans verileri veritabanına kaydedildi!');
         } else {
           console.error('❌ Performans verileri kaydedilirken hata:', result.error);
@@ -706,12 +628,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         const data = e.target.result;
         const workbook = XLSX.read(data, { type: 'binary' });
         
-        console.log('📊 Excel dosyası okundu, sheet\'ler:', workbook.SheetNames);
+        // Excel dosyası okundu
         
         // Mevcut verileri kontrol et
         const existingSheets = await getExistingDates();
-        console.log('📅 Mevcut sheet\'ler:', existingSheets);
-        console.log('📊 Excel\'den gelen sheet\'ler:', workbook.SheetNames);
+        // Sheet kontrol edildi
         
         // Yeni sheet'leri bul - sadece tarihli sheet'leri al
         const newSheets = workbook.SheetNames.filter(sheetName => {
@@ -747,7 +668,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             return false;
           }
           
-          console.log(`✅ ${sheetName} yeni, eklenecek`);
+          // Yeni sheet ekleniyor
           return true;
         });
         
@@ -770,9 +691,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         setAnalysisData(analysisResults);
         
         // VERİTABANINA KAYDET
-        console.log('🔄 VERİTABANINA KAYDETME BAŞLIYOR...');
+        // Veritabanına kaydetme başlıyor
         await savePerformanceDataToDatabase(analysisResults);
-        console.log('✅ VERİTABANINA KAYDETME BİTTİ!');
+        // Veritabanına kaydetme tamamlandı
         
         // Veri yükleme başarılı - sayfayı yenile
         setUploadError(`✅ ${newSheets.length} yeni tarih bulundu ve eklendi: ${newSheets.join(', ')}`);
@@ -837,10 +758,8 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
         if (jobUpper.includes('ŞOFÖR') || jobUpper.includes('SOFÖR')) {
           results.drivers[name] = personData;
-          console.log(`👤 Şoför eklendi: ${name} - ${shiftType}`);
         } else if (jobUpper.includes('SEVKIYAT') || jobUpper.includes('SEVKİYAT') || jobUpper.includes('ELEMANI')) {
           results.personnel[name] = personData;
-          console.log(`👷 Personel eklendi: ${name} - ${shiftType}`);
         }
       });
     }
@@ -1039,10 +958,8 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
         if (jobUpper.includes('ŞOFÖR') || jobUpper.includes('SOFÖR')) {
           results.drivers[name] = personData;
-          console.log(`👤 Şoför eklendi: ${name} - ${shiftType}`);
         } else if (jobUpper.includes('SEVKIYAT') || jobUpper.includes('SEVKİYAT') || jobUpper.includes('ELEMANI')) {
           results.personnel[name] = personData;
-          console.log(`👷 Personel eklendi: ${name} - ${shiftType}`);
         }
       });
     }
@@ -1249,7 +1166,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   // Personnel veritabanından shift bilgisini çek
   const getPersonnelShiftFromDatabase = (personnelName) => {
-    console.log('🔍 Personnel shift aranan:', personnelName);
+    // Personnel shift araniyor
     
     if (!personnelDatabase || personnelDatabase.length === 0) {
       console.warn('Personnel veritabanı boş');
@@ -1275,7 +1192,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     });
 
     if (foundPerson) {
-      console.log('✅ Personnel bulundu:', foundPerson.full_name, 'Shift:', foundPerson.shift_type);
+              // Personnel bulundu
       
       // Shift type mapping - daha esnek kontrol
       const originalShiftType = foundPerson.shift_type || '';
@@ -1284,13 +1201,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       console.log(`🔄 getPersonnelShiftFromDatabase mapping: "${originalShiftType}" -> lower: "${shiftType}"`);
       
       if (shiftType.includes('gece') || shiftType === 'night' || shiftType === 'gece') {
-        console.log(`✅ GECE olarak belirlendi`);
         return 'GECE';
       } else if (shiftType.includes('izin') || shiftType === 'leave' || shiftType.includes('izinli')) {
-        console.log(`✅ İZİNLİ olarak belirlendi`);
         return 'İZİNLİ';
       } else {
-        console.log(`✅ GÜNDÜZ olarak belirlendi (default)`);
         return 'GÜNDÜZ';
       }
     } else {
@@ -1322,12 +1236,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     const normalizedSearch = normalizeText(searchName);
     const normalizedSearchNoSpaces = normalizeForComparison(searchName);
     
-    console.log(`🔍 İsim aranıyor: "${searchName}" → normalize: "${normalizedSearch}" → boşluksuz: "${normalizedSearchNoSpaces}"`);
+    // İsim aranıyor
     
     // 1. Tam normalized eşleşme
     for (const personName in personList) {
       if (normalizeText(personName) === normalizedSearch) {
-        console.log(`✅ Tam eşleşme bulundu: "${searchName}" = "${personName}"`);
+        // Tam eşleşme bulundu
         return personName;
       }
     }
@@ -1336,7 +1250,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     for (const personName in personList) {
       const personNoSpaces = normalizeForComparison(personName);
       if (personNoSpaces === normalizedSearchNoSpaces) {
-        console.log(`✅ Boşluksuz eşleşme bulundu: "${searchName}" = "${personName}" (${normalizedSearchNoSpaces})`);
+        // Boşluksuz eşleşme bulundu
         return personName;
       }
     }
@@ -1350,7 +1264,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       if (searchWords.length === personWords.length) {
         const allWordsMatch = searchWords.every(word => personWords.includes(word));
         if (allWordsMatch) {
-          console.log(`✅ Kelime bazlı eşleşme bulundu: "${searchName}" = "${personName}"`);
+          // Kelime bazlı eşleşme bulundu
           return personName;
         }
       }
@@ -1365,8 +1279,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       }
     }
     
-    console.log(`❌ Eşleşme bulunamadı: "${searchName}"`);
-    console.log(`📋 Mevcut personel listesi:`, Object.keys(personList).slice(0, 5));
+    // Eşleşme bulunamadı
     return null;
   };
 
@@ -1402,19 +1315,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   // Filtrelenmiş veri
   const getFilteredData = () => {
-    console.log('🔍 getFilteredData çağrıldı');
-    console.log('📊 analysisData:', analysisData);
-    console.log('📋 availableDates:', availableDates);
-    console.log('📋 selectedDates:', selectedDates);
+          // getFilteredData çağrıldı
+          // Filtreleme verileri kontrol edildi
     
     if (!analysisData) {
-      console.log('❌ analysisData null, filtrelenmiş veri yok');
+              // analysisData yok
       return null;
     }
 
-    console.log(`🔍 VARDİYA FİLTRELEME (shiftFilter: ${shiftFilter})`);
-            console.log('📋 Available dates:', availableDates);
-    console.log('📋 Selected dates:', selectedDates);
+    // Vardiya filtreleme başlıyor
     
     // SelectedDates artık id formatında, tam tarih+shift kombinasyonlarını çıkar
     let selectedDateShiftCombinations = [];
@@ -1424,16 +1333,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       const selectedDateItems = availableDates.filter(dateItem => selectedDates.includes(dateItem.id));
       selectedDateShiftCombinations = selectedDateItems;
       
-      console.log('✅ Seçili tarih+shift kombinasyonları:', selectedDateShiftCombinations.length);
-      console.log('✅ Seçili kombinasyonlar:', selectedDateShiftCombinations.map(item => `${item.date} ${item.shift}`));
+      // Seçili kombinasyonlar bulundu
     } else {
       // Fallback: tüm tarihleri kullan
       selectedDateShiftCombinations = availableDates || [];
-      console.log('⚠️ selectedDates boş, tüm availableDates kullanılıyor');
     }
 
-    // VARDİYA FİLTRESİ UYGULA - ÖNEMLİ!
-    console.log(`🔍 VARDİYA FİLTRESİ UYGULANMADAN ÖNCE: ${selectedDateShiftCombinations.length} adet`);
+    // VARDİYA FİLTRESİ UYGULA
     if (shiftFilter !== 'all') {
       const beforeFilterCount = selectedDateShiftCombinations.length;
       
@@ -1442,23 +1348,17 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         selectedDateShiftCombinations = selectedDateShiftCombinations.filter(item => 
           item.shift === 'GÜNDÜZ' || item.shift === 'gunduz' || item.shift === 'GUNDUZ'
         );
-        console.log(`🌅 GÜNDÜZ FİLTRESİ UYGULANDI: ${beforeFilterCount} → ${selectedDateShiftCombinations.length}`);
+        // Gündüz filtresi uygulandı
       } else if (shiftFilter === 'night') {
         // Sadece gece vardiyaları
         selectedDateShiftCombinations = selectedDateShiftCombinations.filter(item => 
           item.shift === 'GECE' || item.shift === 'gece' || item.shift === 'NIGHT'
         );
-        console.log(`🌙 GECE FİLTRESİ UYGULANDI: ${beforeFilterCount} → ${selectedDateShiftCombinations.length}`);
+        // Gece filtresi uygulandı
       }
       
-      console.log('✅ Filtrelenmiş shift kombinasyonları:', selectedDateShiftCombinations.map(item => `${item.date} ${item.shift}`));
-    } else {
-      console.log('⚠️ VARDİYA FİLTRESİ YOK (all seçili)');
+      // Shift filtresi uygulandı
     }
-
-    console.log(`✅ Filtrelenmiş tarih+shift kombinasyonları: ${selectedDateShiftCombinations.length} adet`);
-    console.log(`🔍 AnalysisData drivers: ${Object.keys(analysisData.drivers).length} adet`);
-    console.log(`🔍 AnalysisData personnel: ${Object.keys(analysisData.personnel).length} adet`);
 
     // Seçili tarih+shift kombinasyonlarının bir Set'ini oluştur hızlı kontrol için
     const selectedDateShiftSet = new Set();
@@ -1466,7 +1366,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       selectedDateShiftSet.add(`${combo.date}_${combo.shift}`);
     });
     
-    console.log('🎯 Seçili tarih+shift set:', Array.from(selectedDateShiftSet));
+          // Seçili tarih+shift set hazırlandı
 
     const filteredResults = {
       drivers: {},
@@ -1484,8 +1384,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
       // Seçili tarih+shift kombinasyonlarının verilerini topla (sheet_name bazında)
       Object.entries(driver.dayData || {}).forEach(([sheetName, data]) => {
-        console.log(`🔍 Şoför ${driverName} - Sheet: "${sheetName}", Sefer: ${data.trips}`);
-        console.log(`🔍 Seçili kombinasyonlar:`, Array.from(selectedDateShiftSet));
+        // Şoför verisi işleniyor
         
         // Bu sheet_name (tarih+shift kombinasyonu) seçili mi kontrol et
         if (selectedDateShiftSet.has(sheetName)) {
@@ -1494,9 +1393,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           filteredDriver.totalBoxes += data.boxes || 0;
           filteredDriver.dayData[sheetName] = data;
           
-          console.log(`✅ Şoför ${driverName} - "${sheetName}" eklendi (${data.trips} sefer)`);
+          // Şoför eklendi
         } else {
-          console.log(`❌ Şoför ${driverName} - "${sheetName}" atlandı (seçili değil)`);
+          // Şoför atlandı
         }
       });
 
@@ -1514,9 +1413,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     });
 
     // Personelleri filtrele
-    console.log(`🔄 Personel filtrelemeye başlıyor: ${Object.keys(analysisData.personnel).length} adet`);
+          // Personel filtreleme başlıyor
     Object.entries(analysisData.personnel).forEach(([personName, person]) => {
-      console.log(`🔍 Personel işleniyor: ${personName}`, person);
+      // Personel işleniyor
       
       const filteredPerson = {
         ...person,
@@ -1527,7 +1426,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       // Seçili tarih+shift kombinasyonlarının verilerini topla (sheet_name bazında)
       let personDateCount = 0;
       Object.entries(person.dayData || {}).forEach(([sheetName, data]) => {
-        console.log(`🔍 Personel ${personName} - Sheet: "${sheetName}", Sefer: ${data.trips}`);
+        // Personel sheet verisi işleniyor
         
         // Bu sheet_name (tarih+shift kombinasyonu) seçili mi kontrol et
         if (selectedDateShiftSet.has(sheetName)) {
@@ -1537,13 +1436,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           filteredPerson.totalBoxes += data.boxes || 0;
           filteredPerson.dayData[sheetName] = data;
           
-          console.log(`✅ Personel ${personName} - "${sheetName}" eklendi (${data.trips} sefer)`);
-        } else {
-          console.log(`❌ Personel ${personName} - "${sheetName}" atlandı (seçili değil)`);
+                  // Personel verisi eklendi
+      } else {
+        // Personel verisi atlandı
         }
       });
       
-      console.log(`📊 ${personName}: ${personDateCount} tarih, ${filteredPerson.totalTrips} sefer`);
+              // Personel özet hesaplandı
 
       // Bölge çıkışları kaldırıldı
 
@@ -1555,13 +1454,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       // Sadece seçili tarihlerde çalışan personelleri ekle
       if (filteredPerson.totalTrips > 0) {
       filteredResults.personnel[personName] = filteredPerson;
-        console.log(`✅ ${personName} filtreye dahil edildi (${filteredPerson.totalTrips} sefer)`);
+        // Personel filtreye dahil edildi
       } else {
-        console.log(`❌ ${personName} filtreye dahil edilmedi (sefer: ${filteredPerson.totalTrips})`);
+        // Personel filtreye dahil edilmedi
       }
     });
-    
-    console.log(`✅ Filtreleme tamamlandı: ${Object.keys(filteredResults.personnel).length} personel geçti`);
 
     // Summary hesapla - gece ve gündüz günlerini ayrı ayrı hesapla
     const nightShiftDatesInSelection = new Set();
@@ -1578,9 +1475,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     filteredResults.summary.gunduzDays = dayShiftDatesInSelection.size; // Sadece gündüz vardiyası olan gün sayısı
     filteredResults.summary.geceDays = nightShiftDatesInSelection.size; // Sadece gece vardiyası olan gün sayısı
     
-    console.log(`📊 SUMMARY HESAPLAMA:`);
-    console.log(`  🌅 Gündüz günleri: ${filteredResults.summary.gunduzDays}`);
-    console.log(`  🌙 Gece günleri: ${filteredResults.summary.geceDays}`);
+    // Summary hesaplama
 
     filteredResults.summary.totalDeliveries = 
       Object.values(filteredResults.drivers).reduce((sum, driver) => sum + driver.totalTrips, 0) +
@@ -1659,11 +1554,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       return a.dateObj - b.dateObj;
     });
     
-    console.log('📅 SABİT HAFTALİK GRUPLANDIRMA başlıyor (29.06.2025 Pazar referansı)');
-    console.log('📋 Benzersiz tarih sayısı:', sortedUniqueDates.length);
-    console.log('📋 Toplam shift kombinasyonu:', dateItems.length);
-    console.log('📅 Referans hafta başlangıcı:', WEEK_START_REFERENCE.toLocaleDateString('tr-TR'));
-    console.log('📋 Mevcut tarihlerin tam listesi:', sortedUniqueDates.map(d => d.date));
+    // Haftalık gruplandırma başlıyor
     
     // Her tarihi hangi haftaya ait olduğunu belirle
     const dateToWeekMap = new Map();
@@ -1678,7 +1569,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       // Hafta içindeki gün (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
       const dayInWeek = daysDiff % 7;
       
-      console.log(`📅 ${dateInfo.date}: ${daysDiff} gün sonra → Hafta ${weekNumber}, Gün ${dayInWeek}`);
+      // Hafta hesaplaması yapıldı
       
       if (!dateToWeekMap.has(weekNumber)) {
         dateToWeekMap.set(weekNumber, []);
@@ -1732,9 +1623,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       const uniqueDateCount = weekDates.length; // weekDates zaten benzersiz tarihleri içeriyor
       const shiftCount = allShiftsInWeek.length; // Toplam shift sayısı
       
-      console.log(`📅 Hafta ${weekNumber + 1}: ${weekStartStr} - ${weekEndStr}`);
-      console.log(`📊 Benzersiz gün sayısı: ${uniqueDateCount}, Toplam shift: ${shiftCount}`);
-      console.log(`📋 Günler:`, weekDates.map(d => d.date));
+      // Hafta bilgileri hazırlandı
       
       weeks.push({
         id: `week_${weekNumber}`,
@@ -1746,7 +1635,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       });
     });
     
-    console.log(`📊 Toplam ${weeks.length} hafta oluşturuldu`);
+    // Haftalık gruplandırma tamamlandı
     return weeks;
   }; 
 
@@ -1922,7 +1811,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     sortBy === sortType ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {sortType === 'trips' ? 'Sefer' : sortType === 'pallets' ? 'Palet' : 
+                  {sortType === 'trips' ? 'Mağaza Sayısı' : sortType === 'pallets' ? 'Palet' : 
                    sortType === 'boxes' ? 'Kasa' : sortType === 'avgPallets' ? 'Ort. Palet' : 'Ort. Kasa'}
               </button>
               ))}
@@ -1937,7 +1826,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 <th className="text-center py-2 px-3 font-semibold text-gray-700 w-16">Sıra</th>
                 <th className="text-left py-2 px-3 font-semibold text-gray-700">Şoför</th>
                 <th className="text-center py-2 px-3 font-semibold text-gray-700">Şu an ki Vardiya</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Sefer</th>
+                <th className="text-right py-2 px-3 font-semibold text-gray-700">Mağaza Sayısı</th>
                 <th className="text-right py-2 px-3 font-semibold text-gray-700">Palet</th>
                 <th className="text-right py-2 px-3 font-semibold text-gray-700">Kasa</th>
                 <th className="text-right py-2 px-3 font-semibold text-gray-700">Ort. Palet</th>
@@ -2015,7 +1904,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     sortBy === sortType ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {sortType === 'trips' ? 'Sefer' : sortType === 'pallets' ? 'Palet' : 
+                  {sortType === 'trips' ? 'Mağaza Sayısı' : sortType === 'pallets' ? 'Palet' : 
                    sortType === 'boxes' ? 'Kasa' : sortType === 'avgPallets' ? 'Ort. Palet' : 'Ort. Kasa'}
               </button>
               ))}
@@ -2030,7 +1919,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 <th className="text-center py-2 px-3 font-semibold text-gray-700 w-16">Sıra</th>
                 <th className="text-left py-2 px-3 font-semibold text-gray-700">Personel</th>
                 <th className="text-center py-2 px-3 font-semibold text-gray-700">Şu an ki Vardiya</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Sefer</th>
+                <th className="text-right py-2 px-3 font-semibold text-gray-700">Mağaza Sayısı</th>
                 <th className="text-right py-2 px-3 font-semibold text-gray-700">Palet</th>
                 <th className="text-right py-2 px-3 font-semibold text-gray-700">Kasa</th>
                 <th className="text-right py-2 px-3 font-semibold text-gray-700">Ort. Palet</th>
@@ -2485,8 +2374,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     activePersonnel: 0
                   };
                   
-                  console.log(`📊 Haftalık istatistik hesaplama: ${week.label}`);
-                  console.log(`📋 Week shift IDs:`, weekShiftIds);
                   
                   // Haftalık istatistikleri hesapla - şoförler
                   Object.values(analysisData.drivers).forEach(driver => {
@@ -2498,7 +2385,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         weekStats.totalBoxes += data.boxes || 0;
                         if (data.trips > 0) hasTrips = true;
                         
-                        console.log(`✅ Şoför ${driver.name} - ${sheetName}: ${data.trips} sefer, ${data.pallets} palet, ${data.boxes} kasa`);
+                        // Şoför haftalık verisi
                       }
                     });
                     if (hasTrips) weekStats.activeDrivers++;
@@ -2514,7 +2401,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         weekStats.totalBoxes += data.boxes || 0;
                         if (data.trips > 0) hasTrips = true;
                         
-                        console.log(`✅ Personel ${person.name} - ${sheetName}: ${data.trips} sefer, ${data.pallets} palet, ${data.boxes} kasa`);
+                        // Personel haftalık verisi
                       }
                     });
                     if (hasTrips) weekStats.activePersonnel++;

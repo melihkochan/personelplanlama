@@ -43,29 +43,31 @@ function MainApp() {
     localStorage.setItem('activeTab', tabId);
   };
 
-  // Kullanıcı rolünü al
+  // Kullanıcı rolünü al - cache ile sadece bir kez
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchUserRole = async () => {
-      if (user) {
-        console.log('🔍 Kullanıcı ID:', user.id);
-        console.log('🔍 Kullanıcı Email:', user.email);
-        console.log('🔍 Kullanıcı full data:', user);
-        
+      if (user && !userRole) { // Sadece role yoksa çek
         try {
           const role = await getUserRole(user.id);
-          console.log('🔍 Database\'den gelen role:', role);
-          setUserRole(role);
+          if (isMounted) {
+            setUserRole(role);
+          }
         } catch (error) {
-          console.error('❌ User role error:', error);
-          // Hata durumunda admin ver (test için)
-          console.log('⚠️ Hata durumunda admin role set ediliyor');
-          setUserRole('admin');
+          if (isMounted) {
+            setUserRole('admin'); // Hata durumunda admin ver
+          }
         }
       }
     };
 
     fetchUserRole();
-  }, [user]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [user, userRole]);
 
 
 
@@ -216,14 +218,10 @@ function MainApp() {
   };
 
   const handleLogout = async () => {
-    console.log('🚪 Logout işlemi başlatılıyor...');
-    
     try {
       const result = await signOut();
-      console.log('🔍 SignOut sonucu:', result);
       
       if (result.success) {
-        console.log('✅ Logout başarılı, localStorage temizleniyor...');
         // localStorage'ı temizle ve home'a dön
         localStorage.removeItem('activeTab');
         setActiveTab('home');
@@ -233,14 +231,12 @@ function MainApp() {
         setGeneratedPlan(null);
         
         // Manuel olarak sayfayı yenile (Vercel için)
-        console.log('🔄 Sayfa yenileniyor...');
         window.location.reload();
       } else {
-        console.error('❌ Logout başarısız:', result.error);
         alert('Çıkış yapılırken bir hata oluştu: ' + result.error);
       }
     } catch (error) {
-      console.error('❌ Logout genel hatası:', error);
+      console.error('Logout error:', error);
       alert('Çıkış yapılırken beklenmeyen bir hata oluştu');
     }
   };

@@ -4,15 +4,25 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://example.supab
 const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key';
 const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_KEY || 'your-service-key';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Singleton pattern - sadece bir kez oluştur
+let supabaseInstance = null;
+let supabaseAdminInstance = null;
+
+export const supabase = supabaseInstance || (supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+}));
 
 // Admin işlemler için ayrı client (service_role anahtarı ile)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+export const supabaseAdmin = supabaseAdminInstance || (supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
   }
-});
+}));
 
 // Auth functions
 export const signIn = async (email, password) => {
@@ -381,7 +391,7 @@ export const deleteUser = async (id) => {
 
 export const getUserRole = async (userId) => {
   try {
-    console.log('🔍 getUserRole çağrıldı, userId:', userId);
+    // getUserRole çağrıldı
     
     const { data, error } = await supabase
       .from('users')
@@ -389,21 +399,18 @@ export const getUserRole = async (userId) => {
       .eq('id', userId)
       .single();
     
-    console.log('🔍 Supabase users tablosundan dönen data:', data);
-    console.log('🔍 Supabase users tablosundan dönen error:', error);
+          // Supabase sorgu sonucu
     
     if (error) {
-      console.error('❌ getUserRole error:', error);
       // Eğer kullanıcı bulunamazsa, default admin yap (test için)
       if (error.code === 'PGRST116') {
-        console.log('⚠️ Kullanıcı users tablosunda bulunamadı, default admin veriliyor');
         return 'admin';
       }
-      throw error;
+      return 'user'; // Diğer hatalar için default user
     }
     
     const role = data?.role || 'user';
-    console.log('✅ getUserRole final role:', role);
+          // getUserRole tamamlandı
     return role;
   } catch (error) {
     console.error('❌ Get user role error:', error);
@@ -492,11 +499,7 @@ export const getPerformanceData = async (dateRange = null) => {
       position: item.personnel?.position || 'Bilinmeyen'
     })) || [];
     
-    console.log('🔍 Performance data çekildi:', enrichedData.length, 'kayıt');
-    console.log('📊 Shift type dağılımı:', enrichedData.reduce((acc, item) => {
-      acc[item.shift_type] = (acc[item.shift_type] || 0) + 1;
-      return acc;
-    }, {}));
+    // Performance data çekildi
     
     return { success: true, data: enrichedData };
   } catch (error) {
@@ -544,7 +547,7 @@ export const getPerformanceByEmployee = async (employeeCode, dateRange = null) =
 
 export const bulkSavePerformanceData = async (performanceDataArray) => {
   try {
-    console.log('🔄 SUPABASE bulkSavePerformanceData BAŞLADI');
+    // bulkSavePerformanceData başladı
     console.log('🔄 Gönderilen veri sayısı:', performanceDataArray.length);
     console.log('🔄 İlk veri örneği:', performanceDataArray[0]);
     

@@ -1180,9 +1180,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             results.drivers[matchedDriver].dayData[sheetName].trips++;
             results.drivers[matchedDriver].dayData[sheetName].stores.push(magazaKodu);
             
-            console.log(`✅ YENİ SEFER: ${matchedDriver} → ${magazaKodu} (${sheetName}) - Toplam: ${results.drivers[matchedDriver].totalTrips}`);
+            // Yeni sefer sayıldı
           } else {
-            console.log(`🔄 TEKRAR EDEN MAĞAZA: ${matchedDriver} → ${magazaKodu} (${sheetName}) - sefer sayılmadı`);
+            // Aynı mağaza, tekrar sayılmadı
           }
           
           // Palet ve kasa her zaman ekle
@@ -1223,9 +1223,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             results.personnel[matchedPersonnel].dayData[sheetName].trips++;
             results.personnel[matchedPersonnel].dayData[sheetName].stores.push(magazaKodu);
             
-            console.log(`✅ YENİ SEFER: ${matchedPersonnel} → ${magazaKodu} (${sheetName}) - Toplam: ${results.personnel[matchedPersonnel].totalTrips}`);
+            // Yeni sefer sayıldı
             } else {
-              console.log(`🔄 TEKRAR EDEN MAĞAZA: ${matchedPersonnel} → ${magazaKodu} (${sheetName}) - sefer sayılmadı`);
+              // Aynı mağaza, tekrar sayılmadı
             }
             
             // Palet ve kasa her zaman ekle

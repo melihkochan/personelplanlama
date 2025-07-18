@@ -1056,6 +1056,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Ad Soyad</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Görev</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Vardiya</th>
+                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Vardiya İstatistikleri</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">İşlemler</th>
                   </tr>
                 </thead>
@@ -1080,6 +1081,29 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                     <td className="py-4 px-6">
                       {getVardiyaBadge(person.shift_type)}
                       </td>
+                    <td className="py-4 px-6">
+                      {shiftStatistics[person.full_name] ? (
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Moon className="w-3 h-3 text-purple-500" />
+                            <span className="text-sm font-medium text-purple-600">
+                              {shiftStatistics[person.full_name].nightShifts}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Sun className="w-3 h-3 text-orange-500" />
+                            <span className="text-sm font-medium text-orange-600">
+                              {shiftStatistics[person.full_name].dayShifts}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            ({shiftStatistics[person.full_name].totalDays} gün)
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">Veri yok</span>
+                      )}
+                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         {(userRole === 'admin' || userRole === 'yönetici') && (

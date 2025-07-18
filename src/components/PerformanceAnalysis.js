@@ -98,7 +98,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           
           if (date_shift_type === 'gece') {
             shiftForKey = 'GECE';
-          } else {
+    } else {
             shiftForKey = 'GÜNDÜZ';
           }
           
@@ -177,12 +177,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             targetGroup[employee_name] = {
               name: employee_name,
               shift: personnelShiftDisplay, // Personelin kendi vardiyası
-              totalTrips: 0,
-              totalPallets: 0,
-              totalBoxes: 0,
+        totalTrips: 0,
+        totalPallets: 0,
+        totalBoxes: 0,
               totalStores: 0,
-              dayData: {}
-            };
+        dayData: {}
+      };
           }
           
           // Günlük veriyi sheet_name bazında ekle
@@ -1141,7 +1141,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             results.personnel[matchedPersonnel].dayData[sheetName].stores.push(magazaKodu);
             
             // Yeni sefer sayıldı
-            } else {
+          } else {
               // Aynı mağaza, tekrar sayılmadı
             }
             

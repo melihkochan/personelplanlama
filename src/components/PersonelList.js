@@ -404,33 +404,33 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     
     switch (type) {
       case 'gece':
-        return (
+      return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-300">
             <Moon className="w-4 h-4 mr-1" />
             Gece
-          </span>
-        );
+        </span>
+      );
       case 'gunduz':
-        return (
+      return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
             <Sun className="w-4 h-4 mr-1" />
             Gündüz
-          </span>
-        );
+        </span>
+      );
       case 'izin':
-        return (
+      return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-300">
             <Calendar className="w-4 h-4 mr-1" />
             İzin
-          </span>
-        );
-      default:
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300">
-          <Calendar className="w-4 h-4 mr-1" />
-            Belirsiz
         </span>
       );
+      default:
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300">
+        <Calendar className="w-4 h-4 mr-1" />
+            Belirsiz
+      </span>
+    );
     }
   };
 
@@ -714,16 +714,16 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               </button>
             </div>
           </div>
-        </div>
+      </div>
 
-        {/* Statistics */}
+      {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
           {/* Şoför İstatistikleri */}
           <div className="bg-blue-50 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
-              </div>
+            <Users className="w-6 h-6 text-white" />
+          </div>
               <div>
                 <p className="text-2xl font-bold text-blue-900">{soforler.length}</p>
                 <p className="text-sm text-blue-600">Şoför</p>
@@ -752,18 +752,18 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 <span className="font-medium">{soforIzinli.length}</span>
           </div>
         </div>
-      </div>
-
+        </div>
+        
           {/* Sevkiyat Elemanı İstatistikleri */}
           <div className="bg-green-50 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-white" />
-              </div>
+            <UserCheck className="w-6 h-6 text-white" />
+          </div>
               <div>
                 <p className="text-2xl font-bold text-green-900">{sevkiyatlar.length}</p>
                 <p className="text-sm text-green-600">Sevkiyat Elemanı</p>
-              </div>
+            </div>
             </div>
             <div className="text-xs text-green-700 space-y-1">
               <div className="flex justify-between">
@@ -787,7 +787,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 </span>
                 <span className="font-medium">{sevkiyatIzinli.length}</span>
               </div>
-            </div>
+          </div>
         </div>
         
           {/* Toplam Personel */}
@@ -795,11 +795,11 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
                 <Users className="w-6 h-6 text-white" />
-              </div>
+          </div>
               <div>
                 <p className="text-2xl font-bold text-purple-900">{personnelData.length}</p>
                 <p className="text-sm text-purple-600">Toplam Personel</p>
-              </div>
+            </div>
             </div>
             <div className="text-xs text-purple-700 space-y-1">
               <div className="flex justify-between">
@@ -884,15 +884,15 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                     <strong>{excelStats.errorCount}</strong> hata
                   </span>
-                )}
-              </div>
+            )}
+          </div>
               {excelStats.duplicateCount > 0 && (
                 <div className="text-xs text-green-600 mt-2">
                   <strong>Duplicate kayıtlar:</strong> {excelStats.duplicatePersonnel.slice(0, 3).join(', ')}
                   {excelStats.duplicatePersonnel.length > 3 && ` ve ${excelStats.duplicatePersonnel.length - 3} diğer...`}
-                </div>
+        </div>
               )}
-            </div>
+      </div>
           )}
         </div>
       )}
@@ -932,8 +932,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         >
           Tablo Görünümü
         </button>
-      </div>
-
+        </div>
+        
       {/* Personnel Cards */}
       {viewMode === 'cards' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -950,7 +950,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 }`}>
                   {person.position === 'ŞOFÖR' ? <Car className="w-3 h-3" /> : <Truck className="w-3 h-3" />}
                   {person.position}
-                </div>
+              </div>
               </div>
               
               <div className="flex items-center justify-between mb-4 mt-4">
@@ -990,10 +990,10 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
 
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Vardiya:</span>
+                  <span className="text-sm text-gray-600">Şu an ki vardiya:</span>
                   {getVardiyaBadge(person.shift_type)}
-                </div>
-                
+            </div>
+
                 {/* Vardiya İstatistikleri */}
                 {shiftStatistics[person.full_name] && (
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
@@ -1006,8 +1006,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                         </span>
                         <span className="text-xs font-bold text-purple-600">
                           {shiftStatistics[person.full_name].nightShifts}
-                        </span>
-                      </div>
+                            </span>
+                          </div>
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1 text-xs text-gray-600">
                           <Sun className="w-3 h-3" />
@@ -1016,16 +1016,16 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                         <span className="text-xs font-bold text-orange-600">
                           {shiftStatistics[person.full_name].dayShifts}
                         </span>
-                      </div>
-                    </div>
+                            </div>
+                          </div>
                     <div className="flex items-center justify-between pt-1 border-t border-gray-200">
                       <span className="text-xs text-gray-600">Toplam Gün:</span>
                       <span className="text-xs font-bold text-blue-600">
                         {shiftStatistics[person.full_name].totalDays}
                       </span>
-                    </div>
-                  </div>
-                )}
+                        </div>
+                </div>
+              )}
                 
                 {/* Additional Info */}
                 <div className="flex items-center justify-between">
@@ -1037,9 +1037,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   }`}>
                     {person.is_active === false || person.shift_type === 'izin' ? 'İzinli' : 'Aktif'}
                   </span>
-                </div>
-              </div>
             </div>
+          </div>
+      </div>
           ))}
         </div>
       )}
@@ -1055,7 +1055,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Sicil No</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Ad Soyad</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Görev</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Vardiya</th>
+                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Şu an ki vardiya</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Vardiya İstatistikleri</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">İşlemler</th>
                   </tr>
@@ -1071,10 +1071,10 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
                           <Users className="w-4 h-4 text-white" />
-                        </div>
+                          </div>
                         <span className="font-medium text-gray-900">{person.full_name}</span>
-                      </div>
-                    </td>
+                        </div>
+                      </td>
                     <td className="py-4 px-6">
                       {getPositionBadge(person.position)}
                       </td>
@@ -1088,7 +1088,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                             <Moon className="w-3 h-3 text-purple-500" />
                             <span className="text-sm font-medium text-purple-600">
                               {shiftStatistics[person.full_name].nightShifts}
-                            </span>
+                          </span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Sun className="w-3 h-3 text-orange-500" />
@@ -1102,8 +1102,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400">Veri yok</span>
-                      )}
-                    </td>
+                        )}
+                      </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         {(userRole === 'admin' || userRole === 'yönetici') && (
@@ -1247,7 +1247,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
-              </div>
+      </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ad Soyad</label>

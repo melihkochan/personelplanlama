@@ -727,7 +727,7 @@ function MainApp() {
           {/* Admin Panel */}
           {activeTab === 'admin' && (userRole === 'admin' || userRole === 'yönetici') && (
             <div className="space-y-6">
-              <AdminPanel />
+              <AdminPanel userRole={userRole} currentUser={user} />
             </div>
           )}
         </main>

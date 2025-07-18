@@ -3,7 +3,7 @@ import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3
 import { getAllUsers, addUser, updateUser, deleteUser, resendConfirmationEmail, deleteAllPerformanceData } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
-const AdminPanel = ({ userRole }) => {
+const AdminPanel = ({ userRole, currentUser }) => {
   const [activeSection, setActiveSection] = useState('users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,7 +20,74 @@ const AdminPanel = ({ userRole }) => {
   
   // Performans verilerini temizleme state'i
   const [deletingPerformanceData, setDeletingPerformanceData] = useState(false);
+  
+  // Şifre değiştirme modal'ı için state
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [passwordChangeData, setPasswordChangeData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
+  // Mevcut kullanıcının email'ini al
+  const getCurrentUserEmail = () => {
+    return currentUser?.email;
+  };
+
+  // Şifre değiştirme fonksiyonu
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    
+    if (passwordChangeData.newPassword !== passwordChangeData.confirmPassword) {
+      alert('❌ Hata!\n\nYeni şifreler eşleşmiyor.');
+      return;
+    }
+    
+    if (passwordChangeData.newPassword.length < 6) {
+      alert('❌ Hata!\n\nYeni şifre en az 6 karakter olmalıdır.');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Mevcut kullanıcının ID'sini bul
+      const currentUserData = users.find(u => u.email === getCurrentUserEmail());
+      if (!currentUserData) {
+        alert('❌ Hata!\n\nKullanıcı bilgileri bulunamadı.');
+        return;
+      }
+      
+      const result = await updateUser(currentUserData.id, {
+        password: passwordChangeData.newPassword
+      });
+      
+      if (result.success) {
+        setShowChangePasswordModal(false);
+        setPasswordChangeData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        alert('✅ Başarılı!\n\nŞifreniz başarıyla değiştirildi.');
+      } else {
+        alert('❌ Hata!\n\nŞifre değiştirilemedi: ' + result.error);
+      }
+    } catch (error) {
+      alert('❌ Hata!\n\nŞifre değiştirme hatası: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Şifre değiştirme input değişikliklerini yönet
+  const handlePasswordChangeInputChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordChangeData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   // Verileri yükle
   useEffect(() => {
@@ -105,6 +172,12 @@ const AdminPanel = ({ userRole }) => {
   };
 
   const handleEditUser = (user) => {
+    // Kullanıcı kendi hesabını düzenleyemez
+    if (user.email === getCurrentUserEmail()) {
+      alert('❌ Güvenlik Uyarısı!\n\nKendi hesabınızı bu panelden düzenleyemezsiniz. Bu güvenlik önlemidir.');
+      return;
+    }
+    
     setEditingUser(user);
     setFormData({
       username: user.username || '',
@@ -121,6 +194,13 @@ const AdminPanel = ({ userRole }) => {
     setLoading(true);
     
     try {
+      // Admin olmayan kullanıcılar mevcut admin kullanıcısını düzenleyemez
+      if (userRole !== 'admin' && editingUser?.role === 'admin') {
+        alert('❌ Yetki Hatası!\n\nSadece admin kullanıcılar admin yetkilerini değiştirebilir.');
+        setLoading(false);
+        return;
+      }
+      
       // Şifre boşsa güncelleme verilerinden çıkar
       const updateData = { ...formData };
       if (!updateData.password || updateData.password.trim() === '') {
@@ -148,6 +228,13 @@ const AdminPanel = ({ userRole }) => {
   };
 
   const handleDeleteUser = async (userId) => {
+    // Kullanıcının silinmeye çalışılan hesabın email'ini bul
+    const userToDelete = users.find(u => u.id === userId);
+    if (userToDelete && userToDelete.email === getCurrentUserEmail()) {
+      alert('❌ Güvenlik Uyarısı!\n\nKendi hesabınızı silemezsiniz. Bu güvenlik önlemidir.');
+      return;
+    }
+    
     if (window.confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
       setLoading(true);
       
@@ -325,20 +412,32 @@ Devam etmek istediğinizden emin misiniz?`;
         </div>
         
                  <div className="flex gap-2 mt-auto pt-4">
-          <button
-            onClick={() => handleEditUser(user)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-          >
-            <Edit3 className="w-4 h-4" />
-            Düzenle
-          </button>
-          <button
-            onClick={() => handleDeleteUser(user.id)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-          >
-            <Trash2 className="w-4 h-4" />
-            Sil
-          </button>
+          {user.email !== getCurrentUserEmail() ? (
+            <>
+              <button
+                onClick={() => handleEditUser(user)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+              >
+                <Edit3 className="w-4 h-4" />
+                Düzenle
+              </button>
+              <button
+                onClick={() => handleDeleteUser(user.id)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+              >
+                <Trash2 className="w-4 h-4" />
+                Sil
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowChangePasswordModal(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+            >
+              <User className="w-4 h-4" />
+              Şifre Değiştir
+            </button>
+          )}
         </div>
       </div>
     );
@@ -480,6 +579,28 @@ Devam etmek istediğinizden emin misiniz?`;
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
+        {/* Bilgilendirme Banner */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-4 mb-6 shadow-lg">
+          <div className="flex items-center gap-3 text-white">
+            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Yönetim Paneli</h3>
+              <p className="text-xs text-blue-100">Bu sayfaya sadece Admin ve Yönetici kullanıcıları erişebilir. Sistem yönetimi ve kullanıcı kontrolü için kullanılır.</p>
+            </div>
+            <div className="ml-auto">
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                userRole === 'admin' 
+                  ? 'bg-yellow-400 text-yellow-900' 
+                  : 'bg-purple-400 text-purple-900'
+              }`}>
+                {userRole === 'admin' ? '👑 Admin' : '⭐ Yönetici'}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
@@ -608,7 +729,7 @@ Devam etmek istediğinizden emin misiniz?`;
                 >
                   <option value="kullanıcı">Kullanıcı</option>
                   <option value="yönetici">Yönetici</option>
-                  <option value="admin">Admin</option>
+                  {userRole === 'admin' && <option value="admin">Admin</option>}
                 </select>
               </div>
 
@@ -703,8 +824,13 @@ Devam etmek istediğinizden emin misiniz?`;
                 >
                   <option value="kullanıcı">Kullanıcı</option>
                   <option value="yönetici">Yönetici</option>
-                  <option value="admin">Admin</option>
+                  {userRole === 'admin' && <option value="admin">Admin</option>}
                 </select>
+                {userRole !== 'admin' && editingUser?.role === 'admin' && (
+                  <p className="text-xs text-red-600 mt-1">
+                    ⚠️ Bu kullanıcı admin. Sadece admin'ler admin yetkilerini değiştirebilir.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -734,6 +860,70 @@ Devam etmek istediğinizden emin misiniz?`;
                   disabled={loading}
                 >
                   {loading ? 'Güncelleniyor...' : 'Güncelle'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4">
+            <h3 className="text-2xl font-bold mb-6 text-gray-900">Şifre Değiştir</h3>
+            
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mevcut Şifre</label>
+                <input
+                  type="password"
+                  name="currentPassword"
+                  value={passwordChangeData.currentPassword}
+                  onChange={handlePasswordChangeInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Yeni Şifre</label>
+                <input
+                  type="password"
+                  name="newPassword"
+                  value={passwordChangeData.newPassword}
+                  onChange={handlePasswordChangeInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Yeni Şifre Tekrar</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={passwordChangeData.confirmPassword}
+                  onChange={handlePasswordChangeInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePasswordModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  disabled={loading}
+                >
+                  {loading ? 'Şifre Değiştiriliyor...' : 'Şifre Değiştir'}
                 </button>
               </div>
             </form>

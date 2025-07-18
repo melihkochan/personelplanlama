@@ -47,18 +47,12 @@ function MainApp() {
   useEffect(() => {
     const fetchUserRole = async () => {
       if (user) {
-        console.log('🔍 Kullanıcı ID:', user.id);
-        console.log('🔍 Kullanıcı Email:', user.email);
-        console.log('🔍 Kullanıcı full data:', user);
-        
         try {
           const role = await getUserRole(user.id);
-          console.log('🔍 Database\'den gelen role:', role);
           setUserRole(role);
         } catch (error) {
           console.error('❌ User role error:', error);
           // Hata durumunda admin ver (test için)
-          console.log('⚠️ Hata durumunda admin role set ediliyor');
           setUserRole('admin');
         }
       }

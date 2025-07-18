@@ -425,9 +425,6 @@ export const deleteUser = async (id) => {
 
 export const getUserRole = async (userId, userEmail = null) => {
   try {
-    console.log('🔍 getUserRole çağrıldı, userId:', userId);
-    console.log('📧 getUserRole userEmail:', userEmail);
-    
     // Önce ID ile dene (RLS bypass için service role kullan)
     let { data, error } = await supabaseAdmin
       .from('users')
@@ -435,14 +432,8 @@ export const getUserRole = async (userId, userEmail = null) => {
       .eq('id', userId)
       .single();
     
-    console.log('📊 ID ile Users tablosu sorgu sonucu:');
-    console.log('- Data:', data);
-    console.log('- Error:', error);
-    
     // ID ile bulunamazsa email ile dene
     if (error && error.code === 'PGRST116' && userEmail) {
-      console.log('🔄 ID ile bulunamadı, email ile deneniyor:', userEmail);
-      
       const emailQuery = await supabaseAdmin
         .from('users')
         .select('*')
@@ -451,35 +442,20 @@ export const getUserRole = async (userId, userEmail = null) => {
       
       data = emailQuery.data;
       error = emailQuery.error;
-      
-      console.log('📧 Email ile Users tablosu sorgu sonucu:');
-      console.log('- Data:', data);
-      console.log('- Error:', error);
     }
     
     if (error) {
-      console.log('❌ Users tablosunda kullanıcı bulunamadı:', error.code);
       // PGRST116 = kullanıcı bulunamadı, test için admin ver
       if (error.code === 'PGRST116') {
-        console.log('✅ PGRST116 hatası - Admin role veriliyor (kullanıcı tabloda yok)');
         return 'admin';
       }
-      console.log('⚠️ Diğer hata - Admin role veriliyor');
       return 'admin'; // Diğer hatalar için de admin ver (test)
     }
     
     const role = data?.role || 'user';
-    console.log('✅ Users tablosundan role çekildi:', role);
-    console.log('📋 User data:', {
-      id: data?.id,
-      email: data?.email,
-      full_name: data?.full_name,
-      role: data?.role
-    });
     return role;
   } catch (error) {
     console.error('❌ getUserRole catch error:', error);
-    console.log('⚠️ Catch durumunda admin role veriliyor');
     return 'admin'; // Catch durumunda da admin ver (test için)
   }
 };

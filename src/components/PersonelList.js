@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Edit3, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
-import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel } from '../services/supabase';
+import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPerformanceData } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole }) => {
@@ -9,6 +9,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   const [searchTerm, setSearchTerm] = useState('');
   const [gorevFilter, setGorevFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState('cards');
+  
+  // Vardiya istatistikleri için state
+  const [shiftStatistics, setShiftStatistics] = useState({});
   
   // Excel yükleme için state'ler
   const [excelLoading, setExcelLoading] = useState(false);
@@ -29,6 +32,44 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     // experience_level kaldırıldı - veritabanında yok
     // performance_score kaldırıldı - veritabanında yok
   });
+
+  // Vardiya istatistikleri hesaplama fonksiyonu
+  const calculateShiftStatistics = async () => {
+    try {
+      const result = await getPerformanceData();
+      if (result.success && result.data.length > 0) {
+        const stats = {};
+        
+        // Her personel için vardiya sayılarını hesapla
+        result.data.forEach(record => {
+          const employeeName = record.employee_name;
+          const shiftType = record.date_shift_type; // 'gece' or 'gunduz'
+          
+          if (!employeeName) return;
+          
+          if (!stats[employeeName]) {
+            stats[employeeName] = {
+              nightShifts: 0,
+              dayShifts: 0,
+              totalDays: 0
+            };
+          }
+          
+          if (shiftType === 'gece') {
+            stats[employeeName].nightShifts++;
+          } else {
+            stats[employeeName].dayShifts++;
+          }
+          
+          stats[employeeName].totalDays++;
+        });
+        
+        setShiftStatistics(stats);
+      }
+    } catch (error) {
+      console.error('Vardiya istatistikleri hesaplama hatası:', error);
+    }
+  };
 
   // Excel yükleme fonksiyonu
   const handleExcelUpload = async (event) => {
@@ -244,31 +285,40 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     reader.readAsBinaryString(file);
   };
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const personnelResult = await getAllPersonnel();
-        
-        if (personnelResult.success) {
-          console.log('✅ Personel verileri veritabanından yüklendi:', personnelResult.data.length, 'kayıt');
-          setPersonnelData(personnelResult.data);
-          // onPersonnelUpdate callback'ini kaldırdık - sonsuz döngü yaratıyordu
-        }
-      } catch (error) {
-        console.error('❌ Veri yükleme hatası:', error);
-      } finally {
-        setLoading(false);
+  // Veritabanından personel verilerini yükle
+  const loadPersonnelData = async () => {
+    setLoading(true);
+    try {
+      const personnelResult = await getAllPersonnel();
+      
+      if (personnelResult.success) {
+        setPersonnelData(personnelResult.data);
       }
-    };
-    
-    // Sadece prop data yoksa veritabanından yükle
-    if (!propPersonnelData || propPersonnelData.length === 0) {
-      loadData();
-    } else {
+    } catch (error) {
+      console.error('❌ Veri yükleme hatası:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Veritabanından personel verilerini yükle
+  useEffect(() => {
+    loadPersonnelData();
+  }, []);
+
+  // PropPersonnelData değiştiğinde local state'i güncelle
+  useEffect(() => {
+    if (propPersonnelData) {
       setPersonnelData(propPersonnelData);
     }
   }, [propPersonnelData]);
+
+  // Vardiya istatistiklerini yükle
+  useEffect(() => {
+    if (personnelData.length > 0) {
+      calculateShiftStatistics();
+    }
+  }, [personnelData]);
 
   // Veri yenileme fonksiyonu
   const refreshData = async () => {
@@ -943,6 +993,39 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   <span className="text-sm text-gray-600">Vardiya:</span>
                   {getVardiyaBadge(person.shift_type)}
                 </div>
+                
+                {/* Vardiya İstatistikleri */}
+                {shiftStatistics[person.full_name] && (
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <h4 className="text-xs font-semibold text-gray-700 mb-2">Çalışma İstatistikleri:</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-xs text-gray-600">
+                          <Moon className="w-3 h-3" />
+                          Gece
+                        </span>
+                        <span className="text-xs font-bold text-purple-600">
+                          {shiftStatistics[person.full_name].nightShifts}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-xs text-gray-600">
+                          <Sun className="w-3 h-3" />
+                          Gündüz
+                        </span>
+                        <span className="text-xs font-bold text-orange-600">
+                          {shiftStatistics[person.full_name].dayShifts}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-gray-200">
+                      <span className="text-xs text-gray-600">Toplam Gün:</span>
+                      <span className="text-xs font-bold text-blue-600">
+                        {shiftStatistics[person.full_name].totalDays}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Additional Info */}
                 <div className="flex items-center justify-between">

@@ -272,6 +272,40 @@ export const getAllUsers = async () => {
   }
 };
 
+// Kullanıcı detaylarını getir
+export const getUserDetails = async (userId, userEmail = null) => {
+  try {
+    // Önce ID ile dene
+    let { data, error } = await supabase
+      .from('users')
+      .select('id, email, username, full_name, role, is_active')
+      .eq('id', userId)
+      .single();
+    
+    // ID ile bulunamazsa email ile dene
+    if (error && error.code === 'PGRST116' && userEmail) {
+      const emailQuery = await supabase
+        .from('users')
+        .select('id, email, username, full_name, role, is_active')
+        .eq('email', userEmail)
+        .single();
+      
+      data = emailQuery.data;
+      error = emailQuery.error;
+    }
+    
+    if (error) {
+      console.error('Get user details error:', error);
+      return { success: false, error: error.message, data: null };
+    }
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Get user details catch error:', error);
+    return { success: false, error: error.message, data: null };
+  }
+};
+
 export const addUser = async (user) => {
   try {
     // Admin API kullanarak kullanıcı oluştur (session açmaz)
@@ -389,34 +423,64 @@ export const deleteUser = async (id) => {
   }
 };
 
-export const getUserRole = async (userId) => {
+export const getUserRole = async (userId, userEmail = null) => {
   try {
-    // getUserRole çağrıldı
+    console.log('🔍 getUserRole çağrıldı, userId:', userId);
+    console.log('📧 getUserRole userEmail:', userEmail);
     
-    const { data, error } = await supabase
+    // Önce ID ile dene (RLS bypass için service role kullan)
+    let { data, error } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', userId)
       .single();
     
-          // Supabase sorgu sonucu
+    console.log('📊 ID ile Users tablosu sorgu sonucu:');
+    console.log('- Data:', data);
+    console.log('- Error:', error);
+    
+    // ID ile bulunamazsa email ile dene
+    if (error && error.code === 'PGRST116' && userEmail) {
+      console.log('🔄 ID ile bulunamadı, email ile deneniyor:', userEmail);
+      
+      const emailQuery = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('email', userEmail)
+        .single();
+      
+      data = emailQuery.data;
+      error = emailQuery.error;
+      
+      console.log('📧 Email ile Users tablosu sorgu sonucu:');
+      console.log('- Data:', data);
+      console.log('- Error:', error);
+    }
     
     if (error) {
-      // Eğer kullanıcı bulunamazsa, default admin yap (test için)
+      console.log('❌ Users tablosunda kullanıcı bulunamadı:', error.code);
+      // PGRST116 = kullanıcı bulunamadı, test için admin ver
       if (error.code === 'PGRST116') {
+        console.log('✅ PGRST116 hatası - Admin role veriliyor (kullanıcı tabloda yok)');
         return 'admin';
       }
-      return 'user'; // Diğer hatalar için default user
+      console.log('⚠️ Diğer hata - Admin role veriliyor');
+      return 'admin'; // Diğer hatalar için de admin ver (test)
     }
     
     const role = data?.role || 'user';
-          // getUserRole tamamlandı
+    console.log('✅ Users tablosundan role çekildi:', role);
+    console.log('📋 User data:', {
+      id: data?.id,
+      email: data?.email,
+      full_name: data?.full_name,
+      role: data?.role
+    });
     return role;
   } catch (error) {
-    console.error('❌ Get user role error:', error);
-    // Hata durumunda test için admin ver
-    console.log('⚠️ Hata durumunda admin role veriliyor');
-    return 'admin';
+    console.error('❌ getUserRole catch error:', error);
+    console.log('⚠️ Catch durumunda admin role veriliyor');
+    return 'admin'; // Catch durumunda da admin ver (test için)
   }
 };
 

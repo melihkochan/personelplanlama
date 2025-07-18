@@ -43,31 +43,29 @@ function MainApp() {
     localStorage.setItem('activeTab', tabId);
   };
 
-  // Kullanıcı rolünü al - cache ile sadece bir kez
+  // Kullanıcı rolünü al
   useEffect(() => {
-    let isMounted = true;
-    
     const fetchUserRole = async () => {
-      if (user && !userRole) { // Sadece role yoksa çek
+      if (user) {
+        console.log('🔍 Kullanıcı ID:', user.id);
+        console.log('🔍 Kullanıcı Email:', user.email);
+        console.log('🔍 Kullanıcı full data:', user);
+        
         try {
           const role = await getUserRole(user.id);
-          if (isMounted) {
-            setUserRole(role);
-          }
+          console.log('🔍 Database\'den gelen role:', role);
+          setUserRole(role);
         } catch (error) {
-          if (isMounted) {
-            setUserRole('admin'); // Hata durumunda admin ver
-          }
+          console.error('❌ User role error:', error);
+          // Hata durumunda admin ver (test için)
+          console.log('⚠️ Hata durumunda admin role set ediliyor');
+          setUserRole('admin');
         }
       }
     };
 
     fetchUserRole();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [user, userRole]);
+  }, [user]);
 
 
 
@@ -218,44 +216,15 @@ function MainApp() {
   };
 
   const handleLogout = async () => {
-    try {
-      // Vercel için aggressive logout
-      console.log('🚪 Logout işlemi başlatılıyor...');
-      
-      // 1. Local state'i temizle
-      setUser(null);
-      setUserRole(null);
+    const result = await signOut();
+    if (result.success) {
+      // localStorage'ı temizle ve home'a dön
       localStorage.removeItem('activeTab');
-      sessionStorage.clear();
       setActiveTab('home');
       setPersonnelData([]);
       setVehicleData([]);
       setStoreData([]);
       setGeneratedPlan(null);
-      
-      // 2. Supabase session'ı temizle
-      try {
-        await signOut();
-      } catch (supabaseError) {
-        console.log('Supabase signOut error (devam ediliyor):', supabaseError);
-      }
-      
-      // 3. Zorla sayfa yenile (Vercel için)
-      console.log('🔄 Sayfa yenileniyor...');
-      setTimeout(() => {
-        window.location.href = window.location.origin;
-      }, 100);
-      
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Hata olsa bile zorla logout yap
-      setUser(null);
-      setUserRole(null);
-      localStorage.clear();
-      sessionStorage.clear();
-      setTimeout(() => {
-        window.location.href = window.location.origin;
-      }, 100);
     }
   };
 
@@ -363,13 +332,7 @@ function MainApp() {
 
                 {/* Logout Button */}
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
-                      handleLogout();
-                    }
-                  }}
+                  onClick={handleLogout}
                   className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-sm shadow-lg"
                 >
                   <LogOut className="w-4 h-4" />
@@ -432,13 +395,9 @@ function MainApp() {
                 
                 {/* Logout - Mobile */}
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                  onClick={() => {
+                    handleLogout();
                     setMobileMenuOpen(false);
-                    if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
-                      handleLogout();
-                    }
                   }}
                   className="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg"
                 >
@@ -448,7 +407,7 @@ function MainApp() {
               </div>
                 </div>
           )}
-
+          
           {/* Medium Screen Navigation */}
           <div className="hidden md:block lg:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-sm relative">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -539,9 +498,7 @@ function MainApp() {
             <div className="space-y-8">
               {/* Hoş Geldiniz */}
               <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 text-white">
-                <h1 className="text-3xl font-bold mb-2">
-                  Hoş Geldin {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
-                </h1>
+                <h1 className="text-3xl font-bold mb-2">Hoş Geldiniz! 👋</h1>
                 <p className="text-blue-100 mb-6">Personel Planlama Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
@@ -736,8 +693,8 @@ function MainApp() {
               />
               </div>
             </div>
-            )}
-            
+          )}
+
           {/* Plan Görüntüle */}
           {activeTab === 'display' && (
             <div className="space-y-6">
@@ -748,11 +705,11 @@ function MainApp() {
                   personnelData={personnelData}
                   vehicleData={vehicleData}
                   storeData={storeData}
-              />
+                />
               </div>
             </div>
-            )}
-            
+          )}
+
           {/* Performans Analizi */}
           {activeTab === 'performance' && (
             <PerformanceAnalysis 
@@ -761,15 +718,14 @@ function MainApp() {
               vehicleData={vehicleData}
               storeData={storeData}
               onNavigateToHome={() => handleTabChange('home')}
-              userRole={userRole}
             />
-            )}
+          )}
 
           {/* Admin Panel */}
           {activeTab === 'admin' && (userRole === 'admin' || userRole === 'yönetici') && (
             <div className="space-y-6">
-              <AdminPanel userRole={userRole} />
-          </div>
+              <AdminPanel />
+            </div>
           )}
         </main>
 

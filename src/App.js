@@ -219,25 +219,43 @@ function MainApp() {
 
   const handleLogout = async () => {
     try {
-      const result = await signOut();
+      // Vercel için aggressive logout
+      console.log('🚪 Logout işlemi başlatılıyor...');
       
-      if (result.success) {
-        // localStorage'ı temizle ve home'a dön
-        localStorage.removeItem('activeTab');
-        setActiveTab('home');
-        setPersonnelData([]);
-        setVehicleData([]);
-        setStoreData([]);
-        setGeneratedPlan(null);
-        
-        // Manuel olarak sayfayı yenile (Vercel için)
-        window.location.reload();
-      } else {
-        alert('Çıkış yapılırken bir hata oluştu: ' + result.error);
+      // 1. Local state'i temizle
+      setUser(null);
+      setUserRole(null);
+      localStorage.removeItem('activeTab');
+      sessionStorage.clear();
+      setActiveTab('home');
+      setPersonnelData([]);
+      setVehicleData([]);
+      setStoreData([]);
+      setGeneratedPlan(null);
+      
+      // 2. Supabase session'ı temizle
+      try {
+        await signOut();
+      } catch (supabaseError) {
+        console.log('Supabase signOut error (devam ediliyor):', supabaseError);
       }
+      
+      // 3. Zorla sayfa yenile (Vercel için)
+      console.log('🔄 Sayfa yenileniyor...');
+      setTimeout(() => {
+        window.location.href = window.location.origin;
+      }, 100);
+      
     } catch (error) {
       console.error('Logout error:', error);
-      alert('Çıkış yapılırken beklenmeyen bir hata oluştu');
+      // Hata olsa bile zorla logout yap
+      setUser(null);
+      setUserRole(null);
+      localStorage.clear();
+      sessionStorage.clear();
+      setTimeout(() => {
+        window.location.href = window.location.origin;
+      }, 100);
     }
   };
 
@@ -345,7 +363,13 @@ function MainApp() {
 
                 {/* Logout Button */}
                 <button
-                  onClick={handleLogout}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+                      handleLogout();
+                    }
+                  }}
                   className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-sm shadow-lg"
                 >
                   <LogOut className="w-4 h-4" />
@@ -408,9 +432,13 @@ function MainApp() {
                 
                 {/* Logout - Mobile */}
                 <button
-                  onClick={() => {
-                    handleLogout();
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setMobileMenuOpen(false);
+                    if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+                      handleLogout();
+                    }
                   }}
                   className="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg"
                 >

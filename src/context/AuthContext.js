@@ -85,14 +85,35 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      // Vercel için güçlü logout
+      console.log('🔐 AuthContext signOut başlıyor...');
       
-      if (error) throw error;
+      // 1. Supabase'den çıkış yap
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       
+      if (error) {
+        console.log('Supabase signOut error:', error);
+        // Hata olsa bile devam et
+      }
+      
+      // 2. Local state'i temizle
       setUser(null);
+      
+      // 3. Local storage'ı temizle
+      try {
+        localStorage.removeItem('sb-' + supabase.supabaseUrl.split('//')[1].split('.')[0] + '-auth-token');
+        localStorage.removeItem('supabase.auth.token');
+        sessionStorage.clear();
+      } catch (storageError) {
+        console.log('Storage temizleme hatası:', storageError);
+      }
+      
+      console.log('✅ AuthContext signOut tamamlandı');
       return { success: true };
     } catch (error) {
       console.error('SignOut error:', error);
+      // Hata olsa bile user'ı null yap
+      setUser(null);
       return { success: false, error: error.message };
     }
   };

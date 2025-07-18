@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData, verifyAndUpdateCashierCounts, applyCashierCountUpdates } from '../services/supabase';
+import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData } from '../services/supabase';
 
 const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole }) => {
   console.log('🚀 PerformanceAnalysis BAŞLADI');
@@ -23,14 +23,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const [selectedWeeks, setSelectedWeeks] = useState([]); // Seçili haftalar
   
   // Kasa sayısı kontrol state'leri
-  const [cashierCheckLoading, setCashierCheckLoading] = useState(false);
-  const [cashierCheckResults, setCashierCheckResults] = useState(null);
-  const [cashierUpdates, setCashierUpdates] = useState([]);
-  const [showCashierModal, setShowCashierModal] = useState(false);
+
   
   // File input ref
   const fileInputRef = useRef(null);
-  const cashierFileInputRef = useRef(null);
 
   // Sheet adlarını normalize et
   const normalizeSheetName = (sheetName) => {
@@ -1367,196 +1363,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       Object.values(results.personnel).reduce((sum, person) => sum + person.totalBoxes, 0);
   };
 
-  // Kasa sayısı kontrol fonksiyonları
-  const handleCashierFileUpload = async (e) => {
-    console.log('🚀🚀🚀 KASA KONTROL BAŞLADI 🚀🚀🚀');
-    console.log('📁 Event object:', e);
-    console.log('📂 Files:', e.target.files);
-    console.log('📂 Files length:', e.target.files?.length);
-    console.log('👤 Current user role:', userRole);
-    console.log('🔐 Kullanıcı rolü kontrolü: admin mi?', userRole === 'admin');
-    console.log('🔐 Kullanıcı rolü kontrolü: yönetici mi?', userRole === 'yönetici');
-    
-    // Sadece admin ve yönetici kullanıcıları bu özelliği kullanabilir
-    if (userRole !== 'admin' && userRole !== 'yönetici') {
-      console.log('❌ YETKİ HATASI - User role:', userRole);
-      alert('⚠️ Bu özellik sadece Admin ve Yönetici kullanıcıları tarafından kullanılabilir!\n\nMevcut rolünüz: ' + userRole);
-      e.target.value = '';
-      return;
-    }
-    
-    console.log('✅ YETKİ ONAYLANDI - Devam ediliyor...');
-    
-    const file = e.target.files[0];
-    if (!file) {
-      console.log('❌ Dosya seçilmedi');
-      return;
-    }
 
-    console.log('📄 Seçilen dosya:', file.name, file.type, file.size);
-    
-    // Dosya tipi kontrolü
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      alert('❌ Lütfen Excel dosyası (.xlsx veya .xls) seçin!');
-      e.target.value = '';
-      return;
-    }
-    
-    setCashierCheckLoading(true);
-    setCashierCheckResults(null);
-    setCashierUpdates([]);
-
-    try {
-      const reader = new FileReader();
-      
-      reader.onerror = (error) => {
-        console.error('❌ FileReader hatası:', error);
-        alert('Dosya okuma hatası');
-        setCashierCheckLoading(false);
-      };
-      
-      reader.onload = async (event) => {
-        try {
-          console.log('📋 Excel dosyası okunuyor...');
-          const workbook = XLSX.read(event.target.result, { type: 'binary' });
-          console.log('📜 Sheet isimleri:', workbook.SheetNames);
-          
-          const allData = [];
-          
-          workbook.SheetNames.forEach(sheetName => {
-            console.log('🔍 İşlenen sayfa:', sheetName);
-            
-            // Sadece veri sayfalarını işle
-            if (sheetName === 'PERSONEL' || sheetName === 'DEPODA KALAN') {
-              console.log('❌ Atlanan sayfa:', sheetName);
-              return;
-            }
-            
-            const worksheet = workbook.Sheets[sheetName];
-            const data = XLSX.utils.sheet_to_json(worksheet);
-            
-            if (data.length > 0) {
-              // Tarih formatını kontrol et ve parse et
-              let date;
-              try {
-                if (sheetName.includes('.')) {
-                  const dateParts = sheetName.split('.');
-                  if (dateParts.length === 3) {
-                    const day = parseInt(dateParts[0]);
-                    const month = parseInt(dateParts[1]);
-                    const year = parseInt(dateParts[2]);
-                    
-                    if (isNaN(day) || isNaN(month) || isNaN(year)) {
-                      console.log('❌ Geçersiz tarih formatı:', sheetName);
-                      return;
-                    }
-                    
-                    date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                  } else {
-                    console.log('❌ Beklenmeyen tarih formatı:', sheetName);
-                    return;
-                  }
-                } else {
-                  console.log('❌ Tarih formatı nokta içermiyor:', sheetName);
-                  return;
-                }
-              } catch (error) {
-                console.error('❌ Tarih parse hatası:', error, 'Sayfa:', sheetName);
-                return;
-              }
-              
-              console.log('✅ Parse edilen tarih:', date);
-              
-              data.forEach((row, index) => {
-                if (index === 0) return; // Başlık satırını atla
-                
-                const employeeName = row['PERSONEL'] || row['PERSONEL ADI'] || row['Personel'];
-                if (!employeeName || employeeName === 'TOPLAM') return;
-                
-                const jobCount = parseInt(row['KASA SAYISI'] || row['Kasa Sayısı'] || 0);
-                const palletCount = parseInt(row['PALET SAYISI'] || row['Palet Sayısı'] || 0);
-                const boxCount = parseInt(row['KUTU SAYISI'] || row['Kutu Sayısı'] || 0);
-                const location = row['LOKASYON'] || row['Lokasyon'] || 'Bilinmiyor';
-                
-                allData.push({
-                  employee_name: employeeName,
-                  date: date,
-                  job_count: jobCount,
-                  pallet_count: palletCount,
-                  box_count: boxCount,
-                  location: location
-                });
-              });
-            }
-          });
-          
-          console.log('📊 Kasa kontrol için işlenen veri:', allData.length);
-          
-          if (allData.length === 0) {
-            alert('Excel dosyasında uygun veri bulunamadı');
-            return;
-          }
-          
-          console.log('🔄 verifyAndUpdateCashierCounts çağrılıyor...');
-          console.log('📊 Gönderilen veri:', allData);
-          
-          // Verileri kontrol et
-          const result = await verifyAndUpdateCashierCounts(allData);
-          
-          console.log('✅ verifyAndUpdateCashierCounts sonucu:', result);
-          
-          if (result.success) {
-            console.log('✅ Başarılı sonuç alındı, modal açılıyor...');
-            setCashierCheckResults(result);
-            setCashierUpdates(result.updates);
-            setShowCashierModal(true);
-          } else {
-            console.log('❌ Hata alındı:', result.error);
-            alert(`Kontrol hatası: ${result.error}`);
-          }
-        } catch (error) {
-          console.error('❌ Excel parse hatası:', error);
-          alert('Excel dosyası işlenemedi: ' + error.message);
-        }
-      };
-      
-      reader.readAsBinaryString(file);
-    } catch (error) {
-      console.error('❌ Kasa sayısı kontrol hatası:', error);
-      alert('Dosya okuma hatası: ' + error.message);
-    } finally {
-      setCashierCheckLoading(false);
-      // Input'u temizle
-      e.target.value = '';
-    }
-  };
-
-  const handleApplyCashierUpdates = async () => {
-    if (cashierUpdates.length === 0) {
-      alert('Güncellenecek veri bulunamadı');
-      return;
-    }
-
-    setCashierCheckLoading(true);
-    
-    try {
-      const result = await applyCashierCountUpdates(cashierUpdates);
-      
-      if (result.success) {
-        alert(`✅ ${result.updated_count} kayıt başarıyla güncellendi!`);
-        setShowCashierModal(false);
-        setCashierCheckResults(null);
-        setCashierUpdates([]);
-      } else {
-        alert(`❌ Güncelleme hatası: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Güncelleme uygulama hatası:', error);
-      alert('Güncelleme sırasında bir hata oluştu');
-    } finally {
-      setCashierCheckLoading(false);
-    }
-  };
 
   // Filtrelenmiş veri
   const getFilteredData = () => {
@@ -2282,35 +2089,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               />
             </label>
 
-            {/* Verileri Güncelle Butonu - Sadece Admin ve Yönetici */}
-            {(userRole === 'admin' || userRole === 'yönetici') && (
-              <label className="cursor-pointer" onClick={() => console.log('🎯 Verileri Güncelle butonuna tıklandı!')}>
-                <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                  {cashierCheckLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <CheckCircle className="w-4 h-4" />
-                  )}
-                  <span className="font-medium">
-                    {cashierCheckLoading ? 'Kontrol Ediliyor...' : 'Verileri Güncelle'}
-                  </span>
-                </div>
-                <input
-                  ref={cashierFileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleCashierFileUpload}
-                  className="hidden"
-                  disabled={cashierCheckLoading}
-                  onClick={() => console.log('📁 File input clicked!')}
-                />
-              </label>
-            )}
-            
-            {/* Debug - Kullanıcı Rolü Görüntüle */}
-            <div className="text-xs text-gray-500 mt-2">
-              👤 User Role: {userRole} | Admin: {userRole === 'admin' ? '✅' : '❌'} | Yönetici: {userRole === 'yönetici' ? '✅' : '❌'}
-            </div>
+
           </div>
         </div>
       </div>

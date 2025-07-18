@@ -601,6 +601,55 @@ export const deletePerformanceData = async (id) => {
   }
 };
 
+// Tüm performans verilerini sil (Admin Panel için)
+export const deleteAllPerformanceData = async () => {
+  try {
+    console.log('🗑️ Tüm performans verileri siliniyor...');
+    
+    // İlk olarak kaç kayıt var onu sayalım
+    const { count: totalCount, error: countError } = await supabase
+      .from('performance_data')
+      .select('id', { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error('❌ Kayıt sayma hatası:', countError);
+      throw countError;
+    }
+    
+    console.log(`📊 Toplam ${totalCount} performans verisi bulundu`);
+    
+    if (totalCount === 0) {
+      return { success: true, message: 'Zaten hiç performans verisi yok', deleted_count: 0 };
+    }
+    
+    // Tüm verileri sil
+    const { error } = await supabase
+      .from('performance_data')
+      .delete()
+      .neq('id', 0); // Tüm kayıtları sil (id != 0 koşulu hepsini kapsar)
+    
+    if (error) {
+      console.error('❌ Silme hatası:', error);
+      throw error;
+    }
+    
+    console.log(`✅ ${totalCount} performans verisi başarıyla silindi`);
+    
+    return { 
+      success: true, 
+      message: `Tüm performans verileri başarıyla silindi (${totalCount} kayıt)`,
+      deleted_count: totalCount
+    };
+  } catch (error) {
+    console.error('❌ Tüm performans verilerini silme hatası:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      details: error.details || null
+    };
+  }
+};
+
 // Performans analizi verilerini kaydet
 export const savePerformanceAnalysis = async (analysisData, dateRange) => {
   try {

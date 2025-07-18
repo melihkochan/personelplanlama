@@ -82,6 +82,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         const personnel = {};
         const allDatesSet = new Set();
         
+        // GRUPLANDIRMA: Aynı gün aynı çalışan için kayıtları birleştir
+        const groupedRecords = {};
+        
         result.data.forEach(record => {
           const { employee_name, employee_code, date, trips = 0, pallets = 0, boxes = 0, stores_visited = 0, date_shift_type, store_codes, sheet_name } = record;
           
@@ -92,11 +95,65 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             return;
           }
           
+          // Tarihi formatla
+          const formattedDate = new Date(date).toLocaleDateString('tr-TR');
+          
+          // Tarih + shift kombinasyonu key'i oluştur
+          let dateForKey, shiftForKey;
+          
+          if (sheet_name) {
+            dateForKey = sheet_name;
+          } else {
+            dateForKey = formattedDate;
+          }
+          
+          if (date_shift_type === 'gece') {
+            shiftForKey = 'GECE';
+          } else {
+            shiftForKey = 'GÜNDÜZ';
+          }
+          
+          const dayDataKey = `${dateForKey}_${shiftForKey}`;
+          const groupKey = `${employee_name}_${dayDataKey}`;
+          
+          // Gruplandırma - aynı çalışan aynı gün için
+          if (!groupedRecords[groupKey]) {
+            groupedRecords[groupKey] = {
+              employee_name,
+              dayDataKey,
+              formattedDate,
+              trips: 0,
+              pallets: 0,
+              boxes: 0,
+              stores: new Set(), // Mağaza kodlarını benzersiz tutmak için Set kullan
+              date_shift_type
+            };
+          }
+          
+          // Mağaza kodlarını ekle (benzersiz olması için Set kullanıyoruz)
+          if (store_codes) {
+            const stores = store_codes.split(',').map(s => s.trim()).filter(s => s);
+            stores.forEach(store => groupedRecords[groupKey].stores.add(store));
+          }
+          
+          // Palet ve kasa miktarlarını topla
+          groupedRecords[groupKey].pallets += pallets;
+          groupedRecords[groupKey].boxes += boxes;
+          
+          // Trips değerini topla ama sonra benzersiz mağaza sayısı ile düzelteceğiz
+          groupedRecords[groupKey].trips += trips;
+        });
+        
+        console.log(`📊 Gruplandırma sonucu: ${Object.keys(groupedRecords).length} benzersiz çalışan-gün kombinasyonu`);
+        
+        // Şimdi gruplandırılmış kayıtları işle
+        Object.values(groupedRecords).forEach(groupedRecord => {
+          const { employee_name, dayDataKey, formattedDate, pallets, boxes, stores, date_shift_type } = groupedRecord;
+          
           // Personnel database'den position'a bak
           const person = personnelDatabase.find(p => p.full_name === employee_name);
           if (!person) {
             console.warn(`⚠️ Personnel database'de bulunamadı: ${employee_name}`);
-            console.warn(`📋 Mevcut personnel isimleri:`, personnelDatabase.map(p => p.full_name).slice(0, 5));
             return;
           }
           
@@ -113,35 +170,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           console.log(`🔍 Position analizi: "${person.position}" -> isDriver: ${isDriver}`);
           console.log(`➡️ ${employee_name} -> ${groupName} grubuna eklendi`);
           
-          // Tarihi formatla
-          const formattedDate = new Date(date).toLocaleDateString('tr-TR');
           allDatesSet.add(formattedDate);
-          
-          // Tarih + shift kombinasyonu key'i oluştur (tutarlı format)
-          let dayDataKey;
-          let dateForKey, shiftForKey;
-          
-          if (sheet_name) {
-            // Sheet_name'den tarih bilgisini al
-            dateForKey = sheet_name;
-            console.log(`📋 Sheet name'den tarih: "${dateForKey}"`);
-          } else {
-            // Fallback: formattedDate kullan
-            dateForKey = formattedDate;
-            console.log(`📋 Fallback tarih: "${dateForKey}"`);
-          }
-          
-          // Date_shift_type'dan shift bilgisini al
-          if (date_shift_type === 'gece') {
-            shiftForKey = 'GECE';
-          } else {
-            shiftForKey = 'GÜNDÜZ';
-          }
-          
-          // Final key: tarih + shift
-          dayDataKey = `${dateForKey}_${shiftForKey}`;
-          console.log(`📋 Final dayDataKey: "${dayDataKey}" (tarih: ${dateForKey}, shift: ${shiftForKey})`);
-        
           
           if (!targetGroup[employee_name]) {
             // Personnel database'den shift_type'ı çek (personelin kendi vardiyası)
@@ -164,12 +193,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             targetGroup[employee_name] = {
               name: employee_name,
               shift: personnelShiftDisplay, // Personelin kendi vardiyası
-        totalTrips: 0,
-        totalPallets: 0,
-        totalBoxes: 0,
+              totalTrips: 0,
+              totalPallets: 0,
+              totalBoxes: 0,
               totalStores: 0,
-        dayData: {}
-      };
+              dayData: {}
+            };
           }
           
           // Günlük veriyi sheet_name bazında ekle
@@ -182,20 +211,22 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             };
           }
           
-          targetGroup[employee_name].dayData[dayDataKey].trips += trips;
+          // ÖNEMLİ: Trips sayısını benzersiz mağaza sayısı olarak ayarla
+          const uniqueStoreCount = stores.size;
+          const storeArray = Array.from(stores);
+          
+          console.log(`🏪 ${employee_name} (${dayDataKey}): ${uniqueStoreCount} benzersiz mağaza - ${storeArray.join(', ')}`);
+          
+          targetGroup[employee_name].dayData[dayDataKey].trips = uniqueStoreCount; // Benzersiz mağaza sayısı = sefer sayısı
           targetGroup[employee_name].dayData[dayDataKey].pallets += pallets;
           targetGroup[employee_name].dayData[dayDataKey].boxes += boxes;
-          
-          if (store_codes) {
-            const stores = store_codes.split(',').map(s => s.trim()).filter(s => s);
-            targetGroup[employee_name].dayData[dayDataKey].stores.push(...stores);
-          }
+          targetGroup[employee_name].dayData[dayDataKey].stores.push(...storeArray);
           
           // Toplam değerleri güncelle
-          targetGroup[employee_name].totalTrips += trips;
+          targetGroup[employee_name].totalTrips += uniqueStoreCount; // Benzersiz mağaza sayısı
           targetGroup[employee_name].totalPallets += pallets;
           targetGroup[employee_name].totalBoxes += boxes;
-          targetGroup[employee_name].totalStores += stores_visited;
+          targetGroup[employee_name].totalStores += uniqueStoreCount;
         });
         
         // Analiz formatına çevir - gerçek tarihler (düzgün sıralanmış)
@@ -1098,7 +1129,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     }
     
     const processedStores = new Set();
-    const dailyPersonnelVisits = new Map(); // Personel adı → Set(mağaza kodları)
+    const dailyPersonnelVisits = new Map(); // Bu sheet için: Personel adı → Set(mağaza kodları)
     
     sheetData.forEach((row, rowIndex) => {
       if (rowIndex === 0) return; // Header satırını atla
@@ -1149,7 +1180,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             results.drivers[matchedDriver].dayData[sheetName].trips++;
             results.drivers[matchedDriver].dayData[sheetName].stores.push(magazaKodu);
             
-            // Bölge çıkışları kaldırıldı
+            console.log(`✅ YENİ SEFER: ${matchedDriver} → ${magazaKodu} (${sheetName}) - Toplam: ${results.drivers[matchedDriver].totalTrips}`);
+          } else {
+            console.log(`🔄 TEKRAR EDEN MAĞAZA: ${matchedDriver} → ${magazaKodu} (${sheetName}) - sefer sayılmadı`);
           }
           
           // Palet ve kasa her zaman ekle
@@ -1190,7 +1223,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             results.personnel[matchedPersonnel].dayData[sheetName].trips++;
             results.personnel[matchedPersonnel].dayData[sheetName].stores.push(magazaKodu);
             
-              // Bölge çıkışları kaldırıldı
+            console.log(`✅ YENİ SEFER: ${matchedPersonnel} → ${magazaKodu} (${sheetName}) - Toplam: ${results.personnel[matchedPersonnel].totalTrips}`);
+            } else {
+              console.log(`🔄 TEKRAR EDEN MAĞAZA: ${matchedPersonnel} → ${magazaKodu} (${sheetName}) - sefer sayılmadı`);
             }
             
             // Palet ve kasa her zaman ekle
@@ -1628,6 +1663,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     console.log('📋 Benzersiz tarih sayısı:', sortedUniqueDates.length);
     console.log('📋 Toplam shift kombinasyonu:', dateItems.length);
     console.log('📅 Referans hafta başlangıcı:', WEEK_START_REFERENCE.toLocaleDateString('tr-TR'));
+    console.log('📋 Mevcut tarihlerin tam listesi:', sortedUniqueDates.map(d => d.date));
     
     // Her tarihi hangi haftaya ait olduğunu belirle
     const dateToWeekMap = new Map();
@@ -1636,11 +1672,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       // Bu tarih referans tarihten kaç gün sonra?
       const daysDiff = Math.floor((dateInfo.dateObj - WEEK_START_REFERENCE) / (1000 * 60 * 60 * 24));
       
-      // Hangi hafta (6 günlük döngü)
-      const weekNumber = Math.floor(daysDiff / 6);
+      // DOĞRU HAFTALİK SİSTEM: 7 günlük döngü (Pazar → Cumartesi)
+      const weekNumber = Math.floor(daysDiff / 7);
       
-      // Hafta içindeki gün (0=Pazar, 1=Pazartesi, ..., 5=Cuma)
-      const dayInWeek = daysDiff % 6;
+      // Hafta içindeki gün (0=Pazar, 1=Pazartesi, ..., 6=Cumartesi)
+      const dayInWeek = daysDiff % 7;
       
       console.log(`📅 ${dateInfo.date}: ${daysDiff} gün sonra → Hafta ${weekNumber}, Gün ${dayInWeek}`);
       
@@ -1660,10 +1696,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       
       // Hafta başlangıç ve bitiş tarihlerini hesapla
       const weekStartDate = new Date(WEEK_START_REFERENCE);
-      weekStartDate.setDate(weekStartDate.getDate() + (weekNumber * 6));
+      weekStartDate.setDate(weekStartDate.getDate() + (weekNumber * 7));
       
       const weekEndDate = new Date(weekStartDate);
-      weekEndDate.setDate(weekEndDate.getDate() + 5); // 6 gün (0-5)
+      weekEndDate.setDate(weekEndDate.getDate() + 6); // 7 gün (0-6): Pazar → Cumartesi
       
       // Hafta içindeki tüm shift kombinasyonlarını topla
       const allShiftsInWeek = [];
@@ -1691,16 +1727,21 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       // Hafta etiketini oluştur
       const weekStartStr = weekStartDate.toLocaleDateString('tr-TR');
       const weekEndStr = weekEndDate.toLocaleDateString('tr-TR');
-      const dayCount = allShiftsInWeek.length;
       
-      console.log(`📅 Hafta ${weekNumber + 1}: ${weekStartStr} - ${weekEndStr} (${dayCount} gün)`);
+      // DOĞRU GÜN SAYISI: Benzersiz tarihleri say (shift değil tarih)
+      const uniqueDateCount = weekDates.length; // weekDates zaten benzersiz tarihleri içeriyor
+      const shiftCount = allShiftsInWeek.length; // Toplam shift sayısı
+      
+      console.log(`📅 Hafta ${weekNumber + 1}: ${weekStartStr} - ${weekEndStr}`);
+      console.log(`📊 Benzersiz gün sayısı: ${uniqueDateCount}, Toplam shift: ${shiftCount}`);
       console.log(`📋 Günler:`, weekDates.map(d => d.date));
       
       weeks.push({
         id: `week_${weekNumber}`,
-        label: `${weekStartStr} - ${weekEndStr} (${dayCount} gün)`,
-        dates: allShiftsInWeek,
-        dayCount: dayCount,
+        label: `${weekStartStr} - ${weekEndStr} (6 gün)`, // Haftalık çalışma sistemi 6 gün
+        dates: allShiftsInWeek, // Shift kombinasyonları (filtreleme için)
+        dayCount: uniqueDateCount, // Benzersiz gün sayısı
+        shiftCount: shiftCount, // Toplam shift sayısı
         weekNumber: weekNumber + 1
       });
     });
@@ -2301,7 +2342,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-gray-900">{week.label}</span>
-                                <span className="text-xs text-gray-500">{week.dayCount} gün</span>
+                                <span className="text-xs text-gray-500">6 gün</span>
                 </div>
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {week.dates
@@ -2524,127 +2565,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         </>
       )}
 
-      {/* Kasa Sayısı Kontrol Modal */}
-      {showCashierModal && cashierCheckResults && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-4xl w-full m-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-                Kasa Sayısı Kontrol Detayları
-              </h3>
-              <button
-                onClick={() => setShowCashierModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-600" />
-              </button>
-            </div>
 
-            {/* Özet Bilgiler */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="text-2xl font-bold text-blue-600">{cashierCheckResults.summary.total_checked}</div>
-                <div className="text-sm text-blue-700">Toplam Kontrol Edilen</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="text-2xl font-bold text-green-600">{cashierCheckResults.summary.updates_needed}</div>
-                <div className="text-sm text-green-700">Güncelleme Gerekli</div>
-              </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                <div className="text-2xl font-bold text-red-600">{cashierCheckResults.summary.not_found}</div>
-                <div className="text-sm text-red-700">Bulunamadı</div>
-              </div>
-            </div>
-
-            {/* Güncelleme Gerekli Olanlar */}
-            {cashierUpdates.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  Güncelleme Gerekli ({cashierUpdates.length})
-                </h4>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {cashierUpdates.map((update, index) => (
-                    <div key={index} className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">{update.employee_code}</div>
-                          <div className="text-sm text-gray-600">{update.date}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-red-600 mb-1">Mevcut:</div>
-                          <div className="text-xs text-red-700">
-                            Kasa: {update.old_data.job_count} | Palet: {update.old_data.pallet_count} | Kutu: {update.old_data.box_count}
-                          </div>
-                          <div className="text-sm text-green-600 mt-2 mb-1">Yeni:</div>
-                          <div className="text-xs text-green-700">
-                            Kasa: {update.new_data.job_count} | Palet: {update.new_data.pallet_count} | Kutu: {update.new_data.box_count}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Bulunamayan Kayıtlar */}
-            {cashierCheckResults.mismatches && cashierCheckResults.mismatches.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <XCircle className="w-5 h-5 text-red-600" />
-                  Bulunamayan Kayıtlar ({cashierCheckResults.mismatches.length})
-                </h4>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {cashierCheckResults.mismatches.map((mismatch, index) => (
-                    <div key={index} className="p-4 bg-red-50 rounded-lg border border-red-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-red-900">{mismatch.employee_name}</div>
-                          <div className="text-sm text-red-600">{mismatch.date}</div>
-                        </div>
-                        <div className="text-sm text-red-700">
-                          {mismatch.reason}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowCashierModal(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-              >
-                Kapat
-              </button>
-              {cashierUpdates.length > 0 && (
-                <button
-                  onClick={handleApplyCashierUpdates}
-                  disabled={cashierCheckLoading}
-                  className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium disabled:opacity-50"
-                >
-                  {cashierCheckLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Güncelleniyor...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Tüm Güncellemeleri Uygula</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

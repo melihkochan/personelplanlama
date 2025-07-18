@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle } from 'lucide-react';
-import { getAllUsers, addUser, updateUser, deleteUser, resendConfirmationEmail } from '../services/supabase';
+import { getAllUsers, addUser, updateUser, deleteUser, resendConfirmationEmail, deleteAllPerformanceData } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 const AdminPanel = ({ userRole }) => {
@@ -18,6 +18,8 @@ const AdminPanel = ({ userRole }) => {
     is_active: true
   });
   
+  // Performans verilerini temizleme state'i
+  const [deletingPerformanceData, setDeletingPerformanceData] = useState(false);
 
 
   // Verileri yükle
@@ -162,6 +164,49 @@ const AdminPanel = ({ userRole }) => {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  // Tüm performans verilerini sil
+  const handleDeleteAllPerformanceData = async () => {
+    const confirmMessage = `⚠️ DİKKAT: Bu işlem TÜM performans verilerini kalıcı olarak silecek!
+
+Bu işlem:
+• Tüm personel performans kayıtlarını silecek
+• Tüm analiz verilerini silecek  
+• Bu işlem GERİ ALINAMAZ!
+
+Devam etmek istediğinizden emin misiniz?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    // İkinci onay
+    const secondConfirm = window.confirm('❗ SON UYARI: Tüm performans verileri silinecek. Bu işlem geri alınamaz!\n\nDevam etmek için "Tamam"a basın.');
+    if (!secondConfirm) {
+      return;
+    }
+
+    setDeletingPerformanceData(true);
+
+    try {
+      console.log('🗑️ Tüm performans verileri siliniyor...');
+      const result = await deleteAllPerformanceData();
+      
+      if (result.success) {
+        alert(`✅ Başarılı!\n\n${result.message}\n\nSayfa yenilenecek.`);
+        // Sayfayı yenile
+        window.location.reload();
+      } else {
+        alert(`❌ Hata!\n\nPerformans verileri silinemedi:\n${result.error}`);
+        console.error('❌ Performans verisi silme hatası:', result);
+      }
+    } catch (error) {
+      console.error('❌ Performans verisi silme genel hatası:', error);
+      alert(`❌ Beklenmeyen Hata!\n\nPerformans verileri silinemedi:\n${error.message}`);
+    } finally {
+      setDeletingPerformanceData(false);
     }
   };
 
@@ -339,25 +384,7 @@ const AdminPanel = ({ userRole }) => {
         </div>
       </div>
 
-      {/* Kasa Sayısı Kontrol Artık Performans Analizi'nde */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-blue-600" />
-          Kasa Sayısı Kontrol
-        </h3>
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-          <div className="flex items-center gap-3 mb-3">
-            <AlertTriangle className="w-5 h-5 text-blue-600" />
-            <h4 className="font-medium text-blue-800">Performans Analizi'ne Taşındı</h4>
-          </div>
-          <p className="text-sm text-blue-700 mb-4">
-            Kasa sayısı kontrol ve güncelleme özelliği artık <strong>Performans Analizi</strong> sayfasında bulunmaktadır.
-          </p>
-          <p className="text-xs text-blue-600">
-            👆 Üst menüden <strong>"Performans Analizi"</strong> sekmesine gidin ve <strong>"Verileri Güncelle"</strong> butonunu kullanın.
-          </p>
-        </div>
-      </div>
+
     </div>
   );
 
@@ -376,9 +403,26 @@ const AdminPanel = ({ userRole }) => {
             </button>
           </div>
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">Verileri Temizle</span>
-            <button className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600">
-              Temizle
+            <div>
+              <span className="text-sm font-medium text-gray-700">Performans Verilerini Temizle</span>
+              <p className="text-xs text-gray-500 mt-1">Tüm performans analizi verilerini kalıcı olarak siler</p>
+            </div>
+            <button 
+              onClick={handleDeleteAllPerformanceData}
+              disabled={deletingPerformanceData}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deletingPerformanceData ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Siliniyor...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  <span>Temizle</span>
+                </>
+              )}
             </button>
           </div>
         </div>

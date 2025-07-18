@@ -572,27 +572,30 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
           </div>
           
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowAddPersonnelModal(true)}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <Plus className="w-5 h-5" />
-              Personel Ekle
-            </button>
+            {(userRole === 'admin' || userRole === 'yönetici') && (
+              <button
+                onClick={() => setShowAddPersonnelModal(true)}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <Plus className="w-5 h-5" />
+                Personel Ekle
+              </button>
+            )}
             
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleExcelUpload}
-                className="hidden"
-                disabled={excelLoading}
-              />
-              <div className={`px-6 py-3 rounded-xl text-white flex items-center gap-2 font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 ${
-                excelLoading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
-              }`}>
+            {(userRole === 'admin' || userRole === 'yönetici') && (
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleExcelUpload}
+                  className="hidden"
+                  disabled={excelLoading}
+                />
+                <div className={`px-6 py-3 rounded-xl text-white flex items-center gap-2 font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 ${
+                  excelLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
+                }`}>
                 {excelLoading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -606,6 +609,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 )}
               </div>
             </label>
+            )}
           </div>
         </div>
 
@@ -915,18 +919,22 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleEditPersonnel(person)}
-                    className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeletePersonnel(person.id)}
-                    className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {(userRole === 'admin' || userRole === 'yönetici') && (
+                    <>
+                      <button
+                        onClick={() => handleEditPersonnel(person)}
+                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePersonnel(person.id)}
+                        className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -991,18 +999,22 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditPersonnel(person)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeletePersonnel(person.id)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {(userRole === 'admin' || userRole === 'yönetici') && (
+                          <>
+                            <button
+                              onClick={() => handleEditPersonnel(person)}
+                              className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePersonnel(person.id)}
+                              className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

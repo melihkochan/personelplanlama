@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Sparkles, Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
+import { Sparkles, User, Lock, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const LoginForm = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -11,8 +11,8 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Email ve şifre gerekli');
+    if (!username || !password) {
+      setError('Kullanıcı adı ve şifre gerekli');
       return;
     }
 
@@ -20,7 +20,7 @@ const LoginForm = () => {
     setError('');
 
     try {
-      const result = await signIn(email, password);
+      const result = await signIn(username, password);
       if (!result.success) {
         setError(result.error || 'Giriş başarısız');
       }
@@ -58,32 +58,73 @@ const LoginForm = () => {
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <span className="text-red-700 text-sm">{error}</span>
+            <div className={`border rounded-2xl p-4 mb-6 ${
+              error.includes('Email onayı gerekli') 
+                ? 'bg-orange-50 border-orange-200' 
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <div className="flex items-start gap-3">
+                <AlertCircle className={`w-5 h-5 flex-shrink-0 ${
+                  error.includes('Email onayı gerekli') 
+                    ? 'text-orange-500' 
+                    : 'text-red-500'
+                }`} />
+                <div className="flex-1">
+                  <span className={`text-sm font-medium ${
+                    error.includes('Email onayı gerekli') 
+                      ? 'text-orange-700' 
+                      : 'text-red-700'
+                  }`}>
+                    {error.includes('Email onayı gerekli') ? 'Email Onayı Gerekli' : 'Giriş Hatası'}
+                  </span>
+                  
+                  {error.includes('Email onayı gerekli') ? (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-xs text-orange-600">
+                        Hesabınız oluşturuldu ancak email onayı gerekiyor.
+                      </p>
+                      <div className="bg-orange-100 rounded-xl p-3">
+                        <p className="text-xs font-medium text-orange-700 mb-2">✅ Hızlı Çözüm:</p>
+                        <ol className="text-xs text-orange-600 space-y-1 pl-4">
+                          <li>1. <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">Supabase Dashboard</a>'a gidin</li>
+                          <li>2. <strong>Authentication → Settings → Email Auth</strong></li>
+                          <li>3. <strong>"Confirm email"</strong> seçeneğini <strong>OFF</strong> yapın</li>
+                          <li>4. <strong>Save</strong> butonuna basın</li>
+                          <li>5. Bu sayfaya geri dönüp tekrar giriş yapın</li>
+                        </ol>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-red-600 mt-1 whitespace-pre-line">{error}</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
+            {/* Username Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
+                Kullanıcı Adı
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="w-5 h-5 text-gray-400" />
+                  <User className="w-5 h-5 text-gray-400" />
                 </div>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                  placeholder="example@domain.com"
+                  placeholder="kullaniciadi"
                   required
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Kullanıcı adınızı girin (email adresi de kullanabilirsiniz)
+              </p>
             </div>
 
             {/* Password Input */}

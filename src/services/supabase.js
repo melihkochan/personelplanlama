@@ -2,8 +2,17 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://example.supabase.co';
 const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_KEY || 'your-service-key';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Admin işlemler için ayrı client (service_role anahtarı ile)
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 // Auth functions
 export const signIn = async (email, password) => {
@@ -237,7 +246,139 @@ export const deleteStore = async (id) => {
   }
 };
 
-// User role functions
+// User management functions
+export const getAllUsers = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Get all users error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const addUser = async (user) => {
+  try {
+    // Admin API kullanarak kullanıcı oluştur (session açmaz)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: user.email,
+      password: user.password,
+      email_confirm: true, // Email'i otomatik onaylanmış olarak işaretle
+      user_metadata: {
+        username: user.username,
+        full_name: user.full_name,
+        role: user.role
+      }
+    });
+    
+    if (authError) throw authError;
+    
+    // Sonra users tablosuna ekle
+    const { data, error } = await supabase
+      .from('users')
+      .insert([{
+        id: authData.user.id,
+        email: user.email,
+        username: user.username,
+        full_name: user.full_name,
+        role: user.role,
+        is_active: user.is_active
+      }])
+      .select();
+    
+    if (error) throw error;
+    
+    // Eğer admin session'ı varsa, geri yükle
+    if (currentSession?.session) {
+      await supabase.auth.setSession(currentSession.session);
+    }
+    
+    return { 
+      success: true, 
+      data: data?.[0],
+      needsEmailConfirmation: false // Admin API ile oluşturulduğu için email onaylanmış
+    };
+  } catch (error) {
+    console.error('Add user error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Email onayı için yardımcı fonksiyon
+export const resendConfirmationEmail = async (email) => {
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email
+    });
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Resend confirmation error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateUser = async (id, updates) => {
+  try {
+    // Şifre güncelleme varsa önce auth'u güncelle
+    if (updates.password && updates.password.trim() !== '') {
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
+        password: updates.password
+      });
+      
+      if (authError) throw authError;
+    }
+    
+    // Şifre alanını users tablosundan çıkar
+    const { password, ...userUpdates } = updates;
+    
+    // Users tablosunu güncelle
+    const { data, error } = await supabase
+      .from('users')
+      .update(userUpdates)
+      .eq('id', id)
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: data?.[0] };
+  } catch (error) {
+    console.error('Update user error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteUser = async (id) => {
+  try {
+    // Önce users tablosundan sil
+    const { error: dbError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', id);
+    
+    if (dbError) throw dbError;
+    
+    // Sonra auth'tan sil
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
+    
+    if (authError) {
+      console.warn('Auth user deletion failed:', authError.message);
+      // Auth silme hatası kritik değil, sadece uyarı ver
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Delete user error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 export const getUserRole = async (userId) => {
   try {
     console.log('🔍 getUserRole çağrıldı, userId:', userId);

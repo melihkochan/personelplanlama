@@ -313,14 +313,14 @@ function MainApp() {
                       {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
                     </p>
                     <p className="text-xs text-gray-500 flex items-center gap-1 justify-end mt-0.5">
-                      <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                      {userRole === 'admin' ? 'Admin' : 'Kullanıcı'}
+                      <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : userRole === 'yönetici' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
+                      {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
                     </p>
                   </div>
                 </div>
 
                 {/* Admin Panel Button */}
-                {userRole === 'admin' && (
+                {(userRole === 'admin' || userRole === 'yönetici') && (
                   <button
                     onClick={() => handleTabChange('admin')}
                     className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 text-sm shadow-lg"
@@ -380,7 +380,7 @@ function MainApp() {
                 <div className="h-px bg-gray-200 my-3"></div>
                 
                 {/* Admin Panel - Mobile */}
-                {userRole === 'admin' && (
+                {(userRole === 'admin' || userRole === 'yönetici') && (
                   <button
                     onClick={() => {
                       handleTabChange('admin');
@@ -722,7 +722,7 @@ function MainApp() {
           )}
 
           {/* Admin Panel */}
-          {activeTab === 'admin' && (
+          {activeTab === 'admin' && (userRole === 'admin' || userRole === 'yönetici') && (
             <div className="space-y-6">
               <AdminPanel />
             </div>

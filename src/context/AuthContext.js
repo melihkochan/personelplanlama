@@ -43,14 +43,39 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email, password) => {
+  const signIn = async (usernameOrEmail, password) => {
     try {
+      let email = usernameOrEmail;
+      
+      // Eğer @ işareti yoksa kullanıcı adı olarak kabul et
+      if (!usernameOrEmail.includes('@')) {
+        // Users tablosundan username ile email'i bul
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('email')
+          .eq('username', usernameOrEmail)
+          .single();
+        
+        if (userError || !userData) {
+          throw new Error('Kullanıcı bulunamadı');
+        }
+        
+        email = userData.email;
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
-      if (error) throw error;
+      if (error) {
+        // Email onayı hatası için özel mesaj
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error(`Email onayı gerekli!\n\nÇözüm için:\n1. Supabase Dashboard → Authentication → Settings → Email Auth → "Confirm email" OFF yapın\n2. Veya: ${email} adresine gelen onay linkine tıklayın\n\nTeknik detay: ${error.message}`);
+        }
+        throw error;
+      }
+      
       return { success: true, data };
     } catch (error) {
       console.error('Sign in error:', error);

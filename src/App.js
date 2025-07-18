@@ -10,7 +10,7 @@ import PerformanceAnalysis from './components/PerformanceAnalysis';
 import AdminPanel from './components/AdminPanel';
 import LoginForm from './components/LoginForm';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails } from './services/supabase';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -28,6 +28,7 @@ function MainApp() {
   const [storeData, setStoreData] = useState([]);
   const [generatedPlan, setGeneratedPlan] = useState(null);
   const [userRole, setUserRole] = useState('user');
+  const [userDetails, setUserDetails] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dataStatus, setDataStatus] = useState({
@@ -50,6 +51,12 @@ function MainApp() {
         try {
           const role = await getUserRole(user.id);
           setUserRole(role);
+          
+          // Kullanıcı detaylarını da çek
+          const userDetailsResult = await getUserDetails(user.id, user.email);
+          if (userDetailsResult.success && userDetailsResult.data) {
+            setUserDetails(userDetailsResult.data);
+          }
         } catch (error) {
           console.error('❌ User role error:', error);
           // Hata durumunda admin ver (test için)
@@ -304,7 +311,7 @@ function MainApp() {
                 <div className="hidden md:flex items-center gap-3">
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">
-                      {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                      {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}
                     </p>
                     <p className="text-xs text-gray-500 flex items-center gap-1 justify-end mt-0.5">
                       <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : userRole === 'yönetici' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
@@ -492,7 +499,9 @@ function MainApp() {
             <div className="space-y-8">
               {/* Hoş Geldiniz */}
               <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 text-white">
-                <h1 className="text-3xl font-bold mb-2">Hoş Geldiniz! 👋</h1>
+                <h1 className="text-3xl font-bold mb-2">
+                  Hoş Geldin {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
+                </h1>
                 <p className="text-blue-100 mb-6">Personel Planlama Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">

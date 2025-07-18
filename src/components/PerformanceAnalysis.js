@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData } from '../services/supabase';
+import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData, verifyAndUpdateCashierCounts, applyCashierCountUpdates } from '../services/supabase';
 
-const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData }) => {
+const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole }) => {
   console.log('🚀 PerformanceAnalysis BAŞLADI');
   
   // State'ler
   const [analysisData, setAnalysisData] = useState(null);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [initialDataLoading, setInitialDataLoading] = useState(true); // İlk veri yükleme durumu
-  const [uploadSuccess, setUploadSuccess] = useState(false);
+
   const [uploadError, setUploadError] = useState('');
   const [selectedDates, setSelectedDates] = useState([]);
   const [availableDates, setAvailableDates] = useState([]);
@@ -21,6 +21,26 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const [savedAnalyses, setSavedAnalyses] = useState([]);
   const [weeklyView, setWeeklyView] = useState(false); // Haftalık görünüm
   const [selectedWeeks, setSelectedWeeks] = useState([]); // Seçili haftalar
+  
+  // Kasa sayısı kontrol state'leri
+  const [cashierCheckLoading, setCashierCheckLoading] = useState(false);
+  const [cashierCheckResults, setCashierCheckResults] = useState(null);
+  const [cashierUpdates, setCashierUpdates] = useState([]);
+  const [showCashierModal, setShowCashierModal] = useState(false);
+  
+  // File input ref
+  const fileInputRef = useRef(null);
+  const cashierFileInputRef = useRef(null);
+
+  // Sheet adlarını normalize et
+  const normalizeSheetName = (sheetName) => {
+    if (!sheetName) return '';
+    return sheetName.toUpperCase()
+      .replace(/\s+/g, ' ')
+      .replace(/GUNDUZ/g, 'GÜNDÜZ')
+      .replace(/GÜNDUEZ/g, 'GÜNDÜZ')
+      .trim();
+  };
 
   // Performans verilerini veritabanından yükle - BASIT YÖNTEM
   const loadPerformanceDataFromDatabase = async () => {
@@ -148,12 +168,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             targetGroup[employee_name] = {
               name: employee_name,
               shift: personnelShiftDisplay, // Personelin kendi vardiyası
-              totalTrips: 0,
-              totalPallets: 0,
-              totalBoxes: 0,
+        totalTrips: 0,
+        totalPallets: 0,
+        totalBoxes: 0,
               totalStores: 0,
-              dayData: {}
-            };
+        dayData: {}
+      };
           }
           
           // Günlük veriyi sheet_name bazında ekle
@@ -340,7 +360,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           console.log('⚠️ Performans verisi yok, Excel yükleme ekranına geç');
         }, 500);
       }
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Performans verileri yükleme hatası:', error);
       // Hata durumunda da loading'i bitir
       setTimeout(() => {
@@ -520,7 +540,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             employee_name: personnelInfo.full_name,
             employee_type: isDriverPosition ? 'driver' : 'personnel',
             date_shift_type: dateShiftType, // Tarihin gece/gündüz olması
-            sheet_name: sheetName, // Orjinal sheet adı
+            sheet_name: normalizeSheetName(sheetName), // Normalize edilmiş sheet adı
             trips: dayData.trips || 0,
             pallets: dayData.pallets || 0,
             boxes: dayData.boxes || 0,
@@ -567,7 +587,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             employee_name: personnelInfo.full_name,
             employee_type: isDriverPosition ? 'driver' : 'personnel',
             date_shift_type: dateShiftType, // Tarihin gece/gündüz olması
-            sheet_name: sheetName, // Orjinal sheet adı
+            sheet_name: normalizeSheetName(sheetName), // Normalize edilmiş sheet adı
             trips: dayData.trips || 0,
             pallets: dayData.pallets || 0,
             boxes: dayData.boxes || 0,
@@ -622,12 +642,36 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     }
   };
 
-  // Excel yükleme
+  // Mevcut verileri kontrol et
+  const getExistingDates = async () => {
+    try {
+      const result = await getPerformanceData();
+      if (result.success && result.data.length > 0) {
+        const existingDates = new Set();
+        result.data.forEach(record => {
+          if (record.sheet_name) {
+            // Mevcut sheet_name'leri de normalize et
+            existingDates.add(normalizeSheetName(record.sheet_name));
+          }
+        });
+        
+        console.log('🔍 Mevcut sheet_name\'ler (normalize edilmiş):', Array.from(existingDates));
+        return Array.from(existingDates);
+      }
+      return [];
+    } catch (error) {
+      console.error('❌ Mevcut veriler kontrol edilirken hata:', error);
+      return [];
+    }
+  };
+
+  // Excel yükleme - Akıllı yükleme
   const handlePlansUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     setLoadingPlans(true);
+    setUploadError('');
     
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -637,7 +681,65 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         
         console.log('📊 Excel dosyası okundu, sheet\'ler:', workbook.SheetNames);
         
-        const analysisResults = processExcelData(workbook);
+        // Mevcut verileri kontrol et
+        const existingSheets = await getExistingDates();
+        console.log('📅 Mevcut sheet\'ler:', existingSheets);
+        console.log('📊 Excel\'den gelen sheet\'ler:', workbook.SheetNames);
+        
+        // Yeni sheet'leri bul - sadece tarihli sheet'leri al
+        const newSheets = workbook.SheetNames.filter(sheetName => {
+          console.log(`\n🔍 Sheet kontrol ediliyor: "${sheetName}"`);
+          
+          // PERSONEL ve DEPODA KALAN sheet'lerini atla
+          const sheetNameUpper = sheetName.toUpperCase();
+          if (sheetNameUpper.includes('PERSONEL') || 
+              sheetNameUpper.includes('DEPODA KALAN') || 
+              sheetNameUpper.includes('DEPODA KALAN PERSONELLER')) {
+        console.log(`⏭️ ${sheetName} sheet atlandı (personel/depoda kalan)`);
+            return false;
+      }
+      
+          // Tarih formatını kontrol et
+      const dateMatch = sheetName.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      if (!dateMatch) {
+            console.log(`❌ ${sheetName} tarih formatına uymuyor`);
+            return false;
+          }
+          
+          // Normalize edilmiş sheet adlarını karşılaştır
+          const normalizedCurrent = normalizeSheetName(sheetName);
+          const normalizedExisting = existingSheets.map(s => normalizeSheetName(s));
+          
+          console.log(`🔍 Normalize edilmiş: "${normalizedCurrent}"`);
+          console.log(`🔍 Mevcut normalize edilmiş: [${normalizedExisting.join(', ')}]`);
+          
+          const isExisting = normalizedExisting.includes(normalizedCurrent);
+          
+          if (isExisting) {
+            console.log(`❌ ${sheetName} zaten mevcut (normalize edilmiş karşılaştırma)`);
+            return false;
+          }
+          
+          console.log(`✅ ${sheetName} yeni, eklenecek`);
+          return true;
+        });
+        
+        console.log('🆕 Yeni sheet\'ler:', newSheets);
+        
+        if (newSheets.length === 0) {
+          setUploadError('Bu Excel dosyasındaki tüm veriler zaten mevcut. Yeni veri bulunamadı.');
+          setLoadingPlans(false);
+          
+                  // Input'u temizle (aynı dosyayı tekrar seçebilmek için)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+          
+          return;
+        }
+        
+        // Sadece yeni sheet'leri işle
+        const analysisResults = processExcelDataSelective(workbook, newSheets);
         setAnalysisData(analysisResults);
         
         // VERİTABANINA KAYDET
@@ -645,18 +747,237 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         await savePerformanceDataToDatabase(analysisResults);
         console.log('✅ VERİTABANINA KAYDETME BİTTİ!');
         
-        setUploadSuccess(true);
-        setTimeout(() => setUploadSuccess(false), 3000);
+        // Veri yükleme başarılı - sayfayı yenile
+        setUploadError(`✅ ${newSheets.length} yeni tarih bulundu ve eklendi: ${newSheets.join(', ')}`);
+        
+        // Mevcut verileri yeniden yükle
+        await loadPerformanceDataFromDatabase();
+        
+        // Input'u temizle (aynı dosyayı tekrar seçebilmek için)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        
+        setTimeout(() => {
+          setUploadError('');
+        }, 3000);
         
       } catch (error) {
         console.error('❌ Excel okuma hatası:', error);
-        alert('Excel dosyası okuma hatası: ' + error.message);
+        setUploadError('Excel dosyası okuma hatası: ' + error.message);
+        
+        // Hata durumunda da input'u temizle
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       } finally {
         setLoadingPlans(false);
       }
     };
     
     reader.readAsBinaryString(file);
+  };
+
+  // Excel verilerini seçici olarak işleme - sadece yeni sheet'ler
+  const processExcelDataSelective = (workbook, sheetsToProcess) => {
+    const results = {
+      drivers: {},
+      personnel: {},
+      dailyData: {},
+      summary: { gunduzDays: 0, geceDays: 0, totalDeliveries: 0, totalPallets: 0, totalBoxes: 0 }
+    };
+
+    console.log('🔍 Seçici Excel processing başladı, işlenecek sheet\'ler:', sheetsToProcess);
+
+    // 1. PERSONEL LİSTESİNİ VERİTABANINDAN AL
+    if (personnelDatabase && personnelDatabase.length > 0) {
+      console.log(`✅ Veritabanından ${personnelDatabase.length} personel bulundu`);
+      
+      personnelDatabase.forEach((person) => {
+        const name = person.full_name || '';
+        const job = person.position || '';
+        const vardiya = person.shift_type || 'gunduz';
+        
+        if (!name || !job) return;
+        
+        const shiftType = vardiya === 'gece' ? 'GECE' : 'GÜNDÜZ';
+        const jobUpper = job.toUpperCase();
+        
+        const personData = {
+          name, job, shift: shiftType, totalTrips: 0, totalPallets: 0, totalBoxes: 0,
+          averagePallets: 0, averageBoxes: 0, dayData: {}
+        };
+
+        if (jobUpper.includes('ŞOFÖR') || jobUpper.includes('SOFÖR')) {
+          results.drivers[name] = personData;
+          console.log(`👤 Şoför eklendi: ${name} - ${shiftType}`);
+        } else if (jobUpper.includes('SEVKIYAT') || jobUpper.includes('SEVKİYAT') || jobUpper.includes('ELEMANI')) {
+          results.personnel[name] = personData;
+          console.log(`👷 Personel eklendi: ${name} - ${shiftType}`);
+        }
+      });
+    }
+
+    // 2. SADECE YENİ SHEET'LERİ İŞLE
+    const availableDatesTemp = [];
+    
+    sheetsToProcess.forEach((sheetName) => {
+      console.log(`📋 Sheet kontrol ediliyor: "${sheetName}"`);
+      
+      // PERSONEL ve DEPODA KALAN sheet'lerini atla
+      const sheetNameUpper = sheetName.toUpperCase();
+      if (sheetNameUpper.includes('PERSONEL') || 
+          sheetNameUpper.includes('DEPODA KALAN') || 
+          sheetNameUpper.includes('DEPODA KALAN PERSONELLER')) {
+        console.log(`⏭️ ${sheetName} sheet atlandı (personel/depoda kalan)`);
+        return;
+      }
+      
+      // Tarih formatını kontrol et
+      const dateMatch = sheetName.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      if (!dateMatch) {
+        console.log(`❌ ${sheetName} tarih formatına uymuyor`);
+        return;
+      }
+      
+      // Vardiya tipini belirle
+      const isGunduz = sheetName.toUpperCase().includes('GÜNDÜZ') || sheetName.toUpperCase().includes('GUNDUZ');
+      const vardiyaTipi = isGunduz ? 'GÜNDÜZ' : 'GECE';
+      
+      console.log(`✅ ${sheetName} → ${vardiyaTipi} vardiyası olarak işleniyor`);
+      
+      // Tarih listesine ekle
+      availableDatesTemp.push({
+        date: sheetName,
+        displayName: sheetName,
+        shift: vardiyaTipi,
+        selected: true
+      });
+      
+      // Vardiya sayacını artır
+      if (isGunduz) {
+        results.summary.gunduzDays++;
+        } else {
+        results.summary.geceDays++;
+      }
+
+      // Sheet verilerini işle
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) return;
+      
+      const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      console.log(`📊 ${sheetName} - ${sheetData.length} satır bulundu`);
+      
+      // Basit veri işleme
+      processSheetDataSelective(sheetData, sheetName, vardiyaTipi, results);
+    });
+    
+    // 3. ORTALAMALARI HESAPLA
+    calculateAverages(results);
+    
+    // 4. TARİHLERİ SET ET
+    setAvailableDates(prev => [...prev, ...availableDatesTemp]);
+    setSelectedDates(prev => [...prev, ...availableDatesTemp.map(d => d.date)]);
+
+    console.log(`📊 Seçici processing tamamlandı: ${sheetsToProcess.length} sheet işlendi`);
+    return results;
+  };
+
+  // Sheet verilerini seçici olarak işleme - basit versiyon
+  const processSheetDataSelective = (sheetData, sheetName, dateShiftType, results) => {
+    console.log(`📋 ${sheetName} sheet işleniyor... (${dateShiftType})`);
+    
+    // Günlük veri yapısını hazırla
+    if (!results.dailyData[sheetName]) {
+      results.dailyData[sheetName] = {
+        shift: dateShiftType,
+        sheetName: sheetName,
+        dateShiftType: dateShiftType.toLowerCase(),
+        totalPallets: 0,
+        totalBoxes: 0,
+        uniqueStores: 0
+      };
+    }
+    
+    const processedStores = new Set();
+    
+    sheetData.forEach((row, rowIndex) => {
+      if (rowIndex === 0) return; // Header satırını atla
+      
+      try {
+        // Sütun verilerini çek
+        const magazaKodu = (row[4] || '').toString().trim();
+        const palet = parseInt(row[7]) || 0;
+        const kasa = parseInt(row[11]) || 0;
+        const sofor = (row[13] || '').toString().trim();
+        const personel1 = (row[14] || '').toString().trim();
+        const personel2 = (row[15] || '').toString().trim();
+        
+        if (!magazaKodu || !sofor) return;
+        
+        // Mağaza kodunu kaydet
+        processedStores.add(magazaKodu);
+        
+        // Günlük toplam güncelle
+        results.dailyData[sheetName].totalPallets += palet;
+        results.dailyData[sheetName].totalBoxes += kasa;
+        
+        // Basit personel işleme
+        [sofor, personel1, personel2].forEach(personName => {
+          if (!personName) return;
+          
+          const matchedDriver = findMatchingPerson(personName, results.drivers);
+          const matchedPersonnel = findMatchingPerson(personName, results.personnel);
+          
+          if (matchedDriver) {
+            if (!results.drivers[matchedDriver].dayData[sheetName]) {
+              results.drivers[matchedDriver].dayData[sheetName] = {
+                trips: 0, pallets: 0, boxes: 0, stores: []
+              };
+            }
+            results.drivers[matchedDriver].dayData[sheetName].trips += 1;
+            results.drivers[matchedDriver].dayData[sheetName].pallets += palet;
+            results.drivers[matchedDriver].dayData[sheetName].boxes += kasa;
+            // Mağaza kodunu ekle (duplicate olmaması için kontrol et)
+            if (!results.drivers[matchedDriver].dayData[sheetName].stores.includes(magazaKodu)) {
+              results.drivers[matchedDriver].dayData[sheetName].stores.push(magazaKodu);
+            }
+            results.drivers[matchedDriver].totalTrips += 1;
+            results.drivers[matchedDriver].totalPallets += palet;
+            results.drivers[matchedDriver].totalBoxes += kasa;
+          }
+          
+          if (matchedPersonnel) {
+            if (!results.personnel[matchedPersonnel].dayData[sheetName]) {
+              results.personnel[matchedPersonnel].dayData[sheetName] = {
+                trips: 0, pallets: 0, boxes: 0, stores: []
+              };
+            }
+            results.personnel[matchedPersonnel].dayData[sheetName].trips += 1;
+            results.personnel[matchedPersonnel].dayData[sheetName].pallets += palet;
+            results.personnel[matchedPersonnel].dayData[sheetName].boxes += kasa;
+            // Mağaza kodunu ekle (duplicate olmaması için kontrol et)
+            if (!results.personnel[matchedPersonnel].dayData[sheetName].stores.includes(magazaKodu)) {
+              results.personnel[matchedPersonnel].dayData[sheetName].stores.push(magazaKodu);
+            }
+            results.personnel[matchedPersonnel].totalTrips += 1;
+            results.personnel[matchedPersonnel].totalPallets += palet;
+            results.personnel[matchedPersonnel].totalBoxes += kasa;
+          }
+        });
+        
+      } catch (error) {
+        console.error(`❌ ${sheetName} satır ${rowIndex} işlenirken hata:`, error);
+      }
+    });
+    
+    // Toplam summary güncelle
+    results.summary.totalDeliveries += results.dailyData[sheetName].totalPallets;
+    results.summary.totalPallets += results.dailyData[sheetName].totalPallets;
+    results.summary.totalBoxes += results.dailyData[sheetName].totalBoxes;
+    results.dailyData[sheetName].uniqueStores = processedStores.size;
+    
+    console.log(`✅ ${sheetName} tamamlandı: ${processedStores.size} mağaza, ${results.dailyData[sheetName].totalPallets} palet, ${results.dailyData[sheetName].totalBoxes} kasa`);
   };
 
   // Excel verilerini işleme - VERİTABANI VERSİYON
@@ -806,14 +1127,14 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         
         // ŞOFÖRLERİ İŞLE
         const matchedDriver = findMatchingPerson(sofor, results.drivers);
-        if (matchedDriver) {
+          if (matchedDriver) {
           // Güncel vardiya bilgisini veritabanından çek ve güncelle
           const currentShift = getPersonnelShiftFromDatabase(matchedDriver);
           results.drivers[matchedDriver].shift = currentShift;
           
           // Günlük veri yapısını hazırla
-          if (!results.drivers[matchedDriver].dayData[sheetName]) {
-            results.drivers[matchedDriver].dayData[sheetName] = {
+            if (!results.drivers[matchedDriver].dayData[sheetName]) {
+              results.drivers[matchedDriver].dayData[sheetName] = {
               trips: 0, pallets: 0, boxes: 0, stores: []
             };
           }
@@ -869,10 +1190,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               dailyPersonnelVisits.get(matchedPersonnel).add(magazaKodu);
               
               // Sefer sayısını artır
-              results.personnel[matchedPersonnel].totalTrips++;
-              results.personnel[matchedPersonnel].dayData[sheetName].trips++;
-              results.personnel[matchedPersonnel].dayData[sheetName].stores.push(magazaKodu);
-              
+            results.personnel[matchedPersonnel].totalTrips++;
+            results.personnel[matchedPersonnel].dayData[sheetName].trips++;
+            results.personnel[matchedPersonnel].dayData[sheetName].stores.push(magazaKodu);
+            
               // Bölge çıkışları kaldırıldı
             }
             
@@ -947,14 +1268,14 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     }
   };
 
-  // İsim eşleştirme
+  // Akıllı isim eşleştirme - boşluk problemlerini çözer
   const findMatchingPerson = (searchName, personList) => {
     if (!searchName || !personList) return null;
     
     // Tam eşleşme
     if (personList[searchName]) return searchName;
     
-    // Normalize
+    // Gelişmiş normalize fonksiyonu
     const normalizeText = (text) => {
       return text.toUpperCase().trim()
         .replace(/Ğ/g, 'G').replace(/Ü/g, 'U').replace(/Ş/g, 'S')
@@ -962,23 +1283,59 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         .replace(/[^A-Z0-9\s]/g, '').replace(/\s+/g, ' ');
     };
     
-    const normalizedSearch = normalizeText(searchName);
+    // Boşluksuz karşılaştırma için özel fonksiyon
+    const normalizeForComparison = (text) => {
+      return normalizeText(text).replace(/\s/g, ''); // Tüm boşlukları kaldır
+    };
     
-    // Normalized eşleşme
+    const normalizedSearch = normalizeText(searchName);
+    const normalizedSearchNoSpaces = normalizeForComparison(searchName);
+    
+    console.log(`🔍 İsim aranıyor: "${searchName}" → normalize: "${normalizedSearch}" → boşluksuz: "${normalizedSearchNoSpaces}"`);
+    
+    // 1. Tam normalized eşleşme
     for (const personName in personList) {
       if (normalizeText(personName) === normalizedSearch) {
+        console.log(`✅ Tam eşleşme bulundu: "${searchName}" = "${personName}"`);
         return personName;
       }
     }
     
-    // Kısmi eşleşme
+    // 2. Boşluksuz eşleşme (ana çözüm)
+    for (const personName in personList) {
+      const personNoSpaces = normalizeForComparison(personName);
+      if (personNoSpaces === normalizedSearchNoSpaces) {
+        console.log(`✅ Boşluksuz eşleşme bulundu: "${searchName}" = "${personName}" (${normalizedSearchNoSpaces})`);
+        return personName;
+      }
+    }
+    
+    // 3. Kelime bazlı eşleşme (ek kontrol)
+    const searchWords = normalizedSearch.split(' ').filter(w => w.length > 0);
+    for (const personName in personList) {
+      const personWords = normalizeText(personName).split(' ').filter(w => w.length > 0);
+      
+      // Tüm kelimeler eşleşiyor mu?
+      if (searchWords.length === personWords.length) {
+        const allWordsMatch = searchWords.every(word => personWords.includes(word));
+        if (allWordsMatch) {
+          console.log(`✅ Kelime bazlı eşleşme bulundu: "${searchName}" = "${personName}"`);
+          return personName;
+        }
+      }
+    }
+    
+    // 4. Kısmi eşleşme (son çare)
     for (const personName in personList) {
       const normalizedPerson = normalizeText(personName);
       if (normalizedPerson.includes(normalizedSearch) || normalizedSearch.includes(normalizedPerson)) {
+        console.log(`⚠️ Kısmi eşleşme bulundu: "${searchName}" ≈ "${personName}"`);
         return personName;
       }
     }
     
+    console.log(`❌ Eşleşme bulunamadı: "${searchName}"`);
+    console.log(`📋 Mevcut personel listesi:`, Object.keys(personList).slice(0, 5));
     return null;
   };
 
@@ -1010,6 +1367,197 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       Object.values(results.personnel).reduce((sum, person) => sum + person.totalBoxes, 0);
   };
 
+  // Kasa sayısı kontrol fonksiyonları
+  const handleCashierFileUpload = async (e) => {
+    console.log('🚀🚀🚀 KASA KONTROL BAŞLADI 🚀🚀🚀');
+    console.log('📁 Event object:', e);
+    console.log('📂 Files:', e.target.files);
+    console.log('📂 Files length:', e.target.files?.length);
+    console.log('👤 Current user role:', userRole);
+    console.log('🔐 Kullanıcı rolü kontrolü: admin mi?', userRole === 'admin');
+    console.log('🔐 Kullanıcı rolü kontrolü: yönetici mi?', userRole === 'yönetici');
+    
+    // Sadece admin ve yönetici kullanıcıları bu özelliği kullanabilir
+    if (userRole !== 'admin' && userRole !== 'yönetici') {
+      console.log('❌ YETKİ HATASI - User role:', userRole);
+      alert('⚠️ Bu özellik sadece Admin ve Yönetici kullanıcıları tarafından kullanılabilir!\n\nMevcut rolünüz: ' + userRole);
+      e.target.value = '';
+      return;
+    }
+    
+    console.log('✅ YETKİ ONAYLANDI - Devam ediliyor...');
+    
+    const file = e.target.files[0];
+    if (!file) {
+      console.log('❌ Dosya seçilmedi');
+      return;
+    }
+
+    console.log('📄 Seçilen dosya:', file.name, file.type, file.size);
+    
+    // Dosya tipi kontrolü
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      alert('❌ Lütfen Excel dosyası (.xlsx veya .xls) seçin!');
+      e.target.value = '';
+      return;
+    }
+    
+    setCashierCheckLoading(true);
+    setCashierCheckResults(null);
+    setCashierUpdates([]);
+
+    try {
+      const reader = new FileReader();
+      
+      reader.onerror = (error) => {
+        console.error('❌ FileReader hatası:', error);
+        alert('Dosya okuma hatası');
+        setCashierCheckLoading(false);
+      };
+      
+      reader.onload = async (event) => {
+        try {
+          console.log('📋 Excel dosyası okunuyor...');
+          const workbook = XLSX.read(event.target.result, { type: 'binary' });
+          console.log('📜 Sheet isimleri:', workbook.SheetNames);
+          
+          const allData = [];
+          
+          workbook.SheetNames.forEach(sheetName => {
+            console.log('🔍 İşlenen sayfa:', sheetName);
+            
+            // Sadece veri sayfalarını işle
+            if (sheetName === 'PERSONEL' || sheetName === 'DEPODA KALAN') {
+              console.log('❌ Atlanan sayfa:', sheetName);
+              return;
+            }
+            
+            const worksheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(worksheet);
+            
+            if (data.length > 0) {
+              // Tarih formatını kontrol et ve parse et
+              let date;
+              try {
+                if (sheetName.includes('.')) {
+                  const dateParts = sheetName.split('.');
+                  if (dateParts.length === 3) {
+                    const day = parseInt(dateParts[0]);
+                    const month = parseInt(dateParts[1]);
+                    const year = parseInt(dateParts[2]);
+                    
+                    if (isNaN(day) || isNaN(month) || isNaN(year)) {
+                      console.log('❌ Geçersiz tarih formatı:', sheetName);
+                      return;
+                    }
+                    
+                    date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                  } else {
+                    console.log('❌ Beklenmeyen tarih formatı:', sheetName);
+                    return;
+                  }
+                } else {
+                  console.log('❌ Tarih formatı nokta içermiyor:', sheetName);
+                  return;
+                }
+              } catch (error) {
+                console.error('❌ Tarih parse hatası:', error, 'Sayfa:', sheetName);
+                return;
+              }
+              
+              console.log('✅ Parse edilen tarih:', date);
+              
+              data.forEach((row, index) => {
+                if (index === 0) return; // Başlık satırını atla
+                
+                const employeeName = row['PERSONEL'] || row['PERSONEL ADI'] || row['Personel'];
+                if (!employeeName || employeeName === 'TOPLAM') return;
+                
+                const jobCount = parseInt(row['KASA SAYISI'] || row['Kasa Sayısı'] || 0);
+                const palletCount = parseInt(row['PALET SAYISI'] || row['Palet Sayısı'] || 0);
+                const boxCount = parseInt(row['KUTU SAYISI'] || row['Kutu Sayısı'] || 0);
+                const location = row['LOKASYON'] || row['Lokasyon'] || 'Bilinmiyor';
+                
+                allData.push({
+                  employee_name: employeeName,
+                  date: date,
+                  job_count: jobCount,
+                  pallet_count: palletCount,
+                  box_count: boxCount,
+                  location: location
+                });
+              });
+            }
+          });
+          
+          console.log('📊 Kasa kontrol için işlenen veri:', allData.length);
+          
+          if (allData.length === 0) {
+            alert('Excel dosyasında uygun veri bulunamadı');
+            return;
+          }
+          
+          console.log('🔄 verifyAndUpdateCashierCounts çağrılıyor...');
+          console.log('📊 Gönderilen veri:', allData);
+          
+          // Verileri kontrol et
+          const result = await verifyAndUpdateCashierCounts(allData);
+          
+          console.log('✅ verifyAndUpdateCashierCounts sonucu:', result);
+          
+          if (result.success) {
+            console.log('✅ Başarılı sonuç alındı, modal açılıyor...');
+            setCashierCheckResults(result);
+            setCashierUpdates(result.updates);
+            setShowCashierModal(true);
+          } else {
+            console.log('❌ Hata alındı:', result.error);
+            alert(`Kontrol hatası: ${result.error}`);
+          }
+        } catch (error) {
+          console.error('❌ Excel parse hatası:', error);
+          alert('Excel dosyası işlenemedi: ' + error.message);
+        }
+      };
+      
+      reader.readAsBinaryString(file);
+    } catch (error) {
+      console.error('❌ Kasa sayısı kontrol hatası:', error);
+      alert('Dosya okuma hatası: ' + error.message);
+    } finally {
+      setCashierCheckLoading(false);
+      // Input'u temizle
+      e.target.value = '';
+    }
+  };
+
+  const handleApplyCashierUpdates = async () => {
+    if (cashierUpdates.length === 0) {
+      alert('Güncellenecek veri bulunamadı');
+      return;
+    }
+
+    setCashierCheckLoading(true);
+    
+    try {
+      const result = await applyCashierCountUpdates(cashierUpdates);
+      
+      if (result.success) {
+        alert(`✅ ${result.updated_count} kayıt başarıyla güncellendi!`);
+        setShowCashierModal(false);
+        setCashierCheckResults(null);
+        setCashierUpdates([]);
+      } else {
+        alert(`❌ Güncelleme hatası: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Güncelleme uygulama hatası:', error);
+      alert('Güncelleme sırasında bir hata oluştu');
+    } finally {
+      setCashierCheckLoading(false);
+    }
+  };
+
   // Filtrelenmiş veri
   const getFilteredData = () => {
     console.log('🔍 getFilteredData çağrıldı');
@@ -1025,7 +1573,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     console.log(`🔍 VARDİYA FİLTRELEME (shiftFilter: ${shiftFilter})`);
             console.log('📋 Available dates:', availableDates);
     console.log('📋 Selected dates:', selectedDates);
-
+    
     // SelectedDates artık id formatında, tam tarih+shift kombinasyonlarını çıkar
     let selectedDateShiftCombinations = [];
     
@@ -1039,7 +1587,31 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     } else {
       // Fallback: tüm tarihleri kullan
       selectedDateShiftCombinations = availableDates || [];
-      console.log('⚠️ availableDates boş, tüm tarihleri kullanıyorum');
+      console.log('⚠️ selectedDates boş, tüm availableDates kullanılıyor');
+    }
+
+    // VARDİYA FİLTRESİ UYGULA - ÖNEMLİ!
+    console.log(`🔍 VARDİYA FİLTRESİ UYGULANMADAN ÖNCE: ${selectedDateShiftCombinations.length} adet`);
+    if (shiftFilter !== 'all') {
+      const beforeFilterCount = selectedDateShiftCombinations.length;
+      
+      if (shiftFilter === 'day') {
+        // Sadece gündüz vardiyaları
+        selectedDateShiftCombinations = selectedDateShiftCombinations.filter(item => 
+          item.shift === 'GÜNDÜZ' || item.shift === 'gunduz' || item.shift === 'GUNDUZ'
+        );
+        console.log(`🌅 GÜNDÜZ FİLTRESİ UYGULANDI: ${beforeFilterCount} → ${selectedDateShiftCombinations.length}`);
+      } else if (shiftFilter === 'night') {
+        // Sadece gece vardiyaları
+        selectedDateShiftCombinations = selectedDateShiftCombinations.filter(item => 
+          item.shift === 'GECE' || item.shift === 'gece' || item.shift === 'NIGHT'
+        );
+        console.log(`🌙 GECE FİLTRESİ UYGULANDI: ${beforeFilterCount} → ${selectedDateShiftCombinations.length}`);
+      }
+      
+      console.log('✅ Filtrelenmiş shift kombinasyonları:', selectedDateShiftCombinations.map(item => `${item.date} ${item.shift}`));
+    } else {
+      console.log('⚠️ VARDİYA FİLTRESİ YOK (all seçili)');
     }
 
     console.log(`✅ Filtrelenmiş tarih+shift kombinasyonları: ${selectedDateShiftCombinations.length} adet`);
@@ -1095,7 +1667,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
       // Sadece seçili tarihlerde çalışan şoförleri ekle
       if (filteredDriver.totalTrips > 0) {
-        filteredResults.drivers[driverName] = filteredDriver;
+      filteredResults.drivers[driverName] = filteredDriver;
       }
     });
 
@@ -1140,7 +1712,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
       // Sadece seçili tarihlerde çalışan personelleri ekle
       if (filteredPerson.totalTrips > 0) {
-        filteredResults.personnel[personName] = filteredPerson;
+      filteredResults.personnel[personName] = filteredPerson;
         console.log(`✅ ${personName} filtreye dahil edildi (${filteredPerson.totalTrips} sefer)`);
       } else {
         console.log(`❌ ${personName} filtreye dahil edilmedi (sefer: ${filteredPerson.totalTrips})`);
@@ -1149,16 +1721,24 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     
     console.log(`✅ Filtreleme tamamlandı: ${Object.keys(filteredResults.personnel).length} personel geçti`);
 
-    // Summary hesapla - sadece gece vardiyası olan gün sayısı
+    // Summary hesapla - gece ve gündüz günlerini ayrı ayrı hesapla
     const nightShiftDatesInSelection = new Set();
+    const dayShiftDatesInSelection = new Set();
+    
     selectedDateShiftCombinations.forEach(combo => {
       if (combo.shift === 'GECE') {
         nightShiftDatesInSelection.add(combo.date);
+      } else if (combo.shift === 'GÜNDÜZ' || combo.shift === 'gunduz' || combo.shift === 'GUNDUZ') {
+        dayShiftDatesInSelection.add(combo.date);
       }
     });
     
-    filteredResults.summary.gunduzDays = 0; // Gündüz günleri sayılmıyor
+    filteredResults.summary.gunduzDays = dayShiftDatesInSelection.size; // Sadece gündüz vardiyası olan gün sayısı
     filteredResults.summary.geceDays = nightShiftDatesInSelection.size; // Sadece gece vardiyası olan gün sayısı
+    
+    console.log(`📊 SUMMARY HESAPLAMA:`);
+    console.log(`  🌅 Gündüz günleri: ${filteredResults.summary.gunduzDays}`);
+    console.log(`  🌙 Gece günleri: ${filteredResults.summary.geceDays}`);
 
     filteredResults.summary.totalDeliveries = 
       Object.values(filteredResults.drivers).reduce((sum, driver) => sum + driver.totalTrips, 0) +
@@ -1174,6 +1754,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
     // Shift kombinasyonu sayısını ekle
     filteredResults.summary.shiftCombinations = selectedDateShiftCombinations.length;
+    
+    // Toplam gün sayısını hesapla (sadece benzersiz tarihler)
+    const uniqueDates = new Set();
+    selectedDateShiftCombinations.forEach(item => {
+      if (item.date) {
+        uniqueDates.add(item.date); // Tarih kısmını al (shift'i dahil etme)
+      }
+    });
+    filteredResults.summary.totalDays = uniqueDates.size;
 
     return filteredResults;
   };
@@ -1185,22 +1774,25 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       case 'pallets': return (a, b) => b.totalPallets - a.totalPallets;
       case 'boxes': return (a, b) => b.totalBoxes - a.totalBoxes;
       case 'avgPallets': return (a, b) => {
-        const aAvg = a.totalTrips > 0 ? a.totalPallets / a.totalTrips : 0;
-        const bAvg = b.totalTrips > 0 ? b.totalPallets / b.totalTrips : 0;
-        return bAvg - aAvg;
-      };
+          const aAvg = a.totalTrips > 0 ? a.totalPallets / a.totalTrips : 0;
+          const bAvg = b.totalTrips > 0 ? b.totalPallets / b.totalTrips : 0;
+          return bAvg - aAvg;
+        };
       case 'avgBoxes': return (a, b) => {
-        const aAvg = a.totalTrips > 0 ? a.totalBoxes / a.totalTrips : 0;
-        const bAvg = b.totalTrips > 0 ? b.totalBoxes / b.totalTrips : 0;
-        return bAvg - aAvg;
-      };
+          const aAvg = a.totalTrips > 0 ? a.totalBoxes / a.totalTrips : 0;
+          const bAvg = b.totalTrips > 0 ? b.totalBoxes / b.totalTrips : 0;
+          return bAvg - aAvg;
+        };
       default: return (a, b) => b.totalTrips - a.totalTrips;
     }
   };
 
-    // Haftalık Gruplandırma - Gece vardiyası olan günler bazında 6'lı gruplar
+    // HAFTALİK GRUPLANDIRMA - SABİT DÖNGÜ: Pazar başlangıç, 6 gün çalışma sistemi
   const groupDatesByWeeks = (dateItems) => {
     const weeks = [];
+    
+    // HAFTALİK SİSTEM: 29.06.2025 (Pazar) başlangıç referansı
+    const WEEK_START_REFERENCE = new Date(2025, 5, 29); // 29.06.2025 (Pazar)
     
     // Benzersiz tarihleri çıkar ve düzgün sırala
     const uniqueDatesMap = new Map();
@@ -1225,111 +1817,91 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       return a.dateObj - b.dateObj;
     });
     
-    // Sadece gece vardiyası olan günleri filtrele
-    const nightShiftDates = sortedUniqueDates.filter(dateInfo => 
-      dateInfo.shifts.some(shift => shift.shift === 'GECE')
-    );
-    
-    console.log('📅 Haftalık gruplandırma başlıyor (gece vardiyası bazında)');
+    console.log('📅 SABİT HAFTALİK GRUPLANDIRMA başlıyor (29.06.2025 Pazar referansı)');
     console.log('📋 Benzersiz tarih sayısı:', sortedUniqueDates.length);
-    console.log('📋 Gece vardiyası olan gün sayısı:', nightShiftDates.length);
     console.log('📋 Toplam shift kombinasyonu:', dateItems.length);
-    console.log('📋 Gece vardiyası olan günler:', nightShiftDates.map(d => d.date));
+    console.log('📅 Referans hafta başlangıcı:', WEEK_START_REFERENCE.toLocaleDateString('tr-TR'));
     
-    // Gece vardiyası olan günleri 6'lı gruplar halinde böl
-    let currentWeek = [];
+    // Her tarihi hangi haftaya ait olduğunu belirle
+    const dateToWeekMap = new Map();
     
-    nightShiftDates.forEach((dateInfo, index) => {
-      // Haftaya ekle
-      currentWeek.push(dateInfo);
+    sortedUniqueDates.forEach(dateInfo => {
+      // Bu tarih referans tarihten kaç gün sonra?
+      const daysDiff = Math.floor((dateInfo.dateObj - WEEK_START_REFERENCE) / (1000 * 60 * 60 * 24));
       
-      // Hafta şartları: 6 gece günü tamamlandı veya son gün
-      const isWeekComplete = currentWeek.length === 6;
-      const isLastDate = index === nightShiftDates.length - 1;
+      // Hangi hafta (6 günlük döngü)
+      const weekNumber = Math.floor(daysDiff / 6);
       
-      if (isWeekComplete || isLastDate) {
-        // Hafta içindeki tüm shift kombinasyonlarını topla
-        const allShiftsInWeek = [];
-        
-        // Mevcut hafta günlerini al (gece vardiyası olan günler)
-        const currentWeekDates = currentWeek.map(d => d.date);
-        
-        // Hafta tarih aralığını belirle
-        const weekRangeStart = currentWeek[0].date;
-        const weekRangeEnd = currentWeek[currentWeek.length - 1].date;
-        
-        // Tarih aralığını parse et
-        const parseDate = (dateStr) => {
-          const [day, month, year] = dateStr.split('.');
-          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        };
-        
-        const startDateObj = parseDate(weekRangeStart);
-        const endDateObj = parseDate(weekRangeEnd);
-        
-        console.log(`📅 Hafta ${weeks.length + 1} tarih aralığı: ${weekRangeStart} - ${weekRangeEnd}`);
-        console.log(`📋 Gece vardiyası olan günler:`, currentWeekDates);
-        
-        // Tüm tarihlerden hafta aralığındaki günleri filtrele (hem gece hem sadece gündüz)
-        sortedUniqueDates.forEach(dateInfo => {
-          const dateObj = dateInfo.dateObj;
-          
-          // Bu tarih hafta aralığında mı?
-          const isInWeekRange = dateObj >= startDateObj && dateObj <= endDateObj;
-          
-          if (isInWeekRange) {
-            // Her tarih için shift'leri kronolojik sırala
-            const sortedShifts = dateInfo.shifts.sort((a, b) => {
-              // Önce tarihe göre sırala (aynı tarih olacak zaten)
-              const dateA = new Date(parseInt(a.date.split('.')[2]), parseInt(a.date.split('.')[1]) - 1, parseInt(a.date.split('.')[0]));
-              const dateB = new Date(parseInt(b.date.split('.')[2]), parseInt(b.date.split('.')[1]) - 1, parseInt(b.date.split('.')[0]));
-              
-              if (dateA.getTime() !== dateB.getTime()) {
-                return dateA - dateB;
-              }
-              
-              // Aynı tarihse önce gündüz sonra gece
-              if (a.shift === 'GÜNDÜZ' && b.shift === 'GECE') return -1;
-              if (a.shift === 'GECE' && b.shift === 'GÜNDÜZ') return 1;
-              return 0;
-            });
-            
-            allShiftsInWeek.push(...sortedShifts);
-            
-            // Sadece gündüz vardiyası olan günleri logla
-            const hasOnlyDayShift = dateInfo.shifts.some(s => s.shift === 'GÜNDÜZ') && 
-                                  !dateInfo.shifts.some(s => s.shift === 'GECE');
-            if (hasOnlyDayShift) {
-              console.log(`📋 Sadece gündüz vardiyası olan gün eklendi: ${dateInfo.date}`);
-            }
-          }
-        });
-        
-        const weekStart = currentWeek[0].date;
-        const weekEnd = currentWeek[currentWeek.length - 1].date;
-        const uniqueDatesInWeek = currentWeek.map(d => d.date);
-        
-        const weekObj = {
-          id: `week-${weeks.length + 1}`,
-          label: `${weekStart} - ${weekEnd} (${currentWeek.length} gün)`,
-          dates: allShiftsInWeek, // Sıralı shift kombinasyonları (gece+gündüz)
-          dayCount: currentWeek.length, // Gece vardiyası olan gün sayısı
-          uniqueDates: uniqueDatesInWeek
-        };
-        
-        console.log(`📅 Hafta ${weeks.length + 1} oluşturuldu: ${weekObj.label}`);
-        console.log(`📋 Gece vardiyası olan günler (${currentWeek.length}):`, uniqueDatesInWeek);
-        console.log(`📋 Shift kombinasyonları (${allShiftsInWeek.length}):`, allShiftsInWeek.map(d => `${d.date} ${d.shift}`));
-        
-        weeks.push(weekObj);
-        
-        // Yeni hafta başlat
-        currentWeek = [];
+      // Hafta içindeki gün (0=Pazar, 1=Pazartesi, ..., 5=Cuma)
+      const dayInWeek = daysDiff % 6;
+      
+      console.log(`📅 ${dateInfo.date}: ${daysDiff} gün sonra → Hafta ${weekNumber}, Gün ${dayInWeek}`);
+      
+      if (!dateToWeekMap.has(weekNumber)) {
+        dateToWeekMap.set(weekNumber, []);
       }
+      
+      dateToWeekMap.get(weekNumber).push(dateInfo);
     });
     
+    // Haftalık grupları oluştur
+    Array.from(dateToWeekMap.keys()).sort((a, b) => a - b).forEach(weekNumber => {
+      const weekDates = dateToWeekMap.get(weekNumber);
+      
+      // Hafta içindeki günleri sırala
+      weekDates.sort((a, b) => a.dateObj - b.dateObj);
+      
+      // Hafta başlangıç ve bitiş tarihlerini hesapla
+      const weekStartDate = new Date(WEEK_START_REFERENCE);
+      weekStartDate.setDate(weekStartDate.getDate() + (weekNumber * 6));
+      
+      const weekEndDate = new Date(weekStartDate);
+      weekEndDate.setDate(weekEndDate.getDate() + 5); // 6 gün (0-5)
+      
+      // Hafta içindeki tüm shift kombinasyonlarını topla
+      const allShiftsInWeek = [];
+      
+      weekDates.forEach(dateInfo => {
+        // Her tarih için shift'leri kronolojik sırala
+        const sortedShifts = dateInfo.shifts.sort((a, b) => {
+          // Önce tarihe göre sırala
+          const dateA = new Date(parseInt(a.date.split('.')[2]), parseInt(a.date.split('.')[1]) - 1, parseInt(a.date.split('.')[0]));
+          const dateB = new Date(parseInt(b.date.split('.')[2]), parseInt(b.date.split('.')[1]) - 1, parseInt(b.date.split('.')[0]));
+          
+          if (dateA.getTime() !== dateB.getTime()) {
+            return dateA - dateB;
+          }
+          
+          // Aynı tarihse önce gündüz sonra gece
+          if (a.shift === 'GÜNDÜZ' && b.shift === 'GECE') return -1;
+          if (a.shift === 'GECE' && b.shift === 'GÜNDÜZ') return 1;
+          return 0;
+        });
+        
+        allShiftsInWeek.push(...sortedShifts);
+      });
+      
+      // Hafta etiketini oluştur
+      const weekStartStr = weekStartDate.toLocaleDateString('tr-TR');
+      const weekEndStr = weekEndDate.toLocaleDateString('tr-TR');
+      const dayCount = allShiftsInWeek.length;
+      
+      console.log(`📅 Hafta ${weekNumber + 1}: ${weekStartStr} - ${weekEndStr} (${dayCount} gün)`);
+      console.log(`📋 Günler:`, weekDates.map(d => d.date));
+      
+      weeks.push({
+        id: `week_${weekNumber}`,
+        label: `${weekStartStr} - ${weekEndStr} (${dayCount} gün)`,
+        dates: allShiftsInWeek,
+        dayCount: dayCount,
+        weekNumber: weekNumber + 1
+      });
+    });
+    
+    console.log(`📊 Toplam ${weeks.length} hafta oluşturuldu`);
     return weeks;
-  };
+  }; 
+
 
   // Reset fonksiyonu kaldırıldı
 
@@ -1421,9 +1993,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-xs">Toplam Gün</p>
+              <p className="text-blue-100 text-xs">🌙 gece vardiyası</p>
               <p className="text-2xl font-bold">{filteredData.summary.geceDays}</p>
-              <p className="text-blue-200 text-xs">🌙 gece vardiyası</p>
+              <p className="text-blue-200 text-xs">Toplam Gün</p>
             </div>
             <Calendar className="w-10 h-10 text-blue-200" />
           </div>
@@ -1432,9 +2004,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-indigo-100 text-xs">Shift Kombinasyonu</p>
-              <p className="text-2xl font-bold">{filteredData.summary.shiftCombinations}</p>
-              <p className="text-indigo-200 text-xs">🔄 gece+gündüz</p>
+              <p className="text-indigo-100 text-xs">🌅 gündüz vardiyası</p>
+              <p className="text-2xl font-bold">{filteredData.summary.gunduzDays}</p>
+              <p className="text-indigo-200 text-xs">Toplam Gün</p>
             </div>
             <Calendar className="w-10 h-10 text-indigo-200" />
           </div>
@@ -1482,7 +2054,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (!filteredData) return null;
 
     const drivers = Object.values(filteredData.drivers).sort(getSortFunction(sortBy));
-    
+
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -1495,7 +2067,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             <span className="text-sm text-gray-600">Sırala:</span>
             <div className="flex gap-1">
               {['trips', 'pallets', 'boxes', 'avgPallets', 'avgBoxes'].map(sortType => (
-                <button
+              <button
                   key={sortType}
                   onClick={() => setSortBy(sortType)}
                   className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
@@ -1504,7 +2076,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 >
                   {sortType === 'trips' ? 'Sefer' : sortType === 'pallets' ? 'Palet' : 
                    sortType === 'boxes' ? 'Kasa' : sortType === 'avgPallets' ? 'Ort. Palet' : 'Ort. Kasa'}
-                </button>
+              </button>
               ))}
             </div>
           </div>
@@ -1533,7 +2105,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 
                 return (
                   <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity}`}>
-                    <td className="py-2 px-3 text-center">
+                  <td className="py-2 px-3 text-center">
                       <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
                         rank === 1 ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300' :
                         rank === 2 ? 'bg-gray-100 text-gray-800 border-2 border-gray-300' :
@@ -1541,25 +2113,25 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         'bg-blue-50 text-blue-700'
                       }`}>
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
-                      </span>
-                    </td>
+                    </span>
+                  </td>
                     <td className={`py-2 px-3 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {driver.name}
-                    </td>
-                    <td className="py-2 px-3 text-center">
+                  </td>
+                  <td className="py-2 px-3 text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         driver.shift === 'İZİNLİ' ? 'bg-gray-100 text-gray-800' : 
                         driver.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
                       }`}>
                         {driver.shift === 'İZİNLİ' ? '🏖️ İzinli' : driver.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
-                      </span>
-                    </td>
+                          </span>
+                  </td>
                     <td className="py-2 px-3 text-right text-gray-600">{driver.totalTrips || 0}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{driver.totalPallets || 0}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{driver.totalBoxes || 0}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{driver.averagePallets}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{driver.averageBoxes}</td>
-                  </tr>
+                </tr>
                 );
               })}
             </tbody>
@@ -1575,7 +2147,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (!filteredData) return null;
 
     const personnel = Object.values(filteredData.personnel).sort(getSortFunction(sortBy));
-    
+
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -1588,7 +2160,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             <span className="text-sm text-gray-600">Sırala:</span>
             <div className="flex gap-1">
               {['trips', 'pallets', 'boxes', 'avgPallets', 'avgBoxes'].map(sortType => (
-                <button
+              <button
                   key={sortType}
                   onClick={() => setSortBy(sortType)}
                   className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
@@ -1597,7 +2169,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 >
                   {sortType === 'trips' ? 'Sefer' : sortType === 'pallets' ? 'Palet' : 
                    sortType === 'boxes' ? 'Kasa' : sortType === 'avgPallets' ? 'Ort. Palet' : 'Ort. Kasa'}
-                </button>
+              </button>
               ))}
             </div>
           </div>
@@ -1626,7 +2198,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 
                 return (
                   <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity}`}>
-                    <td className="py-2 px-3 text-center">
+                  <td className="py-2 px-3 text-center">
                       <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
                         rank === 1 ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300' :
                         rank === 2 ? 'bg-gray-100 text-gray-800 border-2 border-gray-300' :
@@ -1634,25 +2206,25 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         'bg-green-50 text-green-700'
                       }`}>
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
-                      </span>
-                    </td>
+                    </span>
+                  </td>
                     <td className={`py-2 px-3 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {person.name}
-                    </td>
-                    <td className="py-2 px-3 text-center">
+                  </td>
+                  <td className="py-2 px-3 text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         person.shift === 'İZİNLİ' ? 'bg-gray-100 text-gray-800' : 
                         person.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
                       }`}>
                         {person.shift === 'İZİNLİ' ? '🏖️ İzinli' : person.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
-                      </span>
-                    </td>
+                          </span>
+                  </td>
                     <td className="py-2 px-3 text-right text-gray-600">{person.totalTrips || 0}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{person.totalPallets || 0}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{person.totalBoxes || 0}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{person.averagePallets}</td>
                     <td className="py-2 px-3 text-right text-gray-600">{person.averageBoxes}</td>
-                  </tr>
+                </tr>
                 );
               })}
             </tbody>
@@ -1665,14 +2237,20 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <div className="flex items-center justify-center gap-4 mb-2">
-          <h1 className="text-3xl font-bold text-gray-900">Performans Analizi</h1>
+        {/* Modern Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            Performans Analizi
+          </h1>
+          <p className="text-lg text-gray-600 mb-6">Şoför ve personel performansını analiz edin</p>
+          
+          {/* Modern Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           {analysisData && (
-            <div className="flex items-center gap-2">
               <button
                 onClick={handleExportToExcel}
                 disabled={loadingPlans}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingPlans ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -1681,10 +2259,60 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 )}
                 {loadingPlans ? 'İndiriliyor...' : 'Excel İndir'}
               </button>
-            </div>
-          )}
+            )}
+            
+            <label className="cursor-pointer">
+              <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                {loadingPlans ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+                <span className="font-medium">
+                  {loadingPlans ? 'İşleniyor...' : 'Yeni Veri Ekle'}
+                </span>
         </div>
-        <p className="text-gray-600 text-center">Şoför ve personel performansını analiz edin</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handlePlansUpload}
+                className="hidden"
+                disabled={loadingPlans}
+              />
+            </label>
+
+            {/* Verileri Güncelle Butonu - Sadece Admin ve Yönetici */}
+            {(userRole === 'admin' || userRole === 'yönetici') && (
+              <label className="cursor-pointer" onClick={() => console.log('🎯 Verileri Güncelle butonuna tıklandı!')}>
+                <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                  {cashierCheckLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  <span className="font-medium">
+                    {cashierCheckLoading ? 'Kontrol Ediliyor...' : 'Verileri Güncelle'}
+                  </span>
+                </div>
+                <input
+                  ref={cashierFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleCashierFileUpload}
+                  className="hidden"
+                  disabled={cashierCheckLoading}
+                  onClick={() => console.log('📁 File input clicked!')}
+                />
+              </label>
+            )}
+            
+            {/* Debug - Kullanıcı Rolü Görüntüle */}
+            <div className="text-xs text-gray-500 mt-2">
+              👤 User Role: {userRole} | Admin: {userRole === 'admin' ? '✅' : '❌'} | Yönetici: {userRole === 'yönetici' ? '✅' : '❌'}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* İlk veri yükleme durumu */}
@@ -1700,24 +2328,25 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         </div>
       )}
 
-      {/* DOSYA YÜKLEME */}
+      {/* DOSYA YÜKLEME - İLK SEFERDE */}
       {!initialDataLoading && !analysisData && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
           {!loadingPlans ? (
             <div className="flex items-center justify-center">
               <label className="flex flex-col items-center gap-4 cursor-pointer">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-lg">
                   <BarChart3 className="w-10 h-10 text-blue-600" />
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-semibold text-gray-800">Excel Dosyasını Yükleyin</p>
                   <p className="text-sm text-gray-600">Anadolu planını içeren Excel dosyasını seçin</p>
                 </div>
-                <div className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                <div className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                   <Upload className="w-5 h-5 inline mr-2" />
                   Dosya Seç
                 </div>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={handlePlansUpload}
@@ -1738,36 +2367,50 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         </div>
       )}
 
-      {/* Başarı Mesajı */}
-      {analysisData && uploadSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8">
+      {/* Hata/Bilgi Mesajı */}
+      {uploadError && (
+        <div className={`border rounded-xl p-6 mb-8 ${
+          uploadError.startsWith('✅') 
+            ? 'bg-green-50 border-green-200' 
+            : 'bg-red-50 border-red-200'
+        }`}>
           <div className="flex items-center justify-center">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                uploadError.startsWith('✅') 
+                  ? 'bg-green-100' 
+                  : 'bg-red-100'
+              }`}>
+                {uploadError.startsWith('✅') ? (
                 <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
+                ) : (
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
               </div>
-              <h3 className="text-lg font-semibold text-green-800 mb-2">Başarıyla Yüklendi! 🎉</h3>
-              <p className="text-green-700">Excel dosyası başarıyla işlendi. Performans analizi hazır!</p>
-              <div className="mt-4 flex items-center justify-center space-x-4 text-sm text-green-600">
-                <div className="flex items-center">
-                  <Users className="w-4 h-4 mr-1" />
-                  <span>{Object.keys(analysisData.drivers).length} Şoför</span>
+              <h3 className={`text-lg font-semibold mb-2 ${
+                uploadError.startsWith('✅') 
+                  ? 'text-green-800' 
+                  : 'text-red-800'
+              }`}>
+                {uploadError.startsWith('✅') ? 'Başarıyla Güncellendi! 🎉' : 'Bilgi'}
+              </h3>
+              <p className={`${
+                uploadError.startsWith('✅') 
+                  ? 'text-green-700' 
+                  : 'text-red-700'
+              }`}>
+                {uploadError}
+              </p>
                 </div>
-                <div className="flex items-center">
-                  <User className="w-4 h-4 mr-1" />
-                  <span>{Object.keys(analysisData.personnel).length} Personel</span>
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  <span>{availableDates.length} Günlük Plan</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       )}
+
+
 
       {/* Analiz Sonuçları */}
       {!initialDataLoading && analysisData && (
@@ -1778,10 +2421,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-800">Filtreleme Seçenekleri</h3>
-              </div>
-              
-              <button
+              <h3 className="text-lg font-semibold text-gray-800">Filtreleme Seçenekleri</h3>
+            </div>
+            
+                  <button
                 onClick={() => {
                   const newWeeklyView = !weeklyView;
                   setWeeklyView(newWeeklyView);
@@ -1795,12 +2438,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 }`}
               >
                 {weeklyView ? '📅 Haftalık Görünüm' : '📊 Günlük Görünüm'}
-              </button>
+                  </button>
             </div>
             
             {/* Filtreler */}
             <div className="space-y-3">
-              {/* Vardiya Filtresi - Sadece haftalık görünüm aktif değilken göster */}
+              {/* Vardiya Filtresi - Gece ve Gündüz */}
               {!weeklyView && (
                 <div className="flex items-center gap-4">
                   <label className="text-sm font-medium text-gray-700 min-w-[100px]">Vardiya Seçimi</label>
@@ -1810,7 +2453,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                       { key: 'day', label: '🌅 Gündüz', color: 'bg-yellow-500' },
                       { key: 'night', label: '🌙 Gece', color: 'bg-blue-500' }
                     ].map(({ key, label, color }) => (
-                      <button
+                  <button
                         key={key}
                         onClick={() => setShiftFilter(key)}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -1818,7 +2461,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         }`}
                       >
                         {label}
-                      </button>
+                  </button>
                     ))}
                   </div>
                 </div>
@@ -1836,7 +2479,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   // Haftalık Görünüm
                   <div className="space-y-2">
                     <div className="flex gap-2 mb-2">
-                      <button
+                  <button
                         onClick={() => {
                           const weeks = groupDatesByWeeks(availableDates);
                           setSelectedWeeks(weeks.map(w => w.id));
@@ -1845,7 +2488,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
                       >
                         Tüm Haftalar
-                      </button>
+                  </button>
                       <button
                         onClick={() => {
                           setSelectedWeeks([]);
@@ -1880,7 +2523,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                               <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-gray-900">{week.label}</span>
                                 <span className="text-xs text-gray-500">{week.dayCount} gün</span>
-                              </div>
+                </div>
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {week.dates
                                   .sort((a, b) => {
@@ -1919,59 +2562,59 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   </div>
                 ) : (
                   // Günlük Görünüm
-                  <div>
-                    <div className="flex gap-2 mb-2">
-                      <button
+              <div>
+                <div className="flex gap-2 mb-2">
+                  <button
                         onClick={() => setSelectedDates(availableDates.map(item => item.id))}
-                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                      >
-                        Tümünü Seç
-                      </button>
-                      <button
-                        onClick={() => setSelectedDates([])}
-                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                      >
-                        Tümünü Kaldır
-                      </button>
-                    </div>
+                    className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                  >
+                    Tümünü Seç
+                  </button>
+                  <button
+                    onClick={() => setSelectedDates([])}
+                    className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                  >
+                    Tümünü Kaldır
+                  </button>
+                </div>
                     <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {availableDates.map((dateItem) => (
+                    {availableDates.map((dateItem) => (
                           <div key={dateItem.id} className="relative">
-                            <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
                               selectedDates.includes(dateItem.id) ? 
                                 (dateItem.shift === 'GECE' ? 'border-blue-500 bg-blue-50' : 'border-orange-500 bg-orange-50') :
                                 (dateItem.shift === 'GECE' ? 'border-gray-200 bg-white hover:border-blue-300' : 'border-gray-200 bg-white hover:border-orange-300')
-                            }`}>
-                              <input
-                                type="checkbox"
+                        }`}>
+                          <input
+                            type="checkbox"
                                 checked={selectedDates.includes(dateItem.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
+                            onChange={(e) => {
+                              if (e.target.checked) {
                                     setSelectedDates([...selectedDates, dateItem.id]);
-                                  } else {
+                              } else {
                                     setSelectedDates(selectedDates.filter(d => d !== dateItem.id));
-                                  }
-                                }}
+                              }
+                            }}
                                 className={`w-5 h-5 rounded focus:ring-2 ${
                                   dateItem.shift === 'GECE' ? 'text-blue-600 focus:ring-blue-500' : 'text-orange-600 focus:ring-orange-500'
                                 }`}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium text-gray-900 truncate">{dateItem.date}</span>
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     dateItem.shift === 'GÜNDÜZ' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
                                   }`}>
                                     {dateItem.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
-                                  </span>
-                                </div>
-                              </div>
-                            </label>
+                              </span>
+                            </div>
                           </div>
-                        ))}
+                        </label>
                       </div>
-                    </div>
+                    ))}
+                  </div>
+                </div>
                   </div>
                 )}
               </div>
@@ -1982,7 +2625,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   <div className="flex items-center gap-2">
                     <span className="text-blue-600">📅</span>
                     <span className="text-gray-700">Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {availableDates.length} tarih</span>
-                  </div>
+                </div>
                   <div className="flex items-center gap-2">
                     <span className="text-purple-600">🔄</span>
                     <span className="text-gray-700">Vardiya: <span className="font-medium text-purple-600">{shiftFilter === 'all' ? 'Tümü' : shiftFilter === 'day' ? 'Gündüz' : 'Gece'}</span></span>
@@ -2101,8 +2744,130 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           </div>
         </>
       )}
+
+      {/* Kasa Sayısı Kontrol Modal */}
+      {showCashierModal && cashierCheckResults && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-4xl w-full m-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                Kasa Sayısı Kontrol Detayları
+              </h3>
+              <button
+                onClick={() => setShowCashierModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+
+            {/* Özet Bilgiler */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-2xl font-bold text-blue-600">{cashierCheckResults.summary.total_checked}</div>
+                <div className="text-sm text-blue-700">Toplam Kontrol Edilen</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-2xl font-bold text-green-600">{cashierCheckResults.summary.updates_needed}</div>
+                <div className="text-sm text-green-700">Güncelleme Gerekli</div>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                <div className="text-2xl font-bold text-red-600">{cashierCheckResults.summary.not_found}</div>
+                <div className="text-sm text-red-700">Bulunamadı</div>
+              </div>
+            </div>
+
+            {/* Güncelleme Gerekli Olanlar */}
+            {cashierUpdates.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  Güncelleme Gerekli ({cashierUpdates.length})
+                </h4>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {cashierUpdates.map((update, index) => (
+                    <div key={index} className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{update.employee_code}</div>
+                          <div className="text-sm text-gray-600">{update.date}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-red-600 mb-1">Mevcut:</div>
+                          <div className="text-xs text-red-700">
+                            Kasa: {update.old_data.job_count} | Palet: {update.old_data.pallet_count} | Kutu: {update.old_data.box_count}
+                          </div>
+                          <div className="text-sm text-green-600 mt-2 mb-1">Yeni:</div>
+                          <div className="text-xs text-green-700">
+                            Kasa: {update.new_data.job_count} | Palet: {update.new_data.pallet_count} | Kutu: {update.new_data.box_count}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bulunamayan Kayıtlar */}
+            {cashierCheckResults.mismatches && cashierCheckResults.mismatches.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                  Bulunamayan Kayıtlar ({cashierCheckResults.mismatches.length})
+                </h4>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {cashierCheckResults.mismatches.map((mismatch, index) => (
+                    <div key={index} className="p-4 bg-red-50 rounded-lg border border-red-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-red-900">{mismatch.employee_name}</div>
+                          <div className="text-sm text-red-600">{mismatch.date}</div>
+                        </div>
+                        <div className="text-sm text-red-700">
+                          {mismatch.reason}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCashierModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Kapat
+              </button>
+              {cashierUpdates.length > 0 && (
+                <button
+                  onClick={handleApplyCashierUpdates}
+                  disabled={cashierCheckLoading}
+                  className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium disabled:opacity-50"
+                >
+                  {cashierCheckLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Güncelleniyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Tüm Güncellemeleri Uygula</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default PerformanceAnalysis;
+export default PerformanceAnalysis; 

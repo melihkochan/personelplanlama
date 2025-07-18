@@ -195,7 +195,7 @@ const StoreList = ({ storeData: propStoreData }) => {
               <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
                 <Store className="w-6 h-6 text-white" />
               </div>
-              Mağaza Listesi
+              Anadolu Mağaza Listesi
             </h1>
             <p className="text-gray-600 mt-2">Sisteme kayıtlı {storeData.length} mağaza</p>
           </div>

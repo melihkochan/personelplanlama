@@ -375,12 +375,12 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
           </span>
         );
       default:
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300">
-            <Calendar className="w-4 h-4 mr-1" />
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300">
+          <Calendar className="w-4 h-4 mr-1" />
             Belirsiz
-          </span>
-        );
+        </span>
+      );
     }
   };
 
@@ -546,9 +546,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   };
 
   if (loading) {
-    return (
+  return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-center">
+      <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Veriler yükleniyor...</p>
         </div>
@@ -564,8 +564,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
-              </div>
+            <Users className="w-6 h-6 text-white" />
+          </div>
               Personel Listesi
             </h1>
             <p className="text-gray-600 mt-2">Sisteme kayıtlı {personnelData.length} personel</p>
@@ -612,7 +612,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
             )}
           </div>
         </div>
-
+        
         {/* Search and Filters */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
@@ -700,10 +700,10 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   İzinli
                 </span>
                 <span className="font-medium">{soforIzinli.length}</span>
-              </div>
-            </div>
           </div>
-          
+        </div>
+      </div>
+
           {/* Sevkiyat Elemanı İstatistikleri */}
           <div className="bg-green-50 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -738,8 +738,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 <span className="font-medium">{sevkiyatIzinli.length}</span>
               </div>
             </div>
-          </div>
-          
+        </div>
+        
           {/* Toplam Personel */}
           <div className="bg-purple-50 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -772,17 +772,17 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   İzinli
                 </span>
                 <span className="font-medium">{izinliPersonel.length}</span>
+                </div>
               </div>
             </div>
-          </div>
-          
+
           {/* Genel İstatistik */}
           <div className="bg-slate-50 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 bg-slate-500 rounded-xl flex items-center justify-center">
                 <BarChart3 className="w-6 h-6 text-white" />
-              </div>
-              <div>
+                          </div>
+                          <div>
                 <p className="text-2xl font-bold text-slate-900">%{Math.round((personnelData.length - izinliPersonel.length) / personnelData.length * 100) || 0}</p>
                 <p className="text-sm text-slate-600">Aktif Oran</p>
               </div>
@@ -801,9 +801,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 <span className="font-medium">{personnelData.length - izinliPersonel.length}/{izinliPersonel.length}</span>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+                            </div>
+                          </div>
+                        </div>
 
       {/* Excel Yükleme Mesajları */}
       {excelSuccess && (
@@ -856,9 +856,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               </svg>
             </div>
             <p className="text-red-800 font-semibold">{excelError}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* View Toggle */}
       <div className="flex items-center gap-4 mb-6">
@@ -960,13 +960,13 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
           ))}
         </div>
       )}
-
+        
       {/* Personnel Table */}
       {viewMode === 'table' && (
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
+            <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+                <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">#</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Sicil No</th>
@@ -974,9 +974,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Görev</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">Vardiya</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-900">İşlemler</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </tr>
+                </thead>
+                <tbody>
                 {filteredPersonel.map((person, index) => (
                   <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-6 text-gray-600">{index + 1}</td>
@@ -993,10 +993,10 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                     </td>
                     <td className="py-4 px-6">
                       {getPositionBadge(person.position)}
-                    </td>
+                      </td>
                     <td className="py-4 px-6">
                       {getVardiyaBadge(person.shift_type)}
-                    </td>
+                      </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         {(userRole === 'admin' || userRole === 'yönetici') && (
@@ -1016,21 +1016,21 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                           </>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
           </div>
         </div>
       )}
-
+              
       {filteredPersonel.length === 0 && (
-        <div className="text-center py-12">
+                <div className="text-center py-12">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">Personel bulunamadı</p>
-        </div>
-      )}
+                </div>
+              )}
 
       {/* Add Personnel Modal */}
       {showAddPersonnelModal && (
@@ -1119,9 +1119,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 </button>
               </div>
             </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Edit Personnel Modal */}
       {showEditPersonnelModal && (
@@ -1211,7 +1211,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               </div>
             </form>
           </div>
-        </div>
+      </div>
       )}
     </div>
   );

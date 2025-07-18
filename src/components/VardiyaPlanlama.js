@@ -1,6 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Play, Settings, Clock, Users, Car, CheckCircle, AlertCircle, Info, Database } from 'lucide-react';
+import { Calendar, Play, Settings, Clock, Users, Car, CheckCircle, AlertCircle, Info, Database, Construction, Wrench, Timer } from 'lucide-react';
 import { savePlan, getAllPersonnel, getAllVehicles, getAllStores } from '../services/supabase';
+
+const UnderConstructionBanner = () => (
+  <div className="mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-2xl p-6 shadow-lg">
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <Construction className="w-8 h-8 text-amber-600 animate-bounce" />
+        <Wrench className="w-6 h-6 text-amber-500" />
+      </div>
+      <div className="flex-1">
+        <h3 className="text-xl font-bold text-amber-800 mb-2 flex items-center gap-2">
+          <Timer className="w-5 h-5 animate-pulse" />
+          Yapım Aşamasında
+        </h3>
+        <p className="text-amber-700 mb-2 font-medium">
+          Vardiya planlama sistemi aktif olarak geliştirilmektedir. 
+        </p>
+        <div className="text-sm text-amber-600">
+          <p>• Otomatik vardiya atamaları</p>
+          <p>• Çalışan performans analizi</p>
+          <p>• Mağaza bazlı planlama</p>
+          <p>• Araç optimizasyonu</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="bg-amber-100 px-4 py-2 rounded-full">
+          <p className="text-amber-800 font-semibold text-sm">🚧 Geliştiriliyor</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVehicleData, storeData: propStoreData, onPlanGenerated }) => {
   const [personnelData, setPersonnelData] = useState(propPersonnelData || []);
@@ -131,12 +162,13 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
                   nightShifts: 0,
                   dayShifts: 0,
                   restingDays: 0,
-                  restingDates: []
+                restingDates: [],
+                workedDates: new Set() // Aynı tarihteki gece/gündüz vardiyalarını tekrar saymamak için
                 };
               }
             summary[driverName].vehicleTypes[vehicleType] = (summary[driverName].vehicleTypes[vehicleType] || 0) + 1;
             summary[driverName].difficulties[difficulty] = (summary[driverName].difficulties[difficulty] || 0) + 1;
-            summary[driverName].totalDays++;
+            summary[driverName].workedDates.add(date); // Tarihi set'e ekle
             summary[driverName].nightShifts++;
           }
           
@@ -157,12 +189,13 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
                     nightShifts: 0,
                     dayShifts: 0,
                     restingDays: 0,
-                    restingDates: []
+                    restingDates: [],
+                    workedDates: new Set() // Aynı tarihteki gece/gündüz vardiyalarını tekrar saymamak için
                   };
                 }
                 summary[personName].vehicleTypes[vehicleType] = (summary[personName].vehicleTypes[vehicleType] || 0) + 1;
                 summary[personName].difficulties[personDifficulty] = (summary[personName].difficulties[personDifficulty] || 0) + 1;
-                summary[personName].totalDays++;
+                summary[personName].workedDates.add(date); // Tarihi set'e ekle
                 summary[personName].nightShifts++;
               }
             });
@@ -190,13 +223,14 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
                   nightShifts: 0,
                   dayShifts: 0,
                   restingDays: 0,
-                  restingDates: []
+                  restingDates: [],
+                  workedDates: new Set() // Aynı tarihteki gece/gündüz vardiyalarını tekrar saymamak için
                 };
               }
               // Gündüz vardiyası için sabit bilgiler
               summary[personName].vehicleTypes['Gündüz-Karşı'] = (summary[personName].vehicleTypes['Gündüz-Karşı'] || 0) + 1;
               summary[personName].difficulties['orta'] = (summary[personName].difficulties['orta'] || 0) + 1;
-              summary[personName].totalDays++;
+              summary[personName].workedDates.add(date); // Tarihi set'e ekle
               summary[personName].dayShifts++;
             }
           });
@@ -219,13 +253,14 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
                   nightShifts: 0,
                   dayShifts: 0,
                   restingDays: 0,
-                  restingDates: []
+                  restingDates: [],
+                  workedDates: new Set() // Aynı tarihteki gece/gündüz vardiyalarını tekrar saymamak için
                 };
               }
               // Gündüz vardiyası için sabit bilgiler
               summary[personName].vehicleTypes['Gündüz-Anadolu'] = (summary[personName].vehicleTypes['Gündüz-Anadolu'] || 0) + 1;
               summary[personName].difficulties['orta'] = (summary[personName].difficulties['orta'] || 0) + 1;
-              summary[personName].totalDays++;
+              summary[personName].workedDates.add(date); // Tarihi set'e ekle
               summary[personName].dayShifts++;
             }
           });
@@ -244,6 +279,13 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
         });
       });
     }
+    
+    // totalDays'i workedDates set'inin boyutundan hesapla (aynı tarihteki gece/gündüz vardiyaları 1 gün olarak sayılır)
+    Object.keys(summary).forEach(personName => {
+      summary[personName].totalDays = summary[personName].workedDates.size;
+      // Set'i array'e çevir (JSON serialization için)
+      summary[personName].workedDates = Array.from(summary[personName].workedDates);
+    });
     
     console.log('📊 Personel özet raporu oluşturuldu:', summary);
     return summary;
@@ -596,6 +638,21 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
     const allRegions = getAllRegions();
     const REGION_VEHICLE_MAPPING = generateRegionVehicleMapping(allRegions);
 
+    // HAFTALİK VARDİYA SİSTEMİ - DOĞRU DÖNGÜ: 
+    // 🗓️ Pazar gece başlayıp Cumartesi gündüz bitmeli (6 gün çalışma)
+    // 📅 06.07.2025 (Pazar gece) → 12.07.2025 (Cumartesi gündüz)
+    // 🕒 6 gün çalışma: Pazar, Pazartesi, Salı, Çarşamba, Perşembe, Cuma, Cumartesi gündüz
+    // 🛌 1 gün dinlenme: Cumartesi gece dinlenir, yeni hafta Pazar gece başlar
+    // 
+    // Gün Dizini:
+    // 0 = Pazar (gece başlangıç)
+    // 1 = Pazartesi
+    // 2 = Salı
+    // 3 = Çarşamba
+    // 4 = Perşembe
+    // 5 = Cuma
+    // 6 = Cumartesi (sadece gündüz, gece dinlenme)
+
     // BÖLGE FREKANS SİSTEMİ - Bazı bölgeler her gün, bazıları haftada 1-2 kez
     const REGION_FREQUENCY = {
       'Balıkesir-Avşa': 2,    // Haftada 2 kez
@@ -604,36 +661,68 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
       'Bolu': 3,              // Haftada 3 kez
       'Ankara': 3,            // Haftada 3 kez
       'Adapazarı': 4,         // Haftada 4 kez
-      'Sakarya': 4,           // Her gün
-      'Kocaeli': 7,           // Her gün
-      'Gebze': 7,             // Her gün
-      'Kadıköy': 7,           // Her gün
-      'Şile': 2,              // Haftada 5 kez
-      'Ataşehir': 7,          // Her gün
-      'Ümraniye': 7,          // Her gün
-      'Üsküdar': 7,           // Her gün
-      'Maltepe': 7,           // Her gün
-      'Kartal': 7,            // Her gün
-      'Pendik': 7,            // Her gün
+      'Sakarya': 4,           // Haftada 4 kez
+      'Kocaeli': 7,           // Her gün (6 gün çalışma)
+      'Gebze': 7,             // Her gün (6 gün çalışma)
+      'Kadıköy': 7,           // Her gün (6 gün çalışma)
+      'Şile': 2,              // Haftada 2 kez
+      'Ataşehir': 7,          // Her gün (6 gün çalışma)
+      'Ümraniye': 7,          // Her gün (6 gün çalışma)
+      'Üsküdar': 7,           // Her gün (6 gün çalışma)
+      'Maltepe': 7,           // Her gün (6 gün çalışma)
+      'Kartal': 7,            // Her gün (6 gün çalışma)
+      'Pendik': 7,            // Her gün (6 gün çalışma)
       'Beykoz': 5,            // Haftada 5 kez
       'Çekmeköy': 4,          // Haftada 4 kez
       'Sultanbeyli': 4,       // Haftada 4 kez
       'Sancaktepe': 4,        // Haftada 4 kez
-      'Gündüz': 7             // Her gün
+      'Gündüz': 7             // Her gün (6 gün çalışma)
     };
 
-    // Bölge frekansını kontrol et
-    const shouldRegionWorkToday = (region, dayOfWeek) => {
+    // Bölge frekansını kontrol et - YENİ HAFTALİK SİSTEM: Pazar gece başlangıç, Cumartesi gündüz son, 6 gün çalışma
+    const shouldRegionWorkToday = (region, dayOfWeek, isNightShift = false) => {
       const regionKey = region.split('/')[0].trim(); // İlk kısmı al
       const frequency = REGION_FREQUENCY[regionKey] || REGION_FREQUENCY[region] || 7;
       
       // Haftada frequency kadar çalışacak
-      if (frequency >= 7) return true; // Her gün
+      if (frequency >= 7) {
+        // 6 gün çalışma sistemi: Pazar gece başlangıç → Cumartesi gündüz son
+        // Çalışma günleri: Pazar(0), Pazartesi(1), Salı(2), Çarşamba(3), Perşembe(4), Cuma(5)
+        // Cumartesi(6): Sadece gündüz çalışır (haftanın son vardiyası)
+        
+        if (dayOfWeek === 6) {
+          // Cumartesi: Sadece gündüz çalışır, gece vardiyası YOK (bir sonraki hafta başlar)
+          return !isNightShift; // Gündüz = true, Gece = false
+        } else if (dayOfWeek >= 0 && dayOfWeek <= 5) {
+          // Pazar-Cuma: Hem gece hem gündüz çalışır
+          return true;
+        } else {
+          return false;
+        }
+      }
       
-      // Haftanın hangi günlerinde çalışacak
+      // Haftanın hangi günlerinde çalışacak (Pazar=0 başlangıç, Cuma=5 bitiş sistemi)
       const workDays = [];
-      for (let i = 0; i < frequency; i++) {
-        workDays.push(i % 7);
+      
+      // Frequency'e göre hangi günlerde çalışacağını belirle
+      if (frequency === 6) {
+        // 6 gün çalışma: Pazar-Cuma arası
+        workDays.push(0, 1, 2, 3, 4, 5); // Pazar, Pazartesi, Salı, Çarşamba, Perşembe, Cuma
+      } else if (frequency === 5) {
+        // 5 gün çalışma: Pazartesi-Cuma arası
+        workDays.push(1, 2, 3, 4, 5); // Pazartesi, Salı, Çarşamba, Perşembe, Cuma
+      } else if (frequency === 4) {
+        // 4 gün çalışma: Pazartesi, Salı, Çarşamba, Perşembe
+        workDays.push(1, 2, 3, 4); // Pazartesi, Salı, Çarşamba, Perşembe
+      } else if (frequency === 3) {
+        // 3 gün çalışma: Pazartesi, Çarşamba, Cuma
+        workDays.push(1, 3, 5); // Pazartesi, Çarşamba, Cuma
+      } else if (frequency === 2) {
+        // 2 gün çalışma: Salı, Perşembe
+        workDays.push(2, 4); // Salı, Perşembe
+      } else if (frequency === 1) {
+        // 1 gün çalışma: Çarşamba
+        workDays.push(3); // Çarşamba
       }
       
       return workDays.includes(dayOfWeek);
@@ -683,22 +772,28 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
     const personnelRegionHistory = {}; // personel adı -> [gittigi bölgeler]
     
     // Personel için bir sonraki bölgeyi belirle - PERFORMANS ANALİZİ VERİLERİ + FREKANS SİSTEMİ
-    const getNextRegionForPersonnel = (personnelName, allRegions, day = 0) => {
+    const getNextRegionForPersonnel = (personnelName, allRegions, currentDate = null, isNightShift = false) => {
       if (!personnelRegionHistory[personnelName]) {
         personnelRegionHistory[personnelName] = [];
       }
       
       const currentPlanHistory = personnelRegionHistory[personnelName];
       
-      // Bugün hangi gün (0=Pazartesi, 6=Pazar)
-      const dayOfWeek = day % 7;
+      // Gerçek tarih kullanarak hafta günü hesapla
+      let dayOfWeek = 0;
+      if (currentDate) {
+        const dateObj = new Date(currentDate);
+        dayOfWeek = dateObj.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+      }
       
       // SADECE BUGÜN ÇALIŞACAK BÖLGELERİ FİLTRELE
       const todaysAvailableRegions = allRegions.filter(region => 
-        shouldRegionWorkToday(region, dayOfWeek)
+        shouldRegionWorkToday(region, dayOfWeek, isNightShift)
       );
       
-      console.log(`📅 Gün ${day + 1} (${['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'][dayOfWeek]})`);
+      const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+      const shiftName = isNightShift ? 'Gece' : 'Gündüz';
+      console.log(`📅 ${currentDate || 'Tarih yok'} (${dayNames[dayOfWeek]}) - ${shiftName} Vardiyası`);
       console.log(`🗺️ Bugün çalışacak bölgeler:`, todaysAvailableRegions);
       
       if (todaysAvailableRegions.length === 0) {
@@ -1279,7 +1374,7 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
                     const shippingName = normalizeName(s);
                     
                     // Bu sevkiyat elemanı için bir sonraki bölgeyi belirle
-                    const nextRegion = getNextRegionForPersonnel(shippingName, allRegions);
+                    const nextRegion = getNextRegionForPersonnel(shippingName, allRegions, dateStr, true);
                     
                     // Bu bölge için uygun araç tipini al
                     const preferredVehicleTypes = REGION_VEHICLE_MAPPING[nextRegion] || ['Kamyon'];
@@ -1503,6 +1598,16 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
         date.setDate(date.getDate() + day);
         const dateStr = date.toISOString().split('T')[0];
         
+        // HAFTALIK SİSTEM KONTROLÜ: Cumartesi gündüz vardiyası kontrol et
+        const dayOfWeek = date.getDay(); // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+        
+        // Cumartesi (6) sadece gündüz çalışır ama gece çalışmaz
+        // Eğer cumartesi gündüz vardiyası planlanacaksa, bölge çalışma kontrol et
+        if (dayOfWeek === 6) {
+          // Cumartesi gündüz: Sadece yüksek frekanslı bölgeler çalışabilir
+          console.log(`📅 ${dateStr} Cumartesi - Gündüz vardiyası (haftanın son günü)`);
+        }
+        
         // Gündüz vardiyası planını dayShift'e yaz
         if (!plan[dateStr]) {
           plan[dateStr] = { nightShift: {}, dayShift: null };
@@ -1616,8 +1721,8 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
   };
 
   if (loading) {
-    return (
-      <div className="max-w-6xl mx-auto space-y-8">
+  return (
+    <div className="max-w-6xl mx-auto space-y-8">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-pink-500 to-orange-600 rounded-full mb-6 animate-pulse">
             <Database className="w-8 h-8 text-white animate-spin" />
@@ -1635,6 +1740,9 @@ const VardiyaPlanlama = ({ personnelData: propPersonnelData, vehicleData: propVe
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {/* Under Construction Banner */}
+      <UnderConstructionBanner />
+      
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-pink-500 to-orange-600 rounded-full mb-6 animate-pulse-slow">

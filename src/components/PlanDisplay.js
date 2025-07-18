@@ -1,5 +1,36 @@
 import React, { useState } from 'react';
-import { Calendar, Download, Filter, Eye, Sun, Moon, Users, Car, MapPin, Clock, ChevronDown, ChevronUp, Table, Grid, AlertTriangle, X, Brain, Coffee, FileText, FileSpreadsheet } from 'lucide-react';
+import { Calendar, Download, Filter, Eye, Sun, Moon, Users, Car, MapPin, Clock, ChevronDown, ChevronUp, Table, Grid, AlertTriangle, X, Brain, Coffee, FileText, FileSpreadsheet, Settings, Monitor, Sparkles } from 'lucide-react';
+
+const UnderConstructionBanner = () => (
+  <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg">
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <Monitor className="w-8 h-8 text-blue-600 animate-pulse" />
+        <Settings className="w-6 h-6 text-blue-500 animate-spin" />
+      </div>
+      <div className="flex-1">
+        <h3 className="text-xl font-bold text-blue-800 mb-2 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 animate-bounce" />
+          Görüntüleme Sistemi Geliştiriliyor
+        </h3>
+        <p className="text-blue-700 mb-2 font-medium">
+          Plan görüntüleme ve analiz özellikleri aktif olarak geliştirilmektedir.
+        </p>
+        <div className="text-sm text-blue-600">
+          <p>• Gelişmiş filtreleme ve arama</p>
+          <p>• Interaktif takvim görünümü</p>
+          <p>• Detaylı raporlama</p>
+          <p>• Export ve paylaşım özellikleri</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="bg-blue-100 px-4 py-2 rounded-full">
+          <p className="text-blue-800 font-semibold text-sm">💻 Optimize Ediliyor</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const PlanDisplay = ({ plan }) => {
   const [selectedShift, setSelectedShift] = useState('all');
@@ -13,6 +44,9 @@ const PlanDisplay = ({ plan }) => {
   if (!plan) {
     return (
       <div className="max-w-4xl mx-auto">
+        {/* Under Construction Banner */}
+        <UnderConstructionBanner />
+        
         <div className="text-center py-16">
           <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-600 mb-2">Henüz plan oluşturulmadı</h3>
@@ -870,6 +904,9 @@ const PlanDisplay = ({ plan }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Under Construction Banner */}
+      <UnderConstructionBanner />
+      
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>

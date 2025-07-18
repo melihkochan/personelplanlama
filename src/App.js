@@ -407,7 +407,7 @@ function MainApp() {
               </div>
                 </div>
           )}
-          
+
           {/* Medium Screen Navigation */}
           <div className="hidden md:block lg:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-sm relative">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -693,8 +693,8 @@ function MainApp() {
               />
               </div>
             </div>
-          )}
-
+            )}
+            
           {/* Plan Görüntüle */}
           {activeTab === 'display' && (
             <div className="space-y-6">
@@ -705,11 +705,11 @@ function MainApp() {
                   personnelData={personnelData}
                   vehicleData={vehicleData}
                   storeData={storeData}
-                />
+              />
               </div>
             </div>
-          )}
-
+            )}
+            
           {/* Performans Analizi */}
           {activeTab === 'performance' && (
             <PerformanceAnalysis 
@@ -718,14 +718,15 @@ function MainApp() {
               vehicleData={vehicleData}
               storeData={storeData}
               onNavigateToHome={() => handleTabChange('home')}
+              userRole={userRole}
             />
-          )}
+            )}
 
           {/* Admin Panel */}
           {activeTab === 'admin' && (userRole === 'admin' || userRole === 'yönetici') && (
             <div className="space-y-6">
-              <AdminPanel />
-            </div>
+              <AdminPanel userRole={userRole} />
+          </div>
           )}
         </main>
 

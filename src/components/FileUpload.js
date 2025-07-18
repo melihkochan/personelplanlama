@@ -33,7 +33,7 @@ const FileUpload = ({ onDataUpload }) => {
           
           console.log('📊 Excel dosyası bilgileri:');
           console.log('Sheet isimleri:', workbook.SheetNames);
-          
+
           const sheetName = workbook.SheetNames[0];
           console.log('Kullanılan sheet:', sheetName);
           
@@ -114,7 +114,7 @@ const FileUpload = ({ onDataUpload }) => {
 
   const processVehicleData = (data) => {
     const vehicles = [];
-    
+
     // Excel başlıklarını kontrol et
     if (data.length > 0) {
       console.log('🚗 Araç verileri - Excel başlıkları:', Object.keys(data[0]));
@@ -133,7 +133,7 @@ const FileUpload = ({ onDataUpload }) => {
         return null;
       };
       
-      const vehicle = {
+          const vehicle = {
         license_plate: findColumn(['I', 'Plaka', 'PLAKA', 'License Plate', 'Plaka No', 'PLAKA_NO']),
         vehicle_type: findColumn(['L', 'Araç Tipi', 'ARAC_TIPI', 'AracTipi', 'Vehicle Type', 'Tip', 'TIP', 'Araç Türü']),
         first_driver: findColumn(['J', '1. Şoför', 'SOFOR1', 'Şoför1', 'First Driver', 'Birinci Şoför', 'BIRINCI_SOFOR']),
@@ -145,16 +145,16 @@ const FileUpload = ({ onDataUpload }) => {
       }
       
       if (vehicle.license_plate) {
-        vehicles.push(vehicle);
-      }
-    });
-    
+          vehicles.push(vehicle);
+        }
+      });
+
     console.log(`✅ Toplam ${vehicles.length} araç bulundu`);
     return vehicles;
   };
 
   const processStoreData = (data) => {
-    const stores = [];
+      const stores = [];
     
     // Excel başlıklarını kontrol et
     if (data.length > 0) {
@@ -169,8 +169,8 @@ const FileUpload = ({ onDataUpload }) => {
         for (let name of possibleNames) {
           if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
             return row[name];
-          }
         }
+      }
         return null;
       };
       
@@ -193,7 +193,7 @@ const FileUpload = ({ onDataUpload }) => {
       
       if (store.store_code && store.store_name) {
         stores.push(store);
-      }
+          }
     });
     
     console.log(`✅ Toplam ${stores.length} mağaza bulundu`);
@@ -236,15 +236,15 @@ const FileUpload = ({ onDataUpload }) => {
           if (result.success) {
             results.vehicles.success++;
             console.log(`✅ Araç eklendi/güncellendi: ${vehicle.license_plate}`);
-          } else {
+                  } else {
             results.vehicles.error++;
             console.log(`❌ Araç hatası: ${vehicle.license_plate} - ${result.error}`);
-          }
-        } catch (error) {
+                  }
+                } catch (error) {
           results.vehicles.error++;
           console.log(`❌ Araç hatası: ${vehicle.license_plate} - ${error.message}`);
-        }
-      }
+                }
+              }
     }
 
     // Save stores only if exists
@@ -288,7 +288,7 @@ const FileUpload = ({ onDataUpload }) => {
     if (personnel.length > 0) {
       console.log('🔍 Mevcut personel verisi:', currentPersonnel.success ? currentPersonnel.data : 'Veri yok');
       console.log('🔍 Excel personel verisi:', personnel);
-      
+        
       // Mevcut personel kodları - null ve undefined değerleri filtrele
       const existingPersonnelCodes = new Set(
         currentPersonnel.success ? 
@@ -344,9 +344,9 @@ const FileUpload = ({ onDataUpload }) => {
       vehicles.forEach(vehicle => {
         if (existingVehiclePlates.has(vehicle.license_plate)) {
           conflicts.vehicles.existing.push(vehicle);
-        } else {
+                  } else {
           conflicts.vehicles.new.push(vehicle);
-        }
+                  }
       });
     }
 
@@ -361,9 +361,9 @@ const FileUpload = ({ onDataUpload }) => {
           conflicts.stores.existing.push(store);
         } else {
           conflicts.stores.new.push(store);
-        }
-      });
-    }
+          }
+        });
+      }
 
     return conflicts;
   };
@@ -406,7 +406,7 @@ const FileUpload = ({ onDataUpload }) => {
       setPreviewData({ personnel, vehicles, stores });
       setConflicts(conflicts);
       setShowConfirmation(true);
-
+      
     } catch (error) {
       console.error('❌ Analysis error:', error);
       setError('Dosya analizi sırasında hata oluştu: ' + error.message);
@@ -478,7 +478,7 @@ const FileUpload = ({ onDataUpload }) => {
   };
 
   return (
-    <div className="space-y-6">
+        <div className="space-y-6">
       {/* Upload Area */}
       <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${
         analyzing 
@@ -574,8 +574,8 @@ const FileUpload = ({ onDataUpload }) => {
             <div className="flex items-center justify-center gap-2">
               <Eye className="w-5 h-5" />
               <span>Dosyayı Analiz Et</span>
-            </div>
-          )}
+          </div>
+        )}
         </button>
       )}
 
@@ -610,7 +610,7 @@ const FileUpload = ({ onDataUpload }) => {
           <div className="flex items-center gap-3 mb-4">
             <Check className="w-5 h-5 text-green-500" />
             <h4 className="font-medium text-green-900">Yükleme Başarılı!</h4>
-          </div>
+            </div>
           
           <div className="mb-4">
             <p className="text-green-800 font-medium">
@@ -678,7 +678,7 @@ const FileUpload = ({ onDataUpload }) => {
                           <span className="text-red-600 ml-1">({results.database.vehicles.error} hata)</span>
                         )}
                       </span>
-                    </div>
+                </div>
                   )}
                   {results.stores > 0 && (
                     <div className="flex justify-between">
@@ -689,7 +689,7 @@ const FileUpload = ({ onDataUpload }) => {
                           <span className="text-red-600 ml-1">({results.database.stores.error} hata)</span>
                         )}
                       </span>
-                    </div>
+              </div>
                   )}
                 </div>
               </div>
@@ -704,13 +704,13 @@ const FileUpload = ({ onDataUpload }) => {
           <div className="bg-white rounded-2xl p-6 max-w-4xl w-full m-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-gray-900">Excel Dosyası Analiz Sonucu</h3>
-              <button
+            <button
                 onClick={() => setShowConfirmation(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
             {/* Data Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -771,9 +771,9 @@ const FileUpload = ({ onDataUpload }) => {
                       <span className="font-medium text-amber-600">{conflicts.stores.existing.length}</span>
                     </div>
                   </div>
-                </div>
+              </div>
               )}
-            </div>
+              </div>
 
             {/* Conflict Warnings */}
             {(conflicts.personnel.existing.length > 0 || conflicts.vehicles.existing.length > 0 || conflicts.stores.existing.length > 0) && (
@@ -781,7 +781,7 @@ const FileUpload = ({ onDataUpload }) => {
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-5 h-5 text-amber-600" />
                   <h4 className="font-semibold text-amber-900">Çakışma Tespit Edildi</h4>
-                </div>
+              </div>
                 <p className="text-sm text-amber-800">
                   Excel dosyasında bulunan bazı kayıtlar veritabanında zaten mevcut. 
                   Aşağıdaki seçeneklerden birini seçerek devam edebilirsiniz.
@@ -854,10 +854,10 @@ const FileUpload = ({ onDataUpload }) => {
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                   <span className="text-blue-800">Veriler işleniyor, lütfen bekleyin...</span>
                 </div>
-              </div>
-            )}
-          </div>
         </div>
+      )}
+        </div>
+      </div>
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star } from 'lucide-react';
+import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle } from 'lucide-react';
 import { getAllUsers, addUser, updateUser, deleteUser, resendConfirmationEmail } from '../services/supabase';
+import * as XLSX from 'xlsx';
 
-const AdminPanel = () => {
+const AdminPanel = ({ userRole }) => {
   const [activeSection, setActiveSection] = useState('users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,6 +17,8 @@ const AdminPanel = () => {
     role: 'kullanıcı',
     is_active: true
   });
+  
+
 
   // Verileri yükle
   useEffect(() => {
@@ -161,6 +164,8 @@ const AdminPanel = () => {
       }
     }
   };
+
+  
 
   const MenuButton = ({ id, icon: Icon, label, active, onClick }) => (
     <button
@@ -331,6 +336,26 @@ const AdminPanel = () => {
             <span className="text-sm font-medium text-purple-700">Son Yedekleme</span>
             <span className="text-sm text-purple-600">Bugün</span>
           </div>
+        </div>
+      </div>
+
+      {/* Kasa Sayısı Kontrol Artık Performans Analizi'nde */}
+      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <CheckCircle className="w-5 h-5 text-blue-600" />
+          Kasa Sayısı Kontrol
+        </h3>
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+          <div className="flex items-center gap-3 mb-3">
+            <AlertTriangle className="w-5 h-5 text-blue-600" />
+            <h4 className="font-medium text-blue-800">Performans Analizi'ne Taşındı</h4>
+          </div>
+          <p className="text-sm text-blue-700 mb-4">
+            Kasa sayısı kontrol ve güncelleme özelliği artık <strong>Performans Analizi</strong> sayfasında bulunmaktadır.
+          </p>
+          <p className="text-xs text-blue-600">
+            👆 Üst menüden <strong>"Performans Analizi"</strong> sekmesine gidin ve <strong>"Verileri Güncelle"</strong> butonunu kullanın.
+          </p>
         </div>
       </div>
     </div>
@@ -671,6 +696,8 @@ const AdminPanel = () => {
           </div>
         </div>
       )}
+
+
     </div>
   );
 };

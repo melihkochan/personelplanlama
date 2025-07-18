@@ -216,15 +216,32 @@ function MainApp() {
   };
 
   const handleLogout = async () => {
-    const result = await signOut();
-    if (result.success) {
-      // localStorage'ı temizle ve home'a dön
-      localStorage.removeItem('activeTab');
-      setActiveTab('home');
-      setPersonnelData([]);
-      setVehicleData([]);
-      setStoreData([]);
-      setGeneratedPlan(null);
+    console.log('🚪 Logout işlemi başlatılıyor...');
+    
+    try {
+      const result = await signOut();
+      console.log('🔍 SignOut sonucu:', result);
+      
+      if (result.success) {
+        console.log('✅ Logout başarılı, localStorage temizleniyor...');
+        // localStorage'ı temizle ve home'a dön
+        localStorage.removeItem('activeTab');
+        setActiveTab('home');
+        setPersonnelData([]);
+        setVehicleData([]);
+        setStoreData([]);
+        setGeneratedPlan(null);
+        
+        // Manuel olarak sayfayı yenile (Vercel için)
+        console.log('🔄 Sayfa yenileniyor...');
+        window.location.reload();
+      } else {
+        console.error('❌ Logout başarısız:', result.error);
+        alert('Çıkış yapılırken bir hata oluştu: ' + result.error);
+      }
+    } catch (error) {
+      console.error('❌ Logout genel hatası:', error);
+      alert('Çıkış yapılırken beklenmeyen bir hata oluştu');
     }
   };
 

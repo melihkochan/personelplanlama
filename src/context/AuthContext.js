@@ -84,13 +84,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
+    console.log('🔐 AuthContext signOut çağrıldı');
+    
     try {
+      console.log('📡 Supabase auth.signOut() çağrılıyor...');
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('❌ Supabase signOut hatası:', error);
+        throw error;
+      }
+      
+      console.log('✅ Supabase signOut başarılı, user state temizleniyor');
       setUser(null);
+      
       return { success: true };
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ AuthContext signOut error:', error);
       return { success: false, error: error.message };
     }
   };

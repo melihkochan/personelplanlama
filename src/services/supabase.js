@@ -585,26 +585,23 @@ export const getPerformanceByEmployee = async (employeeCode, dateRange = null) =
   }
 };
 
-export const bulkSavePerformanceData = async (performanceDataArray) => {
+export const bulkSavePerformanceData = async (performanceDataArray, sheetNames = []) => {
   try {
-    // bulkSavePerformanceData başladı
-    console.log('🔄 Gönderilen veri sayısı:', performanceDataArray.length);
-    console.log('🔄 İlk veri örneği:', performanceDataArray[0]);
+    if (!performanceDataArray || performanceDataArray.length === 0) {
+      return { success: false, error: 'Veri bulunamadı' };
+    }
     
-    // İlk önce mevcut verileri sil (aynı sheet_name'e sahip kayıtları)
-    const sheetNames = [...new Set(performanceDataArray.map(item => item.sheet_name))];
-    console.log('🔄 Silinecek sheet_name\'ler:', sheetNames);
-    
-    // Mevcut verileri sheet_name bazında sil
-    const { error: deleteError } = await supabase
-      .from('performance_data')
-      .delete()
-      .in('sheet_name', sheetNames);
-    
-    if (deleteError) {
-      console.warn('⚠️ Mevcut veriler silinirken hata (normal olabilir):', deleteError.message);
-    } else {
-      console.log('✅ Mevcut veriler temizlendi');
+    // Mevcut verileri temizle
+    if (sheetNames && sheetNames.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('performance_data')
+        .delete()
+        .in('sheet_name', sheetNames);
+      
+      if (deleteError) {
+        console.error('❌ Mevcut veri temizleme hatası:', deleteError);
+        return { success: false, error: deleteError.message };
+      }
     }
     
     // Yeni verileri ekle
@@ -613,18 +610,14 @@ export const bulkSavePerformanceData = async (performanceDataArray) => {
       .insert(performanceDataArray)
       .select();
     
-    console.log('🔄 Supabase insert sonucu - data:', data);
-    console.log('🔄 Supabase insert sonucu - error:', error);
+    if (error) {
+      console.error('❌ Bulk performance data save error:', error);
+      return { success: false, error: error.message };
+    }
     
-    if (error) throw error;
-    
-    console.log('✅ SUPABASE bulkSavePerformanceData BAŞARILI');
     return { success: true, data };
   } catch (error) {
-    console.error('❌ SUPABASE bulkSavePerformanceData HATASI:', error);
-    console.error('❌ Hata mesajı:', error.message);
-    console.error('❌ Hata detayı:', error.details);
-    console.error('❌ Hata kodu:', error.code);
+    console.error('❌ bulkSavePerformanceData catch error:', error);
     return { success: false, error: error.message };
   }
 };
@@ -647,73 +640,58 @@ export const deletePerformanceData = async (id) => {
 // Tüm performans verilerini sil (Admin Panel için)
 export const deleteAllPerformanceData = async () => {
   try {
-    console.log('🗑️ Tüm performans verileri siliniyor...');
-    
-    // İlk olarak kaç kayıt var onu sayalım
+    // Önce toplam kayıt sayısını al
     const { count: totalCount, error: countError } = await supabase
       .from('performance_data')
-      .select('id', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true });
     
     if (countError) {
-      console.error('❌ Kayıt sayma hatası:', countError);
-      throw countError;
+      console.error('❌ Kayıt sayısı alma hatası:', countError);
+      return { success: false, error: countError.message };
     }
     
-    console.log(`📊 Toplam ${totalCount} performans verisi bulundu`);
-    
     if (totalCount === 0) {
-      return { success: true, message: 'Zaten hiç performans verisi yok', deleted_count: 0 };
+      return { success: true, message: 'Silinecek veri bulunamadı' };
     }
     
     // Tüm verileri sil
     const { error } = await supabase
       .from('performance_data')
       .delete()
-      .neq('id', 0); // Tüm kayıtları sil (id != 0 koşulu hepsini kapsar)
+      .neq('id', 0); // Tüm kayıtları sil (id != 0 koşulu ile)
     
     if (error) {
-      console.error('❌ Silme hatası:', error);
-      throw error;
+      console.error('❌ Veri silme hatası:', error);
+      return { success: false, error: error.message };
     }
-    
-    console.log(`✅ ${totalCount} performans verisi başarıyla silindi`);
     
     return { 
       success: true, 
-      message: `Tüm performans verileri başarıyla silindi (${totalCount} kayıt)`,
-      deleted_count: totalCount
+      message: `${totalCount} performans verisi başarıyla silindi`
     };
   } catch (error) {
-    console.error('❌ Tüm performans verilerini silme hatası:', error);
-    return { 
-      success: false, 
-      error: error.message,
-      details: error.details || null
-    };
+    console.error('❌ deleteAllPerformanceData hatası:', error);
+    return { success: false, error: error.message };
   }
 };
 
 // Performans analizi verilerini kaydet
-export const savePerformanceAnalysis = async (analysisData, dateRange) => {
+export const savePerformanceAnalysis = async (analysisData) => {
   try {
-    console.log('💾 Performans analizi kaydediliyor...');
-    
-    const analysisRecord = {
-      analysis_name: `Performans Analizi ${dateRange}`,
-      date_range: dateRange,
-      analysis_data: analysisData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
     const { data, error } = await supabase
-      .from('performance_analysis')
-      .insert([analysisRecord])
+      .from('performance_logs')
+      .insert([{
+        analysis_date: new Date().toISOString(),
+        total_employees: analysisData.totalEmployees,
+        total_trips: analysisData.totalTrips,
+        total_pallets: analysisData.totalPallets,
+        total_boxes: analysisData.totalBoxes,
+        analysis_details: analysisData
+      }])
       .select();
     
     if (error) throw error;
     
-    console.log('✅ Performans analizi kaydedildi:', data);
     return { success: true, data: data[0] };
   } catch (error) {
     console.error('❌ Performans analizi kaydetme hatası:', error);
@@ -844,37 +822,24 @@ export const removeLeaveRequest = async (date, employeeCode) => {
 
 export const bulkSaveLeaveData = async (leaveDataArray) => {
   try {
-    console.log('🔄 BULK İZİN KAYDI BAŞLADI');
-    console.log('🔄 Gönderilen izin sayısı:', leaveDataArray.length);
+    if (!leaveDataArray || leaveDataArray.length === 0) {
+      return { success: false, error: 'İzin verisi bulunamadı' };
+    }
     
-    const performanceRecords = leaveDataArray.map(leave => ({
-      date: leave.date,
-      employee_code: leave.employee_code,
-      shift_type: 'izin',
-      location: 'İzin',
-      job_count: 0,
-      pallet_count: 0,
-      box_count: 0,
-      avg_pallet: 0,
-      avg_box: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }));
-    
+    // Bulk insert
     const { data, error } = await supabase
-      .from('performance_data')
-      .upsert(performanceRecords, { 
-        onConflict: 'date,employee_code',
-        ignoreDuplicates: false 
-      })
+      .from('leave_requests')
+      .insert(leaveDataArray)
       .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Bulk leave data save error:', error);
+      return { success: false, error: error.message };
+    }
     
-    console.log('✅ BULK İZİN KAYDI BAŞARILI');
     return { success: true, data };
   } catch (error) {
-    console.error('❌ BULK İZİN KAYDI HATASI:', error);
+    console.error('❌ bulkSaveLeaveData catch error:', error);
     return { success: false, error: error.message };
   }
 }; 
@@ -882,11 +847,7 @@ export const bulkSaveLeaveData = async (leaveDataArray) => {
 // Kasa Sayısı Kontrol ve Güncelleme fonksiyonları
 export const verifyAndUpdateCashierCounts = async (excelData) => {
   try {
-    console.log('🔄 KASA SAYISI KONTROL VE GÜNCELLEME BAŞLADI');
-    console.log('🔄 Excel verileri:', excelData.length);
-    
     if (!excelData || !Array.isArray(excelData) || excelData.length === 0) {
-      console.log('❌ Geçersiz Excel verisi');
       return { success: false, error: 'Geçersiz Excel verisi' };
     }
     
@@ -899,11 +860,8 @@ export const verifyAndUpdateCashierCounts = async (excelData) => {
         
         // Gerekli alanları kontrol et
         if (!employee_name || !date) {
-          console.log('❌ Eksik veri:', excelRow);
           continue;
         }
-        
-        console.log('🔍 Kontrol edilen:', { employee_name, date, job_count, pallet_count, box_count, location });
         
         // Mevcut veriyi bul - akıllı isim eşleştirme ile
         const existingRecord = await findExistingRecord(employee_name, date);
@@ -952,9 +910,6 @@ export const verifyAndUpdateCashierCounts = async (excelData) => {
       }
     }
     
-    console.log('📊 Güncelleme yapılacak kayıt sayısı:', updates.length);
-    console.log('❌ Eşleşmeyen kayıt sayısı:', mismatches.length);
-    
     return { 
       success: true, 
       updates, 
@@ -974,10 +929,7 @@ export const verifyAndUpdateCashierCounts = async (excelData) => {
 // Var olan kaydı akıllı isim eşleştirme ile bul
 const findExistingRecord = async (employeeName, date) => {
   try {
-    console.log('🔍 Kayıt aranıyor:', { employeeName, date });
-    
     if (!employeeName || !date) {
-      console.log('❌ Eksik parametre:', { employeeName, date });
       return null;
     }
     
@@ -993,11 +945,8 @@ const findExistingRecord = async (employeeName, date) => {
     }
     
     if (!records || records.length === 0) {
-      console.log('❌ Bu tarihte kayıt yok:', date);
       return null;
     }
-    
-    console.log('📊 Bulunan kayıt sayısı:', records.length);
     
     // Personel listesi çek
     const { data: employees, error: employeesError } = await supabase
@@ -1010,7 +959,6 @@ const findExistingRecord = async (employeeName, date) => {
     }
     
     if (!employees || employees.length === 0) {
-      console.log('❌ Personel listesi boş');
       return null;
     }
     
@@ -1018,99 +966,83 @@ const findExistingRecord = async (employeeName, date) => {
     const matchedEmployee = findBestNameMatch(employeeName, employees);
     
     if (matchedEmployee) {
-      console.log('✅ Eşleşen personel:', matchedEmployee.employee_name, '→', matchedEmployee.employee_code);
       const record = records.find(r => r.employee_code === matchedEmployee.employee_code);
       
       if (record) {
-        console.log('✅ Kayıt bulundu:', record.id);
         return record;
-      } else {
-        console.log('❌ Bu personel kodu için kayıt yok:', matchedEmployee.employee_code);
       }
-    } else {
-      console.log('❌ Personel eşleşmedi:', employeeName);
     }
     
     return null;
   } catch (error) {
-    console.error('❌ Kayıt bulma hatası:', error);
+    console.error('❌ findExistingRecord hatası:', error);
     return null;
   }
 };
 
-// Akıllı isim eşleştirme fonksiyonu (PerformanceAnalysis'tan adaptasyon)
+// Akıllı isim eşleştirme fonksiyonu
 const findBestNameMatch = (inputName, employees) => {
-  try {
-    if (!inputName || !employees || !Array.isArray(employees)) {
-      console.log('❌ Geçersiz parametre:', { inputName, employees: employees?.length });
-      return null;
-    }
-    
-    const normalizedInput = inputName.trim().toUpperCase();
-    console.log('🔍 Aranan isim:', normalizedInput);
-    
-    // 1. Tam eşleşme
-    let match = employees.find(emp => emp.employee_name && emp.employee_name.toUpperCase() === normalizedInput);
-    if (match) {
-      console.log('✅ Tam eşleşme:', match.employee_name);
-      return match;
-    }
-    
-    // 2. Boşluk normalize edilmiş eşleşme
-    const normalizedInputNoSpaces = normalizedInput.replace(/\s+/g, '');
-    match = employees.find(emp => emp.employee_name && emp.employee_name.toUpperCase().replace(/\s+/g, '') === normalizedInputNoSpaces);
-    if (match) {
-      console.log('✅ Boşluk normalize eşleşme:', match.employee_name);
-      return match;
-    }
-    
-    // 3. Kelime sırası farklı olabilir
-    const inputWords = normalizedInput.split(/\s+/).filter(word => word.length > 0);
-    match = employees.find(emp => {
-      if (!emp.employee_name) return false;
-      const empWords = emp.employee_name.toUpperCase().split(/\s+/).filter(word => word.length > 0);
-      return inputWords.length === empWords.length && 
-             inputWords.every(word => empWords.includes(word));
-    });
-    if (match) {
-      console.log('✅ Kelime sırası eşleşme:', match.employee_name);
-      return match;
-    }
-    
-    // 4. Benzer isim arama (en az %80 benzerlik)
-    let bestMatch = null;
-    let bestScore = 0;
-    
-    employees.forEach(emp => {
-      if (!emp.employee_name) return;
-      
-      try {
-        const score = calculateSimilarity(normalizedInput, emp.employee_name.toUpperCase());
-        if (score > bestScore && score >= 0.8) {
-          bestScore = score;
-          bestMatch = emp;
-        }
-      } catch (error) {
-        console.log('❌ Benzerlik hesaplama hatası:', error, emp.employee_name);
-      }
-    });
-    
-    if (bestMatch) {
-      console.log('✅ Benzerlik eşleşme:', bestMatch.employee_name, 'Skor:', bestScore);
-    }
-    
-    return bestMatch;
-  } catch (error) {
-    console.error('❌ İsim eşleştirme hatası:', error);
+  if (!inputName || !employees || employees.length === 0) {
     return null;
   }
+  
+  const normalizedInput = inputName.replace(/\s+/g, ' ').trim().toLowerCase();
+  
+  // 1. Tam eşleşme
+  const exactMatch = employees.find(emp => 
+    emp.employee_name.toLowerCase() === normalizedInput
+  );
+  if (exactMatch) {
+    return exactMatch;
+  }
+  
+  // 2. Boşluk normalize eşleşme
+  const spaceNormalizedMatch = employees.find(emp => 
+    emp.employee_name.replace(/\s+/g, '').toLowerCase() === normalizedInput.replace(/\s+/g, '')
+  );
+  if (spaceNormalizedMatch) {
+    return spaceNormalizedMatch;
+  }
+  
+  // 3. Kelime sırası farklı eşleşme
+  const inputWords = normalizedInput.split(' ').filter(w => w.length > 0);
+  const wordOrderMatch = employees.find(emp => {
+    const empWords = emp.employee_name.toLowerCase().split(' ').filter(w => w.length > 0);
+    if (inputWords.length !== empWords.length) return false;
+    
+    return inputWords.every(word => empWords.includes(word));
+  });
+  if (wordOrderMatch) {
+    return wordOrderMatch;
+  }
+  
+  // 4. Benzerlik tabanlı eşleşme (%80+ benzerlik)
+  let bestMatch = null;
+  let bestScore = 0;
+  
+  employees.forEach(emp => {
+    try {
+      const similarity = calculateSimilarity(normalizedInput, emp.employee_name.toLowerCase());
+      if (similarity > bestScore && similarity >= 0.8) {
+        bestMatch = emp;
+        bestScore = similarity;
+      }
+    } catch (error) {
+      // Benzerlik hesaplama hatası
+    }
+  });
+  
+  if (bestMatch) {
+    return bestMatch;
+  }
+  
+  return null;
 };
 
 // String benzerlik hesaplama
 const calculateSimilarity = (str1, str2) => {
   try {
     if (!str1 || !str2 || typeof str1 !== 'string' || typeof str2 !== 'string') {
-      console.log('❌ Geçersiz string:', { str1, str2 });
       return 0;
     }
     
@@ -1169,9 +1101,6 @@ const levenshteinDistance = (str1, str2) => {
 // Güncellemeleri uygula
 export const applyCashierCountUpdates = async (updates) => {
   try {
-    console.log('🔄 KASA SAYISI GÜNCELLEMELERİ UYGULANACAK');
-    console.log('🔄 Güncellenecek kayıt sayısı:', updates.length);
-    
     const updatePromises = updates.map(update => 
       supabase
         .from('performance_data')
@@ -1199,7 +1128,6 @@ export const applyCashierCountUpdates = async (updates) => {
       };
     }
     
-    console.log('✅ TÜM KASA SAYISI GÜNCELLEMELERİ BAŞARILI');
     return { 
       success: true, 
       updated_count: results.length,

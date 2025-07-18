@@ -86,13 +86,11 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     try {
       // Vercel için güçlü logout
-      console.log('🔐 AuthContext signOut başlıyor...');
       
       // 1. Supabase'den çıkış yap
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       
       if (error) {
-        console.log('Supabase signOut error:', error);
         // Hata olsa bile devam et
       }
       
@@ -105,10 +103,9 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('supabase.auth.token');
         sessionStorage.clear();
       } catch (storageError) {
-        console.log('Storage temizleme hatası:', storageError);
+        // Storage temizleme hatası olsa bile devam et
       }
       
-      console.log('✅ AuthContext signOut tamamlandı');
       return { success: true };
     } catch (error) {
       console.error('SignOut error:', error);

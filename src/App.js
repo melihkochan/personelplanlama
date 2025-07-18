@@ -498,7 +498,9 @@ function MainApp() {
             <div className="space-y-8">
               {/* Hoş Geldiniz */}
               <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 text-white">
-                <h1 className="text-3xl font-bold mb-2">Hoş Geldiniz! 👋</h1>
+                <h1 className="text-3xl font-bold mb-2">
+                  Hoş Geldin {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
+                </h1>
                 <p className="text-blue-100 mb-6">Personel Planlama Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">

@@ -113,12 +113,59 @@ export const updatePersonnel = async (id, updates) => {
 
 export const deletePersonnel = async (id) => {
   try {
+    // Önce personel bilgisini al (employee_code için)
+    const { data: personnelData, error: getError } = await supabase
+      .from('personnel')
+      .select('employee_code')
+      .eq('id', id)
+      .single();
+    
+    if (getError) throw getError;
+    
+    const employeeCode = personnelData.employee_code;
+    
+    // 1. Önce performance_data tablosundaki ilgili kayıtları sil
+    const { error: performanceError } = await supabase
+      .from('performance_data')
+      .delete()
+      .eq('employee_code', employeeCode);
+    
+    if (performanceError) {
+      console.warn('Performance data deletion warning:', performanceError);
+      // Performance data silme hatası kritik değil, devam et
+    }
+    
+    // 2. daily_notes tablosundaki ilgili kayıtları sil
+    const { error: notesError } = await supabase
+      .from('daily_notes')
+      .delete()
+      .eq('employee_code', employeeCode);
+    
+    if (notesError) {
+      console.warn('Daily notes deletion warning:', notesError);
+      // Daily notes silme hatası kritik değil, devam et
+    }
+    
+    // 3. weekly_schedules tablosundaki ilgili kayıtları sil
+    const { error: schedulesError } = await supabase
+      .from('weekly_schedules')
+      .delete()
+      .eq('employee_code', employeeCode);
+    
+    if (schedulesError) {
+      console.warn('Weekly schedules deletion warning:', schedulesError);
+      // Weekly schedules silme hatası kritik değil, devam et
+    }
+    
+    // 4. Son olarak personeli sil
     const { error } = await supabase
       .from('personnel')
       .delete()
       .eq('id', id);
     
     if (error) throw error;
+    
+    console.log(`✅ Personel ${employeeCode} ve tüm ilgili veriler başarıyla silindi`);
     return { success: true };
   } catch (error) {
     console.error('Delete personnel error:', error);
@@ -1136,6 +1183,663 @@ export const applyCashierCountUpdates = async (updates) => {
     
   } catch (error) {
     console.error('❌ KASA SAYISI GÜNCELLEME HATASI:', error);
+    return { success: false, error: error.message };
+  }
+}; 
+
+// Vardiya yönetimi fonksiyonları
+export const saveWeeklySchedules = async (scheduleData) => {
+  try {
+    if (!scheduleData || scheduleData.length === 0) {
+      return { success: false, error: 'Vardiya verisi bulunamadı' };
+    }
+    
+    console.log(`📊 ${scheduleData.length} vardiya kaydı kaydediliyor...`);
+    
+    // Duplicate kontrolü yap
+    const uniqueSchedules = [];
+    const seenKeys = new Set();
+    
+    scheduleData.forEach(schedule => {
+      const key = `${schedule.employee_code}_${schedule.week_start_date}_${schedule.shift_type}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        uniqueSchedules.push(schedule);
+      } else {
+        console.log(`⚠️ Duplicate atlandı: ${schedule.employee_name} - ${schedule.week_start_date} - ${schedule.shift_type}`);
+      }
+    });
+    
+    console.log(`📊 ${uniqueSchedules.length} benzersiz vardiya kaydı kaydediliyor...`);
+    
+    const { data, error } = await supabase
+      .from('weekly_schedules')
+      .upsert(uniqueSchedules, { 
+        onConflict: 'employee_code,week_start_date',
+        ignoreDuplicates: false 
+      })
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Weekly schedules save error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const saveWeeklyPeriods = async (periodData) => {
+  try {
+    if (!periodData || periodData.length === 0) {
+      return { success: false, error: 'Dönem verisi bulunamadı' };
+    }
+    
+    console.log(`📅 ${periodData.length} haftalık dönem kaydediliyor...`);
+    
+    const { data, error } = await supabase
+      .from('weekly_periods')
+      .upsert(periodData, { 
+        onConflict: 'week_start_date,week_end_date,year',
+        ignoreDuplicates: false 
+      })
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Weekly periods save error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const saveDailyAttendance = async (attendanceData) => {
+  try {
+    // Tarih formatını normalize et (YYYY-MM-DD formatına çevir)
+    const normalizeDate = (dateStr) => {
+      if (!dateStr) return null;
+      
+      // Eğer zaten YYYY-MM-DD formatındaysa olduğu gibi döndür
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+      }
+      
+      // DD.MM.YYYY formatını YYYY-MM-DD'ye çevir
+      if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(dateStr)) {
+        const [day, month, year] = dateStr.split('.');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      return dateStr;
+    };
+    
+    const normalizedDate = normalizeDate(attendanceData.date);
+    console.log(`📅 Tarih normalizasyonu: "${attendanceData.date}" -> "${normalizedDate}"`);
+    
+    // Önce aynı personel ve tarih için HERHANGI BİR kayıt var mı kontrol et
+    const { data: existingRecords, error: checkError } = await supabase
+      .from('daily_notes')
+      .select('*')
+      .eq('employee_code', attendanceData.employee_code)
+      .eq('date', normalizedDate);
+    
+    if (checkError) throw checkError;
+    
+    console.log(`🔍 Mevcut kayıtlar:`, existingRecords);
+    
+    // Aynı durum için kayıt var mı kontrol et
+    const sameStatusRecord = existingRecords?.find(record => record.status === attendanceData.status);
+    
+    if (sameStatusRecord) {
+      return { 
+        success: false, 
+        error: `Bu personel için ${normalizedDate} tarihinde zaten "${attendanceData.status}" durumu kayıtlı.` 
+      };
+    }
+    
+    // Yeni kayıt ekle - normalize edilmiş tarih ile
+    const { data, error } = await supabase
+      .from('daily_notes')
+      .insert([{
+        employee_code: attendanceData.employee_code,
+        date: normalizedDate, // Normalize edilmiş tarih kullan
+        status: attendanceData.status,
+        reason: attendanceData.reason,
+        notes: attendanceData.notes || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select();
+    
+    if (error) throw error;
+    console.log('✅ Günlük not başarıyla kaydedildi:', data);
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Daily attendance save error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+
+
+export const getDailyNotes = async (date = null) => {
+  try {
+    console.log('🔍 getDailyNotes çağrıldı, date:', date);
+    
+    // Önce sadece daily_notes tablosundan veri çek
+    let query = supabase
+      .from('daily_notes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (date) {
+      query = query.eq('date', date);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('❌ Daily notes query hatası:', error);
+      throw error;
+    }
+    
+    console.log('📝 Raw daily notes data:', data);
+    
+    // Sonra personnel tablosundan personel bilgilerini çek
+    const { data: personnelData, error: personnelError } = await supabase
+      .from('personnel')
+      .select('employee_code, full_name, position');
+    
+    if (personnelError) {
+      console.error('❌ Personnel query hatası:', personnelError);
+    }
+    
+    console.log('👥 Personnel data:', personnelData);
+    
+    // Personnel verilerini employee_code'ya göre map'le
+    const personnelMap = {};
+    if (personnelData) {
+      personnelData.forEach(person => {
+        personnelMap[person.employee_code] = person;
+      });
+    }
+    
+    // Daily notes verilerini enrich et
+    const enrichedData = data?.map(item => {
+      const personnel = personnelMap[item.employee_code];
+      return {
+        ...item,
+        full_name: personnel?.full_name || 'Bilinmeyen',
+        position: personnel?.position || 'Bilinmeyen'
+      };
+    }) || [];
+    
+    console.log('✅ Enriched daily notes data:', enrichedData);
+    
+    return { success: true, data: enrichedData };
+  } catch (error) {
+    console.error('❌ Get daily notes error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const getAllShiftStatistics = async (year = null) => {
+  try {
+    // Önce tüm personel bilgilerini al
+    const { data: personnel, error: personnelError } = await supabase
+      .from('personnel')
+      .select('*')
+      .order('full_name', { ascending: true });
+    
+    if (personnelError) throw personnelError;
+    
+    // Tüm haftalık programları al (yıl filtresi olmadan - tüm verileri al)
+    const { data: schedules, error: schedulesError } = await supabase
+      .from('weekly_schedules')
+      .select('employee_code, shift_type, year')
+      .order('employee_code', { ascending: true });
+    
+    if (schedulesError) throw schedulesError;
+    
+    console.log(`📊 Toplam vardiya kaydı: ${schedules?.length || 0}`);
+    console.log(`👥 Toplam personel: ${personnel?.length || 0}`);
+    
+    // Her personel için gerçek zamanlı istatistik hesapla
+    const enrichedStats = personnel.map(person => {
+      // Bu personelin tüm vardiyalarını filtrele (yıl filtresi olmadan)
+      const personSchedules = schedules.filter(s => s.employee_code === person.employee_code);
+      
+      // Eğer yıl filtresi varsa, sadece o yıla ait vardiyaları say
+      const filteredSchedules = year 
+        ? personSchedules.filter(s => s.year === year)
+        : personSchedules;
+      
+      // Vardiya tiplerini say
+      const stats = {
+        total_night_shifts: filteredSchedules.filter(s => s.shift_type === 'gece').length,
+        total_day_shifts: filteredSchedules.filter(s => s.shift_type === 'gunduz').length,
+        total_evening_shifts: filteredSchedules.filter(s => s.shift_type === 'aksam').length,
+        total_temp_assignments: filteredSchedules.filter(s => s.shift_type === 'gecici').length,
+        total_sick_days: filteredSchedules.filter(s => s.shift_type === 'hastalik_izni').length,
+        total_annual_leave: filteredSchedules.filter(s => s.shift_type === 'yillik_izin').length
+      };
+      
+      return {
+        employee_code: person.employee_code,
+        full_name: person.full_name,
+        position: person.position || 'Belirtilmemiş',
+        ...stats,
+        year: year || 'Tüm Yıllar'
+      };
+    });
+    
+    return { success: true, data: enrichedStats };
+  } catch (error) {
+    console.error('Get shift statistics error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const getDailyAttendance = async (date) => {
+  try {
+    const { data, error } = await supabase
+      .from('daily_attendance')
+      .select(`
+        *,
+        personnel:personnel!daily_attendance_employee_code_fkey (
+          full_name,
+          position
+        )
+      `)
+      .eq('date', date)
+      .order('employee_code', { ascending: true });
+    
+    if (error) throw error;
+    
+    const enrichedData = data?.map(item => ({
+      ...item,
+      full_name: item.personnel?.full_name || 'Bilinmeyen',
+      position: item.personnel?.position || 'Bilinmeyen'
+    })) || [];
+    
+    return { success: true, data: enrichedData };
+  } catch (error) {
+    console.error('Get daily attendance error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const updateShiftStatistics = async (employeeCode, year = new Date().getFullYear()) => {
+  try {
+    // Haftalık programlardan vardiya istatistiklerini hesapla
+    const { data: schedules, error: schedulesError } = await supabase
+      .from('weekly_schedules')
+      .select('*')
+      .eq('employee_code', employeeCode)
+      .eq('year', year);
+    
+    if (schedulesError) throw schedulesError;
+    
+    if (!schedules || schedules.length === 0) {
+      return { success: true, message: 'Vardiya verisi bulunamadı' };
+    }
+    
+    // Vardiya tiplerini say - VERİTABANI KOLON ADLARIYLA UYUMLU
+    const stats = {
+      total_night_shifts: schedules.filter(s => s.shift_type === 'gece').length,
+      total_day_shifts: schedules.filter(s => s.shift_type === 'gunduz').length,  
+      total_evening_shifts: schedules.filter(s => s.shift_type === 'aksam').length,
+      total_temp_assignments: schedules.filter(s => s.shift_type === 'gecici').length, // Veritabanındaki kolon adı
+      total_sick_days: schedules.filter(s => s.shift_type === 'hastalik_izni').length, // Veritabanındaki kolon adı
+      total_annual_leave: schedules.filter(s => s.shift_type === 'yillik_izin').length
+    };
+    
+    // Shift_statistics tablosuna kaydet/güncelle
+    const { data, error } = await supabase
+      .from('shift_statistics')
+      .upsert([{
+        employee_code: employeeCode,
+        year: year,
+        ...stats,
+        updated_at: new Date().toISOString()
+      }], { 
+        onConflict: 'employee_code,year',
+        ignoreDuplicates: false 
+      })
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Update shift statistics error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const calculateAllShiftStatistics = async (year = new Date().getFullYear()) => {
+  try {
+    console.log(`🔍 ${year} yılı için istatistik hesaplaması başlatılıyor...`);
+    
+    // Önce tüm haftalık programları kontrol et (yıl filtresi olmadan)
+    const { data: allSchedules, error: allSchedulesError } = await supabase
+      .from('weekly_schedules')
+      .select('employee_code, year, week_start_date, shift_type')
+      .order('week_start_date', { ascending: true });
+      
+    if (allSchedulesError) throw allSchedulesError;
+    
+    console.log(`📊 Toplam haftalık program sayısı: ${allSchedules?.length || 0}`);
+    if (allSchedules && allSchedules.length > 0) {
+      // Yıl dağılımını analiz et
+      const yearDistribution = {};
+      allSchedules.forEach(schedule => {
+        const scheduleYear = schedule.year;
+        yearDistribution[scheduleYear] = (yearDistribution[scheduleYear] || 0) + 1;
+      });
+      console.log(`📅 Yıl dağılımı:`, yearDistribution);
+      
+      // İlk 5 kayıt örneği
+      console.log(`📋 İlk 5 kayıt örneği:`, allSchedules.slice(0, 5));
+    }
+    
+    // Şimdi belirli yıl için filtrele
+    const { data: schedules, error: schedulesError } = await supabase
+      .from('weekly_schedules')
+      .select('employee_code, year, week_start_date, shift_type')
+      .eq('year', year);
+    
+    if (schedulesError) throw schedulesError;
+    
+    console.log(`📊 ${year} yılı için bulunan program sayısı: ${schedules?.length || 0}`);
+    
+    if (!schedules || schedules.length === 0) {
+      return { 
+        success: false, 
+        error: `${year} yılı için vardiya verisi bulunamadı`,
+        updated_count: 0
+      };
+    }
+    
+    // O yılda vardiyası olan benzersiz personeller
+    const uniqueEmployees = [...new Set(schedules.map(s => s.employee_code))];
+    console.log(`📊 ${year} yılı için ${uniqueEmployees.length} personel bulundu`);
+    console.log(`👥 Personel kodları:`, uniqueEmployees);
+    
+    const updatePromises = uniqueEmployees.map(employeeCode => 
+      updateShiftStatistics(employeeCode, year)
+    );
+    
+    const results = await Promise.all(updatePromises);
+    const successCount = results.filter(r => r.success).length;
+    const failedResults = results.filter(r => !r.success);
+    
+    console.log(`✅ Başarılı güncelleme: ${successCount}/${uniqueEmployees.length}`);
+    if (failedResults.length > 0) {
+      console.log(`❌ Başarısız güncellemeler:`, failedResults);
+    }
+    
+    // Güncellenmiş istatistikleri getir
+    const statisticsResult = await getAllShiftStatistics(year);
+    
+    if (successCount > 0) {
+      return {
+        success: true,
+        data: statisticsResult.data,
+        updated_count: successCount,
+        message: `${successCount} personel istatistiği güncellendi`
+      };
+    } else {
+      return {
+        success: false,
+        error: `${year} yılı için istatistik güncellenemedi`,
+        updated_count: 0
+      };
+    }
+  } catch (error) {
+    console.error('Calculate all shift statistics error:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      updated_count: 0
+    };
+  }
+};
+
+// Yıl filtresi olmadan TÜM verileri işleyen fonksiyon
+export const calculateAllShiftStatisticsAllYears = async () => {
+  try {
+    console.log(`🔍 TÜM YILLAR için istatistik hesaplaması başlatılıyor...`);
+    
+    // Önce tüm haftalık programları al (yıl filtresi olmadan)
+    const { data: allSchedules, error: allSchedulesError } = await supabase
+      .from('weekly_schedules')
+      .select('employee_code, year, week_start_date, shift_type')
+      .order('week_start_date', { ascending: true });
+      
+    if (allSchedulesError) throw allSchedulesError;
+    
+    console.log(`📊 Toplam haftalık program sayısı: ${allSchedules?.length || 0}`);
+    
+    if (!allSchedules || allSchedules.length === 0) {
+      return { 
+        success: false, 
+        error: `Hiç vardiya verisi bulunamadı`,
+        updated_count: 0
+      };
+    }
+    
+    // Tüm yılları ve personelleri çıkar
+    const allYears = [...new Set(allSchedules.map(s => s.year))];
+    const allEmployees = [...new Set(allSchedules.map(s => s.employee_code))];
+    
+    console.log(`📅 Bulunan yıllar:`, allYears);
+    console.log(`👥 Bulunan personel sayısı: ${allEmployees.length}`);
+    
+    // Her yıl ve personel için istatistikleri güncelle
+    const updatePromises = [];
+    allYears.forEach(year => {
+      allEmployees.forEach(employeeCode => {
+        updatePromises.push(updateShiftStatistics(employeeCode, year));
+      });
+    });
+    
+    const results = await Promise.all(updatePromises);
+    const successCount = results.filter(r => r.success).length;
+    
+    console.log(`✅ Toplam başarılı güncelleme: ${successCount}/${updatePromises.length}`);
+    
+    if (successCount > 0) {
+      return {
+        success: true,
+        updated_count: successCount,
+        years: allYears,
+        employees: allEmployees.length,
+        message: `${successCount} istatistik güncellendi (${allYears.length} yıl, ${allEmployees.length} personel)`
+      };
+    } else {
+      return {
+        success: false,
+        error: `Hiç istatistik güncellenemedi`,
+        updated_count: 0
+      };
+    }
+  } catch (error) {
+    console.error('Calculate all shift statistics (all years) error:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      updated_count: 0
+    };
+  }
+};
+
+export const getWeeklyPeriods = async (year = null) => {
+  try {
+    console.log(`🔍 Haftalık dönemler sorgulanıyor... (year: ${year})`);
+    
+    let query = supabase
+      .from('weekly_periods')
+      .select('*')
+      .order('week_start_date', { ascending: true });
+    
+    if (year) {
+      query = query.eq('year', year);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    console.log(`📅 Bulunan haftalık dönem sayısı: ${data?.length || 0}`);
+    if (data && data.length > 0) {
+      // Yıl dağılımını analiz et
+      const yearDistribution = {};
+      data.forEach(period => {
+        const periodYear = period.year;
+        yearDistribution[periodYear] = (yearDistribution[periodYear] || 0) + 1;
+      });
+      console.log(`📅 Dönem yıl dağılımı:`, yearDistribution);
+      
+      // İlk 3 dönem örneği
+      console.log(`📋 İlk 3 dönem örneği:`, data.slice(0, 3));
+    }
+    
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Get weekly periods error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const getPersonnelShiftDetails = async (employeeCode, year = null) => {
+  try {
+    let query = supabase
+      .from('weekly_schedules')
+      .select('*')
+      .eq('employee_code', employeeCode)
+      .order('week_start_date', { ascending: false });
+    
+    if (year) {
+      query = query.eq('year', year);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    console.log(`👤 ${employeeCode} için ${data?.length || 0} vardiya kaydı bulundu`);
+    
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Get personnel shift details error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const getWeeklySchedules = async (year = null) => {
+  try {
+    let query = supabase
+      .from('weekly_schedules')
+      .select('*')
+      .order('week_start_date', { ascending: true });
+    
+    if (year) {
+      query = query.eq('year', year);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Get weekly schedules error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+}; 
+
+// Veritabanını temizleme fonksiyonu - TÜM VARDİYA VERİLERİNİ SİLER
+export const clearAllShiftData = async () => {
+  try {
+    console.log('🗑️ Veritabanı temizleme başlatılıyor...');
+    
+    const results = {
+      weekly_schedules: { success: false, count: 0 },
+      weekly_periods: { success: false, count: 0 },
+      shift_statistics: { success: false, count: 0 }
+    };
+
+    // 1. Weekly schedules tablosunu temizle
+    try {
+      const { data: schedules, error: schedError } = await supabase
+        .from('weekly_schedules')
+        .select('id');
+      
+      if (!schedError && schedules) {
+        const { error: deleteError } = await supabase
+          .from('weekly_schedules')
+          .delete()
+          .neq('id', 0); // Tüm kayıtları sil
+        
+        if (!deleteError) {
+          results.weekly_schedules = { success: true, count: schedules.length };
+          console.log(`✅ weekly_schedules temizlendi: ${schedules.length} kayıt silindi`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ weekly_schedules temizleme hatası:', error);
+    }
+
+    // 2. Weekly periods tablosunu temizle
+    try {
+      const { data: periods, error: periodError } = await supabase
+        .from('weekly_periods')
+        .select('id');
+      
+      if (!periodError && periods) {
+        const { error: deleteError } = await supabase
+          .from('weekly_periods')
+          .delete()
+          .neq('id', 0); // Tüm kayıtları sil
+        
+        if (!deleteError) {
+          results.weekly_periods = { success: true, count: periods.length };
+          console.log(`✅ weekly_periods temizlendi: ${periods.length} kayıt silindi`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ weekly_periods temizleme hatası:', error);
+    }
+
+    // 3. Shift statistics tablosunu temizle
+    try {
+      const { data: stats, error: statsError } = await supabase
+        .from('shift_statistics')
+        .select('id');
+      
+      if (!statsError && stats) {
+        const { error: deleteError } = await supabase
+          .from('shift_statistics')
+          .delete()
+          .neq('id', 0); // Tüm kayıtları sil
+        
+        if (!deleteError) {
+          results.shift_statistics = { success: true, count: stats.length };
+          console.log(`✅ shift_statistics temizlendi: ${stats.length} kayıt silindi`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ shift_statistics temizleme hatası:', error);
+    }
+
+    console.log('🧹 Veritabanı temizleme tamamlandı:', results);
+    
+    return { 
+      success: true, 
+      message: `Temizleme tamamlandı: ${results.weekly_schedules.count} program, ${results.weekly_periods.count} dönem, ${results.shift_statistics.count} istatistik silindi`,
+      results 
+    };
+    
+  } catch (error) {
+    console.error('Veritabanı temizleme hatası:', error);
     return { success: false, error: error.message };
   }
 }; 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download } from 'lucide-react';
-import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, updateShiftStatistics, calculateAllShiftStatistics, calculateAllShiftStatisticsAllYears, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, supabase } from '../services/supabase';
+import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info } from 'lucide-react';
+import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 const PersonelVardiyaKontrol = ({ userRole }) => {
@@ -91,6 +91,267 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
     dinlenme: { count: 0, personnel: [] }
   });
 
+  // Excel upload fonksiyonu
+  const handleExcelUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploadLoading(true);
+    setUploadMessage(null);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          
+          // Excel verilerini JSON'a çevir
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          console.log('📊 Excel verisi yüklendi:', jsonData.length, 'satır');
+          
+          if (jsonData.length < 2) {
+            throw new Error('Excel dosyası boş veya geçersiz format');
+          }
+
+          // Başlık satırını al (1. satır)
+          const headers = jsonData[0];
+          console.log('📋 Başlıklar:', headers);
+
+          // Veri satırlarını al (2. satırdan itibaren)
+          const dataRows = jsonData.slice(1);
+          
+          // Haftalık dönemleri ve programları işle
+          const periods = [];
+          const schedules = [];
+          
+          // Başlık satırından haftalık dönemleri çıkar (E sütunundan itibaren)
+          for (let col = 4; col < headers.length; col++) { // E sütunu = index 4
+            const weekLabel = headers[col];
+            console.log(`🔍 Sütun ${col}: "${weekLabel}"`);
+            
+            if (weekLabel && typeof weekLabel === 'string') {
+              // Tüm ay isimlerini kontrol et (2024 ve 2025 için)
+              const monthPattern = /(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)/;
+              const monthMatch = weekLabel.match(monthPattern);
+              
+              if (monthMatch) {
+                console.log(`📅 Ay bulundu: ${monthMatch[1]}`);
+                
+                // Tarih aralığını parse et - manuel parsing
+                let startDay, startMonth, endDay, endMonth, year;
+                
+                // Önce yılı bul
+                const yearMatch = weekLabel.match(/(\d{4})/);
+                if (yearMatch) {
+                  year = parseInt(yearMatch[1]);
+                  
+                  // Ay isimlerini bul
+                  const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+                  let foundMonths = [];
+                  
+                  monthNames.forEach(month => {
+                    const monthIndex = weekLabel.indexOf(month);
+                    if (monthIndex !== -1) {
+                      foundMonths.push({ name: month, index: monthIndex });
+                    }
+                  });
+                  
+                  // Ay isimlerini sırala
+                  foundMonths.sort((a, b) => a.index - b.index);
+                  
+                  if (foundMonths.length >= 1) {
+                    // İlk ayı al
+                    startMonth = getMonthNumber(foundMonths[0].name);
+                    
+                    // İkinci ay varsa onu al, yoksa aynı ay
+                    if (foundMonths.length >= 2) {
+                      endMonth = getMonthNumber(foundMonths[1].name);
+                    } else {
+                      endMonth = startMonth;
+                    }
+                    
+                    // Günleri bul
+                    const dayMatches = weekLabel.match(/(\d{1,2})/g);
+                    if (dayMatches && dayMatches.length >= 2) {
+                      startDay = parseInt(dayMatches[0]);
+                      endDay = parseInt(dayMatches[1]);
+                      
+                      console.log(`📅 Manuel parse: ${startDay}/${startMonth}/${year} - ${endDay}/${endMonth}/${year}`);
+                      
+                      // Tarihi doğrudan string olarak oluştur (timezone sorunu olmasın)
+                      const startDateStr = `${year}-${startMonth.toString().padStart(2, '0')}-${startDay.toString().padStart(2, '0')}`;
+                      const endDateStr = `${year}-${endMonth.toString().padStart(2, '0')}-${endDay.toString().padStart(2, '0')}`;
+                      
+                      periods.push({
+                        start_date: startDateStr,
+                        end_date: endDateStr,
+                        week_label: weekLabel,
+                        year: year
+                      });
+                    }
+                  }
+                } else {
+                  console.warn(`⚠️ Tarih formatı parse edilemedi: "${weekLabel}"`);
+                }
+              }
+            }
+          }
+          
+          console.log('📅 Haftalık dönemler:', periods);
+
+          // Her personel satırını işle
+          dataRows.forEach((row, rowIndex) => {
+            if (row.length < 4) return; // Geçersiz satır
+            
+            const employeeCode = row[1]; // B sütunu - Personel ID
+            const employeeName = row[2]; // C sütunu - ADI SOYADI
+            const position = row[3]; // D sütunu - GÖREVİ
+            
+            if (!employeeCode || !employeeName) return;
+            
+            // E sütunundan itibaren her hafta için vardiya bilgisini al
+            for (let col = 4; col < Math.min(row.length, headers.length); col++) {
+              const shiftValue = row[col];
+              console.log(`🔍 Satır ${rowIndex + 1}, Sütun ${col}: "${shiftValue}" (${typeof shiftValue})`);
+              
+              if (!shiftValue) {
+                console.log(`⚠️ Boş değer: Satır ${rowIndex + 1}, Sütun ${col}`);
+                continue;
+              }
+              
+              const period = periods[col - 4]; // E sütunu = index 4
+              if (!period) {
+                console.log(`⚠️ Period bulunamadı: Sütun ${col}`);
+                continue;
+              }
+              
+              let shiftType = 'dinlenme';
+              let shiftHours = null;
+              let status = null;
+              
+              // Vardiya türünü belirle
+              if (typeof shiftValue === 'string') {
+                const value = shiftValue.trim();
+                console.log(`🔍 Vardiya değeri: "${value}" (${typeof value})`);
+                
+                if (value === '22:00 - 06:00') {
+                  shiftType = 'gece';
+                  shiftHours = value;
+                  console.log(`✅ Gece vardiyası: ${value}`);
+                } else if (value === '08:00 - 16:00') {
+                  shiftType = 'gunduz';
+                  shiftHours = value;
+                  console.log(`✅ Gündüz vardiyası: ${value}`);
+                } else if (value === '16:00 - 00:00') {
+                  shiftType = 'aksam';
+                  shiftHours = value;
+                  console.log(`✅ Akşam vardiyası: ${value}`);
+                } else if (value === 'Raporlu') {
+                  shiftType = 'raporlu';
+                  status = 'raporlu';
+                  console.log(`✅ Raporlu: ${value}`);
+                } else if (value === 'Yıllık izinli') {
+                  shiftType = 'yillik_izin';
+                  status = 'yillik_izin';
+                  console.log(`✅ Yıllık izin: ${value}`);
+                } else if (value === 'GEÇİCİ GÖREV') {
+                  shiftType = 'gecici_gorev';
+                  status = 'gecici_gorev';
+                  console.log(`✅ Geçici görev: ${value}`);
+                } else {
+                  console.log(`⚠️ Bilinmeyen vardiya türü: "${value}"`);
+                }
+              } else {
+                console.log(`⚠️ Vardiya değeri string değil: ${shiftValue} (${typeof shiftValue})`);
+              }
+              
+              schedules.push({
+                employee_code: employeeCode.toString(),
+                period_id: null, // Period ID'yi sonra set edeceğiz
+                shift_type: shiftType,
+                shift_hours: shiftHours,
+                status: status,
+                period_start_date: period.start_date,
+                period_end_date: period.end_date,
+                week_label: period.week_label,
+                year: period.year
+              });
+              
+              // Debug log ekle
+              console.log(`📝 Schedule kaydı:`, {
+                employee_code: employeeCode.toString(),
+                shift_type: shiftType,
+                shift_hours: shiftHours,
+                status: status,
+                period_start_date: period.start_date,
+                period_end_date: period.end_date
+              });
+            }
+          });
+          
+          console.log('📋 Vardiya programları:', schedules.length, 'kayıt');
+          
+          // Veritabanına kaydet
+          const result = await saveExcelData(periods, schedules);
+          
+          if (result.success) {
+            setUploadMessage({
+              type: 'success',
+              message: `✅ Excel verisi başarıyla yüklendi!\n\n📊 ${periods.length} haftalık dönem\n👥 ${schedules.length} vardiya kaydı\n\nVeriler sisteme kaydedildi.`
+            });
+            
+            // Verileri yeniden yükle
+            await loadInitialData();
+          } else {
+            throw new Error(result.error);
+          }
+          
+        } catch (error) {
+          console.error('❌ Excel işleme hatası:', error);
+          setUploadMessage({
+            type: 'error',
+            message: `❌ Excel dosyası işlenirken hata oluştu:\n${error.message}`
+          });
+        } finally {
+          setUploadLoading(false);
+        }
+      };
+      
+      reader.readAsArrayBuffer(file);
+      
+    } catch (error) {
+      console.error('❌ Dosya okuma hatası:', error);
+      setUploadMessage({
+        type: 'error',
+        message: `❌ Dosya okunamadı:\n${error.message}`
+      });
+      setUploadLoading(false);
+    }
+  };
+
+  // Ay numarasını döndür
+  const getMonthNumber = (monthName) => {
+    const months = {
+      'Ocak': 1,
+      'Şubat': 2,
+      'Mart': 3,
+      'Nisan': 4,
+      'Mayıs': 5,
+      'Haziran': 6,
+      'Temmuz': 7,
+      'Ağustos': 8,
+      'Eylül': 9,
+      'Ekim': 10,
+      'Kasım': 11,
+      'Aralık': 12
+    };
+    return months[monthName] || 1;
+  };
+
   // Component yüklendiğinde verileri getir
   useEffect(() => {
     loadInitialData();
@@ -180,16 +441,13 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const [personnelResult, periodsResult, schedulesResult] = await Promise.all([
-        getAllPersonnel(),
-        getWeeklyPeriods(null), // Tüm yıllardan dönemleri çek
-        getWeeklySchedules() // Direkt haftalık programları çek
-      ]);
-
+      console.log('🚀 Veri yükleme başlatılıyor...');
+      
+      // 1. Önce personelleri çek
+      const personnelResult = await getAllPersonnel();
+      
       if (personnelResult.success) {
-        // Tüm personeli al (filtreleme yok)
         const filteredPersonnel = personnelResult.data;
-        
         console.log(`👥 Toplam personel: ${personnelResult.data.length}`);
         console.log(`👥 Personel örnekleri:`, filteredPersonnel.slice(0, 3).map(p => `${p.full_name} - ${p.position}`));
         
@@ -198,40 +456,40 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
           a.full_name.localeCompare(b.full_name, 'tr', { sensitivity: 'base' })
         );
         setPersonnelList(sortedPersonnel);
-        console.log('👥 Şoför ve sevkiyat elemanları yüklendi (A-Z sıralı):', sortedPersonnel.length, 'kişi');
-      } else {
-        console.warn('Personel verileri yüklenemedi:', personnelResult.error);
-        setPersonnelList([]);
-      }
-
-      if (periodsResult.success) {
-        setWeeklyPeriods(periodsResult.data);
-        console.log('📅 Haftalık dönemler yüklendi:', periodsResult.data.length, 'dönem');
-      } else {
-        console.warn('Haftalık dönemler yüklenemedi:', periodsResult.error);
-        setWeeklyPeriods([]);
-      }
-
-      // Personel detaylarındaki gibi istatistik hesaplama
-      if (personnelResult.success) {
-        console.log('📊 Personel detayları gibi istatistik hesaplanıyor...');
+        console.log('👥 Personeller yüklendi (A-Z sıralı):', sortedPersonnel.length, 'kişi');
         
-        // Her personel için getPersonnelShiftDetails mantığını kullan
-        const statsPromises = personnelResult.data.map(async (person) => {
-          try {
-            // getPersonnelShiftDetails fonksiyonunu kullan (yıl filtresi olmadan)
-            const shiftDetailsResult = await getPersonnelShiftDetails(person.employee_code);
+        // 2. Şimdi weekly schedules'ı çekmeyi dene
+        try {
+          const schedulesResult = await getWeeklySchedules();
+          console.log('📋 Weekly schedules çekme sonucu:', schedulesResult);
+          
+          if (schedulesResult.success) {
+            console.log(`📋 Toplam vardiya kaydı: ${schedulesResult.data.length}`);
             
-            if (shiftDetailsResult.success) {
-              const personSchedules = shiftDetailsResult.data;
+            // Tüm vardiya programlarını personel koduna göre grupla
+            const schedulesByEmployee = {};
+            schedulesResult.data.forEach(schedule => {
+              if (!schedulesByEmployee[schedule.employee_code]) {
+                schedulesByEmployee[schedule.employee_code] = [];
+              }
+              schedulesByEmployee[schedule.employee_code].push(schedule);
+            });
+            
+            console.log(`👥 Vardiya kaydı olan personel sayısı: ${Object.keys(schedulesByEmployee).length}`);
+            
+            // Her personel için istatistikleri hesapla
+            const realTimeStats = sortedPersonnel.map(person => {
+              const personSchedules = schedulesByEmployee[person.employee_code] || [];
               
-              // Vardiya tiplerini say (personel detaylarındaki gibi)
+              console.log(`👤 ${person.full_name} (${person.employee_code}): ${personSchedules.length} vardiya kaydı`);
+              
+              // Vardiya tiplerini say
               const stats = {
                 total_night_shifts: personSchedules.filter(s => s.shift_type === 'gece').length,
                 total_day_shifts: personSchedules.filter(s => s.shift_type === 'gunduz').length,
                 total_evening_shifts: personSchedules.filter(s => s.shift_type === 'aksam').length,
-                total_temp_assignments: personSchedules.filter(s => s.shift_type === 'gecici').length,
-                total_sick_days: personSchedules.filter(s => s.shift_type === 'hastalik_izni').length,
+                total_temp_assignments: personSchedules.filter(s => s.shift_type === 'gecici_gorev').length,
+                total_sick_days: personSchedules.filter(s => s.shift_type === 'raporlu').length,
                 total_annual_leave: personSchedules.filter(s => s.shift_type === 'yillik_izin').length
               };
               
@@ -242,24 +500,27 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                 ...stats,
                 year: 'Tüm Yıllar'
               };
-            } else {
-              console.warn(`${person.employee_code} için vardiya detayları alınamadı:`, shiftDetailsResult.error);
-              return {
-                employee_code: person.employee_code,
-                full_name: person.full_name,
-                position: person.position || 'Belirtilmemiş',
-                total_night_shifts: 0,
-                total_day_shifts: 0,
-                total_evening_shifts: 0,
-                total_temp_assignments: 0,
-                total_sick_days: 0,
-                total_annual_leave: 0,
-                year: 'Tüm Yıllar'
-              };
-            }
-          } catch (error) {
-            console.error(`${person.employee_code} için istatistik hesaplama hatası:`, error);
-            return {
+            });
+            
+            setShiftStatistics(realTimeStats);
+            console.log('📊 İstatistikler hesaplandı:', realTimeStats.length, 'personel');
+            
+            // İstatistik özeti
+            const totalStats = realTimeStats.reduce((acc, person) => {
+              acc.gece += person.total_night_shifts;
+              acc.gunduz += person.total_day_shifts;
+              acc.aksam += person.total_evening_shifts;
+              acc.gecici += person.total_temp_assignments;
+              acc.raporlu += person.total_sick_days;
+              acc.yillik_izin += person.total_annual_leave;
+              return acc;
+            }, { gece: 0, gunduz: 0, aksam: 0, gecici: 0, raporlu: 0, yillik_izin: 0 });
+            
+            console.log('📊 Toplam istatistikler:', totalStats);
+          } else {
+            console.warn('⚠️ Weekly schedules çekilemedi, sadece personeller gösteriliyor');
+            // Sadece personelleri göster, istatistikleri 0 olarak ayarla
+            const emptyStats = sortedPersonnel.map(person => ({
               employee_code: person.employee_code,
               full_name: person.full_name,
               position: person.position || 'Belirtilmemiş',
@@ -270,27 +531,57 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
               total_sick_days: 0,
               total_annual_leave: 0,
               year: 'Tüm Yıllar'
-            };
+            }));
+            setShiftStatistics(emptyStats);
           }
-        });
-        
-        const realTimeStats = await Promise.all(statsPromises);
-        setShiftStatistics(realTimeStats);
-        console.log('📊 Personel detayları gibi istatistikler hesaplandı:', realTimeStats.length, 'personel');
+        } catch (scheduleError) {
+          console.error('❌ Weekly schedules çekme hatası:', scheduleError);
+          // Hata durumunda sadece personelleri göster
+          const emptyStats = sortedPersonnel.map(person => ({
+            employee_code: person.employee_code,
+            full_name: person.full_name,
+            position: person.position || 'Belirtilmemiş',
+            total_night_shifts: 0,
+            total_day_shifts: 0,
+            total_evening_shifts: 0,
+            total_temp_assignments: 0,
+            total_sick_days: 0,
+            total_annual_leave: 0,
+            year: 'Tüm Yıllar'
+          }));
+          setShiftStatistics(emptyStats);
+        }
       } else {
-        console.warn('Personel detayları gibi istatistik hesaplanamadı');
+        console.warn('❌ Personel verileri yüklenemedi:', personnelResult.error);
+        setPersonnelList([]);
         setShiftStatistics([]);
       }
       
-      // Günlük notları yükle
+      // 3. Weekly periods'ı da çekmeyi dene
+      try {
+        const periodsResult = await getWeeklyPeriods(null);
+        if (periodsResult.success) {
+          setWeeklyPeriods(periodsResult.data);
+          console.log('📅 Haftalık dönemler yüklendi:', periodsResult.data.length, 'dönem');
+        } else {
+          console.warn('⚠️ Haftalık dönemler yüklenemedi:', periodsResult.error);
+          setWeeklyPeriods([]);
+        }
+      } catch (periodError) {
+        console.error('❌ Weekly periods çekme hatası:', periodError);
+        setWeeklyPeriods([]);
+      }
+      
+      // 4. Günlük notları yükle
       loadDailyNotes();
       
-      // Bugünkü durumu da yükle
+      // 5. Bugünkü durumu da yükle
       setTimeout(() => {
         loadTodayStatus();
       }, 1000); // 1 saniye bekle, diğer veriler yüklensin
+      
     } catch (error) {
-      console.error('Veri yükleme hatası:', error);
+      console.error('❌ Veri yükleme hatası:', error);
       // Hata durumunda boş state'ler set et
       setPersonnelList([]);
       setShiftStatistics([]);
@@ -554,15 +845,39 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
     setDetailsLoading(true);
     
     try {
+      // 1. Personel vardiya detaylarını çek
       const result = await getPersonnelShiftDetails(employee_code);
+      
       if (result.success) {
-        setPersonnelDetails(result.data);
+        console.log(`👤 ${employee_code} için ${result.data.length} vardiya kaydı bulundu`);
+        
+        // 2. Weekly periods'ı da çek
+        const periodsResult = await getWeeklyPeriods();
+        
+        if (periodsResult.success) {
+          console.log(`📅 ${periodsResult.data.length} haftalık dönem bulundu`);
+          
+          // 3. Vardiya kayıtlarını period bilgileri ile birleştir
+          const enrichedDetails = result.data.map(schedule => {
+            const period = periodsResult.data.find(p => p.id === schedule.period_id);
+            return {
+              ...schedule,
+              period_info: period || null
+            };
+          });
+          
+          console.log('📋 Zenginleştirilmiş vardiya detayları:', enrichedDetails.slice(0, 3));
+          setPersonnelDetails(enrichedDetails);
+        } else {
+          console.warn('⚠️ Weekly periods çekilemedi, sadece vardiya kayıtları gösteriliyor');
+          setPersonnelDetails(result.data);
+        }
       } else {
-        console.error('Personel detayları yüklenemedi:', result.error);
+        console.error('❌ Personel detayları yüklenemedi:', result.error);
         setPersonnelDetails([]);
       }
     } catch (error) {
-      console.error('Personel detayları yüklenirken hata:', error);
+      console.error('❌ Personel detayları yüklenirken hata:', error);
       setPersonnelDetails([]);
     } finally {
       setDetailsLoading(false);
@@ -1003,26 +1318,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
             
 
 
-  const updateAllShiftStatistics = async () => {
-    setLoading(true);
-    try {
-      const result = await calculateAllShiftStatistics();
-      if (result.success) {
-        setStatsUpdateResult({ 
-          type: 'success', 
-          message: `✅ Tüm personel istatistikleri başarıyla güncellendi! ${result.data?.length || 0} personel işlendi.` 
-        });
-        loadInitialData(); // Yeni verileri yükle
-        loadTodayStatus(); // Bugünkü durumu da güncelle
-      } else {
-        setStatsUpdateResult({ type: 'error', message: `❌ İstatistik güncelleme hatası: ${result.error}` });
-      }
-    } catch (error) {
-      setStatsUpdateResult({ type: 'error', message: `❌ İstatistik güncelleme hatası: ${error.message}` });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Bu fonksiyon artık kullanılmıyor - istatistikler otomatik hesaplanıyor
 
   const handleCleanupDatabase = async () => {
     if (window.confirm('⚠️ DİKKAT: Tüm vardiya verilerini temizlemek istediğinize emin misiniz?\n\nBu işlem:\n• Tüm vardiya programlarını silecek\n• Tüm istatistikleri sıfırlayacak\n• Tüm günlük kayıtları silecek\n\nBu işlem geri alınamaz!')) {
@@ -2193,29 +2489,61 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
               <h2 className="text-xl font-semibold text-gray-900">Excel Yükleme</h2>
               
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Excel Yükleme</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Excel dosyasından vardiya programını yükleyin. Dosya formatı: .xlsx, .xls
+                  </p>
+                  
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-200">
+                    <Upload className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleExcelUpload}
+                      className="hidden"
+                      id="excel-upload"
+                    />
+                    <label
+                      htmlFor="excel-upload"
+                      className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl shadow-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 cursor-pointer border-0 text-lg"
+                    >
+                      <Upload className="w-6 h-6 mr-3" />
+                      {uploadLoading ? 'Yükleniyor...' : 'Excel Dosyası Seç'}
+                    </label>
+                    <p className="text-sm text-gray-500 mt-4 font-medium">
+                      Veya dosyayı buraya sürükleyip bırakın
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Desteklenen formatlar: .xlsx, .xls
+                    </p>
+                  </div>
+                  
+                  {uploadMessage && (
+                    <div className={`mt-4 p-4 rounded-lg ${
+                      uploadMessage.type === 'success' 
+                        ? 'bg-green-50 border border-green-200 text-green-800' 
+                        : 'bg-red-50 border border-red-200 text-red-800'
+                    }`}>
+                      {uploadMessage.message}
+                    </div>
+                  )}
+                </div>
+
                 <div className="border-t border-gray-200 pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">🔄 İstatistik Güncelleme</h3>
                   <p className="text-sm text-gray-600 mb-4">
                     Tüm personel istatistiklerini güncelleyin
                   </p>
                   
-                  <button
-                    onClick={updateAllShiftStatistics}
-                    disabled={loading}
-                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-medium rounded-lg shadow-lg hover:from-green-700 hover:to-green-800 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                        Güncelleniyor...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-5 h-5 mr-2" />
-                        İstatistikleri Güncelle
-                      </>
-                    )}
-                  </button>
+                  <div className="text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="flex items-center">
+                      <Info className="w-5 h-5 mr-2 text-blue-600" />
+                      <span className="text-blue-800">
+                        İstatistikler otomatik olarak hesaplanıyor. Ayrı bir güncelleme gerekmez.
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="border-t border-gray-200 pt-6">
@@ -2734,7 +3062,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                         <h4 className="font-bold text-orange-900 text-sm uppercase tracking-wide">Son Vardiya</h4>
                       </div>
                       <p className="text-lg font-bold text-orange-800">
-                        {personnelDetails[0] ? new Date(personnelDetails[0].week_start_date).toLocaleDateString('tr-TR') : '-'}
+                        {personnelDetails[0] ? new Date(personnelDetails[0].created_at).toLocaleDateString('tr-TR') : '-'}
                       </p>
                     </div>
                   </div>
@@ -2745,7 +3073,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                       <BarChart3 className="w-6 h-6 text-gray-600 mr-3" />
                       <h4 className="font-bold text-gray-900 text-lg">Vardiya Özeti</h4>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-blue-200">
                         <div className="text-3xl font-bold text-blue-600 mb-2">
                           {personnelDetails.filter(d => d.shift_type === 'gece').length}
@@ -2766,15 +3094,21 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-purple-200">
                         <div className="text-3xl font-bold text-purple-600 mb-2">
-                          {personnelDetails.filter(d => d.shift_type === 'gecici').length}
+                          {personnelDetails.filter(d => d.shift_type === 'gecici_gorev').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🔄 Geçici Görev Haftası</div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-red-200">
                         <div className="text-3xl font-bold text-red-600 mb-2">
-                          {personnelDetails.filter(d => d.shift_type === 'hastalik_izni').length}
+                          {personnelDetails.filter(d => d.shift_type === 'raporlu').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🏥 Raporlu Haftası</div>
+                      </div>
+                      <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-yellow-200">
+                        <div className="text-3xl font-bold text-yellow-600 mb-2">
+                          {personnelDetails.filter(d => d.shift_type === 'yillik_izin').length}
+                        </div>
+                        <div className="text-sm text-gray-700 font-medium">🏖️ Yıllık İzin Haftası</div>
                       </div>
                     </div>
                   </div>
@@ -2811,44 +3145,56 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                           {personnelDetails.map((detail, index) => (
                             <tr key={index} className="hover:bg-gray-50 transition-colors">
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {formatWeekRange(detail.week_start_date, detail.week_end_date, detail.week_label)}
+                                {detail.period_info ? (
+                                  `${detail.period_info.start_date} - ${detail.period_info.end_date}`
+                                ) : (
+                                  `Dönem ${detail.period_id || index + 1}`
+                                )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
                                   detail.shift_type === 'gece' ? 'bg-blue-100 text-blue-800' :
                                   detail.shift_type === 'gunduz' ? 'bg-green-100 text-green-800' :
                                   detail.shift_type === 'aksam' ? 'bg-orange-100 text-orange-800' :
-                                  detail.shift_type === 'gecici' ? 'bg-purple-100 text-purple-800' :
-                                  detail.shift_type === 'hastalik_izni' ? 'bg-red-100 text-red-800' :
+                                  detail.shift_type === 'gecici_gorev' ? 'bg-purple-100 text-purple-800' :
+                                  detail.shift_type === 'raporlu' ? 'bg-red-100 text-red-800' :
                                   detail.shift_type === 'yillik_izin' ? 'bg-yellow-100 text-yellow-800' :
                                   'bg-gray-100 text-gray-800'
                                 }`}>
                                   {detail.shift_type === 'gece' ? '🌙 Gece' :
                                    detail.shift_type === 'gunduz' ? '☀️ Gündüz' :
                                    detail.shift_type === 'aksam' ? '🌅 Akşam' :
-                                   detail.shift_type === 'gecici' ? '🔄 Geçici' :
-                                   detail.shift_type === 'hastalik_izni' ? '🏥 Raporlu' :
+                                   detail.shift_type === 'gecici_gorev' ? '🔄 Geçici' :
+                                   detail.shift_type === 'raporlu' ? '🏥 Raporlu' :
                                    detail.shift_type === 'yillik_izin' ? '🏖️ İzinli' :
                                    detail.shift_type}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {new Date(detail.week_start_date).toLocaleDateString('tr-TR')}
+                                {detail.period_info ? 
+                                  detail.period_info.start_date :
+                                  new Date(detail.created_at).toLocaleDateString('tr-TR')
+                                }
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {new Date(detail.week_end_date).toLocaleDateString('tr-TR')}
+                                {detail.period_info ? 
+                                  detail.period_info.end_date :
+                                  new Date(detail.updated_at || detail.created_at).toLocaleDateString('tr-TR')
+                                }
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {(() => {
                                   if (detail.shift_hours) {
                                     return `${detail.shift_hours} saat`;
-                                  } else {
-                                    // Haftalık vardiya için gün sayısını hesapla
-                                    const startDate = new Date(detail.week_start_date);
-                                    const endDate = new Date(detail.week_end_date);
+                                  } else if (detail.period_info) {
+                                    // Period bilgilerinden gün sayısını hesapla
+                                    const startDate = new Date(detail.period_info.start_date + 'T00:00:00');
+                                    const endDate = new Date(detail.period_info.end_date + 'T00:00:00');
                                     const diffTime = Math.abs(endDate - startDate);
                                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
                                     return `${diffDays} gün`;
+                                  } else {
+                                    return `1 hafta`;
                                   }
                                 })()}
                               </td>

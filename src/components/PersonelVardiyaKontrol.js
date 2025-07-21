@@ -3,6 +3,116 @@ import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, X
 import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
+// Skeleton Loading Component
+const SkeletonLoading = ({ type = 'table', rows = 5 }) => {
+  // Custom pulse animation if Tailwind's animate-pulse doesn't work
+  const pulseStyle = {
+    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+  };
+  
+  // Add keyframes for pulse animation
+  React.useEffect(() => {
+    if (!document.getElementById('pulse-keyframes')) {
+      const style = document.createElement('style');
+      style.id = 'pulse-keyframes';
+      style.textContent = `
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+  if (type === 'table') {
+    return (
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">#</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Sicil No</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Ad Soyad</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Görev</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Şu an ki vardiya</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: rows }).map((_, index) => (
+                <tr key={index} className="border-b border-gray-100">
+                  <td className="py-3 px-4">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-gray-200 rounded-lg animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="h-6 bg-gray-200 rounded-full animate-pulse w-20"></div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="h-6 bg-gray-200 rounded-full animate-pulse w-28"></div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-1">
+                      <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'cards') {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: rows }).map((_, index) => (
+          <div key={index} className="bg-white rounded-2xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-gray-200 rounded-xl animate-pulse"></div>
+              <div className="h-6 bg-gray-200 rounded w-8 animate-pulse"></div>
+            </div>
+            <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
+            <div className="h-3 bg-gray-200 rounded mb-4 animate-pulse"></div>
+            <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'stats') {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="bg-white rounded-2xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-8 h-8 bg-gray-200 rounded-lg" style={pulseStyle}></div>
+              <div className="h-6 bg-gray-200 rounded w-8" style={pulseStyle}></div>
+            </div>
+            <div className="h-8 bg-gray-200 rounded mb-2" style={pulseStyle}></div>
+            <div className="h-3 bg-gray-200 rounded" style={pulseStyle}></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
   // getMonthName fonksiyonunu en başta tanımla
   const getMonthName = (month) => {
@@ -2046,9 +2156,12 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
               <h2 className="text-xl font-semibold text-gray-900">Genel İstatistikler</h2>
               
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <span className="ml-3 text-gray-600">Veriler yükleniyor...</span>
+                <div className="flex items-center justify-center py-16">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+                    <div className="text-lg font-semibold text-gray-700 mb-2">Veriler Yükleniyor</div>
+                    <div className="text-sm text-gray-500">Lütfen bekleyin...</div>
+                  </div>
                 </div>
               ) : (
                 <>

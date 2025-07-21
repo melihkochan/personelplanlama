@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Edit3, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
-import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails } from '../services/supabase';
-import * as XLSX from 'xlsx';
+import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules } from '../services/supabase';
+
 
 const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole }) => {
   const [personnelData, setPersonnelData] = useState(propPersonnelData || []);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [gorevFilter, setGorevFilter] = useState('ALL');
-  const [viewMode, setViewMode] = useState('cards');
+  const [viewMode, setViewMode] = useState('table');
   
   // Vardiya istatistikleri için state
   const [shiftStatistics, setShiftStatistics] = useState({});
+  const [weeklyPeriods, setWeeklyPeriods] = useState([]);
+  const [currentShiftData, setCurrentShiftData] = useState([]);
   
-  // Excel yükleme için state'ler
-  const [excelLoading, setExcelLoading] = useState(false);
-  const [excelSuccess, setExcelSuccess] = useState(false);
-  const [excelError, setExcelError] = useState(null);
-  const [excelStats, setExcelStats] = useState(null); // Yükleme istatistikleri için
+
   
   // Modal states
   const [showAddPersonnelModal, setShowAddPersonnelModal] = useState(false);
@@ -32,6 +30,148 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     // experience_level kaldırıldı - veritabanında yok
     // performance_score kaldırıldı - veritabanında yok
   });
+
+  // Güncel vardiya dönemini bulma fonksiyonu
+  const getCurrentPeriod = () => {
+    try {
+      // Tüm weekly_periods'ları çek
+      const allPeriods = weeklyPeriods || [];
+      
+      if (allPeriods.length === 0) {
+        console.log('⚠️ Hiç weekly_periods bulunamadı');
+        return null;
+      }
+
+      // week_label'daki tarihi parse edip en güncel olanı bul
+      let latestPeriod = null;
+      let latestDate = null;
+
+      console.log('🔍 Tüm dönemler:', allPeriods.length);
+
+      allPeriods.forEach((period, index) => {
+        console.log(`📅 Dönem ${index + 1}:`, period.week_label);
+
+        try {
+          const weekLabel = period.week_label;
+          if (!weekLabel) {
+            console.log('⚠️ week_label boş:', period);
+            return;
+          }
+
+          const dateMatch = weekLabel.match(/(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+-\s+(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/);
+
+          if (dateMatch) {
+            const [, startDay, startMonth, endDay, endMonth, year] = dateMatch;
+            const monthMap = {
+              'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
+              'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
+            };
+
+            const startMonthNum = monthMap[startMonth];
+            const endMonthNum = monthMap[endMonth];
+
+            console.log(`📊 Parse edilen: ${startDay} ${startMonth} ${year} -> ${startMonthNum}`);
+
+            if (startMonthNum !== undefined && endMonthNum !== undefined) {
+              const periodDate = new Date(parseInt(year), startMonthNum, parseInt(startDay));
+              const today = new Date();
+              today.setHours(0, 0, 0, 0); // Bugünün başlangıcı
+
+              console.log(`📅 Tarih hesaplandı:`, periodDate);
+              console.log(`📅 Bugün:`, today);
+              console.log(`📅 Gelecek mi:`, periodDate > today);
+
+              // Sadece bugünden küçük veya eşit tarihleri kabul et
+              if (periodDate <= today) {
+                if (!latestDate || periodDate > latestDate) {
+                  latestDate = periodDate;
+                  latestPeriod = period;
+                  console.log(`✅ Yeni en güncel:`, period.week_label);
+                }
+              } else {
+                console.log(`⏭️ Gelecek tarih atlandı:`, period.week_label);
+              }
+            } else {
+              console.log('⚠️ Ay numarası bulunamadı:', startMonth, endMonth);
+            }
+          } else {
+            console.log('⚠️ Regex eşleşmedi:', weekLabel);
+          }
+        } catch (error) {
+          console.warn('⚠️ week_label parse hatası:', period.week_label, error);
+        }
+      });
+
+      if (!latestPeriod) {
+        console.log('📊 En güncel dönem bulunamadı, en son yüklenen kullanılıyor...');
+        // Fallback: en son yüklenen veriyi kullan
+        latestPeriod = allPeriods[0];
+      }
+
+      console.log('🎯 Seçilen dönem:', latestPeriod?.week_label);
+      return latestPeriod;
+    } catch (error) {
+      console.error('❌ Güncel dönem bulma hatası:', error);
+      return null;
+    }
+  };
+
+  // Güncel vardiya verilerini yükle
+  const loadCurrentShiftData = async () => {
+    try {
+      console.log('🔄 Güncel vardiya verileri yükleniyor...');
+      
+      // 1. Weekly periods'ları çek
+      const periodsResult = await getWeeklyPeriods();
+      if (periodsResult.success) {
+        setWeeklyPeriods(periodsResult.data);
+        console.log('✅ Weekly periods yüklendi:', periodsResult.data.length);
+      } else {
+        console.error('❌ Weekly periods yüklenemedi');
+        return;
+      }
+
+      // 2. Güncel dönemi bul
+      const currentPeriod = getCurrentPeriod();
+      if (!currentPeriod) {
+        console.log('⚠️ Güncel dönem bulunamadı');
+        return;
+      }
+
+      console.log('📅 Güncel dönem:', currentPeriod.week_label);
+
+      // 3. Bu döneme ait vardiya verilerini çek
+      const schedulesResult = await getWeeklySchedules();
+      if (schedulesResult.success) {
+        const allSchedules = schedulesResult.data;
+        
+        // Sadece güncel döneme ait verileri filtrele
+        const currentSchedules = allSchedules.filter(schedule => 
+          schedule.period_id === currentPeriod.id
+        );
+
+        console.log(`📊 Güncel dönem vardiya verileri: ${currentSchedules.length} kayıt`);
+
+        // Personel bilgileriyle birleştir
+        const enrichedData = currentSchedules.map(schedule => {
+          const person = personnelData.find(p => p.employee_code === schedule.employee_code);
+          return {
+            ...schedule,
+            full_name: person?.full_name || 'Bilinmeyen',
+            position: person?.position || 'Bilinmeyen',
+            region: 'AND' // Varsayılan bölge
+          };
+        });
+
+        setCurrentShiftData(enrichedData);
+        console.log('✅ Güncel vardiya verileri yüklendi');
+      } else {
+        console.error('❌ Weekly schedules yüklenemedi');
+      }
+    } catch (error) {
+      console.error('❌ Güncel vardiya verileri yükleme hatası:', error);
+    }
+  };
 
   // Vardiya istatistikleri hesaplama fonksiyonu
   const calculateShiftStatistics = async () => {
@@ -333,6 +473,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   useEffect(() => {
     if (personnelData.length > 0) {
       calculateShiftStatistics();
+      loadCurrentShiftData(); // Güncel vardiya verilerini de yükle
     }
   }, [personnelData]);
 
@@ -415,38 +556,98 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     return 'belirsiz';
   };
 
-  const getVardiyaBadge = (vardiya) => {
+  const getVardiyaBadge = (vardiya, employeeCode = null) => {
+    // Önce güncel vardiya verilerinden kontrol et
+    if (employeeCode && currentShiftData.length > 0) {
+      const currentShift = currentShiftData.find(shift => shift.employee_code === employeeCode);
+      if (currentShift) {
+        const shiftType = currentShift.shift_type;
+        const shiftHours = currentShift.shift_hours;
+        
+        switch (shiftType) {
+          case 'gece':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                <Moon className="w-3 h-3 mr-1" />
+                Gece ({currentShift.shift_hours || '22:00-06:00'})
+              </span>
+            );
+          case 'gunduz':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+                <Sun className="w-3 h-3 mr-1" />
+                Gündüz ({currentShift.shift_hours || '08:00-16:00'})
+              </span>
+            );
+          case 'aksam':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300">
+                <Calendar className="w-3 h-3 mr-1" />
+                Akşam ({currentShift.shift_hours || '16:00-00:00'})
+              </span>
+            );
+          case 'izin':
+          case 'yillik_izin':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
+                Yıllık İzin
+              </span>
+            );
+          case 'raporlu':
+          case 'rapor':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                Raporlu
+              </span>
+            );
+          case 'gecici_gorev':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                Geçici Görev
+              </span>
+            );
+          default:
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                Dinlenme
+              </span>
+            );
+        }
+      }
+    }
+    
+    // Eğer güncel vardiya verisi yoksa, eski sistemi kullan
     const type = getVardiyaType(vardiya);
     
     switch (type) {
       case 'gece':
-      return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-300">
-            <Moon className="w-4 h-4 mr-1" />
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+            <Moon className="w-3 h-3 mr-1" />
             Gece
-        </span>
-      );
+          </span>
+        );
       case 'gunduz':
-      return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
-            <Sun className="w-4 h-4 mr-1" />
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+            <Sun className="w-3 h-3 mr-1" />
             Gündüz
-        </span>
-      );
+          </span>
+        );
       case 'izin':
-      return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-300">
-            <Calendar className="w-4 h-4 mr-1" />
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
+            <Calendar className="w-3 h-3 mr-1" />
             İzin
-        </span>
-      );
+          </span>
+        );
       default:
-    return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300">
-        <Calendar className="w-4 h-4 mr-1" />
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
+            <Calendar className="w-3 h-3 mr-1" />
             Belirsiz
-      </span>
-    );
+          </span>
+        );
     }
   };
 
@@ -457,8 +658,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     
     if (positionUpper.includes('ŞOFÖR') || positionUpper.includes('SOFOR')) {
       return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-300">
-          <Users className="w-4 h-4 mr-1" />
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300">
+          <Users className="w-3 h-3 mr-1" />
           Şoför
         </span>
       );
@@ -466,15 +667,15 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     
     if (positionUpper.includes('SEVKİYAT') || positionUpper.includes('SEVKIYAT')) {
       return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-300">
-          <UserCheck className="w-4 h-4 mr-1" />
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
+          <UserCheck className="w-3 h-3 mr-1" />
           Sevkiyat Elemanı
         </span>
       );
     }
     
     return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
         {position}
       </span>
     );
@@ -648,34 +849,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               </button>
             )}
             
-            {(userRole === 'admin' || userRole === 'yönetici') && (
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleExcelUpload}
-                  className="hidden"
-                  disabled={excelLoading}
-                />
-                <div className={`px-6 py-3 rounded-xl text-white flex items-center gap-2 font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 ${
-                  excelLoading 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
-                }`}>
-                {excelLoading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Yükleniyor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-5 h-5" />
-                    <span>Excel'den Yükle</span>
-                  </>
-                )}
-              </div>
-            </label>
-            )}
+            
           </div>
         </div>
         
@@ -871,60 +1045,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                           </div>
                         </div>
 
-      {/* Excel Yükleme Mesajları */}
-      {excelSuccess && (
-        <div className="bg-green-100 border border-green-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-green-800 font-semibold">Excel dosyası başarıyla yüklendi!</p>
-          </div>
-          {excelStats && (
-            <div className="text-sm text-green-700 space-y-1">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <strong>{excelStats.newCount}</strong> yeni personel eklendi
-                </span>
-                {excelStats.duplicateCount > 0 && (
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                    <strong>{excelStats.duplicateCount}</strong> duplicate (güncellendi)
-                  </span>
-                )}
-                {excelStats.errorCount > 0 && (
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                    <strong>{excelStats.errorCount}</strong> hata
-                  </span>
-            )}
-          </div>
-              {excelStats.duplicateCount > 0 && (
-                <div className="text-xs text-green-600 mt-2">
-                  <strong>Duplicate kayıtlar:</strong> {excelStats.duplicatePersonnel.slice(0, 3).join(', ')}
-                  {excelStats.duplicatePersonnel.length > 3 && ` ve ${excelStats.duplicatePersonnel.length - 3} diğer...`}
-        </div>
-              )}
-      </div>
-          )}
-        </div>
-      )}
 
-      {excelError && (
-        <div className="bg-red-100 border border-red-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <p className="text-red-800 font-semibold">{excelError}</p>
-            </div>
-          </div>
-        )}
 
       {/* View Toggle */}
       <div className="flex items-center gap-4 mb-6">
@@ -1007,7 +1128,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Şu an ki vardiya:</span>
-                  {getVardiyaBadge(person.shift_type)}
+                  {getVardiyaBadge(person.shift_type, person.employee_code)}
             </div>
 
                 {/* Vardiya İstatistikleri */}
@@ -1076,54 +1197,54 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
             <table className="w-full">
                 <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">#</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Sicil No</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Ad Soyad</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Görev</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Şu an ki vardiya</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">Vardiya İstatistikleri</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900">İşlemler</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">#</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Sicil No</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Ad Soyad</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Görev</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Şu an ki vardiya</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Vardiya İstatistikleri</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">İşlemler</th>
                   </tr>
                 </thead>
                 <tbody>
                 {filteredPersonel.map((person, index) => (
                   <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-6 text-gray-600">{index + 1}</td>
-                    <td className="py-4 px-6">
-                      <span className="font-medium text-gray-900">{person.employee_code}</span>
+                    <td className="py-3 px-4 text-gray-600 text-xs">{index + 1}</td>
+                    <td className="py-3 px-4">
+                      <span className="font-medium text-gray-900 text-xs">{person.employee_code}</span>
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                          <Users className="w-4 h-4 text-white" />
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                          <Users className="w-3 h-3 text-white" />
                           </div>
-                        <span className="font-medium text-gray-900">{person.full_name}</span>
+                        <span className="font-medium text-gray-900 text-xs">{person.full_name}</span>
                         </div>
                       </td>
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       {getPositionBadge(person.position)}
                       </td>
-                    <td className="py-4 px-6">
-                      {getVardiyaBadge(person.shift_type)}
-                      </td>
-                    <td className="py-4 px-6">
+                                        <td className="py-3 px-4">
+                      {getVardiyaBadge(person.shift_type, person.employee_code)}
+                    </td>
+                    <td className="py-3 px-4">
                       {shiftStatistics[person.full_name] ? (
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
                             <Moon className="w-3 h-3 text-purple-500" />
-                            <span className="text-sm font-medium text-purple-600">
+                            <span className="text-xs font-medium text-purple-600">
                               {shiftStatistics[person.full_name].nightShifts}
                             </span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Sun className="w-3 h-3 text-orange-500" />
-                            <span className="text-sm font-medium text-orange-600">
+                            <span className="text-xs font-medium text-orange-600">
                               {shiftStatistics[person.full_name].dayShifts}
                             </span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 text-blue-500" />
-                            <span className="text-sm font-medium text-blue-600">
+                            <span className="text-xs font-medium text-blue-600">
                               {shiftStatistics[person.full_name].eveningShifts}
                             </span>
                           </div>
@@ -1132,24 +1253,24 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                           </div>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">Veri yok</span>
+                        <span className="text-xs text-gray-400">Veri yok</span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1">
                         {(userRole === 'admin' || userRole === 'yönetici') && (
                           <>
                             <button
                               onClick={() => handleEditPersonnel(person)}
-                              className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                              className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <Edit3 className="w-3 h-3" />
                             </button>
                             <button
                               onClick={() => handleDeletePersonnel(person.id)}
-                              className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                              className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3" />
                             </button>
                           </>
                         )}

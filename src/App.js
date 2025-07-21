@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Users, Calendar, FileText, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package } from 'lucide-react';
-import FileUpload from './components/FileUpload';
+
 import PersonelList from './components/PersonelList';
 import VehicleList from './components/VehicleList';
 import StoreList from './components/StoreList';
@@ -218,82 +218,7 @@ function MainApp() {
     return () => clearInterval(interval);
   }, [isAuthenticated, activeTab]);
 
-  const handleDataUpload = (data) => {
-    console.log('📊 handleDataUpload çağrıldı:', data);
-    
-    // Mevcut veri sayılarını al
-    const currentPersonnelCount = personnelData.length;
-    const currentVehicleCount = vehicleData.length;
-    const currentStoreCount = storeData.length;
-    
-    // Yeni veri sayılarını hesapla
-    const newPersonnelCount = data.personnel ? data.personnel.length : 0;
-    const newVehicleCount = data.vehicles ? data.vehicles.length : 0;
-    const newStoreCount = data.stores ? data.stores.length : 0;
-    
-    // Sadece var olan veri tiplerini güncelle
-    const updatedDataTypes = [];
-    const noChangeTypes = [];
-    
-    if (newPersonnelCount > 0) {
-      setPersonnelData(data.personnel);
-      updatedDataTypes.push(`${newPersonnelCount} personel`);
-    } else if (currentPersonnelCount > 0) {
-      // Personel verisi yoksa mesaj ver
-      noChangeTypes.push('personel');
-    }
-    
-    if (newVehicleCount > 0) {
-      setVehicleData(data.vehicles);
-      updatedDataTypes.push(`${newVehicleCount} araç`);
-    } else if (currentVehicleCount > 0) {
-      // Araç verisi yoksa mesaj ver
-      noChangeTypes.push('araç');
-    }
-    
-    if (newStoreCount > 0) {
-      setStoreData(data.stores);
-      updatedDataTypes.push(`${newStoreCount} mağaza`);
-    } else if (currentStoreCount > 0) {
-      // Mağaza verisi yoksa mesaj ver
-      noChangeTypes.push('mağaza');
-    }
-    
-    // Veri durumu güncelle (sadece değişen veriler için)
-    const newDataStatus = {
-      personnel: { 
-        loaded: true, 
-        count: newPersonnelCount > 0 ? newPersonnelCount : currentPersonnelCount,
-        hasExisting: newPersonnelCount > 0 ? true : currentPersonnelCount > 0
-      },
-      vehicles: { 
-        loaded: true, 
-        count: newVehicleCount > 0 ? newVehicleCount : currentVehicleCount,
-        hasExisting: newVehicleCount > 0 ? true : currentVehicleCount > 0
-      },
-      stores: { 
-        loaded: true, 
-        count: newStoreCount > 0 ? newStoreCount : currentStoreCount,
-        hasExisting: newStoreCount > 0 ? true : currentStoreCount > 0
-      }
-    };
-    
-    setDataStatus(newDataStatus);
-    setDataLoaded(true);
-    
-    // Akıllı feedback mesajları
-    if (updatedDataTypes.length > 0) {
-      showNotification(`Başarıyla yüklendi: ${updatedDataTypes.join(', ')}`, 'success');
-    }
-    
-    if (noChangeTypes.length > 0) {
-      showNotification(`Excel dosyasında ${noChangeTypes.join(', ')} verisi bulunamadı`, 'info');
-    }
-    
-    if (updatedDataTypes.length === 0 && noChangeTypes.length === 0) {
-      showNotification('Yüklenen dosyada hiçbir geçerli veri bulunamadı', 'warning');
-    }
-  };
+
 
   const handlePlanGenerated = (plan) => {
     setGeneratedPlan(plan);
@@ -1154,11 +1079,117 @@ function MainApp() {
                 </div>
               </div>
 
-              {/* Dosya Yükleme */}
+              {/* Hızlı İşlemler Dashboard */}
               <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Veri Yükleme</h3>
-                <div className="bg-white rounded-2xl p-6 shadow-lg">
-                  <FileUpload onDataUpload={handleDataUpload} />
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Hızlı İşlemler</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Personel Yönetimi */}
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <span className="text-2xl font-bold">{personnelData.length}</span>
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Personel Yönetimi</h4>
+                    <p className="text-blue-100 text-sm mb-4">Personel ekle, düzenle ve vardiya bilgilerini görüntüle</p>
+                    <button 
+                      onClick={() => handleTabChange('personnel')}
+                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                    >
+                      Personel Listesi →
+                    </button>
+                  </div>
+
+                  {/* Vardiya Kontrol */}
+                  <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <span className="text-2xl font-bold">{dataStatus.weeklySchedules.length}</span>
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Vardiya Kontrol</h4>
+                    <p className="text-green-100 text-sm mb-4">Güncel vardiya bilgilerini kontrol et ve düzenle</p>
+                    <button 
+                      onClick={() => handleTabChange('vardiya-kontrol')}
+                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                    >
+                      Vardiya Kontrol →
+                    </button>
+                  </div>
+
+                  {/* Performans Analizi */}
+                  <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                        <BarChart3 className="w-6 h-6" />
+                      </div>
+                      <span className="text-2xl font-bold">📊</span>
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Performans Analizi</h4>
+                    <p className="text-purple-100 text-sm mb-4">Detaylı performans raporları ve istatistikler</p>
+                    <button 
+                      onClick={() => handleTabChange('performance')}
+                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                    >
+                      Analiz Görüntüle →
+                    </button>
+                  </div>
+
+                  {/* Vardiya Planlama */}
+                  <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                        <Clock className="w-6 h-6" />
+                      </div>
+                      <span className="text-2xl font-bold">⚡</span>
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Vardiya Planlama</h4>
+                    <p className="text-orange-100 text-sm mb-4">Otomatik vardiya planı oluştur ve optimize et</p>
+                    <button 
+                      onClick={() => handleTabChange('planning')}
+                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                    >
+                      Plan Oluştur →
+                    </button>
+                  </div>
+
+                  {/* Araç Yönetimi */}
+                  <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                        <Car className="w-6 h-6" />
+                      </div>
+                      <span className="text-2xl font-bold">{vehicleData.length}</span>
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Araç Yönetimi</h4>
+                    <p className="text-red-100 text-sm mb-4">Araç bilgilerini yönet ve filo durumunu kontrol et</p>
+                    <button 
+                      onClick={() => handleTabChange('vehicles')}
+                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                    >
+                      Araç Listesi →
+                    </button>
+                  </div>
+
+                  {/* Mağaza Yönetimi */}
+                  <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                        <Store className="w-6 h-6" />
+                      </div>
+                      <span className="text-2xl font-bold">{storeData.length}</span>
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Mağaza Yönetimi</h4>
+                    <p className="text-teal-100 text-sm mb-4">Mağaza bilgilerini yönet ve bölge dağılımını görüntüle</p>
+                    <button 
+                      onClick={() => handleTabChange('stores')}
+                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                    >
+                      Mağaza Listesi →
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

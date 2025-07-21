@@ -205,21 +205,32 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
 
           // Her personel satırını işle
           dataRows.forEach((row, rowIndex) => {
-            if (row.length < 4) return; // Geçersiz satır
+            console.log(`🔍 Satır ${rowIndex + 1}:`, row);
+            
+            if (row.length < 4) {
+              console.log(`⚠️ Geçersiz satır: Satır ${rowIndex + 1} - ${row.length} sütun`);
+              return;
+            }
             
             const employeeCode = row[1]; // B sütunu - Personel ID
             const employeeName = row[2]; // C sütunu - ADI SOYADI
             const position = row[3]; // D sütunu - GÖREVİ
             
-            if (!employeeCode || !employeeName) return;
+            console.log(`👤 Personel: ${employeeName} (${employeeCode}) - ${position}`);
+            
+            if (!employeeCode || !employeeName) {
+              console.log(`⚠️ Geçersiz personel: Satır ${rowIndex + 1} - Kod: ${employeeCode}, İsim: ${employeeName}`);
+              return;
+            }
             
             // E sütunundan itibaren her hafta için vardiya bilgisini al
             for (let col = 4; col < Math.min(row.length, headers.length); col++) {
               const shiftValue = row[col];
               console.log(`🔍 Satır ${rowIndex + 1}, Sütun ${col}: "${shiftValue}" (${typeof shiftValue})`);
               
-              if (!shiftValue) {
-                console.log(`⚠️ Boş değer: Satır ${rowIndex + 1}, Sütun ${col}`);
+              // Boş değerleri atla - o personel o hafta işe başlamamış
+              if (!shiftValue || shiftValue === '' || shiftValue === null || shiftValue === undefined) {
+                console.log(`⏭️ Boş değer: Satır ${rowIndex + 1}, Sütun ${col} - Personel o hafta işe başlamamış, atlanıyor`);
                 continue;
               }
               
@@ -246,27 +257,34 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                   shiftType = 'gunduz';
                   shiftHours = value;
                   console.log(`✅ Gündüz vardiyası: ${value}`);
-                } else if (value === '16:00 - 00:00') {
+                } else if (value === '16:00 - 00:00' || value === '16:00-00:00') {
                   shiftType = 'aksam';
                   shiftHours = value;
                   console.log(`✅ Akşam vardiyası: ${value}`);
-                } else if (value === 'Raporlu') {
+                } else if (value.toLowerCase().includes('rapor') || value === 'Raporlu' || value === 'Rapor') {
                   shiftType = 'raporlu';
                   status = 'raporlu';
                   console.log(`✅ Raporlu: ${value}`);
-                } else if (value === 'Yıllık izinli') {
+                } else if (value === 'Yıllık izinli' || value.toLowerCase().includes('izin')) {
                   shiftType = 'yillik_izin';
                   status = 'yillik_izin';
                   console.log(`✅ Yıllık izin: ${value}`);
-                } else if (value === 'GEÇİCİ GÖREV') {
+                } else if (value === 'GEÇİCİ GÖREV' || value.toLowerCase().includes('geçici')) {
                   shiftType = 'gecici_gorev';
                   status = 'gecici_gorev';
                   console.log(`✅ Geçici görev: ${value}`);
                 } else {
                   console.log(`⚠️ Bilinmeyen vardiya türü: "${value}"`);
+                  // Bilinmeyen değerler için de dinlenme olarak kaydet
+                  shiftType = 'dinlenme';
                 }
+              } else if (shiftValue === null || shiftValue === undefined) {
+                console.log(`⏭️ Null/undefined değer: ${shiftValue} - Personel o hafta işe başlamamış, atlanıyor`);
+                continue;
               } else {
                 console.log(`⚠️ Vardiya değeri string değil: ${shiftValue} (${typeof shiftValue})`);
+                // String olmayan değerler için de dinlenme olarak kaydet
+                shiftType = 'dinlenme';
               }
               
               schedules.push({
@@ -458,49 +476,78 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
         setPersonnelList(sortedPersonnel);
         console.log('👥 Personeller yüklendi (A-Z sıralı):', sortedPersonnel.length, 'kişi');
         
-        // 2. Şimdi weekly schedules'ı çekmeyi dene
-        try {
-          const schedulesResult = await getWeeklySchedules();
-          console.log('📋 Weekly schedules çekme sonucu:', schedulesResult);
-          
-          if (schedulesResult.success) {
-            console.log(`📋 Toplam vardiya kaydı: ${schedulesResult.data.length}`);
+                  // 2. Her personel için ayrı ayrı vardiya verilerini çek
+          try {
+            console.log('📋 Her personel için vardiya verileri çekiliyor...');
             
-            // Tüm vardiya programlarını personel koduna göre grupla
-            const schedulesByEmployee = {};
-            schedulesResult.data.forEach(schedule => {
-              if (!schedulesByEmployee[schedule.employee_code]) {
-                schedulesByEmployee[schedule.employee_code] = [];
+            // Her personel için ayrı ayrı veri çek
+            const realTimeStats = [];
+            
+            for (const person of sortedPersonnel) {
+              try {
+                const personResult = await getPersonnelShiftDetails(person.employee_code);
+                
+                if (personResult.success) {
+                  const personSchedules = personResult.data || [];
+                  
+                  console.log(`👤 ${person.full_name} (${person.employee_code}): ${personSchedules.length} vardiya kaydı`);
+                  
+                  // Vardiya tiplerini say
+                  const stats = {
+                    total_night_shifts: personSchedules.filter(s => s.shift_type === 'gece').length,
+                    total_day_shifts: personSchedules.filter(s => s.shift_type === 'gunduz').length,
+                    total_evening_shifts: personSchedules.filter(s => s.shift_type === 'aksam').length,
+                    total_temp_assignments: personSchedules.filter(s => s.shift_type === 'gecici_gorev').length,
+                    total_sick_days: personSchedules.filter(s => s.shift_type === 'raporlu').length,
+                    total_annual_leave: personSchedules.filter(s => s.shift_type === 'yillik_izin').length
+                  };
+                  
+                  // Debug: Vardiya türlerini kontrol et
+                  if (person.full_name.includes('BAHATTİN') || person.full_name.includes('DERYAHAN')) {
+                    console.log(`🔍 BAHATTİN DERYAHAN DEBUG:`);
+                    console.log(`   - Toplam kayıt: ${personSchedules.length}`);
+                    console.log(`   - Vardiya türleri:`, personSchedules.map(s => s.shift_type));
+                    console.log(`   - İstatistikler:`, stats);
+                  }
+                  
+                  realTimeStats.push({
+                    employee_code: person.employee_code,
+                    full_name: person.full_name,
+                    position: person.position || 'Belirtilmemiş',
+                    ...stats,
+                    year: 'Tüm Yıllar'
+                  });
+                } else {
+                  console.warn(`⚠️ ${person.full_name} için veri çekilemedi`);
+                  realTimeStats.push({
+                    employee_code: person.employee_code,
+                    full_name: person.full_name,
+                    position: person.position || 'Belirtilmemiş',
+                    total_night_shifts: 0,
+                    total_day_shifts: 0,
+                    total_evening_shifts: 0,
+                    total_temp_assignments: 0,
+                    total_sick_days: 0,
+                    total_annual_leave: 0,
+                    year: 'Tüm Yıllar'
+                  });
+                }
+              } catch (error) {
+                console.error(`❌ ${person.full_name} için veri çekme hatası:`, error);
+                realTimeStats.push({
+                  employee_code: person.employee_code,
+                  full_name: person.full_name,
+                  position: person.position || 'Belirtilmemiş',
+                  total_night_shifts: 0,
+                  total_day_shifts: 0,
+                  total_evening_shifts: 0,
+                  total_temp_assignments: 0,
+                  total_sick_days: 0,
+                  total_annual_leave: 0,
+                  year: 'Tüm Yıllar'
+                });
               }
-              schedulesByEmployee[schedule.employee_code].push(schedule);
-            });
-            
-            console.log(`👥 Vardiya kaydı olan personel sayısı: ${Object.keys(schedulesByEmployee).length}`);
-            
-            // Her personel için istatistikleri hesapla
-            const realTimeStats = sortedPersonnel.map(person => {
-              const personSchedules = schedulesByEmployee[person.employee_code] || [];
-              
-              console.log(`👤 ${person.full_name} (${person.employee_code}): ${personSchedules.length} vardiya kaydı`);
-              
-              // Vardiya tiplerini say
-              const stats = {
-                total_night_shifts: personSchedules.filter(s => s.shift_type === 'gece').length,
-                total_day_shifts: personSchedules.filter(s => s.shift_type === 'gunduz').length,
-                total_evening_shifts: personSchedules.filter(s => s.shift_type === 'aksam').length,
-                total_temp_assignments: personSchedules.filter(s => s.shift_type === 'gecici_gorev').length,
-                total_sick_days: personSchedules.filter(s => s.shift_type === 'raporlu').length,
-                total_annual_leave: personSchedules.filter(s => s.shift_type === 'yillik_izin').length
-              };
-              
-              return {
-                employee_code: person.employee_code,
-                full_name: person.full_name,
-                position: person.position || 'Belirtilmemiş',
-                ...stats,
-                year: 'Tüm Yıllar'
-              };
-            });
+            }
             
             setShiftStatistics(realTimeStats);
             console.log('📊 İstatistikler hesaplandı:', realTimeStats.length, 'personel');
@@ -517,9 +564,9 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
             }, { gece: 0, gunduz: 0, aksam: 0, gecici: 0, raporlu: 0, yillik_izin: 0 });
             
             console.log('📊 Toplam istatistikler:', totalStats);
-          } else {
-            console.warn('⚠️ Weekly schedules çekilemedi, sadece personeller gösteriliyor');
-            // Sadece personelleri göster, istatistikleri 0 olarak ayarla
+          } catch (scheduleError) {
+            console.error('❌ Vardiya verileri çekme hatası:', scheduleError);
+            // Hata durumunda sadece personelleri göster
             const emptyStats = sortedPersonnel.map(person => ({
               employee_code: person.employee_code,
               full_name: person.full_name,
@@ -534,23 +581,6 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
             }));
             setShiftStatistics(emptyStats);
           }
-        } catch (scheduleError) {
-          console.error('❌ Weekly schedules çekme hatası:', scheduleError);
-          // Hata durumunda sadece personelleri göster
-          const emptyStats = sortedPersonnel.map(person => ({
-            employee_code: person.employee_code,
-            full_name: person.full_name,
-            position: person.position || 'Belirtilmemiş',
-            total_night_shifts: 0,
-            total_day_shifts: 0,
-            total_evening_shifts: 0,
-            total_temp_assignments: 0,
-            total_sick_days: 0,
-            total_annual_leave: 0,
-            year: 'Tüm Yıllar'
-          }));
-          setShiftStatistics(emptyStats);
-        }
       } else {
         console.warn('❌ Personel verileri yüklenemedi:', personnelResult.error);
         setPersonnelList([]);

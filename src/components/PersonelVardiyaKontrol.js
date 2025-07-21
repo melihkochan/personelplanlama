@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info } from 'lucide-react';
 import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
@@ -39,7 +39,10 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   
   // Günlük takip state'leri (Supabase'e kaydedilir)
-  const [selectedDate, setSelectedDate] = useState('all'); // 'all' = tüm tarihler
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Bugünün tarihi
+  });
   const [showAllDates, setShowAllDates] = useState(true); // Tüm tarihleri göster
   const [viewMode, setViewMode] = useState('calendar'); // 'list' veya 'calendar' - varsayılan takvim
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -90,6 +93,17 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
     yillikIzin: { count: 0, personnel: [] },
     dinlenme: { count: 0, personnel: [] }
   });
+
+  // Personel detay modalı için tarih aralığı state'leri
+  const [detailDateRange, setDetailDateRange] = useState({
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
+  const [filteredPersonnelDetails, setFilteredPersonnelDetails] = useState([]);
+  const [filteredDailyNotes, setFilteredDailyNotes] = useState([]);
+  
+  // Hafta detayları için state
+  const [selectedWeekDetails, setSelectedWeekDetails] = useState(null);
 
   // Excel upload fonksiyonu
   const handleExcelUpload = async (event) => {
@@ -373,7 +387,24 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
   // Component yüklendiğinde verileri getir
   useEffect(() => {
     loadInitialData();
+    loadDailyNotes();
   }, []);
+
+  // Takvim görünümünde veri güncellemesi için
+  useEffect(() => {
+    if (viewMode === 'calendar' && dailyNotes.length > 0) {
+      // Takvim verilerini yenile
+      console.log('🔄 Takvim verileri yenileniyor...');
+    }
+  }, [dailyNotes, viewMode]);
+
+  // Takvim görünümünde veri güncellemesi için
+  useEffect(() => {
+    if (viewMode === 'calendar' && dailyNotes.length > 0) {
+      // Takvim verilerini yenile
+      console.log('🔄 Takvim verileri yenileniyor...');
+    }
+  }, [dailyNotes, viewMode]);
 
   // Tarih değiştiğinde günlük notları yenile
   useEffect(() => {
@@ -403,26 +434,22 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
         const noteMonth = noteDate.getMonth();
         monthsWithData.add(`${noteYear}-${noteMonth}`);
       });
-      
-      // Eğer veri varsa ve mevcut seçim verisi olmayan bir ay ise, ilk verisi olan ayı seç
-      if (monthsWithData.size > 0) {
-        const currentSelection = selectedMonth;
-        const hasDataForCurrentSelection = monthsWithData.has(currentSelection);
-        
-        if (!hasDataForCurrentSelection) {
-          // Veri olan ayları sırala (en yeni önce)
-          const sortedMonths = Array.from(monthsWithData).sort((a, b) => {
-            const [yearA, monthA] = a.split('-');
-            const [yearB, monthB] = b.split('-');
-            if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
-            return parseInt(monthB) - parseInt(monthA);
-          });
-          
-          // İlk verisi olan ayı seç
-          const firstMonthWithData = sortedMonths[0];
-          setSelectedMonth(firstMonthWithData);
-          console.log(`🔄 Varsayılan ay güncellendi: ${firstMonthWithData}`);
-        }
+
+      // Mevcut seçimde veri var mı kontrolü
+      const currentSelection = selectedMonth;
+      const hasDataForCurrentSelection = monthsWithData.has(currentSelection);
+
+      if (!hasDataForCurrentSelection) {
+        // Veri olan ayları sırala (en yeni önce)
+        const sortedMonths = Array.from(monthsWithData).sort((a, b) => {
+          const [yearA, monthA] = a.split('-');
+          const [yearB, monthB] = b.split('-');
+          if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
+          return parseInt(monthB) - parseInt(monthA);
+        });
+        // İlk verisi olan ayı seç
+        const firstMonthWithData = sortedMonths[0];
+        setSelectedMonth(firstMonthWithData);
       }
     }
   }, [dailyNotes]);
@@ -874,6 +901,20 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
     setSelectedPersonnel(employee_code);
     setDetailsLoading(true);
     
+    // Varsayılan tarih aralığını ayarla (son 30 gün)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    
+    setDetailDateRange({
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    });
+    
+    // Filtreleme state'lerini sıfırla
+    setFilteredPersonnelDetails([]);
+    setFilteredDailyNotes([]);
+    
     try {
       // 1. Personel vardiya detaylarını çek
       const result = await getPersonnelShiftDetails(employee_code);
@@ -1041,7 +1082,15 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
     return new Date(year, month, 1).getDay();
   };
 
-  const getCalendarDays = () => {
+  const getMonthName = (month) => {
+    const months = [
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+    ];
+    return months[month];
+  };
+
+  const getCalendarDays = useMemo(() => {
     // selectedMonth henüz tanımlanmamışsa boş array döndür
     if (!selectedMonth) {
       console.log('⚠️ selectedMonth henüz tanımlanmamış, takvim günleri oluşturulamıyor');
@@ -1080,17 +1129,17 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
       const date = new Date(currentYear, currentMonth, day);
       const dateStr = date.toISOString().split('T')[0];
       
-      // Önce seçilen ay için filtrelenmiş notları al, sonra bu güne ait olanları filtrele
-      const filteredNotes = getNotesForSelectedDate();
-      const dayNotes = filteredNotes.filter(note => note.date === dateStr);
+      // Bu gün için daily_notes'tan notları filtrele
+      const dayNotes = dailyNotes.filter(note => {
+        const noteDate = new Date(note.date);
+        return (
+          noteDate.getFullYear() === date.getFullYear() &&
+          noteDate.getMonth() === date.getMonth() &&
+          noteDate.getDate() === date.getDate()
+        );
+      });
       
-      // Debug: 19 Temmuz için özel kontrol
-      if (day === 19) {
-        console.log('🔍 19 Temmuz debug:');
-        console.log('📅 dateStr:', dateStr);
-        console.log('📊 Filtrelenmiş notlar:', filteredNotes.length);
-        console.log('✅ 19 Temmuz notları:', dayNotes);
-      }
+
       
       days.push({
         date,
@@ -1112,21 +1161,13 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
     }
 
     return days;
-  };
+  }, [selectedMonth, selectedYear, dailyNotes]);
 
   // Gelecek tarih kontrolü
   const isFutureDate = (date) => {
     const today = new Date();
     today.setHours(23, 59, 59, 999); // Bugünün sonu
     return date > today;
-  };
-
-  const getMonthName = (month) => {
-    const months = [
-      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-    ];
-    return months[month];
   };
 
   // Takvim animasyonu için fonksiyonlar
@@ -1184,70 +1225,48 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
   // Bugünkü personel durumlarını hesapla
   const getTodayPersonnelStatus = async () => {
     const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
+    const currentMonth = currentDate.getMonth(); // 0-11 arası (Temmuz = 6)
     const currentYear = currentDate.getFullYear();
     console.log('🔍 Bu ayki durum kontrolü:', currentMonth + 1, currentYear);
     
     try {
-      // Weekly schedules tablosundan bu ayki verileri çek
-      const { data: weeklySchedules, error } = await supabase
-        .from('weekly_schedules')
-        .select('*')
-        .eq('year', currentYear);
-      
-      if (error) {
-        console.error('❌ Weekly schedules çekme hatası:', error);
-        return {
-          raporlu: { count: 0, personnel: [] },
-          habersiz: { count: 0, personnel: [] },
-          yillikIzin: { count: 0, personnel: [] },
-          dinlenme: { count: 0, personnel: [] }
-        };
-      }
-      
-      console.log('📊 Weekly schedules kayıtları:', weeklySchedules?.length || 0);
-      
-      if (weeklySchedules && weeklySchedules.length > 0) {
-        console.log('📋 İlk 5 kayıt örneği:', weeklySchedules.slice(0, 5));
-      }
-      
-      // Bu ayki kayıtları filtrele (shift_time_range, month_name, year kolonlarını kullan)
-      const thisMonthSchedules = weeklySchedules.filter(schedule => {
-        // Year kontrolü
-        if (schedule.year !== currentYear) return false;
-        
-        // Month kontrolü - month_name'den ayı çıkar
-        const monthName = schedule.month_name || '';
-        const currentMonthName = new Date(currentYear, currentMonth).toLocaleDateString('tr-TR', { month: 'long' });
-        
-        console.log(`📅 ${schedule.employee_name}: year=${schedule.year}, month_name=${monthName}, shift_time_range=${schedule.shift_time_range}`);
-        
-        return monthName.toLowerCase().includes(currentMonthName.toLowerCase());
-      });
-      
-      console.log('📅 Bu ayki haftalık programlar:', thisMonthSchedules.length);
-      
-      // Shift time range'e göre grupla - BENZERSİZ PERSONEL SAYISI
-      const raporluPersonnelCodes = [...new Set(thisMonthSchedules.filter(schedule => 
-        schedule.shift_time_range === 'hastalik_izni'
-      ).map(s => s.employee_code))];
-      
-      const habersizPersonnelCodes = [...new Set(thisMonthSchedules.filter(schedule => 
-        schedule.shift_time_range === 'gecici'
-      ).map(s => s.employee_code))];
-      
-      // Yıllık izin: shift_time_range'de 'izinli' veya 'ücretsiz izinli' olanlar
-      const yillikIzinPersonnelCodes = [...new Set(thisMonthSchedules.filter(schedule => 
-        schedule.shift_time_range === 'izinli' || schedule.shift_time_range === 'ücretsiz izinli'
-      ).map(s => s.employee_code))];
-      
-      // Dinlenme: Günlük takip verilerinden çek
+      // 1. Daily notes tablosundan bu ay oluşturulan verileri çek
       const thisMonthDailyNotes = dailyNotes.filter(note => {
-        const noteDate = new Date(note.date);
-        return noteDate.getMonth() === currentMonth && noteDate.getFullYear() === currentYear;
+        const createdDate = new Date(note.created_at);
+        return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear;
       });
       
-      const dinlenmePersonnelCodes = [...new Set(thisMonthDailyNotes.filter(note => note.status === 'dinlenme').map(note => note.employee_code))];
+      console.log('📝 Bu ay oluşturulan günlük notlar:', thisMonthDailyNotes.length, 'kayıt');
+      
+      // Debug: Bu ay oluşturulan günlük notları göster
+      console.log('🔍 Bu ay oluşturulan günlük notlar:');
+      thisMonthDailyNotes.forEach((note, index) => {
+        console.log(`${index + 1}. ${note.employee_code}: date="${note.date}", status="${note.status}", reason="${note.reason}"`);
+      });
+      
+      // 2. Kategorilere göre grupla - SADECE daily_notes'den
+      
+      // Raporlu: daily_notes'den status = 'raporlu' olanlar
+      const raporluPersonnelCodes = [...new Set(thisMonthDailyNotes.filter(note => 
+        note.status === 'raporlu'
+      ).map(note => note.employee_code))];
+      
+      // Habersiz: Bu ay hiç günlük takip kaydı olmayan personeller
+      const allPersonnelCodes = personnelList.map(p => p.employee_code);
+      const personnelWithDailyNotes = [...new Set(thisMonthDailyNotes.map(note => note.employee_code))];
+      const habersizPersonnelCodes = allPersonnelCodes.filter(code => 
+        !personnelWithDailyNotes.includes(code)
+      );
+      
+      // Yıllık İzin: daily_notes'den status = 'yillik_izin' olanlar
+      const yillikIzinPersonnelCodes = [...new Set(thisMonthDailyNotes.filter(note => 
+        note.status === 'yillik_izin'
+      ).map(note => note.employee_code))];
+      
+      // Dinlenme: daily_notes'den status = 'dinlenme' olanlar
+      const dinlenmePersonnelCodes = [...new Set(thisMonthDailyNotes.filter(note => 
+        note.status === 'dinlenme'
+      ).map(note => note.employee_code))];
       
       // Personel isimlerini al
       const raporluPersonnel = raporluPersonnelCodes.map(code => {
@@ -1255,7 +1274,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
         return {
           employee_code: code,
           employee_name: person ? person.full_name : 'Bilinmeyen',
-          shift_type: 'hastalik_izni'
+          status: 'raporlu'
         };
       });
       
@@ -1264,7 +1283,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
         return {
           employee_code: code,
           employee_name: person ? person.full_name : 'Bilinmeyen',
-          shift_type: 'gecici'
+          status: 'habersiz'
         };
       });
       
@@ -1273,25 +1292,23 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
         return {
           employee_code: code,
           employee_name: person ? person.full_name : 'Bilinmeyen',
-          shift_type: 'yillik_izin'
+          status: 'yillik_izin'
         };
       });
       
       const dinlenmePersonnel = dinlenmePersonnelCodes.map(code => {
         const person = personnelList.find(p => p.employee_code === code);
-        const dinlenmeNote = thisMonthDailyNotes.find(note => note.employee_code === code && note.status === 'dinlenme');
         return {
           employee_code: code,
-          employee_name: person ? person.full_name : (dinlenmeNote ? dinlenmeNote.full_name : 'Bilinmeyen'),
-          shift_type: 'dinlenme'
+          employee_name: person ? person.full_name : 'Bilinmeyen',
+          status: 'dinlenme'
         };
       });
       
-      console.log('🏥 Raporlu (hastalik_izni):', raporluPersonnel.length, 'kişi:', raporluPersonnel.map(p => p.employee_name));
-      console.log('❌ Habersiz (gecici):', habersizPersonnel.length, 'kişi:', habersizPersonnel.map(p => p.employee_name));
-      console.log('🏖️ Yıllık İzin (izinli + ücretsiz izinli):', yillikIzinPersonnel.length, 'kişi:', yillikIzinPersonnel.map(p => p.employee_name));
-      console.log('😴 Dinlenme (günlük takip):', dinlenmePersonnel.length, 'kişi:', dinlenmePersonnel.map(p => p.employee_name));
-      console.log('📝 Bu ayki günlük notlar:', thisMonthDailyNotes.length, 'kayıt');
+      console.log('🏥 Bu Ay Raporlu (daily_notes status=raporlu):', raporluPersonnel.length, 'kişi:', raporluPersonnel.map(p => p.employee_name));
+      console.log('❌ Bu Ay Habersiz (günlük takip kaydı olmayan):', habersizPersonnel.length, 'kişi:', habersizPersonnel.map(p => p.employee_name));
+      console.log('🏖️ Bu Ay Yıllık İzin (daily_notes status=yillik_izin):', yillikIzinPersonnel.length, 'kişi:', yillikIzinPersonnel.map(p => p.employee_name));
+      console.log('😴 Bu Ay Dinlenme (daily_notes status=dinlenme):', dinlenmePersonnel.length, 'kişi:', dinlenmePersonnel.map(p => p.employee_name));
       
       const result = {
         raporlu: {
@@ -1312,7 +1329,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
         }
       };
       
-      console.log('📊 Sonuç:', result);
+      console.log('📊 Bu Ayki Durum Sonucu:', result);
       return result;
     } catch (error) {
       console.error('❌ Bu ayki durum hesaplama hatası:', error);
@@ -1593,22 +1610,55 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
 
     // CSV satırları
     const rows = personnelData.map(detail => {
-      const startDate = new Date(detail.week_start_date);
-      const endDate = new Date(detail.week_end_date);
+      // Period bilgilerini kullan
+      let startDate, endDate;
+      
+      if (detail.period_info) {
+        startDate = new Date(detail.period_info.start_date);
+        endDate = new Date(detail.period_info.end_date);
+      } else {
+        startDate = new Date(detail.created_at);
+        endDate = new Date(detail.updated_at || detail.created_at);
+      }
+      
+      // Geçerli tarih kontrolü
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        startDate = new Date();
+        endDate = new Date();
+      }
+      
       const diffTime = Math.abs(endDate - startDate);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
       const personnel = shiftStatistics.find(s => s.employee_code === selectedPersonnel);
       
+      // Vardiya tipini düzgün göster
+      let shiftTypeText = '';
+      if (detail.shift_type === 'gece') {
+        shiftTypeText = 'Gece Vardiyası';
+      } else if (detail.shift_type === 'gunduz') {
+        shiftTypeText = 'Gündüz Vardiyası';
+      } else if (detail.shift_type === 'aksam') {
+        shiftTypeText = 'Akşam Vardiyası';
+      } else if (detail.shift_type === 'gecici_gorev') {
+        shiftTypeText = 'Geçici Görev';
+      } else if (detail.shift_type === 'raporlu') {
+        shiftTypeText = 'Raporlu';
+      } else if (detail.shift_type === 'yillik_izin') {
+        shiftTypeText = 'Yıllık İzin';
+      } else {
+        shiftTypeText = 'Dinlenme';
+      }
+      
       return [
         selectedPersonnel,
         personnel?.full_name || 'Bilinmeyen',
         personnel?.position || 'Belirtilmemis',
-        getShiftTypeText(detail.shift_type),
+        shiftTypeText,
         startDate.toLocaleDateString('tr-TR'),
         endDate.toLocaleDateString('tr-TR'),
         diffDays,
-        detail.shift_hours || ''
+        '' // Süre (Saat) sütununu boş bırak
       ];
     });
 
@@ -1644,9 +1694,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                 <Users className="h-8 w-8 text-blue-600" />
                 <h1 className="ml-3 text-2xl font-bold text-gray-900">Personel Kontrol Sistemi</h1>
               </div>
-              <div className="text-sm text-gray-500">
-                Modern personel yönetimi ve takip sistemi
-              </div>
+              
             </div>
           </div>
         </div>
@@ -1805,131 +1853,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
 
 
 
-                  {/* Günlük Takip İstatistikleri */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-gray-900">📊 Bu Ayki Personel Durumu</h4>
-                      <div className="text-sm text-gray-600">
-                        {new Date().toLocaleDateString('tr-TR', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      {todayStatusLoading ? (
-                        <>
-                          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200 shadow-sm">
-                            <div className="text-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 mx-auto mb-2"></div>
-                              <div className="text-sm text-red-700 font-medium">Yükleniyor...</div>
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200 shadow-sm">
-                            <div className="text-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mx-auto mb-2"></div>
-                              <div className="text-sm text-orange-700 font-medium">Yükleniyor...</div>
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 shadow-sm">
-                            <div className="text-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                              <div className="text-sm text-blue-700 font-medium">Yükleniyor...</div>
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 shadow-sm">
-                            <div className="text-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto mb-2"></div>
-                              <div className="text-sm text-purple-700 font-medium">Yükleniyor...</div>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200 shadow-sm relative group">
-                            <div className="text-center">
-                              <div className="text-3xl font-bold text-red-600">
-                                {todayStatus.raporlu.count}
-                              </div>
-                              <div className="text-sm text-red-700 font-medium">🏥 Bu Ay Raporlu</div>
-                            </div>
-                            {todayStatus.raporlu.personnel.length > 0 && (
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                <div className="font-medium mb-1">Raporlu Personel:</div>
-                                {todayStatus.raporlu.personnel.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200 shadow-sm relative group">
-                            <div className="text-center">
-                              <div className="text-3xl font-bold text-orange-600">
-                                {todayStatus.habersiz.count}
-                              </div>
-                              <div className="text-sm text-orange-700 font-medium">❌ Bu Ay Habersiz</div>
-                            </div>
-                            {todayStatus.habersiz.personnel.length > 0 && (
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                <div className="font-medium mb-1">Habersiz Personel:</div>
-                                {todayStatus.habersiz.personnel.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 shadow-sm relative group">
-                            <div className="text-center">
-                              <div className="text-3xl font-bold text-blue-600">
-                                {todayStatus.yillikIzin.count}
-                              </div>
-                              <div className="text-sm text-blue-700 font-medium">🏖️ Bu Ay Yıllık İzin</div>
-                            </div>
-                            {todayStatus.yillikIzin.personnel.length > 0 && (
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                <div className="font-medium mb-1">İzinli Personel:</div>
-                                {todayStatus.yillikIzin.personnel.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 shadow-sm relative group">
-                            <div className="text-center">
-                              <div className="text-3xl font-bold text-purple-600">
-                                {todayStatus.dinlenme.count}
-                              </div>
-                              <div className="text-sm text-purple-700 font-medium">😴 Bu Ay Dinlenme</div>
-                            </div>
-                            {todayStatus.dinlenme.personnel.length > 0 && (
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                <div className="font-medium mb-1">Dinlenme Personel:</div>
-                                {todayStatus.dinlenme.personnel.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    
-                    {/* Aylık Özet */}
-                    <div className="mt-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-700">
-                          <strong>Bu Ay Toplam Veri:</strong> {dailyNotes.filter(note => {
-                            const noteDate = new Date(note.date);
-                            const currentDate = new Date();
-                            return noteDate.getMonth() === currentDate.getMonth() && 
-                                   noteDate.getFullYear() === currentDate.getFullYear();
-                          }).length} kayıt
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date().toLocaleDateString('tr-TR', { 
-                            year: 'numeric', 
-                            month: 'long' 
-                          })}
-                        </div>
-                      </div>
-                    </div>
 
-
-                  </div>
 
                   {/* Personel Listesi */}
                   <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
@@ -2412,13 +2336,37 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                                             <td key={monthIndex} className="px-1 py-4 whitespace-nowrap text-center relative group">
                                               {days > 0 ? (
                                                 <div 
-                                                  className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-2 cursor-pointer hover:scale-105 transition-transform duration-200"
+                                                  className={`rounded-lg p-2 cursor-pointer hover:scale-105 transition-transform duration-200 ${
+                                                    tooltipData && tooltipData.records.some(record => record.status.includes('Raporlu')) 
+                                                      ? 'bg-gradient-to-br from-red-100 to-red-200' 
+                                                      : tooltipData && tooltipData.records.some(record => record.status.includes('Dinlenme'))
+                                                      ? 'bg-gradient-to-br from-purple-100 to-purple-200'
+                                                      : tooltipData && tooltipData.records.some(record => record.status.includes('İzinli'))
+                                                      ? 'bg-gradient-to-br from-blue-100 to-blue-200'
+                                                      : 'bg-gradient-to-br from-green-100 to-green-200'
+                                                  }`}
                                                   title={tooltipData ? `${tooltipData.month} - ${days} gün` : ''}
                                                 >
-                                                  <div className="text-sm font-bold text-green-800">
+                                                  <div className={`text-sm font-bold ${
+                                                    tooltipData && tooltipData.records.some(record => record.status.includes('Raporlu')) 
+                                                      ? 'text-red-800' 
+                                                      : tooltipData && tooltipData.records.some(record => record.status.includes('Dinlenme'))
+                                                      ? 'text-purple-800'
+                                                      : tooltipData && tooltipData.records.some(record => record.status.includes('İzinli'))
+                                                      ? 'text-blue-800'
+                                                      : 'text-green-800'
+                                                  }`}>
                                                     {days}
                                                   </div>
-                                                  <div className="text-xs text-green-600">
+                                                  <div className={`text-xs ${
+                                                    tooltipData && tooltipData.records.some(record => record.status.includes('Raporlu')) 
+                                                      ? 'text-red-600' 
+                                                      : tooltipData && tooltipData.records.some(record => record.status.includes('Dinlenme'))
+                                                      ? 'text-purple-600'
+                                                      : tooltipData && tooltipData.records.some(record => record.status.includes('İzinli'))
+                                                      ? 'text-blue-600'
+                                                      : 'text-green-600'
+                                                  }`}>
                                                     gün
                                                   </div>
                                                   
@@ -2454,13 +2402,37 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                                         <td key={month} className="px-1 py-4 whitespace-nowrap text-center relative group">
                                           {days > 0 ? (
                                             <div 
-                                              className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-2 cursor-pointer hover:scale-105 transition-transform duration-200"
+                                              className={`rounded-lg p-2 cursor-pointer hover:scale-105 transition-transform duration-200 ${
+                                                tooltipData && tooltipData.records.some(record => record.status.includes('Raporlu')) 
+                                                  ? 'bg-gradient-to-br from-red-100 to-red-200' 
+                                                  : tooltipData && tooltipData.records.some(record => record.status.includes('Dinlenme'))
+                                                  ? 'bg-gradient-to-br from-purple-100 to-purple-200'
+                                                  : tooltipData && tooltipData.records.some(record => record.status.includes('İzinli'))
+                                                  ? 'bg-gradient-to-br from-blue-100 to-blue-200'
+                                                  : 'bg-gradient-to-br from-green-100 to-green-200'
+                                              }`}
                                               title={tooltipData ? `${tooltipData.month} - ${days} gün` : ''}
                                             >
-                                              <div className="text-sm font-bold text-green-800">
+                                              <div className={`text-sm font-bold ${
+                                                tooltipData && tooltipData.records.some(record => record.status.includes('Raporlu')) 
+                                                  ? 'text-red-800' 
+                                                  : tooltipData && tooltipData.records.some(record => record.status.includes('Dinlenme'))
+                                                  ? 'text-purple-800'
+                                                  : tooltipData && tooltipData.records.some(record => record.status.includes('İzinli'))
+                                                  ? 'text-blue-800'
+                                                  : 'text-green-800'
+                                              }`}>
                                                 {days}
                                               </div>
-                                              <div className="text-xs text-green-600">
+                                              <div className={`text-xs ${
+                                                tooltipData && tooltipData.records.some(record => record.status.includes('Raporlu')) 
+                                                  ? 'text-red-600' 
+                                                  : tooltipData && tooltipData.records.some(record => record.status.includes('Dinlenme'))
+                                                  ? 'text-purple-600'
+                                                  : tooltipData && tooltipData.records.some(record => record.status.includes('İzinli'))
+                                                  ? 'text-blue-600'
+                                                  : 'text-green-600'
+                                              }`}>
                                                 gün
                                               </div>
                                               
@@ -2964,7 +2936,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                       ))}
 
                                                                       {/* Takvim Günleri */}
-                        {getCalendarDays().map((day, index) => (
+                        {getCalendarDays.map((day, index) => (
                           <div
                             key={index}
                             className={`p-3 min-h-[120px] border border-gray-200 rounded-xl transition-all duration-300 flex flex-col ${
@@ -2981,6 +2953,8 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                               {day.date.getDate()}
                             </div>
                             {day.isCurrentMonth && day.notes.length > 0 && !isFutureDate(day.date) && (
+                              // Debug: Bu gün için notları kontrol et
+                              console.log(`🔍 Takvim günü ${day.date.getDate()}: ${day.notes.length} not`),
                               <div className="space-y-1.5 max-h-[80px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex-1">
                                 {day.notes.map((note, noteIndex) => (
                                   <div
@@ -3097,6 +3071,8 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                     </div>
                   </div>
 
+
+
                   {/* Vardiya Özeti */}
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 shadow-lg mb-8">
                     <div className="flex items-center mb-6">
@@ -3142,6 +3118,59 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Günlük Takip Verileri */}
+                  {filteredDailyNotes.length > 0 && (
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-lg mb-8">
+                      <div className="flex items-center mb-6">
+                        <FileText className="w-6 h-6 text-green-600 mr-3" />
+                        <h4 className="font-bold text-green-900 text-lg">Günlük Takip Verileri</h4>
+                        <span className="ml-auto bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {filteredDailyNotes.length} kayıt
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-green-200">
+                          <thead className="bg-green-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-green-700 uppercase tracking-wider">Tarih</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-green-700 uppercase tracking-wider">Durum</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-green-700 uppercase tracking-wider">Sebep</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-green-700 uppercase tracking-wider">Notlar</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-green-200">
+                            {filteredDailyNotes.map((note, index) => (
+                              <tr key={index} className="hover:bg-green-50 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {new Date(note.date).toLocaleDateString('tr-TR')}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-full ${
+                                    note.status === 'dinlenme' ? 'bg-purple-100 text-purple-800' :
+                                    note.status === 'raporlu' ? 'bg-red-100 text-red-800' :
+                                    note.status === 'yillik_izin' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {note.status === 'dinlenme' ? '😴 Dinlenme' :
+                                     note.status === 'raporlu' ? '🏥 Raporlu' :
+                                     note.status === 'yillik_izin' ? '🏖️ İzinli' :
+                                     note.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  {note.reason || '-'}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  {note.notes || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
                     <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
@@ -3169,6 +3198,9 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                               Süre
                             </th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              Detay
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -3176,7 +3208,7 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                             <tr key={index} className="hover:bg-gray-50 transition-colors">
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {detail.period_info ? (
-                                  `${detail.period_info.start_date} - ${detail.period_info.end_date}`
+                                  `${new Date(detail.period_info.start_date).toLocaleDateString('tr-TR')} - ${new Date(detail.period_info.end_date).toLocaleDateString('tr-TR')}`
                                 ) : (
                                   `Dönem ${detail.period_id || index + 1}`
                                 )}
@@ -3202,31 +3234,62 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {detail.period_info ? 
-                                  detail.period_info.start_date :
+                                  new Date(detail.period_info.start_date).toLocaleDateString('tr-TR') :
                                   new Date(detail.created_at).toLocaleDateString('tr-TR')
                                 }
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {detail.period_info ? 
-                                  detail.period_info.end_date :
+                                  new Date(detail.period_info.end_date).toLocaleDateString('tr-TR') :
                                   new Date(detail.updated_at || detail.created_at).toLocaleDateString('tr-TR')
                                 }
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {(() => {
-                                  if (detail.shift_hours) {
-                                    return `${detail.shift_hours} saat`;
-                                  } else if (detail.period_info) {
-                                    // Period bilgilerinden gün sayısını hesapla
-                                    const startDate = new Date(detail.period_info.start_date + 'T00:00:00');
-                                    const endDate = new Date(detail.period_info.end_date + 'T00:00:00');
-                                    const diffTime = Math.abs(endDate - startDate);
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                                    return `${diffDays} gün`;
+                                  if (detail.shift_type === 'gece') {
+                                    return 'Gece Vardiyası';
+                                  } else if (detail.shift_type === 'gunduz') {
+                                    return 'Gündüz Vardiyası';
+                                  } else if (detail.shift_type === 'aksam') {
+                                    return 'Akşam Vardiyası';
+                                  } else if (detail.shift_type === 'gecici_gorev') {
+                                    return 'Geçici Görev';
+                                  } else if (detail.shift_type === 'raporlu') {
+                                    return 'Raporlu';
+                                  } else if (detail.shift_type === 'yillik_izin') {
+                                    return 'Yıllık İzin';
                                   } else {
-                                    return `1 hafta`;
+                                    return 'Dinlenme';
                                   }
                                 })()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button
+                                  onClick={() => {
+                                    // Bu haftanın günlük takip verilerini filtrele
+                                    if (detail.period_info) {
+                                      const startDate = new Date(detail.period_info.start_date);
+                                      const endDate = new Date(detail.period_info.end_date);
+                                      
+                                      const weekDailyNotes = dailyNotes.filter(note => {
+                                        const noteDate = new Date(note.date);
+                                        return note.employee_code === selectedPersonnel && 
+                                               noteDate >= startDate && noteDate <= endDate;
+                                      });
+                                      
+                                      // Modal aç
+                                      setSelectedWeekDetails({
+                                        period: detail.period_info,
+                                        dailyNotes: weekDailyNotes,
+                                        shiftType: detail.shift_type
+                                      });
+                                    }
+                                  }}
+                                  className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-medium rounded-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200"
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  Detay
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -3381,6 +3444,161 @@ const PersonelVardiyaKontrol = ({ userRole }) => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hafta Detayları Modalı */}
+      {selectedWeekDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden border border-gray-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                <Calendar className="w-6 h-6 mr-3 text-blue-600" />
+                Hafta Detayları
+              </h3>
+              <button
+                onClick={() => setSelectedWeekDetails(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+              <div className="space-y-6">
+                {/* Hafta Bilgileri */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                    <div className="text-sm font-medium text-blue-800 mb-1">Hafta Aralığı</div>
+                    <div className="text-lg font-bold text-blue-900">
+                      {(() => {
+                        const startDate = new Date(selectedWeekDetails.period.start_date);
+                        const endDate = new Date(selectedWeekDetails.period.end_date);
+                        
+                        // Geçerli tarih kontrolü
+                        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                          return 'Tarih bilgisi bulunamadı';
+                        }
+                        
+                        return `${startDate.toLocaleDateString('tr-TR')} - ${endDate.toLocaleDateString('tr-TR')}`;
+                      })()}
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
+                    <div className="text-sm font-medium text-green-800 mb-1">Vardiya Tipi</div>
+                    <div className="text-lg font-bold text-green-900">
+                      {selectedWeekDetails.shiftType === 'gece' ? '🌙 Gece' :
+                       selectedWeekDetails.shiftType === 'gunduz' ? '☀️ Gündüz' :
+                       selectedWeekDetails.shiftType === 'aksam' ? '🌅 Akşam' :
+                       selectedWeekDetails.shiftType === 'gecici_gorev' ? '🔄 Geçici' :
+                       selectedWeekDetails.shiftType === 'raporlu' ? '🏥 Raporlu' :
+                       selectedWeekDetails.shiftType === 'yillik_izin' ? '🏖️ İzinli' :
+                       selectedWeekDetails.shiftType}
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
+                    <div className="text-sm font-medium text-purple-800 mb-1">Günlük Kayıt</div>
+                    <div className="text-lg font-bold text-purple-900">
+                      {selectedWeekDetails.dailyNotes.length} kayıt
+                    </div>
+                  </div>
+                </div>
+
+                {/* Haftalık Günlük Detayları */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
+                  <div className="flex items-center mb-6">
+                    <Calendar className="w-6 h-6 text-gray-600 mr-3" />
+                    <h4 className="font-bold text-gray-900 text-lg">Haftalık Günlük Detayları</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+                                         {(() => {
+                       const startDate = new Date(selectedWeekDetails.period.start_date);
+                       const endDate = new Date(selectedWeekDetails.period.end_date);
+                       const days = [];
+                       
+                       // Geçerli tarih kontrolü
+                       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                         return <div className="text-center py-8 text-gray-500">Tarih bilgisi bulunamadı</div>;
+                       }
+                       
+                       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                         const currentDate = new Date(d);
+                         const dateStr = currentDate.toISOString().split('T')[0];
+                         
+                         // Bu gün için daily_notes verisi var mı?
+                         const dailyNote = selectedWeekDetails.dailyNotes.find(note => 
+                           note.date === dateStr
+                         );
+                         
+                         days.push({
+                           date: currentDate,
+                           dateStr: dateStr,
+                           hasDailyNote: !!dailyNote,
+                           dailyNote: dailyNote
+                         });
+                       }
+                      
+                      return days.map((day, index) => (
+                        <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                          <div className="text-center mb-3">
+                            <div className="text-sm font-medium text-gray-600">
+                              {day.date.toLocaleDateString('tr-TR', { weekday: 'short' })}
+                            </div>
+                            <div className="text-lg font-bold text-gray-900">
+                              {day.date.getDate()}
+                            </div>
+                          </div>
+                          
+                          {day.hasDailyNote ? (
+                            // Daily_notes verisi varsa onu göster
+                            <div className="text-center">
+                              <span className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-full ${
+                                day.dailyNote.status === 'dinlenme' ? 'bg-purple-100 text-purple-800' :
+                                day.dailyNote.status === 'raporlu' ? 'bg-red-100 text-red-800' :
+                                day.dailyNote.status === 'yillik_izin' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {day.dailyNote.status === 'dinlenme' ? '😴 Dinlenme' :
+                                 day.dailyNote.status === 'raporlu' ? '🏥 Raporlu' :
+                                 day.dailyNote.status === 'yillik_izin' ? '🏖️ İzinli' :
+                                 day.dailyNote.status}
+                              </span>
+                              {day.dailyNote.reason && (
+                                <div className="text-xs text-gray-600 mt-1">
+                                  {day.dailyNote.reason}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            // Daily_notes verisi yoksa normal vardiya planını göster
+                            <div className="text-center">
+                              <span className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-full ${
+                                selectedWeekDetails.shiftType === 'gece' ? 'bg-blue-100 text-blue-800' :
+                                selectedWeekDetails.shiftType === 'gunduz' ? 'bg-green-100 text-green-800' :
+                                selectedWeekDetails.shiftType === 'aksam' ? 'bg-orange-100 text-orange-800' :
+                                selectedWeekDetails.shiftType === 'gecici_gorev' ? 'bg-purple-100 text-purple-800' :
+                                selectedWeekDetails.shiftType === 'raporlu' ? 'bg-red-100 text-red-800' :
+                                selectedWeekDetails.shiftType === 'yillik_izin' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {selectedWeekDetails.shiftType === 'gece' ? '🌙 Gece' :
+                                 selectedWeekDetails.shiftType === 'gunduz' ? '☀️ Gündüz' :
+                                 selectedWeekDetails.shiftType === 'aksam' ? '🌅 Akşam' :
+                                 selectedWeekDetails.shiftType === 'gecici_gorev' ? '🔄 Geçici' :
+                                 selectedWeekDetails.shiftType === 'raporlu' ? '🏥 Raporlu' :
+                                 selectedWeekDetails.shiftType === 'yillik_izin' ? '🏖️ İzinli' :
+                                 selectedWeekDetails.shiftType}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

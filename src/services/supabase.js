@@ -651,10 +651,13 @@ export const bulkSavePerformanceData = async (performanceDataArray, sheetNames =
       }
     }
     
-    // Yeni verileri ekle
+    // Yeni verileri ekle (upsert ile duplicate kontrolü)
     const { data, error } = await supabase
       .from('performance_data')
-      .insert(performanceDataArray)
+      .upsert(performanceDataArray, { 
+        onConflict: 'date,employee_code',
+        ignoreDuplicates: false 
+      })
       .select();
     
     if (error) {

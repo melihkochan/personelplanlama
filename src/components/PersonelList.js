@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Edit3, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
-import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPerformanceData } from '../services/supabase';
+import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole }) => {
@@ -36,36 +36,52 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   // Vardiya istatistikleri hesaplama fonksiyonu
   const calculateShiftStatistics = async () => {
     try {
-      const result = await getPerformanceData();
-      if (result.success && result.data.length > 0) {
-        const stats = {};
-        
-        // Her personel için vardiya sayılarını hesapla
-        result.data.forEach(record => {
-          const employeeName = record.employee_name;
-          const shiftType = record.date_shift_type; // 'gece' or 'gunduz'
+      console.log('🔄 Vardiya istatistikleri hesaplanıyor...');
+      const stats = {};
+      
+      // Her personel için vardiya verilerini çek
+      for (const person of personnelData) {
+        try {
+          const result = await getPersonnelShiftDetails(person.employee_code);
           
-          if (!employeeName) return;
-          
-          if (!stats[employeeName]) {
-            stats[employeeName] = {
+          if (result.success && result.data) {
+            const personSchedules = result.data;
+            
+            // Vardiya tiplerini say
+            const nightShifts = personSchedules.filter(s => s.shift_type === 'gece').length;
+            const dayShifts = personSchedules.filter(s => s.shift_type === 'gunduz').length;
+            const eveningShifts = personSchedules.filter(s => s.shift_type === 'aksam').length;
+            const totalDays = personSchedules.length;
+            
+            stats[person.full_name] = {
+              nightShifts,
+              dayShifts,
+              eveningShifts,
+              totalDays
+            };
+            
+            console.log(`📊 ${person.full_name}: ${nightShifts} gece, ${dayShifts} gündüz, ${eveningShifts} akşam, toplam ${totalDays} gün`);
+          } else {
+            stats[person.full_name] = {
               nightShifts: 0,
               dayShifts: 0,
+              eveningShifts: 0,
               totalDays: 0
             };
           }
-          
-          if (shiftType === 'gece') {
-            stats[employeeName].nightShifts++;
-          } else {
-            stats[employeeName].dayShifts++;
-          }
-          
-          stats[employeeName].totalDays++;
-        });
-        
-        setShiftStatistics(stats);
+        } catch (error) {
+          console.error(`${person.full_name} için vardiya verisi çekilemedi:`, error);
+          stats[person.full_name] = {
+            nightShifts: 0,
+            dayShifts: 0,
+            eveningShifts: 0,
+            totalDays: 0
+          };
+        }
       }
+      
+      setShiftStatistics(stats);
+      console.log('✅ Vardiya istatistikleri güncellendi');
     } catch (error) {
       console.error('Vardiya istatistikleri hesaplama hatası:', error);
     }
@@ -998,7 +1014,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 {shiftStatistics[person.full_name] && (
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                     <h4 className="text-xs font-semibold text-gray-700 mb-2">Çalışma İstatistikleri:</h4>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1 text-xs text-gray-600">
                           <Moon className="w-3 h-3" />
@@ -1006,8 +1022,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                         </span>
                         <span className="text-xs font-bold text-purple-600">
                           {shiftStatistics[person.full_name].nightShifts}
-                            </span>
-                          </div>
+                        </span>
+                      </div>
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1 text-xs text-gray-600">
                           <Sun className="w-3 h-3" />
@@ -1016,8 +1032,17 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                         <span className="text-xs font-bold text-orange-600">
                           {shiftStatistics[person.full_name].dayShifts}
                         </span>
-                            </div>
-                          </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-xs text-gray-600">
+                          <Calendar className="w-3 h-3" />
+                          Akşam
+                        </span>
+                        <span className="text-xs font-bold text-blue-600">
+                          {shiftStatistics[person.full_name].eveningShifts}
+                        </span>
+                      </div>
+                    </div>
                     <div className="flex items-center justify-between pt-1 border-t border-gray-200">
                       <span className="text-xs text-gray-600">Toplam Gün:</span>
                       <span className="text-xs font-bold text-blue-600">
@@ -1083,17 +1108,23 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                       </td>
                     <td className="py-4 px-6">
                       {shiftStatistics[person.full_name] ? (
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                           <div className="flex items-center gap-1">
                             <Moon className="w-3 h-3 text-purple-500" />
                             <span className="text-sm font-medium text-purple-600">
                               {shiftStatistics[person.full_name].nightShifts}
-                          </span>
+                            </span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Sun className="w-3 h-3 text-orange-500" />
                             <span className="text-sm font-medium text-orange-600">
                               {shiftStatistics[person.full_name].dayShifts}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-blue-500" />
+                            <span className="text-sm font-medium text-blue-600">
+                              {shiftStatistics[person.full_name].eveningShifts}
                             </span>
                           </div>
                           <div className="text-xs text-gray-500">
@@ -1102,8 +1133,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400">Veri yok</span>
-                        )}
-                      </td>
+                      )}
+                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         {(userRole === 'admin' || userRole === 'yönetici') && (

@@ -88,69 +88,135 @@ function MainApp() {
 
 
 
-  // Veritabanından veri yükleme
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-              const [personnelResult, vehicleResult, storeResult, dailyNotesResult, weeklySchedulesResult] = await Promise.all([
+  // Veritabanından veri yükleme fonksiyonu
+  const loadData = async () => {
+    try {
+      console.log('🔄 Ana sayfa verileri yükleniyor...');
+      
+      const [personnelResult, vehicleResult, storeResult, dailyNotesResult] = await Promise.all([
         getAllPersonnel(),
         getAllVehicles(),
         getAllStores(),
-        getDailyNotes(),
-        getWeeklySchedules()
+        getDailyNotes()
       ]);
-        
-        // Veri durumu güncelle
-        const newDataStatus = {
-          personnel: { 
-            loaded: personnelResult.success, 
-            count: personnelResult.success ? personnelResult.data.length : 0,
-            hasExisting: personnelResult.success && personnelResult.data.length > 0
-          },
-          vehicles: { 
-            loaded: vehicleResult.success, 
-            count: vehicleResult.success ? vehicleResult.data.length : 0,
-            hasExisting: vehicleResult.success && vehicleResult.data.length > 0
-          },
-          stores: { 
-            loaded: storeResult.success, 
-            count: storeResult.success ? storeResult.data.length : 0,
-            hasExisting: storeResult.success && storeResult.data.length > 0
-          }
-        };
-        
-        setDataStatus({
-          ...newDataStatus,
-          dailyNotes: dailyNotesResult.success ? dailyNotesResult.data : [],
-          weeklySchedules: weeklySchedulesResult.success ? weeklySchedulesResult.data : []
-        });
-        
-        if (personnelResult.success) setPersonnelData(personnelResult.data);
-        if (vehicleResult.success) setVehicleData(vehicleResult.data);
-        if (storeResult.success) setStoreData(storeResult.data);
-        
-        setDataLoaded(true);
-        
-        // Veri durumu bilgilendirme
-        const hasAnyData = newDataStatus.personnel.hasExisting || 
-                          newDataStatus.vehicles.hasExisting || 
-                          newDataStatus.stores.hasExisting;
-        
-        if (hasAnyData) {
-          showNotification('Veritabanından veriler başarıyla yüklendi', 'success');
-        } else {
-          showNotification('Henüz sisteme veri yüklenmemiş. Excel dosyası yükleyebilirsiniz.', 'info');
-        }
-      } catch (error) {
-        console.error('Data loading error:', error);
-        showNotification('Veri yükleme sırasında hata oluştu', 'error');
-      }
-    };
 
+      if (personnelResult.success) {
+        setPersonnelData(personnelResult.data);
+        setDataStatus(prev => ({
+          ...prev,
+          personnel: { 
+            loaded: true, 
+            count: personnelResult.data.length,
+            hasExisting: personnelResult.data.length > 0
+          }
+        }));
+      }
+
+      if (vehicleResult.success) {
+        setVehicleData(vehicleResult.data);
+        setDataStatus(prev => ({
+          ...prev,
+          vehicles: { 
+            loaded: true, 
+            count: vehicleResult.data.length,
+            hasExisting: vehicleResult.data.length > 0
+          }
+        }));
+      }
+
+      if (storeResult.success) {
+        setStoreData(storeResult.data);
+        setDataStatus(prev => ({
+          ...prev,
+          stores: { 
+            loaded: true, 
+            count: storeResult.data.length,
+            hasExisting: storeResult.data.length > 0
+          }
+        }));
+      }
+
+
+
+      if (dailyNotesResult.success) {
+        console.log('📝 Ana sayfa daily notes yüklendi:', dailyNotesResult.data.length, 'kayıt');
+        console.log('📋 Daily notes örnekleri:', dailyNotesResult.data.slice(0, 3).map(note => ({
+          date: note.date,
+          employee_code: note.employee_code,
+          full_name: note.full_name,
+          status: note.status
+        })));
+        setDataStatus(prev => ({
+          ...prev,
+          dailyNotes: dailyNotesResult.data
+        }));
+      }
+
+      setDataLoaded(true);
+      console.log('✅ Ana sayfa verileri yüklendi');
+    } catch (error) {
+      console.error('❌ Veri yükleme hatası:', error);
+      showNotification('Veriler yüklenirken hata oluştu', 'error');
+    }
+  };
+
+  // İlk yükleme
+  useEffect(() => {
     if (isAuthenticated) {
       loadData();
     }
   }, [isAuthenticated]);
+
+  // Veri yenileme fonksiyonu - diğer sayfalardan çağrılabilir
+  const refreshData = async () => {
+    console.log('🔄 Veriler yenileniyor...');
+    await loadData();
+    await loadDailyNotes(); // Daily notes'u da yenile
+  };
+
+  // Takvim verilerini yenileme - dailyNotes değiştiğinde
+  useEffect(() => {
+    if (dataStatus.dailyNotes.length > 0) {
+      console.log('🔄 Ana sayfa takvimi verileri yenileniyor...');
+      console.log('📝 Ana sayfa takviminde gösterilen notlar:', dataStatus.dailyNotes.length, 'kayıt');
+      // Takvim otomatik olarak yeniden render olacak
+    }
+  }, [dataStatus.dailyNotes]);
+
+  // Daily notes state'i ekle
+  const [dailyNotes, setDailyNotes] = useState([]);
+
+  // Daily notes yükleme fonksiyonu
+  const loadDailyNotes = async () => {
+    try {
+      const result = await getDailyNotes();
+      if (result.success) {
+        setDailyNotes(result.data);
+        console.log('📝 Ana sayfa daily notes yüklendi:', result.data.length, 'kayıt');
+      }
+    } catch (error) {
+      console.error('❌ Daily notes yükleme hatası:', error);
+    }
+  };
+
+  // Daily notes yükle
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadDailyNotes();
+    }
+  }, [isAuthenticated]);
+
+  // Periyodik veri yenileme (her 30 saniyede bir)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (isAuthenticated && activeTab === 'home') {
+        console.log('🔄 Periyodik veri yenileme...');
+        await loadData();
+      }
+    }, 30000); // 30 saniye
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, activeTab]);
 
   const handleDataUpload = (data) => {
     console.log('📊 handleDataUpload çağrıldı:', data);
@@ -260,11 +326,41 @@ function MainApp() {
       });
     }
 
-    // Bu ayın günleri
+      // Bu ayın günleri
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(selectedYear, selectedMonth, day);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayNotes = dataStatus.dailyNotes.filter(note => note.date === dateStr);
+      
+      // Bu gün için daily_notes'tan notları filtrele - PersonelVardiyaKontrol.js ile aynı yöntem
+      const dayNotes = dailyNotes.filter(note => {
+        const noteDate = new Date(note.date);
+        const isMatch = (
+          noteDate.getFullYear() === date.getFullYear() &&
+          noteDate.getMonth() === date.getMonth() &&
+          noteDate.getDate() === date.getDate()
+        );
+        
+        // Debug log ekle - tüm tarihler için
+        if (date.getDate() === 21) {
+          console.log(`🔍 21. gün kontrolü:`);
+          console.log(`  - Takvim tarihi: ${date.toISOString().split('T')[0]} (${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()})`);
+          console.log(`  - Not tarihi: ${note.date}`);
+          console.log(`  - Not yılı: ${noteDate.getFullYear()}, Takvim yılı: ${date.getFullYear()}`);
+          console.log(`  - Not ayı: ${noteDate.getMonth() + 1}, Takvim ayı: ${date.getMonth() + 1}`);
+          console.log(`  - Eşleşme: ${isMatch}`);
+        }
+        
+        return isMatch;
+      });
+      
+      // Debug: Bu gün için kaç not bulundu
+      if (date.getDate() === 21) {
+        console.log(`📊 21. gün için bulunan not sayısı: ${dayNotes.length}`);
+        console.log(`📋 21. gün notları:`, dayNotes.map(note => ({
+          full_name: note.full_name,
+          status: note.status,
+          date: note.date
+        })));
+      }
       
       days.push({
         date,
@@ -1147,7 +1243,7 @@ function MainApp() {
 
           {/* Vardiya Kontrol */}
           {activeTab === 'vardiya-kontrol' && (
-            <PersonelVardiyaKontrol userRole={userRole} />
+            <PersonelVardiyaKontrol userRole={userRole} onDataUpdate={refreshData} />
           )}
 
           {/* Admin Panel */}

@@ -254,6 +254,26 @@ export const getAllStores = async () => {
   }
 };
 
+// Mağaza kodlarına göre location bilgilerini getir
+export const getStoreLocationsByCodes = async (storeCodes) => {
+  try {
+    if (!storeCodes || storeCodes.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const { data, error } = await supabase
+      .from('stores')
+      .select('store_code, location')
+      .in('store_code', storeCodes);
+    
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Get store locations error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
 export const addStore = async (store) => {
   try {
     const { data, error } = await supabase

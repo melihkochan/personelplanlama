@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData } from '../services/supabase';
+import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData, getStoreLocationsByCodes } from '../services/supabase';
 
 const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole }) => {
   // PerformanceAnalysis başladı
@@ -22,7 +22,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const [weeklyView, setWeeklyView] = useState(false); // Haftalık görünüm
   const [selectedWeeks, setSelectedWeeks] = useState([]); // Seçili haftalar
   
-  // Kasa sayısı kontrol state'leri
+
 
   
   // File input ref
@@ -37,6 +37,8 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       .replace(/GÜNDUEZ/g, 'GÜNDÜZ')
       .trim();
   };
+
+
 
   // Performans verilerini veritabanından yükle - BASIT YÖNTEM
   const loadPerformanceDataFromDatabase = async () => {
@@ -338,6 +340,8 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         
         setAnalysisData(analysisResults);
         
+
+        
         // İlk veri yükleme tamamlandı
         setTimeout(() => {
           setInitialDataLoading(false);
@@ -401,6 +405,8 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       }, 1000);
     }
   }, [personnelDatabase.length]); // Length'e göre kontrol et, böylece döngü olmaz
+
+
 
 
 
@@ -1791,6 +1797,8 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (!filteredData) return null;
 
     const drivers = Object.values(filteredData.drivers).sort(getSortFunction(sortBy));
+    
+
 
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -1820,17 +1828,17 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         </div>
         
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-center py-2 px-3 font-semibold text-gray-700 w-16">Sıra</th>
-                <th className="text-left py-2 px-3 font-semibold text-gray-700">Şoför</th>
-                <th className="text-center py-2 px-3 font-semibold text-gray-700">Şu an ki Vardiya</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Mağaza Sayısı</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Palet</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Kasa</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Ort. Palet</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Ort. Kasa</th>
+                <th className="text-center py-2 px-2 font-semibold text-gray-700 w-12">Sıra</th>
+                <th className="text-left py-2 px-2 font-semibold text-gray-700">Şoför</th>
+                <th className="text-center py-2 px-2 font-semibold text-gray-700">Vardiya</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Mağaza</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Palet</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Kasa</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Palet</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Kasa</th>
               </tr>
             </thead>
             <tbody>
@@ -1838,24 +1846,53 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 const rank = index + 1;
                 const isTopThree = rank <= 3;
                 const textSize = rank <= 3 ? 'text-sm' : rank <= 6 ? 'text-sm' : 'text-xs';
-                const opacity = rank <= 3 ? 'opacity-100' : rank <= 6 ? 'opacity-90' : 'opacity-75';
+                
+                // Renk geçişi için opacity hesapla
+                let opacity = 'opacity-100';
+                let bgColor = '';
+                let textColor = '';
+                let borderColor = '';
+                
+                if (rank === 1) {
+                  bgColor = 'bg-gradient-to-r from-yellow-100 to-yellow-50';
+                  textColor = 'text-yellow-800';
+                  borderColor = 'border-yellow-300';
+                } else if (rank === 2) {
+                  bgColor = 'bg-gradient-to-r from-gray-100 to-gray-50';
+                  textColor = 'text-gray-800';
+                  borderColor = 'border-gray-300';
+                } else if (rank === 3) {
+                  bgColor = 'bg-gradient-to-r from-orange-100 to-orange-50';
+                  textColor = 'text-orange-800';
+                  borderColor = 'border-orange-300';
+                } else if (rank <= 6) {
+                  opacity = 'opacity-95';
+                  bgColor = 'bg-gradient-to-r from-blue-100 to-blue-50';
+                  textColor = 'text-blue-700';
+                  borderColor = 'border-blue-200';
+                } else if (rank <= 10) {
+                  opacity = 'opacity-90';
+                  bgColor = 'bg-gradient-to-r from-green-100 to-green-50';
+                  textColor = 'text-green-700';
+                  borderColor = 'border-green-200';
+                } else {
+                  opacity = 'opacity-85';
+                  bgColor = 'bg-gradient-to-r from-purple-100 to-purple-50';
+                  textColor = 'text-purple-700';
+                  borderColor = 'border-purple-200';
+                }
                 
                 return (
-                  <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity}`}>
-                  <td className="py-2 px-3 text-center">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
-                        rank === 1 ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300' :
-                        rank === 2 ? 'bg-gray-100 text-gray-800 border-2 border-gray-300' :
-                        rank === 3 ? 'bg-orange-100 text-orange-800 border-2 border-orange-300' :
-                        'bg-blue-50 text-blue-700'
-                      }`}>
+                  <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity} ${bgColor}`}>
+                  <td className="py-2 px-2 text-center">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold border-2 ${textColor} ${borderColor}`}>
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
                     </span>
                   </td>
-                    <td className={`py-2 px-3 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
+                    <td className={`py-2 px-2 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {driver.name}
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td className="py-2 px-2 text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         driver.shift === 'İZİNLİ' ? 'bg-gray-100 text-gray-800' : 
                         driver.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
@@ -1863,11 +1900,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         {driver.shift === 'İZİNLİ' ? '🏖️ İzinli' : driver.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
                           </span>
                   </td>
-                    <td className="py-2 px-3 text-right text-gray-600">{driver.totalTrips || 0}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{driver.totalPallets || 0}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{driver.totalBoxes || 0}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{driver.averagePallets}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{driver.averageBoxes}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{driver.totalTrips || 0}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{driver.totalPallets || 0}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{driver.totalBoxes || 0}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{driver.averagePallets}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{driver.averageBoxes}</td>
                 </tr>
                 );
               })}
@@ -1878,12 +1915,16 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     );
   };
 
+
+
   const renderPersonnelAnalysis = () => {
     if (!analysisData) return null;
     const filteredData = getFilteredData();
     if (!filteredData) return null;
 
     const personnel = Object.values(filteredData.personnel).sort(getSortFunction(sortBy));
+    
+
 
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -1913,17 +1954,17 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         </div>
         
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-center py-2 px-3 font-semibold text-gray-700 w-16">Sıra</th>
-                <th className="text-left py-2 px-3 font-semibold text-gray-700">Personel</th>
-                <th className="text-center py-2 px-3 font-semibold text-gray-700">Şu an ki Vardiya</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Mağaza Sayısı</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Palet</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Kasa</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Ort. Palet</th>
-                <th className="text-right py-2 px-3 font-semibold text-gray-700">Ort. Kasa</th>
+                <th className="text-center py-2 px-2 font-semibold text-gray-700 w-12">Sıra</th>
+                <th className="text-left py-2 px-2 font-semibold text-gray-700">Personel</th>
+                <th className="text-center py-2 px-2 font-semibold text-gray-700">Vardiya</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Mağaza</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Palet</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Kasa</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Palet</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Kasa</th>
               </tr>
             </thead>
             <tbody>
@@ -1931,24 +1972,53 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 const rank = index + 1;
                 const isTopThree = rank <= 3;
                 const textSize = rank <= 3 ? 'text-sm' : rank <= 6 ? 'text-sm' : 'text-xs';
-                const opacity = rank <= 3 ? 'opacity-100' : rank <= 6 ? 'opacity-90' : 'opacity-75';
+                
+                // Renk geçişi için opacity hesapla
+                let opacity = 'opacity-100';
+                let bgColor = '';
+                let textColor = '';
+                let borderColor = '';
+                
+                if (rank === 1) {
+                  bgColor = 'bg-gradient-to-r from-yellow-100 to-yellow-50';
+                  textColor = 'text-yellow-800';
+                  borderColor = 'border-yellow-300';
+                } else if (rank === 2) {
+                  bgColor = 'bg-gradient-to-r from-gray-100 to-gray-50';
+                  textColor = 'text-gray-800';
+                  borderColor = 'border-gray-300';
+                } else if (rank === 3) {
+                  bgColor = 'bg-gradient-to-r from-orange-100 to-orange-50';
+                  textColor = 'text-orange-800';
+                  borderColor = 'border-orange-300';
+                } else if (rank <= 6) {
+                  opacity = 'opacity-95';
+                  bgColor = 'bg-gradient-to-r from-green-100 to-green-50';
+                  textColor = 'text-green-700';
+                  borderColor = 'border-green-200';
+                } else if (rank <= 10) {
+                  opacity = 'opacity-90';
+                  bgColor = 'bg-gradient-to-r from-blue-100 to-blue-50';
+                  textColor = 'text-blue-700';
+                  borderColor = 'border-blue-200';
+                } else {
+                  opacity = 'opacity-85';
+                  bgColor = 'bg-gradient-to-r from-purple-100 to-purple-50';
+                  textColor = 'text-purple-700';
+                  borderColor = 'border-purple-200';
+                }
                 
                 return (
-                  <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity}`}>
-                  <td className="py-2 px-3 text-center">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
-                        rank === 1 ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300' :
-                        rank === 2 ? 'bg-gray-100 text-gray-800 border-2 border-gray-300' :
-                        rank === 3 ? 'bg-orange-100 text-orange-800 border-2 border-orange-300' :
-                        'bg-green-50 text-green-700'
-                      }`}>
+                  <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity} ${bgColor}`}>
+                  <td className="py-2 px-2 text-center">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold border-2 ${textColor} ${borderColor}`}>
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
                     </span>
                   </td>
-                    <td className={`py-2 px-3 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
+                    <td className={`py-2 px-2 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {person.name}
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td className="py-2 px-2 text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         person.shift === 'İZİNLİ' ? 'bg-gray-100 text-gray-800' : 
                         person.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
@@ -1956,11 +2026,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                         {person.shift === 'İZİNLİ' ? '🏖️ İzinli' : person.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
                           </span>
                   </td>
-                    <td className="py-2 px-3 text-right text-gray-600">{person.totalTrips || 0}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{person.totalPallets || 0}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{person.totalBoxes || 0}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{person.averagePallets}</td>
-                    <td className="py-2 px-3 text-right text-gray-600">{person.averageBoxes}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{person.totalTrips || 0}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{person.totalPallets || 0}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{person.totalBoxes || 0}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{person.averagePallets}</td>
+                    <td className="py-2 px-2 text-right text-gray-600">{person.averageBoxes}</td>
                 </tr>
                 );
               })}
@@ -1972,7 +2042,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="w-full px-2 py-8">
       <div className="mb-8">
         {/* Modern Header */}
         <div className="text-center mb-8">

@@ -165,7 +165,6 @@ export const deletePersonnel = async (id) => {
     
     if (error) throw error;
     
-    console.log(`✅ Personel ${employeeCode} ve tüm ilgili veriler başarıyla silindi`);
     return { success: true };
   } catch (error) {
     console.error('Delete personnel error:', error);
@@ -1217,7 +1216,6 @@ export const saveWeeklySchedules = async (scheduleData) => {
       return { success: false, error: 'Vardiya verisi bulunamadı' };
     }
     
-    console.log(`📊 ${scheduleData.length} vardiya kaydı kaydediliyor...`);
     
     // Duplicate kontrolü yap
     const uniqueSchedules = [];
@@ -1229,11 +1227,8 @@ export const saveWeeklySchedules = async (scheduleData) => {
         seenKeys.add(key);
         uniqueSchedules.push(schedule);
       } else {
-        console.log(`⚠️ Duplicate atlandı: ${schedule.employee_name} - ${schedule.week_start_date} - ${schedule.shift_type}`);
       }
     });
-    
-    console.log(`📊 ${uniqueSchedules.length} benzersiz vardiya kaydı kaydediliyor...`);
     
     const { data, error } = await supabase
       .from('weekly_schedules')
@@ -1256,8 +1251,6 @@ export const saveWeeklyPeriods = async (periodData) => {
     if (!periodData || periodData.length === 0) {
       return { success: false, error: 'Dönem verisi bulunamadı' };
     }
-    
-    console.log(`📅 ${periodData.length} haftalık dönem kaydediliyor...`);
     
     const { data, error } = await supabase
       .from('weekly_periods')
@@ -1307,8 +1300,6 @@ export const saveDailyAttendance = async (attendanceData) => {
     
     if (checkError) throw checkError;
     
-    console.log(`🔍 Mevcut kayıtlar:`, existingRecords);
-    
     // Aynı durum için kayıt var mı kontrol et
     const sameStatusRecord = existingRecords?.find(record => record.status === attendanceData.status);
     
@@ -1334,7 +1325,6 @@ export const saveDailyAttendance = async (attendanceData) => {
       .select();
     
     if (error) throw error;
-    console.log('✅ Günlük not başarıyla kaydedildi:', data);
     return { success: true, data: data[0] };
   } catch (error) {
     console.error('Daily attendance save error:', error);
@@ -1346,8 +1336,6 @@ export const saveDailyAttendance = async (attendanceData) => {
 
 export const getDailyNotes = async (date = null) => {
   try {
-    console.log('🔍 getDailyNotes çağrıldı, date:', date);
-    
     // Önce sadece daily_notes tablosundan veri çek
     let query = supabase
       .from('daily_notes')
@@ -1365,8 +1353,6 @@ export const getDailyNotes = async (date = null) => {
       throw error;
     }
     
-    console.log('📝 Raw daily notes data:', data);
-    
     // Sonra personnel tablosundan personel bilgilerini çek
     const { data: personnelData, error: personnelError } = await supabase
       .from('personnel')
@@ -1376,7 +1362,6 @@ export const getDailyNotes = async (date = null) => {
       console.error('❌ Personnel query hatası:', personnelError);
     }
     
-    console.log('👥 Personnel data:', personnelData);
     
     // Personnel verilerini employee_code'ya göre map'le
     const personnelMap = {};
@@ -1396,7 +1381,6 @@ export const getDailyNotes = async (date = null) => {
       };
     }) || [];
     
-    console.log('✅ Enriched daily notes data:', enrichedData);
     
     return { success: true, data: enrichedData };
   } catch (error) {
@@ -1407,7 +1391,6 @@ export const getDailyNotes = async (date = null) => {
 
 export const getAllShiftStatistics = async (year = null) => {
   try {
-    console.log(`🔍 Vardiya istatistikleri hesaplanıyor... (year: ${year})`);
     
     // Tüm haftalık programları getir
     const { data: schedules, error } = await supabase
@@ -1417,7 +1400,6 @@ export const getAllShiftStatistics = async (year = null) => {
       
     if (error) throw error;
     
-    console.log(`📊 Toplam vardiya programı sayısı: ${schedules?.length || 0}`);
     
     if (!schedules || schedules.length === 0) {
       return { success: true, data: [] };
@@ -1465,7 +1447,6 @@ export const getAllShiftStatistics = async (year = null) => {
     });
     
     const result = Object.values(statistics);
-    console.log(`📊 ${result.length} personelin istatistikleri hesaplandı`);
     
     return { success: true, data: result };
   } catch (error) {
@@ -1515,13 +1496,14 @@ export const getWeeklyPeriods = async (year = null) => {
     
     let query = supabase
       .from('weekly_periods')
-      .select('*');
+      .select('*')
+      .order('end_date', { ascending: false }); // En son biten dönem en üstte
     
     const { data, error } = await query;
     
     if (error) throw error;
     
-    console.log(`📅 Bulunan haftalık dönem sayısı: ${data?.length || 0}`);
+ 
     if (data && data.length > 0) {
       // İlk 5 dönem örneği
       console.log(`📋 İlk 5 dönem örneği:`, data.slice(0, 5).map(period => ({
@@ -1556,8 +1538,6 @@ export const getPersonnelShiftDetails = async (employeeCode, year = null) => {
     
     if (error) throw error;
     
-    console.log(`👤 ${employeeCode} için ${data?.length || 0} vardiya kaydı bulundu`);
-    
     return { success: true, data: data || [] };
   } catch (error) {
     console.error('Get personnel shift details error:', error);
@@ -1567,7 +1547,6 @@ export const getPersonnelShiftDetails = async (employeeCode, year = null) => {
 
 export const getWeeklySchedules = async (year = null) => {
   try {
-    console.log('🔍 Weekly schedules sorgulanıyor...');
     
     // En basit query - sadece select
     const { data, error } = await supabase
@@ -1575,14 +1554,10 @@ export const getWeeklySchedules = async (year = null) => {
       .select('*');
     
     if (error) {
-      console.error('❌ Weekly schedules query hatası:', error);
       throw error;
     }
     
-    console.log(`✅ Weekly schedules başarıyla çekildi: ${data?.length || 0} kayıt`);
     if (data && data.length > 0) {
-      console.log('📋 İlk 3 kayıt örneği:', data.slice(0, 3));
-      console.log('📋 Tablo kolonları:', Object.keys(data[0]));
     }
     
     return { success: true, data: data || [] };
@@ -1595,7 +1570,6 @@ export const getWeeklySchedules = async (year = null) => {
 // Veritabanını temizleme fonksiyonu - TÜM VARDİYA VERİLERİNİ SİLER
 export const clearAllShiftData = async () => {
   try {
-    console.log('🗑️ Veritabanı temizleme başlatılıyor...');
     
     const results = {
       weekly_schedules: { success: false, count: 0 },
@@ -1616,7 +1590,6 @@ export const clearAllShiftData = async () => {
         
         if (!deleteError) {
           results.weekly_schedules = { success: true, count: schedules.length };
-          console.log(`✅ weekly_schedules temizlendi: ${schedules.length} kayıt silindi`);
         }
       }
     } catch (error) {
@@ -1637,16 +1610,13 @@ export const clearAllShiftData = async () => {
         
         if (!deleteError) {
           results.weekly_periods = { success: true, count: periods.length };
-          console.log(`✅ weekly_periods temizlendi: ${periods.length} kayıt silindi`);
         }
       }
     } catch (error) {
-      console.error('❌ weekly_periods temizleme hatası:', error);
     }
 
     // shift_statistics tablosu artık kullanılmıyor
 
-    console.log('🧹 Veritabanı temizleme tamamlandı:', results);
     
     return { 
       success: true, 
@@ -1663,13 +1633,7 @@ export const clearAllShiftData = async () => {
 // Excel verilerini kaydetme fonksiyonu
 export const saveExcelData = async (periods, schedules) => {
   try {
-    console.log('📊 Excel verisi kaydediliyor...');
-    console.log(`📅 ${periods.length} haftalık dönem`);
-    console.log(`📋 ${schedules.length} vardiya kaydı`);
-    
-    // 1. Weekly_schedules tablosunda employee_code ve period_id kontrolü
-    console.log('🔍 Weekly_schedules kontrolü başlıyor...');
-    console.log('📋 Kontrol edilecek vardiya kayıtları:', schedules.length);
+
     
     // Veritabanındaki tüm vardiya kayıtlarını çek
     const { data: allExistingSchedules, error: allSchedulesError } = await supabase
@@ -1677,11 +1641,9 @@ export const saveExcelData = async (periods, schedules) => {
       .select('employee_code, period_id');
     
     if (allSchedulesError) {
-      console.error('❌ Vardiya kayıtları çekilemedi:', allSchedulesError);
       throw allSchedulesError;
     }
     
-    console.log('📊 Veritabanındaki vardiya kayıtları:', allExistingSchedules?.length || 0);
     
     // Çakışan kayıtları kontrol et
     const duplicateRecords = [];
@@ -1696,21 +1658,17 @@ export const saveExcelData = async (periods, schedules) => {
     // Yeni kayıtları kontrol et - period_id henüz yok, sadece employee_code kontrol et
     for (const schedule of schedules) {
       const key = `${schedule.employee_code}`;
-      console.log(`🔍 Kontrol ediliyor: ${schedule.employee_code}`);
       
       if (existingRecords.has(key)) {
-        console.log(`🚫 Çakışma bulundu: ${schedule.employee_code}`);
         duplicateRecords.push({
           employee_code: schedule.employee_code
         });
       } else {
-        console.log(`✅ Eklenebilir: ${schedule.employee_code}`);
       }
     }
     
     // Eğer çakışan kayıt varsa yükleme engelle
     if (duplicateRecords.length > 0) {
-      console.log('🚫 Çakışan kayıtlar:', duplicateRecords);
       const duplicateMessage = duplicateRecords.slice(0, 10).map(record => 
         `${record.employee_code} - ${record.period_id}`
       ).join('\n');
@@ -1733,7 +1691,6 @@ export const saveExcelData = async (periods, schedules) => {
         week_label: p.week_label
       }));
       
-      console.log('🔍 Yeni dönemler:', newPeriodDates);
       
       // Mevcut dönemleri çek
       const { data: existingPeriods, error: existingPeriodsError } = await supabase
@@ -1741,7 +1698,6 @@ export const saveExcelData = async (periods, schedules) => {
         .select('start_date, end_date, week_label');
       
       if (!existingPeriodsError && existingPeriods) {
-        console.log('📊 Mevcut dönemler:', existingPeriods);
         
         // Çakışan dönemleri bul
         const conflictingPeriods = [];
@@ -1757,7 +1713,6 @@ export const saveExcelData = async (periods, schedules) => {
         });
         
         if (conflictingPeriods.length > 0) {
-          console.log('🚫 Çakışan dönemler:', conflictingPeriods);
           
           // Modern mesaj formatı
           const totalConflicts = conflictingPeriods.length;
@@ -1782,7 +1737,6 @@ export const saveExcelData = async (periods, schedules) => {
             conflicting_periods: conflictingPeriods
           };
         } else {
-          console.log('✅ Çakışan dönem yok, yeni veri eklenebilir');
         }
       }
     }
@@ -1798,11 +1752,9 @@ export const saveExcelData = async (periods, schedules) => {
       .select();
     
     if (periodError) {
-      console.error('❌ Haftalık dönemler kaydedilemedi:', periodError);
       throw periodError;
     }
     
-    console.log(`✅ ${savedPeriods.length} haftalık dönem kaydedildi`);
     
     // 3. Period ID'lerini schedules'a ekle
     const periodMap = {};
@@ -1820,7 +1772,6 @@ export const saveExcelData = async (periods, schedules) => {
       );
       
       if (!matchingPeriod) {
-        console.warn(`⚠️ Period bulunamadı: ${schedule.period_start_date} - ${schedule.period_end_date}`);
         return null;
       }
       
@@ -1832,13 +1783,10 @@ export const saveExcelData = async (periods, schedules) => {
         status: schedule.status
       };
       
-      // Debug log ekle
-      console.log(`📝 Updated schedule:`, updatedSchedule);
       
       return updatedSchedule;
     }).filter(Boolean); // null değerleri filtrele
     
-    console.log(`📋 ${updatedSchedules.length} geçerli vardiya kaydı`);
     
     // 5. Vardiya programlarını kaydet (insert only)
     const { data: savedSchedules, error: scheduleError } = await supabase
@@ -1851,7 +1799,6 @@ export const saveExcelData = async (periods, schedules) => {
       throw scheduleError;
     }
     
-    console.log(`✅ ${savedSchedules.length} vardiya programı kaydedildi`);
     
     // İstatistikler artık otomatik hesaplanıyor - ayrı tablo kullanılmıyor
     

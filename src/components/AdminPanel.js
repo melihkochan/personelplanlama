@@ -457,35 +457,66 @@ Devam etmek istediğinizden emin misiniz?`;
     </div>
   );
 
-  const DatabaseSection = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Database className="w-5 h-5 text-blue-600" />
-          Veritabanı Durumu
-        </h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-            <span className="text-sm font-medium text-green-700">Bağlantı</span>
-            <span className="text-sm text-green-600 flex items-center gap-1">
-              <Check className="w-4 h-4" />
-              Aktif
-            </span>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-            <span className="text-sm font-medium text-blue-700">Tablolar</span>
-            <span className="text-sm text-blue-600">5</span>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-            <span className="text-sm font-medium text-purple-700">Son Yedekleme</span>
-            <span className="text-sm text-purple-600">Bugün</span>
+  const DatabaseSection = () => {
+    const [dbStats, setDbStats] = useState({
+      connection: 'Aktif',
+      tables: 7,
+      lastBackup: new Date().toLocaleDateString('tr-TR'),
+      totalRecords: 0
+    });
+
+    useEffect(() => {
+      // Veritabanı istatistiklerini yükle
+      const loadDatabaseStats = async () => {
+        try {
+          // Burada gerçek veritabanı istatistiklerini çekebiliriz
+          // Şimdilik varsayılan değerler kullanıyoruz
+          setDbStats({
+            connection: 'Aktif',
+            tables: 7, // personnel, vehicles, stores, weekly_periods, weekly_schedules, performance_data, daily_notes
+            lastBackup: new Date().toLocaleDateString('tr-TR'),
+            totalRecords: users.length
+          });
+        } catch (error) {
+          console.error('Veritabanı istatistikleri yüklenirken hata:', error);
+        }
+      };
+
+      loadDatabaseStats();
+    }, [users.length]);
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Database className="w-5 h-5 text-blue-600" />
+            Veritabanı Durumu
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <span className="text-sm font-medium text-green-700">Bağlantı</span>
+              <span className="text-sm text-green-600 flex items-center gap-1">
+                <Check className="w-4 h-4" />
+                {dbStats.connection}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <span className="text-sm font-medium text-blue-700">Tablolar</span>
+              <span className="text-sm text-blue-600">{dbStats.tables}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+              <span className="text-sm font-medium text-purple-700">Son Yedekleme</span>
+              <span className="text-sm text-purple-600">{dbStats.lastBackup}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+              <span className="text-sm font-medium text-orange-700">Toplam Kayıt</span>
+              <span className="text-sm text-orange-600">{dbStats.totalRecords}</span>
+            </div>
           </div>
         </div>
       </div>
-
-
-    </div>
-  );
+    );
+  };
 
   const SettingsSection = () => (
     <div className="space-y-6">
@@ -495,12 +526,6 @@ Devam etmek istediğinizden emin misiniz?`;
           Sistem Ayarları
         </h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">Hızlı İşlemler</span>
-            <button className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
-              Etkinleştir
-            </button>
-          </div>
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div>
               <span className="text-sm font-medium text-gray-700">Performans Verilerini Temizle</span>

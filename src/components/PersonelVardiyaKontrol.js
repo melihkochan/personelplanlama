@@ -3101,193 +3101,79 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                                   <div>
                     <h2 className="text-xl font-semibold text-gray-900">Şu Anki Vardiya</h2>
                     <p className="text-sm text-gray-600 mt-1">
-                      Güncel vardiya planı: {currentShiftData.length > 0 ? `${currentShiftData.length} personel` : 'Plan bulunamadı'}
+                      Güncel vardiya planı: Geliştiriliyor
                     </p>
                   </div>
                                   <div className="flex items-center space-x-4">
                     <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-lg">
-                      <span className="font-medium">Dönem:</span> {currentShiftData.length > 0 ? 
-                        (() => {
-                          const latestDate = currentShiftData[0]?.period_start_date;
-                          if (latestDate && latestDate !== 'Bilinmeyen') {
-                            const date = new Date(latestDate);
-                            const endDate = new Date(currentShiftData[0]?.period_end_date);
-                            return `${date.getDate()}.${getMonthName(date.getMonth())} - ${endDate.getDate()}.${getMonthName(endDate.getMonth())} ${date.getFullYear()}`;
-                          }
-                          return 'En Son Yüklenen';
-                        })() : 
-                        'En Son Yüklenen'
-                      }
+                      <span className="font-medium">Dönem:</span> Geliştiriliyor
                     </div>
 
                 </div>
               </div>
 
               {/* Vardiya Tablosu */}
+              {/* Yapım Aşamasında Mesajı */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th 
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-                          onClick={() => handleCurrentShiftSort('region')}
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>BÖLGE</span>
-                            {getCurrentShiftSortIcon('region')}
-                          </div>
-                        </th>
-                        <th 
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-                          onClick={() => handleCurrentShiftSort('employee_code')}
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>PERSONEL ID</span>
-                            {getCurrentShiftSortIcon('employee_code')}
-                          </div>
-                        </th>
-                        <th 
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-                          onClick={() => handleCurrentShiftSort('full_name')}
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>ADI SOYADI</span>
-                            {getCurrentShiftSortIcon('full_name')}
-                          </div>
-                        </th>
-                        <th 
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-                          onClick={() => handleCurrentShiftSort('position')}
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>GÖREVİ</span>
-                            {getCurrentShiftSortIcon('position')}
-                          </div>
-                        </th>
-                        <th 
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-                          onClick={() => handleCurrentShiftSort('shift_hours')}
-                        >
-                          <div className="flex items-center space-x-1">
-                            <span>
-                              {currentShiftData.length > 0 ? 
-                                (() => {
-                                  const latestDate = currentShiftData[0]?.period_start_date;
-                                  if (latestDate && latestDate !== 'Bilinmeyen') {
-                                    const date = new Date(latestDate);
-                                    const endDate = new Date(currentShiftData[0]?.period_end_date);
-                                    return `${date.getDate()}.${getMonthName(date.getMonth())} - ${endDate.getDate()}.${getMonthName(endDate.getMonth())} ${date.getFullYear()}`;
-                                  }
-                                  return 'EN SON YÜKLENEN';
-                                })() : 
-                                'EN SON YÜKLENEN'
-                              }
-                            </span>
-                            {getCurrentShiftSortIcon('shift_hours')}
-                          </div>
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          İşlemler
-                        </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {getSortedCurrentShiftData().length > 0 ? (
-                        getSortedCurrentShiftData().map((shift, index) => (
-                          <tr key={index} className={`hover:bg-gray-50 ${
-                            shift.shift_type === 'gunduz' 
-                              ? 'bg-green-50' 
-                              : shift.shift_type === 'gece'
-                              ? 'bg-blue-50'
-                              : shift.shift_type === 'aksam'
-                              ? 'bg-orange-50'
-                              : shift.shift_type === 'izin' || shift.shift_type === 'yillik_izin'
-                              ? 'bg-purple-50'
-                              : shift.shift_type === 'raporlu' || shift.shift_type === 'rapor'
-                              ? 'bg-red-50'
-                              : shift.shift_type === 'gecici_gorev'
-                              ? 'bg-yellow-50'
-                              : 'bg-gray-50'
-                          }`}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              AND
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {shift.employee_code}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {shift.full_name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {shift.position}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                shift.shift_type === 'gunduz' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : shift.shift_type === 'gece'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : shift.shift_type === 'aksam'
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : shift.shift_type === 'izin' || shift.shift_type === 'yillik_izin'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : shift.shift_type === 'raporlu' || shift.shift_type === 'rapor'
-                                  ? 'bg-red-100 text-red-800'
-                                  : shift.shift_type === 'gecici_gorev'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {shift.shift_type === 'izin' || shift.shift_type === 'yillik_izin' ? 'Yıllık İzin' :
-                                 shift.shift_type === 'raporlu' || shift.shift_type === 'rapor' ? 'Raporlu' :
-                                 shift.shift_type === 'gecici_gorev' ? 'Geçici Görev' :
-                                 shift.shift_hours || 'Dinlenme'}
-                                                            </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingShift(shift);
-                                    setShiftForm({
-                                      employee_code: shift.employee_code,
-                                      shift_type: shift.shift_type,
-                                      shift_hours: shift.shift_hours,
-                                      status: shift.status
-                                    });
-                                    setShowCurrentShiftModal(true);
-                                  }}
-                                  className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-100 transition-colors duration-200 border border-blue-200"
-                                >
-                                  <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                  Düzenle
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteShift(shift.id)}
-                                  className="inline-flex items-center px-3 py-1.5 bg-red-50 text-red-700 text-xs font-medium rounded-md hover:bg-red-100 transition-colors duration-200 border border-red-200"
-                                >
-                                  <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                  Sil
-                                </button>
-                              </div>
-                            </td>
-                            </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                            <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                            <p className="text-lg font-medium">Henüz vardiya verisi bulunmuyor</p>
-                            <p className="text-sm mt-1">Excel yükleme ile vardiya verisi ekleyebilirsiniz</p>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="flex flex-col items-center justify-center py-16 px-6">
+                  {/* Modern İkon */}
+                  <div className="relative mb-6">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                      <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                      </svg>
+                    </div>
+                    {/* Animasyonlu Noktalar */}
+                    <div className="absolute -top-2 -right-2">
+                      <div className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Ana Başlık */}
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    🚧 Yapım Aşamasında
+                  </h3>
+                  
+                  {/* Alt Başlık */}
+                  <p className="text-lg text-gray-600 mb-6 text-center max-w-md">
+                    Bu özellik şu anda geliştirme aşamasında. Yakında kullanıma açılacak!
+                  </p>
+                  
+                  {/* İlerleme Çubuğu */}
+                  <div className="w-full max-w-md mb-6">
+                    <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                      <span>Geliştirme İlerlemesi</span>
+                      <span>%75</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full w-3/4 animate-pulse"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Özellik Listesi */}
+                  <div className="grid grid-cols-1 gap-4 max-w-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm text-gray-600">Gerçek zamanlı vardiya takibi</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm text-gray-600">Personel vardiya düzenleme</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                      <span className="text-sm text-gray-400">Gelişmiş raporlama</span>
+                    </div>
+                  </div>
+                  
+                  {/* Tahmini Tamamlanma */}
+                  <div className="mt-8 text-center">
+                    <p className="text-sm text-gray-500">
+                      Tahmini tamamlanma: <span className="font-medium text-gray-700">2-3 hafta</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

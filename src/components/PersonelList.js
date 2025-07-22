@@ -124,8 +124,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
       // 1. Weekly periods'ları çek
       const periodsResult = await getWeeklyPeriods();
       if (periodsResult.success) {
-        setWeeklyPeriods(periodsResult.data);
-        console.log('✅ Weekly periods yüklendi:', periodsResult.data.length);
+        // Weekly periods'ları end_date'e göre sırala (en son biten en üstte)
+        const sortedPeriods = periodsResult.data.sort((a, b) => {
+          const dateA = new Date(a.end_date || 0);
+          const dateB = new Date(b.end_date || 0);
+          return dateB - dateA;
+        });
+        setWeeklyPeriods(sortedPeriods);
+        console.log('✅ Weekly periods yüklendi:', sortedPeriods.length);
       } else {
         console.error('❌ Weekly periods yüklenemedi');
         return;
@@ -1319,7 +1325,16 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  list="personnel-suggestions"
                 />
+                <datalist id="personnel-suggestions">
+                  {personnelData.map((person, index) => (
+                    <option key={index} value={person.full_name} />
+                  ))}
+                </datalist>
+                <div className="mt-1 text-xs text-gray-500">
+                  Mevcut personeller: {personnelData.length} kişi
+                </div>
               </div>
 
               <div>

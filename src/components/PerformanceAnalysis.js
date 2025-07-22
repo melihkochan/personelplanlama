@@ -262,7 +262,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             // Tarih çıkarıldı
           } else {
             displayDate = recordDate;
-            console.log(`⚠️ Fallback tarih: "${recordDate}"`);
+         
           }
           
           // Date_shift_type'dan shift bilgisini al
@@ -472,7 +472,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           return;
         }
         
-        console.log(`👤 Şoför: ${driverName} - Personnel DB shift_type: ${personnelInfo.shift_type}`);
+   
         
         // Her gün için kayıt oluştur
         Object.entries(driver.dayData).forEach(([date, dayData]) => {
@@ -519,7 +519,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           return;
         }
         
-        console.log(`👤 Personel: ${personName} - Personnel DB shift_type: ${personnelInfo.shift_type}`);
+    
         
         // Her gün için kayıt oluştur
         Object.entries(person.dayData).forEach(([date, dayData]) => {
@@ -584,16 +584,16 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           // Performans verileri kaydedildi
           alert('✅ Performans verileri veritabanına kaydedildi!');
         } else {
-          console.error('❌ Performans verileri kaydedilirken hata:', result.error);
+       
           alert('❌ Performans verileri kaydedilirken hata: ' + result.error);
         }
       } else {
-        console.error('❌ Performans kayıtları hazırlanamadı!');
+    
         alert('❌ Performans kayıtları hazırlanamadı!');
       }
       
     } catch (error) {
-      console.error('❌ Veritabanına kaydetme hatası:', error);
+    
     }
   };
 
@@ -610,7 +610,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           }
         });
         
-        console.log('🔍 Mevcut sheet_name\'ler (normalize edilmiş):', Array.from(existingDates));
+     
         return Array.from(existingDates);
       }
       return [];
@@ -642,21 +642,21 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         
         // Yeni sheet'leri bul - sadece tarihli sheet'leri al
         const newSheets = workbook.SheetNames.filter(sheetName => {
-          console.log(`\n🔍 Sheet kontrol ediliyor: "${sheetName}"`);
+     
           
           // PERSONEL ve DEPODA KALAN sheet'lerini atla
           const sheetNameUpper = sheetName.toUpperCase();
           if (sheetNameUpper.includes('PERSONEL') || 
               sheetNameUpper.includes('DEPODA KALAN') || 
               sheetNameUpper.includes('DEPODA KALAN PERSONELLER')) {
-        console.log(`⏭️ ${sheetName} sheet atlandı (personel/depoda kalan)`);
+    
             return false;
       }
       
           // Tarih formatını kontrol et
       const dateMatch = sheetName.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
       if (!dateMatch) {
-            console.log(`❌ ${sheetName} tarih formatına uymuyor`);
+           
             return false;
           }
           
@@ -664,13 +664,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           const normalizedCurrent = normalizeSheetName(sheetName);
           const normalizedExisting = existingSheets.map(s => normalizeSheetName(s));
           
-          console.log(`🔍 Normalize edilmiş: "${normalizedCurrent}"`);
-          console.log(`🔍 Mevcut normalize edilmiş: [${normalizedExisting.join(', ')}]`);
+        
           
           const isExisting = normalizedExisting.includes(normalizedCurrent);
           
           if (isExisting) {
-            console.log(`❌ ${sheetName} zaten mevcut (normalize edilmiş karşılaştırma)`);
+        
             return false;
           }
           
@@ -678,7 +677,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           return true;
         });
         
-        console.log('🆕 Yeni sheet\'ler:', newSheets);
+     
         
         if (newSheets.length === 0) {
           setUploadError('Bu Excel dosyasındaki tüm veriler zaten mevcut. Yeni veri bulunamadı.');
@@ -741,11 +740,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       summary: { gunduzDays: 0, geceDays: 0, totalDeliveries: 0, totalPallets: 0, totalBoxes: 0 }
     };
 
-    console.log('🔍 Seçici Excel processing başladı, işlenecek sheet\'ler:', sheetsToProcess);
+    
 
     // 1. PERSONEL LİSTESİNİ VERİTABANINDAN AL
     if (personnelDatabase && personnelDatabase.length > 0) {
-      console.log(`✅ Veritabanından ${personnelDatabase.length} personel bulundu`);
+      
       
       personnelDatabase.forEach((person) => {
         const name = person.full_name || '';
@@ -774,21 +773,21 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     const availableDatesTemp = [];
     
     sheetsToProcess.forEach((sheetName) => {
-      console.log(`📋 Sheet kontrol ediliyor: "${sheetName}"`);
+      
       
       // PERSONEL ve DEPODA KALAN sheet'lerini atla
       const sheetNameUpper = sheetName.toUpperCase();
       if (sheetNameUpper.includes('PERSONEL') || 
           sheetNameUpper.includes('DEPODA KALAN') || 
           sheetNameUpper.includes('DEPODA KALAN PERSONELLER')) {
-        console.log(`⏭️ ${sheetName} sheet atlandı (personel/depoda kalan)`);
+       
         return;
       }
       
       // Tarih formatını kontrol et
       const dateMatch = sheetName.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
       if (!dateMatch) {
-        console.log(`❌ ${sheetName} tarih formatına uymuyor`);
+        
         return;
       }
       
@@ -796,8 +795,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       const isGunduz = sheetName.toUpperCase().includes('GÜNDÜZ') || sheetName.toUpperCase().includes('GUNDUZ');
       const vardiyaTipi = isGunduz ? 'GÜNDÜZ' : 'GECE';
       
-      console.log(`✅ ${sheetName} → ${vardiyaTipi} vardiyası olarak işleniyor`);
-      
+   
       // Tarih listesine ekle
       availableDatesTemp.push({
         date: sheetName,
@@ -818,7 +816,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       if (!sheet) return;
       
       const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      console.log(`📊 ${sheetName} - ${sheetData.length} satır bulundu`);
+   
       
       // Basit veri işleme
       processSheetDataSelective(sheetData, sheetName, vardiyaTipi, results);
@@ -831,13 +829,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     setAvailableDates(prev => [...prev, ...availableDatesTemp]);
     setSelectedDates(prev => [...prev, ...availableDatesTemp.map(d => d.date)]);
 
-    console.log(`📊 Seçici processing tamamlandı: ${sheetsToProcess.length} sheet işlendi`);
+    
     return results;
   };
 
   // Sheet verilerini seçici olarak işleme - basit versiyon
   const processSheetDataSelective = (sheetData, sheetName, dateShiftType, results) => {
-    console.log(`📋 ${sheetName} sheet işleniyor... (${dateShiftType})`);
+  
     
     // Günlük veri yapısını hazırla
     if (!results.dailyData[sheetName]) {
@@ -919,7 +917,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         });
         
       } catch (error) {
-        console.error(`❌ ${sheetName} satır ${rowIndex} işlenirken hata:`, error);
+        
       }
     });
     
@@ -929,7 +927,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     results.summary.totalBoxes += results.dailyData[sheetName].totalBoxes;
     results.dailyData[sheetName].uniqueStores = processedStores.size;
     
-    console.log(`✅ ${sheetName} tamamlandı: ${processedStores.size} mağaza, ${results.dailyData[sheetName].totalPallets} palet, ${results.dailyData[sheetName].totalBoxes} kasa`);
+    
   };
 
   // Excel verilerini işleme - VERİTABANI VERSİYON
@@ -941,11 +939,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       summary: { gunduzDays: 0, geceDays: 0, totalDeliveries: 0, totalPallets: 0, totalBoxes: 0 }
     };
 
-    console.log('🔍 Excel processing başladı');
 
     // 1. PERSONEL LİSTESİNİ VERİTABANINDAN AL
     if (personnelDatabase && personnelDatabase.length > 0) {
-      console.log(`✅ Veritabanından ${personnelDatabase.length} personel bulundu`);
       
       personnelDatabase.forEach((person) => {
         const name = person.full_name || '';
@@ -974,21 +970,18 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     const availableDatesTemp = [];
     
     workbook.SheetNames.forEach((sheetName) => {
-      console.log(`📋 Sheet kontrol ediliyor: "${sheetName}"`);
       
       // PERSONEL ve DEPODA KALAN sheet'lerini atla
       const sheetNameUpper = sheetName.toUpperCase();
       if (sheetNameUpper.includes('PERSONEL') || 
           sheetNameUpper.includes('DEPODA KALAN') || 
           sheetNameUpper.includes('DEPODA KALAN PERSONELLER')) {
-        console.log(`⏭️ ${sheetName} sheet atlandı (personel/depoda kalan)`);
         return;
       }
       
       // Tarih formatını kontrol et
       const dateMatch = sheetName.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
       if (!dateMatch) {
-        console.log(`❌ ${sheetName} tarih formatına uymuyor`);
         return;
       }
       
@@ -996,7 +989,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       const isGunduz = sheetName.toUpperCase().includes('GÜNDÜZ') || sheetName.toUpperCase().includes('GUNDUZ');
       const vardiyaTipi = isGunduz ? 'GÜNDÜZ' : 'GECE';
       
-      console.log(`✅ ${sheetName} → ${vardiyaTipi} vardiyası olarak işleniyor`);
       
       // Tarih listesine ekle
       availableDatesTemp.push({
@@ -1017,7 +1009,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       const sheet = workbook.Sheets[sheetName];
       const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
       
-      console.log(`📊 ${sheetName} - ${sheetData.length} satır bulundu`);
       
       processSheetData(sheetData, sheetName, vardiyaTipi, results);
     });
@@ -1029,15 +1020,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     setAvailableDates(availableDatesTemp);
     setSelectedDates(availableDatesTemp.map(d => d.date));
     
-    console.log(`📅 Toplam ${availableDatesTemp.length} tarih işlendi`);
-    console.log(`👥 ${Object.keys(results.drivers).length} şoför, ${Object.keys(results.personnel).length} personel`);
     
     return results;
   };
 
   // Sheet verilerini işleme
   const processSheetData = (sheetData, sheetName, dateShiftType, results) => {
-    console.log(`📋 ${sheetName} sheet işleniyor... (${dateShiftType})`);
+   
     
     // Günlük veri yapısını hazırla
     if (!results.dailyData[sheetName]) {
@@ -1160,14 +1149,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         });
         
       } catch (error) {
-        console.error(`❌ Satır ${rowIndex + 1} işlenirken hata:`, error);
       }
     });
     
     // Günlük unique mağaza sayısını set et
     results.dailyData[sheetName].uniqueStores = processedStores.size;
     
-    console.log(`📊 ${sheetName} özet: ${processedStores.size} mağaza, ${results.dailyData[sheetName].totalPallets} palet, ${results.dailyData[sheetName].totalBoxes} kasa`);
+   
   };
 
   // Personnel veritabanından shift bilgisini çek
@@ -1204,7 +1192,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       const originalShiftType = foundPerson.shift_type || '';
       const shiftType = originalShiftType.toLowerCase().trim();
       
-      console.log(`🔄 getPersonnelShiftFromDatabase mapping: "${originalShiftType}" -> lower: "${shiftType}"`);
       
       if (shiftType.includes('gece') || shiftType === 'night' || shiftType === 'gece') {
         return 'GECE';
@@ -1280,7 +1267,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     for (const personName in personList) {
       const normalizedPerson = normalizeText(personName);
       if (normalizedPerson.includes(normalizedSearch) || normalizedSearch.includes(normalizedPerson)) {
-        console.log(`⚠️ Kısmi eşleşme bulundu: "${searchName}" ≈ "${personName}"`);
         return personName;
       }
     }
@@ -2477,7 +2463,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     if (hasTrips) weekStats.activePersonnel++;
                   });
                   
-                  console.log(`📊 ${week.label} - Toplam: ${weekStats.totalTrips} sefer, ${weekStats.totalPallets} palet, ${weekStats.totalBoxes} kasa`);
                   
                   return (
                     <div key={week.id} className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">

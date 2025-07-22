@@ -45,8 +45,6 @@ function MainApp() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [calendarAnimation, setCalendarAnimation] = useState('');
   const [notification, setNotification] = useState(null);
-  
-
 
   // Tab değiştiğinde localStorage'a kaydet
   const handleTabChange = (tabId) => {
@@ -78,15 +76,11 @@ function MainApp() {
     fetchUserRole();
   }, [user]);
 
-
-
   // Notification gösterme fonksiyonu
   const showNotification = (message, type = 'info') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 7000); // 7 saniye göster
   };
-
-
 
   // Veritabanından veri yükleme fonksiyonu
   const loadData = async () => {
@@ -100,132 +94,97 @@ function MainApp() {
         getDailyNotes()
       ]);
 
+      // Personnel data
       if (personnelResult.success) {
-        setPersonnelData(personnelResult.data);
+        setPersonnelData(personnelResult.data || []);
         setDataStatus(prev => ({
           ...prev,
-          personnel: { 
-            loaded: true, 
-            count: personnelResult.data.length,
-            hasExisting: personnelResult.data.length > 0
+          personnel: {
+            loaded: true,
+            count: personnelResult.data?.length || 0,
+            hasExisting: (personnelResult.data?.length || 0) > 0
           }
         }));
       }
 
+      // Vehicle data
       if (vehicleResult.success) {
-        setVehicleData(vehicleResult.data);
+        setVehicleData(vehicleResult.data || []);
         setDataStatus(prev => ({
           ...prev,
-          vehicles: { 
-            loaded: true, 
-            count: vehicleResult.data.length,
-            hasExisting: vehicleResult.data.length > 0
+          vehicles: {
+            loaded: true,
+            count: vehicleResult.data?.length || 0,
+            hasExisting: (vehicleResult.data?.length || 0) > 0
           }
         }));
       }
 
+      // Store data
       if (storeResult.success) {
-        setStoreData(storeResult.data);
+        setStoreData(storeResult.data || []);
         setDataStatus(prev => ({
           ...prev,
-          stores: { 
-            loaded: true, 
-            count: storeResult.data.length,
-            hasExisting: storeResult.data.length > 0
+          stores: {
+            loaded: true,
+            count: storeResult.data?.length || 0,
+            hasExisting: (storeResult.data?.length || 0) > 0
           }
         }));
       }
 
-
-
+      // Daily notes
       if (dailyNotesResult.success) {
-        console.log('📝 Ana sayfa daily notes yüklendi:', dailyNotesResult.data.length, 'kayıt');
-        console.log('📋 Daily notes örnekleri:', dailyNotesResult.data.slice(0, 3).map(note => ({
-          date: note.date,
-          employee_code: note.employee_code,
-          full_name: note.full_name,
-          status: note.status
-        })));
         setDataStatus(prev => ({
           ...prev,
-          dailyNotes: dailyNotesResult.data
+          dailyNotes: dailyNotesResult.data || []
         }));
       }
 
       setDataLoaded(true);
       console.log('✅ Ana sayfa verileri yüklendi');
     } catch (error) {
-      console.error('❌ Veri yükleme hatası:', error);
-      showNotification('Veriler yüklenirken hata oluştu', 'error');
+      console.error('❌ Ana sayfa veri yükleme hatası:', error);
+      showNotification('Veri yükleme hatası!', 'error');
     }
   };
 
   // İlk yükleme
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
       loadData();
+      loadDailyNotes(); // Daily notes'u da yükle
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
-  // Veri yenileme fonksiyonu - diğer sayfalardan çağrılabilir
+  // Veri yenileme fonksiyonu
   const refreshData = async () => {
-    console.log('🔄 Veriler yenileniyor...');
     await loadData();
-    await loadDailyNotes(); // Daily notes'u da yenile
+    showNotification('Veriler yenilendi!', 'success');
   };
 
-  // Takvim verilerini yenileme - dailyNotes değiştiğinde
-  useEffect(() => {
-    if (dataStatus.dailyNotes.length > 0) {
-      console.log('🔄 Ana sayfa takvimi verileri yenileniyor...');
-      console.log('📝 Ana sayfa takviminde gösterilen notlar:', dataStatus.dailyNotes.length, 'kayıt');
-      // Takvim otomatik olarak yeniden render olacak
-    }
-  }, [dataStatus.dailyNotes]);
-
-  // Daily notes state'i ekle
-  const [dailyNotes, setDailyNotes] = useState([]);
-
-  // Daily notes yükleme fonksiyonu
+  // Günlük notları yükle
   const loadDailyNotes = async () => {
     try {
       const result = await getDailyNotes();
       if (result.success) {
-        setDailyNotes(result.data);
-        console.log('📝 Ana sayfa daily notes yüklendi:', result.data.length, 'kayıt');
+        setDataStatus(prev => ({
+          ...prev,
+          dailyNotes: result.data || []
+        }));
       }
     } catch (error) {
       console.error('❌ Daily notes yükleme hatası:', error);
     }
   };
 
-  // Daily notes yükle
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadDailyNotes();
-    }
-  }, [isAuthenticated]);
-
-  // Periyodik veri yenileme (her 30 saniyede bir)
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (isAuthenticated && activeTab === 'home') {
-        console.log('🔄 Periyodik veri yenileme...');
-        await loadData();
-      }
-    }, 30000); // 30 saniye
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated, activeTab]);
-
-
-
+  // Plan oluşturulduğunda
   const handlePlanGenerated = (plan) => {
     setGeneratedPlan(plan);
-    handleTabChange('display');
+    showNotification('Vardiya planı başarıyla oluşturuldu!', 'success');
   };
 
-  // Takvim fonksiyonları
+  // Takvim yardımcı fonksiyonları
   const getDaysInMonth = (year, month) => {
     return new Date(year, month + 1, 0).getDate();
   };
@@ -239,70 +198,49 @@ function MainApp() {
     const firstDay = getFirstDayOfMonth(selectedYear, selectedMonth);
     const days = [];
 
-    // Önceki ayın son günleri
+    // Önceki ayın günleri
+    const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+    const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+    const daysInPrevMonth = getDaysInMonth(prevYear, prevMonth);
+    
     for (let i = firstDay - 1; i >= 0; i--) {
-      const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-      const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-      const prevMonthDays = getDaysInMonth(prevYear, prevMonth);
       days.push({
-        date: new Date(prevYear, prevMonth, prevMonthDays - i),
+        day: daysInPrevMonth - i,
+        month: prevMonth,
+        year: prevYear,
         isCurrentMonth: false,
-        notes: []
+        isToday: false
       });
     }
 
-      // Bu ayın günleri
+    // Mevcut ayın günleri
+    const today = new Date();
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(selectedYear, selectedMonth, day);
-      
-      // Bu gün için daily_notes'tan notları filtrele - PersonelVardiyaKontrol.js ile aynı yöntem
-      const dayNotes = dailyNotes.filter(note => {
-        const noteDate = new Date(note.date);
-        const isMatch = (
-          noteDate.getFullYear() === date.getFullYear() &&
-          noteDate.getMonth() === date.getMonth() &&
-          noteDate.getDate() === date.getDate()
-        );
-        
-        // Debug log ekle - tüm tarihler için
-        if (date.getDate() === 21) {
-          console.log(`🔍 21. gün kontrolü:`);
-          console.log(`  - Takvim tarihi: ${date.toISOString().split('T')[0]} (${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()})`);
-          console.log(`  - Not tarihi: ${note.date}`);
-          console.log(`  - Not yılı: ${noteDate.getFullYear()}, Takvim yılı: ${date.getFullYear()}`);
-          console.log(`  - Not ayı: ${noteDate.getMonth() + 1}, Takvim ayı: ${date.getMonth() + 1}`);
-          console.log(`  - Eşleşme: ${isMatch}`);
-        }
-        
-        return isMatch;
-      });
-      
-      // Debug: Bu gün için kaç not bulundu
-      if (date.getDate() === 21) {
-        console.log(`📊 21. gün için bulunan not sayısı: ${dayNotes.length}`);
-        console.log(`📋 21. gün notları:`, dayNotes.map(note => ({
-          full_name: note.full_name,
-          status: note.status,
-          date: note.date
-        })));
-      }
+      const isToday = today.getDate() === day && 
+                     today.getMonth() === selectedMonth && 
+                     today.getFullYear() === selectedYear;
       
       days.push({
-        date,
+        day,
+        month: selectedMonth,
+        year: selectedYear,
         isCurrentMonth: true,
-        notes: dayNotes
+        isToday
       });
     }
 
-    // Sonraki ayın ilk günleri
-    const remainingDays = 42 - days.length; // 6 hafta x 7 gün
+    // Sonraki ayın günleri
+    const nextMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
+    const nextYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+    const remainingDays = 42 - days.length; // 6 satır x 7 gün = 42
+    
     for (let day = 1; day <= remainingDays; day++) {
-      const nextMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
-      const nextYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
       days.push({
-        date: new Date(nextYear, nextMonth, day),
+        day,
+        month: nextMonth,
+        year: nextYear,
         isCurrentMonth: false,
-        notes: []
+        isToday: false
       });
     }
 
@@ -311,7 +249,7 @@ function MainApp() {
 
   const isFutureDate = (date) => {
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // Bugünün sonu
+    today.setHours(0, 0, 0, 0);
     return date > today;
   };
 
@@ -324,39 +262,22 @@ function MainApp() {
   };
 
   const getStatusText = (status) => {
-    const statusMap = {
-      'raporlu': 'Raporlu',
-      'habersiz': 'Habersiz',
-      'yillik_izin': 'Yıllık İzin',
-      'dinlenme': 'Dinlenme'
-    };
-    return statusMap[status] || status;
+    switch (status) {
+      case 'active': return 'Aktif';
+      case 'inactive': return 'Pasif';
+      case 'pending': return 'Beklemede';
+      default: return status;
+    }
   };
 
   const animateCalendar = (direction) => {
     setCalendarAnimation(direction);
-    setTimeout(() => {
-      setCalendarAnimation('slide-in');
-    }, 300);
+    setTimeout(() => setCalendarAnimation(''), 300);
   };
 
   const handleMonthChange = (newMonth, newYear) => {
-    const currentDate = new Date(selectedYear, selectedMonth);
-    const newDate = new Date(newYear, newMonth);
-    
-    // Gelecek tarih kontrolü
-    const today = new Date();
-    const selectedDate = new Date(newYear, newMonth, 1);
-    if (selectedDate > today) {
-      alert('Gelecek tarihler seçilemez!');
-      return;
-    }
-    
-    if (newDate > currentDate) {
-      animateCalendar('slide-out-left');
-    } else {
-      animateCalendar('slide-out-right');
-    }
+    const direction = newMonth > selectedMonth || (newMonth === 0 && selectedMonth === 11) ? 'right' : 'left';
+    animateCalendar(direction);
     
     setTimeout(() => {
       setSelectedMonth(newMonth);
@@ -364,261 +285,65 @@ function MainApp() {
     }, 150);
   };
 
-  // Performans verilerini hesapla
-  const [performanceData, setPerformanceData] = useState(null);
-  const [analysisData, setAnalysisData] = useState(null);
-
+  // Performans verilerini yükle
   const loadPerformanceData = async () => {
     try {
       const result = await getPerformanceData();
-      if (result.success && result.data.length > 0) {
-        setPerformanceData(result.data);
+      if (result.success) {
+        // Performans verilerini işle
+        const performanceData = result.data || [];
         
-        // Performans Analizi'ndeki gibi veri işleme
-        const drivers = {};
-        const personnel = {};
-        const allDatesSet = new Set();
-        
-        // GRUPLANDIRMA: Aynı gün aynı çalışan için kayıtları birleştir
-        const groupedRecords = {};
-        
-        result.data.forEach(record => {
-          const { employee_name, employee_code, date, trips = 0, pallets = 0, boxes = 0, stores_visited = 0, date_shift_type, store_codes, sheet_name } = record;
-          
-          if (!employee_name) {
-            return;
-          }
-          
-          // Tarihi formatla
-          const formattedDate = new Date(date).toLocaleDateString('tr-TR');
-          
-          // Tarih + shift kombinasyonu key'i oluştur
-          let dateForKey, shiftForKey;
-          
-          if (sheet_name) {
-            dateForKey = sheet_name;
-          } else {
-            dateForKey = formattedDate;
-          }
-          
-          if (date_shift_type === 'gece') {
-            shiftForKey = 'GECE';
-          } else {
-            shiftForKey = 'GÜNDÜZ';
-          }
-          
-          const dayDataKey = `${dateForKey}_${shiftForKey}`;
-          const groupKey = `${employee_name}_${dayDataKey}`;
-          
-          // Gruplandırma - aynı çalışan aynı gün için
-          if (!groupedRecords[groupKey]) {
-            groupedRecords[groupKey] = {
-              employee_name,
-              dayDataKey,
-              formattedDate,
-              trips: 0,
-              pallets: 0,
-              boxes: 0,
-              stores: new Set(),
-              date_shift_type
-            };
-          }
-          
-          // Mağaza kodlarını ekle
-          if (store_codes) {
-            const stores = store_codes.split(',').map(s => s.trim()).filter(s => s);
-            stores.forEach(store => groupedRecords[groupKey].stores.add(store));
-          }
-          
-          // Palet ve kasa miktarlarını topla
-          groupedRecords[groupKey].pallets += pallets;
-          groupedRecords[groupKey].boxes += boxes;
-          groupedRecords[groupKey].trips += trips;
-        });
-        
-        // Şimdi gruplandırılmış kayıtları işle
-        Object.values(groupedRecords).forEach(groupedRecord => {
-          const { employee_name, dayDataKey, formattedDate, pallets, boxes, stores, date_shift_type } = groupedRecord;
-          
-          // Personnel database'den position'a bak
-          const person = personnelData.find(p => p.full_name === employee_name);
-          if (!person) {
-            return;
-          }
-          
-          // Şoför tespiti için daha geniş kontrol
-          const positionLower = (person.position || '').toLowerCase().trim();
-          const isDriver = positionLower.includes('şoför') || positionLower.includes('sofor') || 
-                          positionLower.includes('driver') || positionLower.includes('sürücü');
-          
-          const targetGroup = isDriver ? drivers : personnel;
-          
-          allDatesSet.add(formattedDate);
-          
-          if (!targetGroup[employee_name]) {
-            const originalShift = person.shift_type || 'gunduz';
-            const shiftLower = originalShift.toLowerCase().trim();
-            let personnelShiftDisplay;
-            
-            if (shiftLower.includes('gece') || shiftLower === 'night' || shiftLower === 'gece') {
-              personnelShiftDisplay = 'GECE';
-            } else if (shiftLower.includes('izin') || shiftLower === 'leave' || shiftLower === 'vacation' || shiftLower.includes('izinli')) {
-              personnelShiftDisplay = 'İZİNLİ';
-            } else {
-              personnelShiftDisplay = 'GÜNDÜZ';
-            }
-            
-            targetGroup[employee_name] = {
-              name: employee_name,
-              shift: personnelShiftDisplay,
-              totalTrips: 0,
-              totalPallets: 0,
-              totalBoxes: 0,
-              totalStores: 0,
-              dayData: {}
-            };
-          }
-          
-          // Günlük veriyi sheet_name bazında ekle
-          if (!targetGroup[employee_name].dayData[dayDataKey]) {
-            targetGroup[employee_name].dayData[dayDataKey] = {
-              trips: 0,
-              pallets: 0,
-              boxes: 0,
-              stores: []
-            };
-          }
-          
-          // ÖNEMLİ: Trips sayısını benzersiz mağaza sayısı olarak ayarla
-          const uniqueStoreCount = stores.size;
-          const storeArray = Array.from(stores);
-          
-          targetGroup[employee_name].dayData[dayDataKey].trips = uniqueStoreCount;
-          targetGroup[employee_name].dayData[dayDataKey].pallets += pallets;
-          targetGroup[employee_name].dayData[dayDataKey].boxes += boxes;
-          targetGroup[employee_name].dayData[dayDataKey].stores.push(...storeArray);
-          
-          // Toplam değerleri güncelle
-          targetGroup[employee_name].totalTrips += uniqueStoreCount;
-          targetGroup[employee_name].totalPallets += pallets;
-          targetGroup[employee_name].totalBoxes += boxes;
-          targetGroup[employee_name].totalStores += uniqueStoreCount;
-        });
-        
-        // Analiz formatına çevir
-        const allDates = Array.from(allDatesSet).sort((a, b) => {
-          const parseDate = (dateStr) => {
-            const [day, month, year] = dateStr.split('.');
-            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-          };
-          
-          return parseDate(a) - parseDate(b);
-        });
-        
-        const analysisResults = {
-          drivers,
-          personnel,
-          allDates,
-          summary: {
-            totalDrivers: Object.keys(drivers).length,
-            totalPersonnel: Object.keys(personnel).length,
-            totalDays: allDates.length
-          }
-        };
-        
-        setAnalysisData(analysisResults);
+        // Haftalık planları yükle
+        const weeklySchedulesResult = await getWeeklySchedules();
+        if (weeklySchedulesResult.success) {
+          setDataStatus(prev => ({
+            ...prev,
+            weeklySchedules: weeklySchedulesResult.data || []
+          }));
+        }
       }
     } catch (error) {
-      console.error('Performans verisi yüklenirken hata:', error);
+      console.error('❌ Performans veri yükleme hatası:', error);
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated && personnelData.length > 0) {
-      loadPerformanceData();
-    }
-  }, [isAuthenticated, personnelData]);
-
+  // Performans özeti hesapla
   const getPerformanceSummary = () => {
-    if (!analysisData) {
+    const performanceData = dataStatus.weeklySchedules || [];
+    
+    if (performanceData.length === 0) {
       return {
-        geceDays: 0,
-        gunduzDays: 0,
-        totalDeliveries: 0,
-        totalPallets: 0,
-        totalBoxes: 0
+        totalPersonnel: 0,
+        totalVehicles: 0,
+        totalStores: 0,
+        averageEfficiency: 0
       };
     }
 
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+    // Basit özet hesaplamaları
+    const totalPersonnel = performanceData.reduce((sum, item) => sum + (item.personnel_count || 0), 0);
+    const totalVehicles = performanceData.reduce((sum, item) => sum + (item.vehicle_count || 0), 0);
+    const totalStores = performanceData.reduce((sum, item) => sum + (item.store_count || 0), 0);
     
-    // Bu ayki tarihleri filtrele
-    const thisMonthDates = analysisData.allDates.filter(dateStr => {
-      const [day, month, year] = dateStr.split('.');
-      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    });
-
-    // Vardiya günlerini hesapla (Performans Analizi'ndeki gibi)
-    const nightShiftDates = new Set();
-    const dayShiftDates = new Set();
-    
-    // Tüm şoför ve personel verilerinden vardiya bilgilerini topla
-    [...Object.values(analysisData.drivers), ...Object.values(analysisData.personnel)].forEach(person => {
-      Object.entries(person.dayData || {}).forEach(([dayDataKey, data]) => {
-        const [dateStr, shift] = dayDataKey.split('_');
-        if (shift === 'GECE') {
-          nightShiftDates.add(dateStr);
-        } else if (shift === 'GÜNDÜZ') {
-          dayShiftDates.add(dateStr);
-        }
-      });
-    });
-    
-    // Bu ayki vardiya günlerini filtrele
-    const thisMonthNightDays = Array.from(nightShiftDates).filter(dateStr => {
-      const [day, month, year] = dateStr.split('.');
-      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    });
-    
-    const thisMonthDayDays = Array.from(dayShiftDates).filter(dateStr => {
-      const [day, month, year] = dateStr.split('.');
-      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    });
-    
-    // Toplam değerleri hesapla
-    const totalDeliveries = [...Object.values(analysisData.drivers), ...Object.values(analysisData.personnel)]
-      .reduce((sum, person) => sum + person.totalTrips, 0);
-    
-    const totalPallets = [...Object.values(analysisData.drivers), ...Object.values(analysisData.personnel)]
-      .reduce((sum, person) => sum + person.totalPallets, 0);
-    
-    const totalBoxes = [...Object.values(analysisData.drivers), ...Object.values(analysisData.personnel)]
-      .reduce((sum, person) => sum + person.totalBoxes, 0);
+    const averageEfficiency = performanceData.length > 0 
+      ? performanceData.reduce((sum, item) => sum + (item.efficiency || 0), 0) / performanceData.length 
+      : 0;
 
     return {
-      geceDays: thisMonthNightDays.length,
-      gunduzDays: thisMonthDayDays.length,
-      totalDeliveries,
-      totalPallets,
-      totalBoxes
+      totalPersonnel,
+      totalVehicles,
+      totalStores,
+      averageEfficiency: Math.round(averageEfficiency * 100) / 100
     };
   };
 
   const handleLogout = async () => {
-    const result = await signOut();
-    if (result.success) {
-      // localStorage'ı temizle ve home'a dön
-      localStorage.removeItem('activeTab');
-      setActiveTab('home');
-      setPersonnelData([]);
-      setVehicleData([]);
-      setStoreData([]);
-      setGeneratedPlan(null);
+    try {
+      await signOut();
+      showNotification('Başarıyla çıkış yapıldı!', 'success');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      showNotification('Çıkış yapılırken hata oluştu!', 'error');
     }
   };
 
@@ -660,651 +385,799 @@ function MainApp() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(99,102,241,0.05),transparent_70%)]"></div>
       </div>
 
-      {/* Main Content */}
-      <div className="relative z-10">
-        {/* Header */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-28">
-              {/* Left: Logo & Brand - Sabit genişlik */}
-              <div className="flex items-center space-x-4 min-w-0 flex-shrink-0">
-                <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Sparkles className="w-7 h-7 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-2xl font-bold text-gray-900 leading-tight">Personel Takip</h1>
-                  <p className="text-xs text-gray-500 mt-0.5">Modern İş Yönetimi Sistemi</p>
-                </div>
+      {/* Main Layout */}
+      <div className="relative z-10 flex h-screen">
+        {/* Sidebar */}
+        <div className="w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col">
+          {/* Sidebar Header */}
+          <div className="p-6 border-b border-gray-200/50">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
-
-              {/* Center: Desktop Navigation - Esnek genişlik */}
-              <nav className="hidden lg:flex flex-1 justify-center max-w-4xl mx-8">
-                <div className="flex items-center space-x-1">
-                  {navigationItems.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleTabChange(item.id)}
-                      className={`
-                        flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
-                        ${activeTab === item.id
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
-                        }
-                      `}
-                    >
-                      <item.icon className="w-4 h-4 mr-2" />
-                      <span className="hidden xl:inline text-xs">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </nav>
-
-              {/* Right: User Info & Actions - Sabit genişlik */}
-              <div className="flex items-center space-x-4 flex-shrink-0">
-                {/* User Info - Sadece bilgi gösterir */}
-                <div className="hidden md:flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">
-                      {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}
-                    </p>
-                    <p className="text-xs text-gray-500 flex items-center gap-1 justify-end mt-0.5">
-                      <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : userRole === 'yönetici' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
-                      {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Admin Panel Button */}
-                {(userRole === 'admin' || userRole === 'yönetici') && (
-                  <button
-                    onClick={() => handleTabChange('admin')}
-                    className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 text-sm shadow-lg"
-                  >
-                    <Shield className="w-4 h-4" />
-                    <span className="hidden lg:inline">Admin Panel</span>
-                  </button>
-                )}
-
-                {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-sm shadow-lg"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden lg:inline">Çıkış</span>
-                </button>
-
-
-                
-                {/* Mobile Menu Button */}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden p-2.5 rounded-xl hover:bg-gray-100 transition-colors"
-                >
-                  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Personel Takip</h1>
+                <p className="text-xs text-gray-500">Modern İş Yönetimi</p>
               </div>
             </div>
           </div>
 
-          {/* Mobile/Tablet Navigation */}
+          {/* User Info */}
+          <div className="p-6 border-b border-gray-200/50">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold text-sm">
+                  {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                </p>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : userRole === 'yönetici' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
+                  {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
+            {/* Ana Sayfa */}
+            <button
+              onClick={() => handleTabChange('home')}
+              className={`
+                w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                ${activeTab === 'home'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                }
+              `}
+            >
+              <Home className="w-5 h-5 mr-3" />
+              Ana Sayfa
+            </button>
+
+            {/* Personel Yönetimi Grubu */}
+            <div className="space-y-2">
+              <div className="flex items-center px-4 py-2">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+              
+              <button
+                onClick={() => handleTabChange('personnel')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'personnel'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Users className="w-5 h-5 mr-3" />
+                Personel Listesi
+              </button>
+              
+              <button
+                onClick={() => handleTabChange('vardiya-kontrol')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'vardiya-kontrol'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Clock className="w-5 h-5 mr-3" />
+                Personel Kontrol
+              </button>
+              
+              <button
+                onClick={() => handleTabChange('performance')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'performance'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <BarChart3 className="w-5 h-5 mr-3" />
+                Performans Analizi
+              </button>
+            </div>
+
+            {/* Sistem Yönetimi Grubu */}
+            <div className="space-y-2">
+              <div className="flex items-center px-4 py-2">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Sistem Yönetimi</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+              
+              <button
+                onClick={() => handleTabChange('vehicles')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'vehicles'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Car className="w-5 h-5 mr-3" />
+                Araç Listesi
+              </button>
+              
+              <button
+                onClick={() => handleTabChange('stores')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'stores'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Store className="w-5 h-5 mr-3" />
+                Mağaza Listesi
+              </button>
+            </div>
+
+            {/* Vardiya Planlama Grubu */}
+            <div className="space-y-2">
+              <div className="flex items-center px-4 py-2">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vardiya Planlama</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+              
+              <button
+                onClick={() => handleTabChange('planning')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'planning'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Calendar className="w-5 h-5 mr-3" />
+                Vardiya Planlama
+              </button>
+              
+              <button
+                onClick={() => handleTabChange('display')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'display'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <FileText className="w-5 h-5 mr-3" />
+                Plan Görüntüle
+              </button>
+            </div>
+          </nav>
+
+          {/* Sidebar Footer */}
+          <div className="p-4 border-t border-gray-200/50 space-y-2">
+            {/* Admin Panel Button */}
+            {(userRole === 'admin' || userRole === 'yönetici') && (
+              <button
+                onClick={() => handleTabChange('admin')}
+                className="w-full flex items-center px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 text-sm shadow-lg"
+              >
+                <Shield className="w-5 h-5 mr-3" />
+                Admin Panel
+              </button>
+            )}
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-sm shadow-lg"
+            >
+              <LogOut className="w-5 h-5 mr-3" />
+              Çıkış Yap
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Top Header for Mobile */}
+          <header className="lg:hidden bg-white/95 backdrop-blur-md border-b border-gray-200/50 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">Personel Takip</h1>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
+          </header>
+
+          {/* Mobile Menu Overlay */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-sm relative">
-              <div className="px-4 sm:px-6 py-4 space-y-2">
-                {navigationItems.map(item => (
+            <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+              <div className="absolute left-0 top-0 h-full w-80 bg-white shadow-2xl">
+                <div className="p-6 border-b border-gray-200/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-lg font-bold text-gray-900">Personel Takip</h1>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-2">
+                  {/* Ana Sayfa */}
                   <button
-                    key={item.id}
                     onClick={() => {
-                      handleTabChange(item.id);
+                      handleTabChange('home');
                       setMobileMenuOpen(false);
                     }}
                     className={`
-                      w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative
-                      ${activeTab === item.id
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                      w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                      ${activeTab === 'home'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                       }
                     `}
                   >
-                    <item.icon className="w-5 h-5 mr-3" />
-                    {item.label}
+                    <Home className="w-5 h-5 mr-3" />
+                    Ana Sayfa
                   </button>
-                ))}
-                
-                {/* Divider */}
-                <div className="h-px bg-gray-200 my-3"></div>
-                
-                {/* Admin Panel - Mobile */}
-                {(userRole === 'admin' || userRole === 'yönetici') && (
+
+                  {/* Personel Yönetimi Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('personnel');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'personnel'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Users className="w-5 h-5 mr-3" />
+                      Personel Listesi
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('vardiya-kontrol');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'vardiya-kontrol'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Clock className="w-5 h-5 mr-3" />
+                      Personel Kontrol
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('performance');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'performance'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <BarChart3 className="w-5 h-5 mr-3" />
+                      Performans Analizi
+                    </button>
+                  </div>
+
+                  {/* Sistem Yönetimi Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Sistem Yönetimi</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('vehicles');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'vehicles'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Car className="w-5 h-5 mr-3" />
+                      Araç Listesi
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('stores');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'stores'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Store className="w-5 h-5 mr-3" />
+                      Mağaza Listesi
+                    </button>
+                  </div>
+
+                  {/* Vardiya Planlama Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vardiya Planlama</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('planning');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'planning'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Calendar className="w-5 h-5 mr-3" />
+                      Vardiya Planlama
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('display');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'display'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <FileText className="w-5 h-5 mr-3" />
+                      Plan Görüntüle
+                    </button>
+                  </div>
+                  
+                  <div className="h-px bg-gray-200 my-4"></div>
+                  
+                  {(userRole === 'admin' || userRole === 'yönetici') && (
+                    <button
+                      onClick={() => {
+                        handleTabChange('admin');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl shadow-lg"
+                    >
+                      <Shield className="w-5 h-5 mr-3" />
+                      Admin Panel
+                    </button>
+                  )}
+                  
                   <button
                     onClick={() => {
-                      handleTabChange('admin');
+                      handleLogout();
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg"
+                    className="w-full flex items-center px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg"
                   >
-                    <Shield className="w-5 h-5 mr-3" />
-                    Admin Panel
+                    <LogOut className="w-5 h-5 mr-3" />
+                    Çıkış Yap
                   </button>
-                )}
-                
-                {/* Logout - Mobile */}
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg"
-                >
-                  <LogOut className="w-5 h-5 mr-3" />
-                  Çıkış Yap
-                </button>
-              </div>
                 </div>
-          )}
-
-          {/* Medium Screen Navigation */}
-          <div className="hidden md:block lg:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-sm relative">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center justify-center py-4 space-x-2">
-                {navigationItems.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleTabChange(item.id)}
-                    className={`
-                      flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 relative
-                      ${activeTab === item.id
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
-                      }
-                    `}
-                  >
-                    <item.icon className="w-4 h-4 mr-2" />
-                    <span className="text-xs">{item.label}</span>
-                  </button>
-                ))}
               </div>
             </div>
-          </div>
-        </header>
+          )}
 
-        {/* Notification */}
-        {notification && (
-          <div className="fixed top-40 right-6 z-50 transform transition-all duration-500 ease-out animate-slide-in-right">
-            <div className={`
-              relative overflow-hidden rounded-2xl shadow-2xl border backdrop-blur-lg min-w-[320px] max-w-md
-              ${notification.type === 'success' ? 'bg-green-50/95 border-green-200 text-green-900' :
-                notification.type === 'error' ? 'bg-red-50/95 border-red-200 text-red-900' :
-                notification.type === 'warning' ? 'bg-amber-50/95 border-amber-200 text-amber-900' :
-                'bg-blue-50/95 border-blue-200 text-blue-900'}
-            `}>
-              {/* Colored top border */}
+          {/* Notification */}
+          {notification && (
+            <div className="fixed top-6 right-6 z-50 transform transition-all duration-500 ease-out animate-slide-in-right">
               <div className={`
-                absolute top-0 left-0 w-full h-1
-                ${notification.type === 'success' ? 'bg-gradient-to-r from-green-400 to-green-600' :
-                  notification.type === 'error' ? 'bg-gradient-to-r from-red-400 to-red-600' :
-                  notification.type === 'warning' ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
-                  'bg-gradient-to-r from-blue-400 to-blue-600'}
-              `}></div>
+                relative overflow-hidden rounded-2xl shadow-2xl border backdrop-blur-lg min-w-[320px] max-w-md
+                ${notification.type === 'success' ? 'bg-green-50/95 border-green-200 text-green-900' :
+                  notification.type === 'error' ? 'bg-red-50/95 border-red-200 text-red-900' :
+                  notification.type === 'warning' ? 'bg-amber-50/95 border-amber-200 text-amber-900' :
+                  'bg-blue-50/95 border-blue-200 text-blue-900'}
+              `}>
+                {/* Colored top border */}
+                <div className={`
+                  absolute top-0 left-0 w-full h-1
+                  ${notification.type === 'success' ? 'bg-gradient-to-r from-green-400 to-green-600' :
+                    notification.type === 'error' ? 'bg-gradient-to-r from-red-400 to-red-600' :
+                    notification.type === 'warning' ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
+                    'bg-gradient-to-r from-blue-400 to-blue-600'}
+                `}></div>
 
-              <div className="p-5">
-                <div className="flex items-start gap-4">
-                  <div className={`
-                    flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
-                    ${notification.type === 'success' ? 'bg-green-100' :
-                      notification.type === 'error' ? 'bg-red-100' :
-                      notification.type === 'warning' ? 'bg-amber-100' :
-                      'bg-blue-100'}
-                  `}>
-                    {notification.type === 'success' && <Check className="w-4 h-4 text-green-600" />}
-                    {notification.type === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
-                    {notification.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-600" />}
-                    {notification.type === 'info' && <Upload className="w-4 h-4 text-blue-600" />}
+                <div className="p-5">
+                  <div className="flex items-start gap-4">
+                    <div className={`
+                      flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+                      ${notification.type === 'success' ? 'bg-green-100' :
+                        notification.type === 'error' ? 'bg-red-100' :
+                        notification.type === 'warning' ? 'bg-amber-100' :
+                        'bg-blue-100'}
+                    `}>
+                      {notification.type === 'success' && <Check className="w-4 h-4 text-green-600" />}
+                      {notification.type === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
+                      {notification.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-600" />}
+                      {notification.type === 'info' && <Upload className="w-4 h-4 text-blue-600" />}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-relaxed">
+                        {notification.message}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setNotification(null)}
+                      className={`
+                        flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors
+                        ${notification.type === 'success' ? 'hover:bg-green-200 text-green-600' :
+                          notification.type === 'error' ? 'hover:bg-red-200 text-red-600' :
+                          notification.type === 'warning' ? 'hover:bg-amber-200 text-amber-600' :
+                          'hover:bg-blue-200 text-blue-600'}
+                      `}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-relaxed">
-                      {notification.message}
-                    </p>
-                </div>
-
-                  <button
-                    onClick={() => setNotification(null)}
-                    className={`
-                      flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors
-                      ${notification.type === 'success' ? 'hover:bg-green-200 text-green-600' :
-                        notification.type === 'error' ? 'hover:bg-red-200 text-red-600' :
-                        notification.type === 'warning' ? 'hover:bg-amber-200 text-amber-600' :
-                        'hover:bg-blue-200 text-blue-600'}
-                    `}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Ana Sayfa Dashboard */}
-          {activeTab === 'home' && (
-            <div className="space-y-8">
-              {/* Hoş Geldiniz */}
-              <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 text-white">
-                <h1 className="text-3xl font-bold mb-2">
-                  Hoş Geldin {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
-                </h1>
-                <p className="text-blue-100 mb-6">Personel Planlama Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span>Sistem Aktif</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span>Veriler Hazır</span>
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto p-8">
+            {/* Ana Sayfa Dashboard */}
+            {activeTab === 'home' && (
+              <div className="space-y-8">
+                {/* Hoş Geldiniz */}
+                <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 text-white">
+                  <h1 className="text-3xl font-bold mb-2">
+                    Hoş Geldin {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
+                  </h1>
+                  <p className="text-blue-100 mb-6">Personel Takip Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span>Sistem Aktif</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <span>Veriler Hazır</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* İstatistik Kartları */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <Users className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="text-2xl font-bold text-gray-900">{dataStatus.personnel.count}</h3>
-                        <p className="text-sm text-gray-600">Toplam Personel</p>
-                      </div>
-                    </div>
-                    <div className={`w-3 h-3 rounded-full ${dataStatus.personnel.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                  </div>
-                  {!dataStatus.personnel.hasExisting && (
-                    <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-                      Veri yok - Excel yükleyin
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-green-500 hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                        <Car className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="text-2xl font-bold text-gray-900">{dataStatus.vehicles.count}</h3>
-                        <p className="text-sm text-gray-600">Toplam Araç</p>
-                      </div>
-                    </div>
-                    <div className={`w-3 h-3 rounded-full ${dataStatus.vehicles.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                  </div>
-                  {!dataStatus.vehicles.hasExisting && (
-                    <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-                      Veri yok - Excel yükleyin
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-500 hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                      <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <Store className="w-6 h-6 text-purple-600" />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="text-2xl font-bold text-gray-900">{dataStatus.stores.count}</h3>
-                        <p className="text-sm text-gray-600">Toplam Mağaza</p>
-                      </div>
-                    </div>
-                    <div className={`w-3 h-3 rounded-full ${dataStatus.stores.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                  </div>
-                  {!dataStatus.stores.hasExisting && (
-                    <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-                      Veri yok - Excel yükleyin
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-orange-500 hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                      <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                        <Calendar className="w-6 h-6 text-orange-600" />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="text-2xl font-bold text-gray-900">{generatedPlan ? 1 : 0}</h3>
-                        <p className="text-sm text-gray-600">Aktif Planlar</p>
-                      </div>
-                    </div>
-                    <div className={`w-3 h-3 rounded-full ${generatedPlan ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                  </div>
-                  {!generatedPlan && (
-                    <div className="mt-3 text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                      Plan oluşturun
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              
-              {/* Takvim Görünümü */}
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">📅 Aylık Takip Takvimi</h3>
-                
-                {/* Takvim Kontrolleri */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {getMonthName(selectedMonth)} {selectedYear}
-                    </div>
-                   
-                  </div>
-                  
-                </div>
-
-                {/* Takvim Grid */}
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                  <div className={`grid grid-cols-7 gap-1 transition-all duration-300 ${
-                    calendarAnimation === 'slide-out-left' ? 'transform -translate-x-full opacity-0' :
-                    calendarAnimation === 'slide-out-right' ? 'transform translate-x-full opacity-0' :
-                    calendarAnimation === 'slide-in' ? 'transform translate-x-0 opacity-100' :
-                    'transform translate-x-0 opacity-100'
-                  }`}>
-                    {/* Gün Başlıkları */}
-                    {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
-                      <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 bg-gray-50 rounded-lg flex items-center justify-center h-10">
-                        {day}
-                      </div>
-                    ))}
-
-                    {/* Takvim Günleri */}
-                    {getCalendarDays().map((day, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 min-h-[120px] border border-gray-200 rounded-xl transition-all duration-300 flex flex-col ${
-                          day.isCurrentMonth 
-                            ? isFutureDate(day.date) 
-                              ? 'bg-gray-50 text-gray-400 cursor-not-allowed' 
-                              : 'bg-white hover:bg-gray-50 hover:shadow-lg hover:scale-105 cursor-pointer' 
-                            : 'bg-gray-100 text-gray-400'
-                        }`}
-                      >
-                        <div className={`text-sm font-bold mb-2 flex-shrink-0 ${
-                          isFutureDate(day.date) ? 'text-gray-400' : 'text-gray-900'
-                        }`}>
-                          {day.date.getDate()}
+                {/* İstatistik Kartları */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                          <Users className="w-6 h-6 text-blue-600" />
                         </div>
-                        {day.isCurrentMonth && day.notes.length > 0 && !isFutureDate(day.date) && (
-                          <div className="space-y-1.5 max-h-[80px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex-1">
-                            {day.notes.map((note, noteIndex) => (
-                              <div
-                                key={noteIndex}
-                                className={`text-xs px-2 py-1.5 rounded-lg font-medium transition-all duration-300 hover:scale-105 hover:shadow-md ${
-                                  note.status === 'dinlenme' ? 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-900 hover:from-purple-200 hover:to-purple-300 border border-purple-300 shadow-sm' :
-                                  note.status === 'raporlu' ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-900 hover:from-red-200 hover:to-red-300 border border-red-300 shadow-sm' :
-                                  note.status === 'habersiz' ? 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-900 hover:from-orange-200 hover:to-orange-300 border border-orange-300 shadow-sm' :
-                                  note.status === 'yillik_izin' ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-900 hover:from-blue-200 hover:to-blue-300 border border-blue-300 shadow-sm' :
-                                  'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 hover:from-gray-200 hover:to-gray-300 border border-gray-300 shadow-sm'
-                                }`}
-                                title={`${note.full_name} - ${getStatusText(note.status)}`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="truncate">{note.full_name}</span>
-                                  <span className={`ml-1 text-xs ${
-                                    note.status === 'dinlenme' ? 'text-purple-700' :
-                                    note.status === 'raporlu' ? 'text-red-700' :
-                                    note.status === 'habersiz' ? 'text-orange-700' :
-                                    note.status === 'yillik_izin' ? 'text-blue-700' :
-                                    'text-gray-700'
-                                  }`}>
-                                    {note.status === 'dinlenme' ? '😴' :
-                                     note.status === 'raporlu' ? '🏥' :
-                                     note.status === 'habersiz' ? '❌' :
-                                     note.status === 'yillik_izin' ? '🏖️' : '📝'}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
+                        <div className="ml-4">
+                          <h3 className="text-2xl font-bold text-gray-900">{dataStatus.personnel.count}</h3>
+                          <p className="text-sm text-gray-600">Toplam Personel</p>
+                        </div>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${dataStatus.personnel.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    </div>
+                    {!dataStatus.personnel.hasExisting && (
+                      <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                        Veri yok - Excel yükleyin
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-green-500 hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                          <Car className="w-6 h-6 text-green-600" />
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-2xl font-bold text-gray-900">{dataStatus.vehicles.count}</h3>
+                          <p className="text-sm text-gray-600">Toplam Araç</p>
+                        </div>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${dataStatus.vehicles.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    </div>
+                    {!dataStatus.vehicles.hasExisting && (
+                      <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                        Veri yok - Excel yükleyin
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-500 hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                          <Store className="w-6 h-6 text-purple-600" />
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-2xl font-bold text-gray-900">{dataStatus.stores.count}</h3>
+                          <p className="text-sm text-gray-600">Toplam Mağaza</p>
+                        </div>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${dataStatus.stores.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    </div>
+                    {!dataStatus.stores.hasExisting && (
+                      <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                        Veri yok - Excel yükleyin
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-orange-500 hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                          <Calendar className="w-6 h-6 text-orange-600" />
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-2xl font-bold text-gray-900">{generatedPlan ? 1 : 0}</h3>
+                          <p className="text-sm text-gray-600">Aktif Planlar</p>
+                        </div>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${generatedPlan ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    </div>
+                    {!generatedPlan && (
+                      <div className="mt-3 text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                        Plan oluşturun
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Takvim Görünümü */}
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">📅 Aylık Takip Takvimi</h3>
+                  
+                  {/* Takvim Kontrolleri */}
+                  <div className="flex items-center justify-between mb-6">
+                    <button
+                      onClick={() => {
+                        const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+                        const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+                        handleMonthChange(newMonth, newYear);
+                      }}
+                      className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                    >
+                      <ChevronDown className="w-5 h-5 transform rotate-90" />
+                    </button>
+                    
+                    <h4 className="text-xl font-semibold text-gray-900">
+                      {getMonthName(selectedMonth)} {selectedYear}
+                    </h4>
+                    
+                    <button
+                      onClick={() => {
+                        const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
+                        const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+                        handleMonthChange(newMonth, newYear);
+                      }}
+                      className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                    >
+                      <ChevronDown className="w-5 h-5 transform -rotate-90" />
+                    </button>
+                  </div>
+
+                  {/* Takvim Grid */}
+                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    {/* Gün başlıkları */}
+                    <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+                      {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
+                        <div key={day} className="p-3 text-center text-sm font-medium text-gray-600">
+                          {day}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Takvim günleri */}
+                    <div className={`grid grid-cols-7 ${calendarAnimation === 'left' ? 'animate-slide-left' : calendarAnimation === 'right' ? 'animate-slide-right' : ''}`}>
+                      {getCalendarDays().map((day, index) => (
+                                                                <div
+                                          key={index}
+                                          className={`
+                                            p-2 border-r border-b border-gray-100 min-h-[120px] relative
+                                            ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
+                                            ${day.isToday ? 'bg-blue-50 border-blue-200' : ''}
+                                            ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
+                                          `}
+                                        >
+                          <div className={`
+                            text-sm font-medium mb-1
+                            ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                            ${day.isToday ? 'text-blue-600' : ''}
+                          `}>
+                            {day.day}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          
+                          {/* Günlük notlar */}
+                          {(() => {
+                            const dayNotes = dataStatus.dailyNotes.filter(note => {
+                              const noteDate = new Date(note.date);
+                              return noteDate.getDate() === day.day && 
+                                     noteDate.getMonth() === day.month && 
+                                     noteDate.getFullYear() === day.year;
+                            });
+                            
+                            if (dayNotes.length > 0) {
+                              return (
+                                <div className="mt-2 space-y-1">
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <div className="text-xs text-gray-500">
+                                      {dayNotes.length} kayıt
+                                    </div>
+                                  </div>
+                                  {/* Kayıt detayları */}
+                                  <div className="text-xs text-gray-600 max-h-24 overflow-y-auto space-y-0.5 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
+                                    {dayNotes.slice(0, 4).map((note, index) => (
+                                      <div key={index} className="truncate leading-tight">
+                                        {note.full_name} - {note.status}
+                                      </div>
+                                    ))}
+                                    {dayNotes.length > 4 && (
+                                      <div className="text-gray-400 leading-tight mt-1 font-medium">
+                                        +{dayNotes.length - 4} daha
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Hızlı İşlemler Dashboard */}
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Hızlı İşlemler</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Personel Yönetimi */}
-                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                        <Users className="w-6 h-6" />
-                      </div>
-                      <span className="text-2xl font-bold">{personnelData.length}</span>
-                    </div>
-                    <h4 className="text-lg font-semibold mb-2">Personel Yönetimi</h4>
-                    <p className="text-blue-100 text-sm mb-4">Personel ekle, düzenle ve vardiya bilgilerini görüntüle</p>
-                    <button 
-                      onClick={() => handleTabChange('personnel')}
-                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-                    >
-                      Personel Listesi →
-                    </button>
-                  </div>
-
-                  {/* Vardiya Kontrol */}
-                  <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                        <Calendar className="w-6 h-6" />
-                      </div>
-                      <span className="text-2xl font-bold">{dataStatus.weeklySchedules.length}</span>
-                    </div>
-                    <h4 className="text-lg font-semibold mb-2">Vardiya Kontrol</h4>
-                    <p className="text-green-100 text-sm mb-4">Güncel vardiya bilgilerini kontrol et ve düzenle</p>
-                    <button 
-                      onClick={() => handleTabChange('vardiya-kontrol')}
-                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-                    >
-                      Vardiya Kontrol →
-                    </button>
-                  </div>
-
-                  {/* Performans Analizi */}
-                  <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                        <BarChart3 className="w-6 h-6" />
-                      </div>
-                      <span className="text-2xl font-bold">📊</span>
-                    </div>
-                    <h4 className="text-lg font-semibold mb-2">Performans Analizi</h4>
-                    <p className="text-purple-100 text-sm mb-4">Detaylı performans raporları ve istatistikler</p>
-                    <button 
-                      onClick={() => handleTabChange('performance')}
-                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-                    >
-                      Analiz Görüntüle →
-                    </button>
-                  </div>
-
-                  {/* Vardiya Planlama */}
-                  <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                        <Clock className="w-6 h-6" />
-                      </div>
-                      <span className="text-2xl font-bold">⚡</span>
-                    </div>
-                    <h4 className="text-lg font-semibold mb-2">Vardiya Planlama</h4>
-                    <p className="text-orange-100 text-sm mb-4">Otomatik vardiya planı oluştur ve optimize et</p>
-                    <button 
-                      onClick={() => handleTabChange('planning')}
-                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-                    >
-                      Plan Oluştur →
-                    </button>
-                  </div>
-
-                  {/* Araç Yönetimi */}
-                  <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                        <Car className="w-6 h-6" />
-                      </div>
-                      <span className="text-2xl font-bold">{vehicleData.length}</span>
-                    </div>
-                    <h4 className="text-lg font-semibold mb-2">Araç Yönetimi</h4>
-                    <p className="text-red-100 text-sm mb-4">Araç bilgilerini yönet ve filo durumunu kontrol et</p>
-                    <button 
-                      onClick={() => handleTabChange('vehicles')}
-                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-                    >
-                      Araç Listesi →
-                    </button>
-                  </div>
-
-                  {/* Mağaza Yönetimi */}
-                  <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                        <Store className="w-6 h-6" />
-                      </div>
-                      <span className="text-2xl font-bold">{storeData.length}</span>
-                    </div>
-                    <h4 className="text-lg font-semibold mb-2">Mağaza Yönetimi</h4>
-                    <p className="text-teal-100 text-sm mb-4">Mağaza bilgilerini yönet ve bölge dağılımını görüntüle</p>
-                    <button 
-                      onClick={() => handleTabChange('stores')}
-                      className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-                    >
-                      Mağaza Listesi →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Personel Listesi */}
-          {activeTab === 'personnel' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold text-gray-900">Personel Listesi</h2>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium">{personnelData.length}</span> personel
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-2xl shadow-lg">
-              <PersonelList 
-                personnelData={personnelData}
-                  onPersonnelUpdate={setPersonnelData}
-                  userRole={userRole}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Araç Listesi */}
-          {activeTab === 'vehicles' && (
-            <VehicleList 
+            {/* Araç Listesi */}
+            {activeTab === 'vehicles' && (
+              <VehicleList 
                 vehicleData={vehicleData}
               />
             )}
             
-          {/* Mağaza Listesi */}
+            {/* Personel Listesi */}
+            {activeTab === 'personnel' && (
+              <PersonelList 
+                personnelData={personnelData}
+                vehicleData={vehicleData}
+                userRole={userRole}
+              />
+            )}
+            
+            {/* Mağaza Listesi */}
             {activeTab === 'stores' && (
               <StoreList 
                 storeData={storeData}
               />
             )}
             
-          {/* Vardiya Planlama */}
+            {/* Vardiya Planlama */}
             {activeTab === 'planning' && (
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold text-gray-900">Vardiya Planlama</h2>
-              <div className="bg-white rounded-2xl shadow-lg">
-              <VardiyaPlanlama 
+              <div className="space-y-6">
+                <h2 className="text-3xl font-bold text-gray-900">Vardiya Planlama</h2>
+                <div className="bg-white rounded-2xl shadow-lg">
+                  <VardiyaPlanlama 
+                    personnelData={personnelData}
+                    vehicleData={vehicleData}
+                    storeData={storeData}
+                    onPlanGenerated={handlePlanGenerated}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Plan Görüntüle */}
+            {activeTab === 'display' && (
+              <div className="space-y-6">
+                <h2 className="text-3xl font-bold text-gray-900">Plan Görüntüle</h2>
+                <div className="bg-white rounded-2xl shadow-lg">
+                  <PlanDisplay 
+                    generatedPlan={generatedPlan}
+                    personnelData={personnelData}
+                    vehicleData={vehicleData}
+                    storeData={storeData}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Performans Analizi */}
+            {activeTab === 'performance' && (
+              <PerformanceAnalysis 
+                generatedPlan={generatedPlan}
                 personnelData={personnelData}
                 vehicleData={vehicleData}
                 storeData={storeData}
-                onPlanGenerated={handlePlanGenerated}
+                onNavigateToHome={() => handleTabChange('home')}
               />
-              </div>
-            </div>
-            )}
-            
-          {/* Plan Görüntüle */}
-          {activeTab === 'display' && (
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold text-gray-900">Plan Görüntüle</h2>
-              <div className="bg-white rounded-2xl shadow-lg">
-              <PlanDisplay 
-                  generatedPlan={generatedPlan}
-                  personnelData={personnelData}
-                  vehicleData={vehicleData}
-                  storeData={storeData}
-              />
-              </div>
-            </div>
-            )}
-            
-          {/* Performans Analizi */}
-          {activeTab === 'performance' && (
-            <PerformanceAnalysis 
-              generatedPlan={generatedPlan}
-              personnelData={personnelData}
-              vehicleData={vehicleData}
-              storeData={storeData}
-              onNavigateToHome={() => handleTabChange('home')}
-            />
             )}
 
-          {/* Vardiya Kontrol */}
-          {activeTab === 'vardiya-kontrol' && (
-            <PersonelVardiyaKontrol userRole={userRole} onDataUpdate={refreshData} />
-          )}
+            {/* Vardiya Kontrol */}
+            {activeTab === 'vardiya-kontrol' && (
+              <PersonelVardiyaKontrol userRole={userRole} onDataUpdate={refreshData} />
+            )}
 
-          {/* Admin Panel */}
-          {activeTab === 'admin' && (userRole === 'admin' || userRole === 'yönetici') && (
-            <div className="space-y-6">
-              <AdminPanel userRole={userRole} currentUser={user} />
-          </div>
-          )}
-        </main>
-
-        {/* Footer */}
-        <footer className="bg-white/50 backdrop-blur-sm border-t border-gray-200/50 mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-                <p className="text-gray-600 font-semibold">Modern Personel Planlama Sistemi</p>
+            {/* Admin Panel */}
+            {activeTab === 'admin' && (userRole === 'admin' || userRole === 'yönetici') && (
+              <div className="space-y-6">
+                <AdminPanel userRole={userRole} currentUser={user} />
               </div>
-              <div className="flex items-center justify-center gap-6 text-gray-400 text-sm">
-                <span>© 2025 Personel Planlama Sistemi</span>
-                <span>•</span>
-                <span>Melih KOÇHAN</span>
-                <span>•</span>
-                <span>melihkochan.com</span>
-              </div>
-            </div>
-          </div>
-        </footer>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );

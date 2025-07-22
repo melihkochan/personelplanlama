@@ -1355,9 +1355,22 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
             };
           });
           
-          setPersonnelDetails(enrichedDetails);
+          // En yeni tarihten en eskiye doğru sırala
+          const sortedDetails = enrichedDetails.sort((a, b) => {
+            const dateA = a.period_info ? new Date(a.period_info.start_date) : new Date(a.created_at);
+            const dateB = b.period_info ? new Date(b.period_info.start_date) : new Date(b.created_at);
+            return dateB - dateA; // En yeni tarih önce gelsin
+          });
+          
+          setPersonnelDetails(sortedDetails);
         } else {
-          setPersonnelDetails(result.data);
+          // En yeni tarihten en eskiye doğru sırala
+          const sortedData = result.data.sort((a, b) => {
+            const dateA = new Date(a.created_at);
+            const dateB = new Date(b.created_at);
+            return dateB - dateA; // En yeni tarih önce gelsin
+          });
+          setPersonnelDetails(sortedData);
         }
       } else {
         setPersonnelDetails([]);
@@ -1751,11 +1764,101 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
     }
   };
 
-  // Excel upload fonksiyonu şimdilik kaldırıldı
+
+
+  // Genel tarih düzenleme state'leri
+  const [globalDateEditModal, setGlobalDateEditModal] = useState(false);
+  const [allPeriods, setAllPeriods] = useState([]);
+  const [selectedPeriodForEdit, setSelectedPeriodForEdit] = useState(null);
+  const [globalEditForm, setGlobalEditForm] = useState({
+    old_start_date: '',
+    old_end_date: '',
+    new_start_date: '',
+    new_end_date: ''
+  });
+  const [globalEditLoading, setGlobalEditLoading] = useState(false);
             
 
 
   // Bu fonksiyon artık kullanılmıyor - istatistikler otomatik hesaplanıyor
+
+
+
+  // Genel tarih düzenleme fonksiyonları
+  const handleOpenGlobalDateEdit = async () => {
+    setGlobalDateEditModal(true);
+    setGlobalEditLoading(true);
+    
+    try {
+      // Tüm period'ları çek
+      const { data: periods, error } = await supabase
+        .from('weekly_periods')
+        .select('*')
+        .order('start_date', { ascending: true });
+      
+      if (error) throw error;
+      
+      setAllPeriods(periods || []);
+    } catch (error) {
+      alert(`❌ Period'lar yüklenemedi: ${error.message}`);
+    } finally {
+      setGlobalEditLoading(false);
+    }
+  };
+
+  const handleSelectPeriodForEdit = (period) => {
+    setSelectedPeriodForEdit(period);
+    setGlobalEditForm({
+      old_start_date: period.start_date,
+      old_end_date: period.end_date,
+      new_start_date: period.start_date,
+      new_end_date: period.end_date
+    });
+  };
+
+  const handleUpdateGlobalDate = async () => {
+    if (!selectedPeriodForEdit) return;
+
+    setGlobalEditLoading(true);
+    try {
+      // 1. Period'u güncelle
+      const { error: periodError } = await supabase
+        .from('weekly_periods')
+        .update({
+          start_date: globalEditForm.new_start_date,
+          end_date: globalEditForm.new_end_date
+        })
+        .eq('id', selectedPeriodForEdit.id);
+
+      if (periodError) throw periodError;
+
+      // 2. Bu period'a ait tüm schedule'ları bul ve güncelle
+      const { data: schedules, error: scheduleError } = await supabase
+        .from('weekly_schedules')
+        .select('*')
+        .eq('period_id', selectedPeriodForEdit.id);
+
+      if (scheduleError) throw scheduleError;
+
+      console.log(`✅ ${schedules.length} vardiya kaydı güncellendi`);
+
+      // 3. Modal'ı kapat ve verileri yenile
+      setGlobalDateEditModal(false);
+      setSelectedPeriodForEdit(null);
+      
+      // 4. Ana verileri yeniden yükle
+      loadInitialData();
+      loadTodayStatus();
+
+      alert(`✅ Tarih başarıyla güncellendi!\n\n${schedules.length} vardiya kaydı etkilendi.`);
+    } catch (error) {
+      alert(`❌ Güncelleme hatası: ${error.message}`);
+    } finally {
+      setGlobalEditLoading(false);
+    }
+  };
+
+
 
   const handleCleanupDatabase = async () => {
     if (window.confirm('⚠️ DİKKAT: Tüm vardiya verilerini temizlemek istediğinize emin misiniz?\n\nBu işlem:\n• Tüm vardiya programlarını silecek\n• Tüm istatistikleri sıfırlayacak\n• Tüm günlük kayıtları silecek\n\nBu işlem geri alınamaz!')) {
@@ -2950,6 +3053,21 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                 </div>
 
                 <div className="border-t border-gray-200 pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📅 Genel Tarih Düzenleme</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Tüm veritabanındaki tarih aralıklarını görüntüleyin ve düzenleyin
+                  </p>
+                  
+                  <button
+                    onClick={handleOpenGlobalDateEdit}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-lg shadow-lg hover:from-purple-700 hover:to-purple-800 transform hover:scale-105 transition-all duration-200"
+                  >
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Tüm Tarihleri Görüntüle
+                  </button>
+                </div>
+
+                <div className="border-t border-gray-200 pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">🗑️ Veritabanı Temizleme</h3>
                   <p className="text-sm text-gray-600 mb-4">
                     Tüm vardiya verilerini temizleyin (Dikkat: Bu işlem geri alınamaz!)
@@ -3861,20 +3979,20 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                                   }
                                 })()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <button
                                   onClick={() => {
                                     // Bu haftanın günlük takip verilerini filtrele
                                     if (detail.period_info) {
                                       const startDate = new Date(detail.period_info.start_date);
                                       const endDate = new Date(detail.period_info.end_date);
-                                      
+
                                       const weekDailyNotes = dailyNotes.filter(note => {
                                         const noteDate = new Date(note.date);
-                                        return note.employee_code === selectedPersonnel && 
+                                        return note.employee_code === selectedPersonnel &&
                                                noteDate >= startDate && noteDate <= endDate;
                                       });
-                                      
+
                                       // Modal aç
                                       setSelectedWeekDetails({
                                         period: detail.period_info,
@@ -4366,6 +4484,122 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
           </div>
         </div>
       )}
+
+      {/* Genel Tarih Düzenleme Modalı */}
+      {globalDateEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[85vh] overflow-hidden border border-gray-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-100">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                <Calendar className="w-6 h-6 mr-3 text-purple-600" />
+                Genel Tarih Düzenleme
+              </h3>
+              <button
+                onClick={() => setGlobalDateEditModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+              <div className="space-y-6">
+                {/* Tüm Tarihler Listesi */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                  <h4 className="font-bold text-blue-900 text-lg mb-4">📋 Tüm Tarih Aralıkları</h4>
+                  
+                  {globalEditLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-3 text-blue-600 font-medium">Tarihler yükleniyor...</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {allPeriods.map((period, index) => (
+                        <div 
+                          key={period.id}
+                          onClick={() => handleSelectPeriodForEdit(period)}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                            selectedPeriodForEdit?.id === period.id
+                              ? 'border-purple-500 bg-purple-50'
+                              : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
+                          }`}
+                        >
+                          <div className="text-sm font-medium text-gray-900">
+                            {new Date(period.start_date).toLocaleDateString('tr-TR')} - {new Date(period.end_date).toLocaleDateString('tr-TR')}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            ID: {period.id}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Seçili Tarih Düzenleme */}
+                {selectedPeriodForEdit && (
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                    <h4 className="font-bold text-green-900 text-lg mb-4">✏️ Seçili Tarihi Düzenle</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-green-800 mb-2">Yeni Başlangıç Tarihi</label>
+                        <input
+                          type="date"
+                          value={globalEditForm.new_start_date}
+                          onChange={(e) => setGlobalEditForm({...globalEditForm, new_start_date: e.target.value})}
+                          className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-green-800 mb-2">Yeni Bitiş Tarihi</label>
+                        <input
+                          type="date"
+                          value={globalEditForm.new_end_date}
+                          onChange={(e) => setGlobalEditForm({...globalEditForm, new_end_date: e.target.value})}
+                          className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="text-sm text-yellow-800">
+                        <strong>⚠️ Dikkat:</strong> Bu işlem tüm veritabanında bu tarih aralığındaki tüm vardiya kayıtlarını etkileyecektir.
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end space-x-3">
+                      <button
+                        onClick={() => setSelectedPeriodForEdit(null)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                      >
+                        Seçimi İptal Et
+                      </button>
+                      <button
+                        onClick={handleUpdateGlobalDate}
+                        disabled={globalEditLoading}
+                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {globalEditLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                            Güncelleniyor...
+                          </>
+                        ) : (
+                          'Tüm Veritabanında Güncelle'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       </>
     );
 };

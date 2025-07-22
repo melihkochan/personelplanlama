@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, User, Lock, LogIn, AlertCircle, Shield, Eye, EyeOff, Zap, Globe, Users, Truck, Settings, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { ParticleTextEffect } from './ParticleTextEffect';
+import { Boxes } from './BackgroundBoxes';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -47,131 +49,7 @@ const LoginForm = () => {
     }
   };
 
-  // 3D Personnel Planning Elements
-  const Personnel3D = () => (
-    <motion.div
-      className="absolute inset-0 flex items-center justify-center"
-      style={{ perspective: '1000px' }}
-    >
-      {/* Central 3D Cube with Personnel Icons */}
-      <motion.div
-        className="relative"
-        animate={{
-          rotateY: [0, 5, -5, 0],
-          rotateX: [0, 3, -3, 0],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
-        {/* Main Cube */}
-        <motion.div
-          className="w-32 h-32 bg-gradient-to-r from-blue-400/20 to-purple-400/20 border-2 border-blue-300/30 rounded-lg flex items-center justify-center"
-          animate={{
-            scale: [1, 1.05, 1],
-            opacity: [0.7, 1, 0.7],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          whileHover={{
-            scale: 1.1,
-            transition: { duration: 0.3 }
-          }}
-        >
-          <Users className="w-16 h-16 text-blue-300" />
-        </motion.div>
-        
-        {/* Floating Schedule Elements */}
-        <motion.div
-          className="absolute -top-8 -left-8 w-12 h-12 bg-gradient-to-r from-purple-400/30 to-pink-400/30 border border-purple-300/40 rounded-lg flex items-center justify-center cursor-pointer"
-          animate={{
-            y: [-10, 10, -10],
-            x: [-5, 5, -5],
-            rotate: [0, 360],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          whileHover={{
-            scale: 1.2,
-            transition: { duration: 0.3 }
-          }}
-        >
-          <BarChart3 className="w-6 h-6 text-purple-300" />
-        </motion.div>
-        
-        <motion.div
-          className="absolute -top-8 -right-8 w-12 h-12 bg-gradient-to-r from-pink-400/30 to-red-400/30 border border-pink-300/40 rounded-lg flex items-center justify-center cursor-pointer"
-          animate={{
-            y: [10, -10, 10],
-            x: [5, -5, 5],
-            rotate: [0, -360],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-          whileHover={{
-            scale: 1.2,
-            transition: { duration: 0.3 }
-          }}
-        >
-          <Settings className="w-6 h-6 text-pink-300" />
-        </motion.div>
-        
-        <motion.div
-          className="absolute -bottom-8 -left-8 w-12 h-12 bg-gradient-to-r from-indigo-400/30 to-blue-400/30 border border-indigo-300/40 rounded-lg flex items-center justify-center cursor-pointer"
-          animate={{
-            y: [10, -10, 10],
-            x: [-5, 5, -5],
-            rotate: [0, 360],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-          whileHover={{
-            scale: 1.2,
-            transition: { duration: 0.3 }
-          }}
-        >
-          <Zap className="w-6 h-6 text-indigo-300" />
-        </motion.div>
-        
-        <motion.div
-          className="absolute -bottom-8 -right-8 w-12 h-12 bg-gradient-to-r from-cyan-400/30 to-blue-400/30 border border-cyan-300/40 rounded-lg flex items-center justify-center cursor-pointer"
-          animate={{
-            y: [-10, 10, -10],
-            x: [5, -5, 5],
-            rotate: [0, -360],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 3
-          }}
-          whileHover={{
-            scale: 1.2,
-            transition: { duration: 0.3 }
-          }}
-        >
-          <Globe className="w-6 h-6 text-cyan-300" />
-        </motion.div>
-      </motion.div>
-    </motion.div>
-  );
+
 
   // Typewriter Text Component
   const TypewriterText = () => {
@@ -223,36 +101,48 @@ const LoginForm = () => {
     );
   };
 
-  // Floating Elements
-  const FloatingElement = ({ x, y, size, color, icon, delay = 0 }) => (
-    <motion.div
-      className={`absolute ${color} rounded-full flex items-center justify-center cursor-pointer`}
-      style={{ 
-        left: `${x}%`, 
-        top: `${y}%`,
-        width: `${size}px`,
-        height: `${size}px`
-      }}
-      animate={{
-        y: [-20, 20, -20],
-        x: [-15, 15, -15],
-        rotate: [0, 360],
-        scale: [1, 1.2, 1],
-      }}
-      transition={{
-        duration: 8,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay
-      }}
-      whileHover={{
-        scale: 1.3,
-        transition: { duration: 0.3 }
-      }}
-    >
-      {icon}
-    </motion.div>
-  );
+  // 3D Typewriter Text Component
+  const TypewriterText3D = ({ texts, className }) => {
+    const [currentTextIndex, setCurrentTextIndex] = useState(0);
+    const [currentCharIndex, setCurrentCharIndex] = useState(0);
+    const [isDeleting, setIsDeleting] = useState(false);
+    
+    const currentText = texts[currentTextIndex];
+    
+    useEffect(() => {
+      const timeout = setTimeout(() => {
+        if (!isDeleting) {
+          if (currentCharIndex < currentText.length) {
+            setCurrentCharIndex(currentCharIndex + 1);
+          } else {
+            setTimeout(() => setIsDeleting(true), 1500);
+          }
+        } else {
+          if (currentCharIndex > 0) {
+            setCurrentCharIndex(currentCharIndex - 1);
+          } else {
+            setIsDeleting(false);
+            setCurrentTextIndex((currentTextIndex + 1) % texts.length);
+          }
+        }
+      }, isDeleting ? 30 : 80);
+      
+      return () => clearTimeout(timeout);
+    }, [currentCharIndex, isDeleting, currentText, currentTextIndex, texts.length]);
+    
+    return (
+      <span className={`inline-block ${className}`}>
+        {currentText.substring(0, currentCharIndex)}
+        <motion.span
+          className="inline-block w-0.5 h-6 bg-current ml-1"
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 0.6, repeat: Infinity }}
+        />
+      </span>
+    );
+  };
+
+
 
   // Ana animasyon varyantları
   const containerVariants = {
@@ -280,118 +170,28 @@ const LoginForm = () => {
 
   return (
     <div className="min-h-screen bg-white flex">
-      {/* Sol Panel - 3D Animasyonlu Görsel Alanı */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 relative overflow-hidden">
-        {/* 3D Personnel Planning Elements */}
-        <Personnel3D />
-        
-        {/* Floating Elements */}
-        <FloatingElement x={20} y={20} size={16} color="bg-blue-400/30" icon={<Users className="w-8 h-8 text-blue-300" />} />
-        <FloatingElement x={80} y={30} size={12} color="bg-purple-400/30" icon={<Settings className="w-6 h-6 text-purple-300" />} delay={2} />
-        <FloatingElement x={15} y={70} size={14} color="bg-pink-400/30" icon={<BarChart3 className="w-7 h-7 text-pink-300" />} delay={4} />
-        <FloatingElement x={85} y={80} size={10} color="bg-indigo-400/30" icon={<Zap className="w-5 h-5 text-indigo-300" />} delay={6} />
-        
-        {/* Animated Lines */}
-        <motion.div
-          className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent"
-          animate={{
-            scaleX: [0, 1, 0],
-            opacity: [0, 0.6, 0],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+            {/* Sol Panel - Sadece Particle Text Effect */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+        <ParticleTextEffect 
+          words={[
+            "VARDİYA PLANLAMA",
+            "PERSONEL YÖNETİMİ", 
+            "OTOMATİK OPTİMİZASYON",
+            "GERÇEK ZAMANLI TAKİP",
+            "MODERN SİSTEM"
+          ]}
         />
-        <motion.div
-          className="absolute top-3/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple-400/40 to-transparent"
-          animate={{
-            scaleX: [0, 1, 0],
-            opacity: [0, 0.6, 0],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-        />
-        
-        {/* Vertical Lines */}
-        <motion.div
-          className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-blue-400/40 to-transparent"
-          animate={{
-            scaleY: [0, 1, 0],
-            opacity: [0, 0.6, 0],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
-        <motion.div
-          className="absolute top-0 left-3/4 w-px h-full bg-gradient-to-b from-transparent via-purple-400/40 to-transparent"
-          animate={{
-            scaleY: [0, 1, 0],
-            opacity: [0, 0.6, 0],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 3
-          }}
-        />
-        
-        {/* Particle System */}
-        {[...Array(15)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white/30 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [-15, 15, -15],
-              x: [-10, 10, -10],
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: Math.random() * 2
-            }}
-          />
-        ))}
-        
-                 {/* Text Overlay */}
-         <div className="absolute bottom-20 left-10 right-10 text-center">
-           <motion.h2
-             className="text-3xl font-bold text-white mb-4"
-             initial={{ opacity: 0, y: 20 }}
-             animate={{ opacity: 1, y: 0 }}
-             transition={{ duration: 0.8, delay: 0.5 }}
-           >
-             Personel Planlama Sistemi
-           </motion.h2>
-           <motion.div
-             className="text-lg text-gray-300 h-8 flex items-center justify-center"
-             initial={{ opacity: 0, y: 20 }}
-             animate={{ opacity: 1, y: 0 }}
-             transition={{ duration: 0.8, delay: 0.7 }}
-           >
-             <TypewriterText />
-           </motion.div>
-         </div>
       </div>
 
-      {/* Sağ Panel - Login Formu */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+      {/* Sağ Panel - Background Boxes ile Login Formu */}
+      <div className="w-full lg:w-1/2 relative overflow-hidden bg-white flex flex-col items-center justify-center">
+        {/* Background Boxes */}
+        <div className="absolute inset-0 w-full h-full bg-white z-20 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+        <Boxes />
+        
+        {/* Login Form Overlay */}
+        <div className="relative z-30 w-full max-w-md p-8">
+
         <motion.div 
           className="w-full max-w-md"
           variants={containerVariants}
@@ -481,8 +281,6 @@ const LoginForm = () => {
             {/* Username Input */}
             <motion.div 
               className="group"
-              whileHover={{ scale: 1.01 }}
-              transition={{ duration: 0.2 }}
             >
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Kullanıcı Adı
@@ -508,8 +306,6 @@ const LoginForm = () => {
             {/* Password Input */}
             <motion.div 
               className="group"
-              whileHover={{ scale: 1.01 }}
-              transition={{ duration: 0.2 }}
             >
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Şifre
@@ -545,9 +341,6 @@ const LoginForm = () => {
               type="submit"
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-500 via-purple-600 to-pink-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-600 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ duration: 0.2 }}
             >
               {loading ? (
                 <>
@@ -593,6 +386,7 @@ const LoginForm = () => {
             </p>
           </motion.div>
         </motion.div>
+        </div>
       </div>
     </div>
   );

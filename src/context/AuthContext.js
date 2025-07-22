@@ -14,6 +14,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -85,6 +86,12 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      // Logout animasyonunu başlat
+      setIsLoggingOut(true);
+      
+      // Animasyon için 1.5 saniye bekle
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // Vercel için güçlü logout
       
       // 1. Supabase'den çıkış yap
@@ -112,6 +119,8 @@ export const AuthProvider = ({ children }) => {
       // Hata olsa bile user'ı null yap
       setUser(null);
       return { success: false, error: error.message };
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -120,7 +129,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     signIn,
     signOut,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isLoggingOut
   };
 
   return (

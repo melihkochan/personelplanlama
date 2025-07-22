@@ -16,7 +16,7 @@ import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
 function MainApp() {
-  const { user, isAuthenticated, loading, signOut } = useAuth();
+  const { user, isAuthenticated, loading, signOut, isLoggingOut } = useAuth();
   
   // localStorage'dan aktif tab'i oku, yoksa 'home' kullan
   const [activeTab, setActiveTab] = useState(() => {
@@ -378,6 +378,17 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-slate-100">
+      {/* Logout Animation Overlay */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="text-center text-white">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-white/20 border-t-white mx-auto mb-6"></div>
+            <h2 className="text-2xl font-bold mb-2">Çıkış Yapılıyor</h2>
+            <p className="text-white/80">Güvenli çıkış için hazırlanıyor...</p>
+          </div>
+        </div>
+      )}
+      
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)]"></div>

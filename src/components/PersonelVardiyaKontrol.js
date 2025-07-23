@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info } from 'lucide-react';
-import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, supabase } from '../services/supabase';
+import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, saveCurrentWeekExcelData, getCurrentWeeklyShifts, deletePeriodAndShifts, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 // Skeleton Loading Component
@@ -213,6 +213,15 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
     dinlenme: { count: 0, personnel: [] }
   });
 
+  // Vardiya düzenleme state'leri
+  const [editingShift, setEditingShift] = useState(null);
+  const [showShiftEditModal, setShowShiftEditModal] = useState(false);
+  const [shiftEditForm, setShiftEditForm] = useState({
+    shift_type: '',
+    shift_details: ''
+  });
+  const [shiftEditLoading, setShiftEditLoading] = useState(false);
+
   // Personel detay modalı için tarih aralığı state'leri
   const [detailDateRange, setDetailDateRange] = useState({
     startDate: new Date().toISOString().split('T')[0],
@@ -225,28 +234,9 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
   
   // Şu Anki Vardiya için state'ler
   const [currentShiftData, setCurrentShiftData] = useState([]);
-  const [currentWeek, setCurrentWeek] = useState(() => {
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Pazartesi
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6); // Pazar
-    return {
-      startDate: startOfWeek.toISOString().split('T')[0],
-      endDate: endOfWeek.toISOString().split('T')[0],
-      label: `${startOfWeek.getDate()} ${getMonthName(startOfWeek.getMonth())} - ${endOfWeek.getDate()} ${getMonthName(endOfWeek.getMonth())} ${endOfWeek.getFullYear()}`
-    };
-  });
-  const [showCurrentShiftModal, setShowCurrentShiftModal] = useState(false);
-  const [editingShift, setEditingShift] = useState(null);
-  const [shiftForm, setShiftForm] = useState({
-    employee_code: '',
-    shift_type: 'gunduz',
-    shift_hours: '08:00 - 16:00',
-    status: 'dinlenme'
-  });
-  const [filteredPersonnelForModal, setFilteredPersonnelForModal] = useState([]);
-  const [currentShiftSortConfig, setCurrentShiftSortConfig] = useState({ key: null, direction: 'asc' });
+  const [currentPeriod, setCurrentPeriod] = useState(null);
+  const [currentShiftLoading, setCurrentShiftLoading] = useState(false);
+  const [currentShiftSortConfig, setCurrentShiftSortConfig] = useState({ key: 'employee_code', direction: 'asc' });
 
   // Mevcut dönem bilgisini hesapla
   const getCurrentPeriod = () => {
@@ -260,6 +250,181 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
     return { startDate, endDate, label };
   };
   const [selectedWeekDetails, setSelectedWeekDetails] = useState(null);
+
+  // Güncel vardiya yükleme fonksiyonu
+  const loadCurrentShiftData = async () => {
+    try {
+      setCurrentShiftLoading(true);
+      console.log('🔄 Güncel vardiya verileri yükleniyor...');
+
+      // current_weekly_shifts tablosundan tüm verileri çek
+      const { data: shifts, error } = await supabase
+        .from('current_weekly_shifts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Vardiya verileri çekilemedi:', error);
+        setCurrentShiftData([]);
+        return;
+      }
+
+      console.log('🔍 Bulunan vardiya verileri:', shifts);
+
+      if (shifts && shifts.length > 0) {
+        // En son yüklenen dönemi bul
+        const latestShift = shifts[0];
+        const currentWeekLabel = latestShift.week_label;
+        
+        // Aynı week_label'a sahip tüm vardiyaları filtrele
+        const currentShifts = shifts.filter(shift => shift.week_label === currentWeekLabel);
+        
+        setCurrentPeriod({ week_label: currentWeekLabel });
+        setCurrentShiftData(currentShifts);
+        
+        console.log('✅ Güncel vardiya verileri yüklendi:', currentShifts.length, 'kayıt');
+        console.log('📅 Dönem:', currentWeekLabel);
+      } else {
+        console.log('📊 Hiç vardiya verisi bulunamadı');
+        setCurrentShiftData([]);
+        setCurrentPeriod(null);
+      }
+    } catch (error) {
+      console.error('❌ Vardiya verileri yükleme hatası:', error);
+      setCurrentShiftData([]);
+      setCurrentPeriod(null);
+    } finally {
+      setCurrentShiftLoading(false);
+    }
+  };
+
+  const handleCurrentShiftUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploadLoading(true);
+      setUploadMessage(null);
+
+      console.log('📊 Güncel vardiya Excel dosyası yükleniyor...');
+
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const workbook = XLSX.read(e.target.result, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // İlk satırı başlık olarak kullan
+            const headers = jsonData[0];
+            const rows = jsonData.slice(1);
+            
+            const result = rows.map(row => {
+              const obj = {};
+              headers.forEach((header, index) => {
+                obj[header] = row[index];
+              });
+              return obj;
+            });
+            
+            resolve(result);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.readAsBinaryString(file);
+      });
+
+      console.log('📊 Excel verileri parse edildi:', data.length, 'satır');
+
+      // Excel'den tarih bilgisini çıkar
+      const firstRow = data[0];
+      let weekLabel = '';
+      let startDate = '';
+      let endDate = '';
+
+      // Excel'deki sütun başlıklarını kontrol et
+      Object.keys(firstRow).forEach(key => {
+        if (key.includes('Temmuz') || key.includes('Ocak') || key.includes('Şubat') || 
+            key.includes('Mart') || key.includes('Nisan') || key.includes('Mayıs') || 
+            key.includes('Haziran') || key.includes('Ağustos') || key.includes('Eylül') || 
+            key.includes('Ekim') || key.includes('Kasım') || key.includes('Aralık')) {
+          weekLabel = key;
+          
+          // Farklı tarih formatlarını dene
+          let dateMatch = key.match(/(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+-\s+(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/);
+          
+          // Eğer yukarıdaki format eşleşmezse, farklı formatları dene
+          if (!dateMatch) {
+            dateMatch = key.match(/(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})\s+-\s+(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/);
+          }
+          
+          if (dateMatch) {
+            const [, startDay, startMonth, endDay, endMonth, year] = dateMatch;
+            const monthMap = {
+              'Ocak': '01', 'Şubat': '02', 'Mart': '03', 'Nisan': '04', 'Mayıs': '05', 'Haziran': '06',
+              'Temmuz': '07', 'Ağustos': '08', 'Eylül': '09', 'Ekim': '10', 'Kasım': '11', 'Aralık': '12'
+            };
+            
+            startDate = `${year}-${monthMap[startMonth]}-${startDay.padStart(2, '0')}`;
+            endDate = `${year}-${monthMap[endMonth]}-${endDay.padStart(2, '0')}`;
+          } else {
+            console.log('⚠️ Tarih formatı tanınmadı:', key);
+          }
+        }
+      });
+
+      console.log('📅 Hafta bilgileri:', { weekLabel, startDate, endDate });
+
+      if (!weekLabel) {
+        setUploadMessage({ type: 'error', text: 'Excel dosyasında tarih bilgisi bulunamadı! Lütfen sütun başlıklarında ay ismi olduğundan emin olun.' });
+        return;
+      }
+
+      if (!startDate || !endDate) {
+        setUploadMessage({ type: 'error', text: 'Tarih formatı tanınmadı! Lütfen "20 Temmuz - 26 Temmuz 2025" formatında olduğundan emin olun.' });
+        return;
+      }
+
+      // Yeni sistemi kullanarak verileri kaydet
+      const result = await saveCurrentWeekExcelData(data, weekLabel, startDate, endDate);
+      
+      if (result.success) {
+        console.log('✅ Güncel vardiya verileri başarıyla kaydedildi');
+        setUploadMessage({ type: 'success', text: `Güncel vardiya verileri başarıyla yüklendi! ${data.length} personel kaydı işlendi.` });
+        
+        // Verileri yenile
+        await loadCurrentShiftData();
+        await loadInitialData();
+        
+        // Callback'i çağır
+        if (onDataUpdate) {
+          onDataUpdate();
+        }
+      } else if (result.isDuplicate) {
+        console.log('⚠️ Aynı tarihli veri mevcut');
+        setUploadMessage({ 
+          type: 'warning', 
+          text: `Aynı tarihli veri zaten mevcut! (${weekLabel})`,
+          existingData: result.existingData,
+          isDuplicate: true
+        });
+      } else {
+        console.error('❌ Veriler kaydedilemedi:', result.error);
+        setUploadMessage({ type: 'error', text: 'Veriler kaydedilirken hata oluştu!' });
+      }
+
+    } catch (error) {
+      console.error('❌ Excel yükleme hatası:', error);
+      setUploadMessage({ type: 'error', text: 'Excel dosyası yüklenirken hata oluştu!' });
+    } finally {
+      setUploadLoading(false);
+      // Input'u temizle
+      event.target.value = '';
+    }
+  };
 
   // Excel upload fonksiyonu
   const handleExcelUpload = async (event) => {
@@ -460,9 +625,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
           const result = await saveExcelData(periods, schedules);
           
           if (result.success) {
+            console.log('✅ Excel verisi başarıyla yüklendi');
             setUploadMessage({
               type: 'success',
-              message: `✅ Excel verisi başarıyla yüklendi!\n\n📊 ${periods.length} haftalık dönem\n👥 ${schedules.length} vardiya kaydı\n\nVeriler sisteme kaydedildi.`
+              text: `✅ Excel verisi başarıyla yüklendi!\n\n📊 ${periods.length} haftalık dönem\n👥 ${schedules.length} vardiya kaydı\n\nVeriler sisteme kaydedildi.`
             });
             
             // Hızlı veri güncelleme
@@ -486,17 +652,19 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
             console.log('✅ Veri güncelleme tamamlandı');
           } else {
             // Mevcut veri uyarısı veya diğer hatalar
+            console.error('❌ Excel yükleme hatası:', result.error);
             setUploadMessage({
               type: 'error',
-              message: result.error
+              text: result.error
             });
             return; // İşlemi durdur
           }
           
         } catch (error) {
+          console.error('❌ Excel işleme hatası:', error);
           setUploadMessage({
             type: 'error',
-            message: `❌ Excel dosyası işlenirken hata oluştu:\n${error.message}`
+            text: `❌ Excel dosyası işlenirken hata oluştu:\n${error.message}`
           });
         } finally {
           setUploadLoading(false);
@@ -506,9 +674,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
       reader.readAsArrayBuffer(file);
       
     } catch (error) {
+      console.error('❌ Dosya okuma hatası:', error);
       setUploadMessage({
         type: 'error',
-        message: `❌ Dosya okunamadı:\n${error.message}`
+        text: `❌ Dosya okunamadı:\n${error.message}`
       });
       setUploadLoading(false);
     }
@@ -620,15 +789,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
         await onDataUpdate();
       }
       
-      // Modal'ı kapat
-      setShowCurrentShiftModal(false);
-      setEditingShift(null);
-      setShiftForm({
-        employee_code: '',
-        shift_type: 'gunduz',
-        shift_hours: '08:00 - 16:00',
-        status: 'dinlenme'
-      });
+
 
     } catch (error) {
       console.error('❌ Vardiya kaydetme hatası:', error);
@@ -647,29 +808,62 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
 
   // Sıralanmış vardiya verilerini al
   const getSortedCurrentShiftData = () => {
-    if (!currentShiftSortConfig.key) return currentShiftData;
-
-    return [...currentShiftData].sort((a, b) => {
-      let aValue = a[currentShiftSortConfig.key];
-      let bValue = b[currentShiftSortConfig.key];
-
-      // Özel alanlar için
-      if (currentShiftSortConfig.key === 'full_name') {
-        aValue = a.full_name || '';
-        bValue = b.full_name || '';
-      } else if (currentShiftSortConfig.key === 'shift_hours') {
-        aValue = a.shift_hours || '';
-        bValue = b.shift_hours || '';
+    let sortedData = [...currentShiftData];
+    
+    // Önce pozisyona göre sırala (Sevkiyat elemanları önce, sonra şoförler)
+    sortedData.sort((a, b) => {
+      const aPositionLower = a.position?.toLowerCase() || '';
+      const bPositionLower = b.position?.toLowerCase() || '';
+      
+      const aIsSevkiyat = aPositionLower.includes('sevkiyat') || 
+                          aPositionLower.includes('sevkiyat elemanı') || 
+                          aPositionLower.includes('sevkiyat elemani') ||
+                          aPositionLower.includes('elemanı') ||
+                          aPositionLower.includes('elemani');
+      const bIsSevkiyat = bPositionLower.includes('sevkiyat') || 
+                          bPositionLower.includes('sevkiyat elemanı') || 
+                          bPositionLower.includes('sevkiyat elemani') ||
+                          bPositionLower.includes('elemanı') ||
+                          bPositionLower.includes('elemani');
+      
+      // Önce pozisyona göre sırala (Sevkiyat elemanları üstte)
+      if (aIsSevkiyat && !bIsSevkiyat) return -1;
+      if (!aIsSevkiyat && bIsSevkiyat) return 1;
+      
+      // Aynı pozisyondaysa, sicil numarasına göre sırala
+      const aEmployeeCode = parseInt(a.employee_code) || 0;
+      const bEmployeeCode = parseInt(b.employee_code) || 0;
+      
+      if (aEmployeeCode !== bEmployeeCode) {
+        return aEmployeeCode - bEmployeeCode; // Küçük sicil numaraları önce
       }
+      
+      // Sicil numarası aynıysa, sıralama kriterine göre sırala
+      if (currentShiftSortConfig.key) {
+        let aValue = a[currentShiftSortConfig.key];
+        let bValue = b[currentShiftSortConfig.key];
 
-      if (aValue < bValue) {
-        return currentShiftSortConfig.direction === 'asc' ? -1 : 1;
+        // Özel alanlar için
+        if (currentShiftSortConfig.key === 'full_name') {
+          aValue = a.full_name || '';
+          bValue = b.full_name || '';
+        } else if (currentShiftSortConfig.key === 'shift_hours') {
+          aValue = a.shift_hours || '';
+          bValue = b.shift_hours || '';
+        }
+
+        if (aValue < bValue) {
+          return currentShiftSortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return currentShiftSortConfig.direction === 'asc' ? 1 : -1;
+        }
       }
-      if (aValue > bValue) {
-        return currentShiftSortConfig.direction === 'asc' ? 1 : -1;
-      }
+      
       return 0;
     });
+    
+    return sortedData;
   };
 
   // Sıralama ikonunu al
@@ -694,6 +888,71 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
         </svg>
       );
+    }
+  };
+
+  // Vardiya silme fonksiyonu
+  // Vardiya düzenleme fonksiyonu
+  const handleEditShift = (shift) => {
+    setEditingShift(shift);
+    setShiftEditForm({
+      shift_type: shift.shift_type || '',
+      shift_details: shift.shift_details || ''
+    });
+    setShowShiftEditModal(true);
+  };
+
+  // Vardiya güncelleme fonksiyonu
+  const handleUpdateShift = async (e) => {
+    e.preventDefault();
+    
+    if (!editingShift) return;
+    
+    setShiftEditLoading(true);
+    
+    try {
+      // current_weekly_shifts tablosunu güncelle
+      const { error: currentShiftError } = await supabase
+        .from('current_weekly_shifts')
+        .update({
+          shift_type: shiftEditForm.shift_type,
+          shift_details: shiftEditForm.shift_details
+        })
+        .eq('id', editingShift.id);
+      
+      if (currentShiftError) {
+        throw currentShiftError;
+      }
+      
+      // weekly_schedules tablosunu güncelle
+      const { error: weeklySchedulesError } = await supabase
+        .from('weekly_schedules')
+        .update({
+          shift_type: shiftEditForm.shift_type,
+          shift_hours: shiftEditForm.shift_details
+        })
+        .eq('employee_code', editingShift.employee_code)
+        .eq('period_id', editingShift.period_id);
+      
+      if (weeklySchedulesError) {
+        console.error('❌ Weekly schedules güncellenemedi:', weeklySchedulesError);
+      }
+      
+      console.log('✅ Vardiya güncellendi');
+      setShowShiftEditModal(false);
+      setEditingShift(null);
+      await loadCurrentShiftData();
+      
+      // Ana sayfa takvimini güncelle
+      if (onDataUpdate) {
+        await onDataUpdate();
+      }
+      
+    } catch (error) {
+      console.error('❌ Vardiya güncelleme hatası:', error);
+      alert('Vardiya güncellenemedi: ' + error.message);
+    } finally {
+      setShiftEditLoading(false);
     }
   };
 
@@ -725,152 +984,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
     }
   };
 
-  // Şu Anki Vardiya verilerini yükle
-  const loadCurrentShiftData = async () => {
-    try {
-      console.log('🔄 Şu anki vardiya verileri yükleniyor...');
 
-      // En güncel week_label tarihli weekly_periods kaydını bul
-      const { data: allPeriods, error: periodError } = await supabase
-        .from('weekly_periods')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (periodError) {
-        console.error('❌ Dönem verileri çekilemedi:', periodError);
-        setCurrentShiftData([]);
-        return;
-      }
-
-      if (!allPeriods || allPeriods.length === 0) {
-        console.log('📊 Hiç dönem kaydı bulunamadı');
-        setCurrentShiftData([]);
-        return;
-      }
-
-      // week_label'daki tarihi parse edip en güncel olanı bul
-      let latestPeriod = null;
-      let latestDate = null;
-
-      console.log('🔍 Tüm dönemler:', allPeriods.length);
-      
-      allPeriods.forEach((period, index) => {
-        console.log(`📅 Dönem ${index + 1}:`, period.week_label);
-        
-        try {
-          // week_label formatı: "20 Temmuz - 26 Temmuz 2025"
-          const weekLabel = period.week_label;
-          if (!weekLabel) {
-            console.log('⚠️ week_label boş:', period);
-            return;
-          }
-
-          // İlk tarihi al (başlangıç tarihi)
-          const dateMatch = weekLabel.match(/(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+-\s+(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/);
-          
-          if (dateMatch) {
-            const [, startDay, startMonth, endDay, endMonth, year] = dateMatch;
-            const monthMap = {
-              'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
-              'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
-            };
-            
-            const startMonthNum = monthMap[startMonth];
-            const endMonthNum = monthMap[endMonth];
-            
-            console.log(`📊 Parse edilen: ${startDay} ${startMonth} ${year} -> ${startMonthNum}`);
-            
-            if (startMonthNum !== undefined && endMonthNum !== undefined) {
-              const periodDate = new Date(parseInt(year), startMonthNum, parseInt(startDay));
-              const today = new Date();
-              today.setHours(0, 0, 0, 0); // Bugünün başlangıcı
-              
-              console.log(`📅 Tarih hesaplandı:`, periodDate);
-              console.log(`📅 Bugün:`, today);
-              console.log(`📅 Gelecek mi:`, periodDate > today);
-              
-              // Sadece bugünden küçük veya eşit tarihleri kabul et
-              if (periodDate <= today) {
-                if (!latestDate || periodDate > latestDate) {
-                  latestDate = periodDate;
-                  latestPeriod = period;
-                  console.log(`✅ Yeni en güncel:`, period.week_label);
-                }
-              } else {
-                console.log(`⏭️ Gelecek tarih atlandı:`, period.week_label);
-              }
-            } else {
-              console.log('⚠️ Ay numarası bulunamadı:', startMonth, endMonth);
-            }
-          } else {
-            console.log('⚠️ Regex eşleşmedi:', weekLabel);
-          }
-        } catch (error) {
-          console.warn('⚠️ week_label parse hatası:', period.week_label, error);
-        }
-      });
-
-      if (periodError) {
-        console.error('❌ En son dönem bulunamadı:', periodError);
-        setCurrentShiftData([]);
-        return;
-      }
-
-      if (!latestPeriod) {
-        console.log('📊 En güncel dönem bulunamadı, en son yüklenen kullanılıyor...');
-        // Fallback: en son yüklenen veriyi kullan
-        latestPeriod = allPeriods[0];
-      }
-
-      const currentPeriod = latestPeriod;
-
-      console.log('📅 En güncel dönem:', currentPeriod);
-      console.log('📅 Dönem detayları:', {
-        start_date: currentPeriod.start_date,
-        end_date: currentPeriod.end_date,
-        week_label: currentPeriod.week_label,
-        created_at: currentPeriod.created_at,
-        parsed_date: latestDate
-      });
-
-      // Bu dönem için tüm vardiyaları çek
-      const { data: currentSchedules, error: schedulesError } = await supabase
-        .from('weekly_schedules')
-        .select('*')
-        .eq('period_id', currentPeriod.id);
-
-      if (schedulesError) {
-        console.error('❌ Vardiya verileri çekilemedi:', schedulesError);
-        setCurrentShiftData([]);
-        return;
-      }
-
-      if (currentSchedules && currentSchedules.length > 0) {
-        // Personel bilgilerini zenginleştir
-        const enrichedData = currentSchedules.map(schedule => {
-          const person = personnelList.find(p => p.employee_code === schedule.employee_code);
-          
-          return {
-            ...schedule,
-            full_name: person?.full_name || 'Bilinmeyen',
-            position: person?.position || 'Bilinmeyen',
-            period_start_date: currentPeriod.start_date,
-            period_end_date: currentPeriod.end_date,
-            week_label: currentPeriod.week_label
-          };
-        });
-
-        setCurrentShiftData(enrichedData);
-        console.log('✅ Güncel vardiya verileri yüklendi:', enrichedData.length, 'kayıt');
-      } else {
-        console.log('📊 Bu dönem için vardiya verisi bulunamadı');
-        setCurrentShiftData([]);
-      }
-    } catch (error) {
-      console.error('❌ Şu anki vardiya verileri yükleme hatası:', error);
-      setCurrentShiftData([]);
-    }
-  };
 
   // Personel veya tarih değiştiğinde mevcut kayıtları kontrol et
   useEffect(() => {
@@ -1060,7 +1174,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
       // 4. Günlük notları yükle
       loadDailyNotes();
       
-      // 5. Bugünkü durumu da yükle
+      // 5. Şu anki vardiya verilerini yükle
+      loadCurrentShiftData();
+      
+      // 6. Bugünkü durumu da yükle
       setTimeout(() => {
         loadTodayStatus();
       }, 1000); // 1 saniye bekle, diğer veriler yüklensin
@@ -1304,6 +1421,60 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
         notes: ''
       });
       await loadDailyNotes(); // Günlük notları yenile
+      
+      // Vardiya güncellemesi yapıldıysa current_weekly_shifts ve weekly_schedules tablolarını da güncelle
+      if (newAbsence.status === 'raporlu' || newAbsence.status === 'yillik_izin') {
+        console.log('🔄 Vardiya güncellemesi yapılıyor...');
+        
+        // Seçilen tarihin hangi haftaya ait olduğunu bul
+        const selectedDate = new Date(newAbsence.date);
+        const currentPeriod = await getCurrentPeriod();
+        
+        if (currentPeriod) {
+          const periodStart = new Date(currentPeriod.start_date);
+          const periodEnd = new Date(currentPeriod.end_date);
+          
+          // Seçilen tarih güncel dönem içindeyse güncelle
+          if (selectedDate >= periodStart && selectedDate <= periodEnd) {
+            console.log('✅ Tarih güncel dönem içinde, vardiya güncelleniyor...');
+            
+            // current_weekly_shifts tablosunu güncelle
+            const { error: currentShiftError } = await supabase
+              .from('current_weekly_shifts')
+              .update({ 
+                shift_type: newAbsence.status === 'raporlu' ? 'raporlu' : 'yillik_izin',
+                shift_details: newAbsence.status === 'raporlu' ? 'Raporlu' : 'Yıllık izinli'
+              })
+              .eq('employee_code', newAbsence.employee_code)
+              .eq('period_id', currentPeriod.id);
+            
+            if (currentShiftError) {
+              console.error('❌ Current weekly shifts güncellenemedi:', currentShiftError);
+            } else {
+              console.log('✅ Current weekly shifts güncellendi');
+            }
+            
+            // weekly_schedules tablosunu güncelle
+            const { error: weeklySchedulesError } = await supabase
+              .from('weekly_schedules')
+              .update({ 
+                shift_type: newAbsence.status === 'raporlu' ? 'raporlu' : 'yillik_izin',
+                shift_hours: newAbsence.status === 'raporlu' ? 'Raporlu' : 'Yıllık izinli'
+              })
+              .eq('employee_code', newAbsence.employee_code)
+              .eq('period_id', currentPeriod.id);
+            
+            if (weeklySchedulesError) {
+              console.error('❌ Weekly schedules güncellenemedi:', weeklySchedulesError);
+            } else {
+              console.log('✅ Weekly schedules güncellendi');
+            }
+            
+            // Güncel vardiya verilerini yenile
+            await loadCurrentShiftData();
+          }
+        }
+      }
       
       // Ana sayfa takvimini güncelle
       if (onDataUpdate) {
@@ -1869,7 +2040,51 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
     }
   };
 
+  // Seçili dönemi silme fonksiyonu
+  const handleDeletePeriod = async (periodId) => {
+    console.log('🗑️ Silme işlemi başlatılıyor...', periodId);
+    
+    if (!periodId) {
+      alert('Lütfen silinecek bir tarih seçin!');
+      return;
+    }
 
+    if (!confirm('Bu tarih aralığını ve tüm vardiya verilerini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!')) {
+      return;
+    }
+
+    try {
+      setGlobalEditLoading(true);
+      console.log('🔄 Silme işlemi başlatılıyor...');
+      
+      const result = await deletePeriodAndShifts(periodId);
+      console.log('📊 Silme sonucu:', result);
+      
+      if (result.success) {
+        console.log('✅ Dönem başarıyla silindi');
+        alert('Dönem ve vardiya verileri başarıyla silindi!');
+        
+        // Verileri yenile ve modal'ı açık tut
+        console.log('🔄 Veriler yenileniyor...');
+        await loadInitialData();
+        await loadCurrentShiftData();
+        console.log('✅ Veriler yenilendi');
+        
+        // Seçimi temizle ama modal'ı açık tut
+        setSelectedPeriodForEdit(null);
+        setGlobalEditForm({ new_start_date: '', new_end_date: '' });
+      } else {
+        console.error('❌ Dönem silme hatası:', result.error);
+        alert('Dönem silinirken hata oluştu: ' + (result.error?.message || result.error));
+      }
+      
+    } catch (error) {
+      console.error('❌ Dönem silme hatası:', error);
+      alert('Dönem silinirken hata oluştu: ' + error.message);
+    } finally {
+      setGlobalEditLoading(false);
+    }
+  };
 
   const handleCleanupDatabase = async () => {
     if (window.confirm('⚠️ DİKKAT: Tüm vardiya verilerini temizlemek istediğinize emin misiniz?\n\nBu işlem:\n• Tüm vardiya programlarını silecek\n• Tüm istatistikleri sıfırlayacak\n• Tüm günlük kayıtları silecek\n\nBu işlem geri alınamaz!')) {
@@ -1881,8 +2096,31 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
             type: 'success', 
             message: `✅ Veritabanı başarıyla temizlendi! Tüm veriler silindi.` 
           });
-          loadInitialData(); // Yeni verileri yükle
-          loadTodayStatus(); // Bugünkü durumu da güncelle
+          
+          // Ana verileri yenile
+          await loadInitialData();
+          await loadTodayStatus();
+          
+          // Eğer global date edit modalı açıksa, onun verilerini de yenile
+          if (globalDateEditModal) {
+            console.log('🔄 Global date edit modal verileri yenileniyor...');
+            try {
+              const { data: periods, error } = await supabase
+                .from('weekly_periods')
+                .select('*')
+                .order('start_date', { ascending: true });
+              
+              if (!error) {
+                setAllPeriods(periods || []);
+                console.log('✅ Global date edit modal verileri yenilendi:', periods?.length || 0, 'kayıt');
+              } else {
+                console.error('❌ Global date edit modal veri yenileme hatası:', error);
+              }
+            } catch (error) {
+              console.error('❌ Global date edit modal veri yenileme hatası:', error);
+            }
+          }
+          
         } else {
           setCleanupResult({ type: 'error', message: `❌ Veritabanı temizleme hatası: ${result.error}` });
         }
@@ -3012,37 +3250,81 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                     Excel dosyasından vardiya programını yükleyin. Dosya formatı: .xlsx, .xls
                   </p>
                   
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-200">
-                    <Upload className="w-16 h-16 text-gray-400 mx-auto mb-6" />
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls"
-                      onChange={handleExcelUpload}
-                      className="hidden"
-                      id="excel-upload"
-                    />
-                    <label
-                      htmlFor="excel-upload"
-                      className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl shadow-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 cursor-pointer border-0 text-lg"
-                    >
-                      <Upload className="w-6 h-6 mr-3" />
-                      {uploadLoading ? 'Yükleniyor...' : 'Excel Dosyası Seç'}
-                    </label>
-                    <p className="text-sm text-gray-500 mt-4 font-medium">
-                      Veya dosyayı buraya sürükleyip bırakın
-                    </p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Desteklenen formatlar: .xlsx, .xls
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Eski Excel Yükleme */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-200">
+                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">Eski Sistem</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Çoklu hafta vardiya programı yükleyin
+                      </p>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleExcelUpload}
+                        className="hidden"
+                        id="excel-upload"
+                      />
+                      <label
+                        htmlFor="excel-upload"
+                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 cursor-pointer border-0"
+                      >
+                        <Upload className="w-5 h-5 mr-2" />
+                        {uploadLoading ? 'Yükleniyor...' : 'Excel Dosyası Seç'}
+                      </label>
+                    </div>
+
+                    {/* Yeni Vardiya Yükleme */}
+                    <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 transition-all duration-200">
+                      <Plus className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">Güncel Vardiya Yükle</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Güncel hafta vardiya programını yükleyin
+                      </p>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleCurrentShiftUpload}
+                        className="hidden"
+                        id="current-shift-upload"
+                      />
+                      <label
+                        htmlFor="current-shift-upload"
+                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg shadow-lg hover:from-green-700 hover:to-green-800 transform hover:scale-105 transition-all duration-200 cursor-pointer border-0"
+                      >
+                        <Plus className="w-5 h-5 mr-2" />
+                        {uploadLoading ? 'Yükleniyor...' : 'Güncel Vardiya Yükle'}
+                      </label>
+                    </div>
                   </div>
+                  
+                  <p className="text-sm text-gray-500 mt-4 font-medium text-center">
+                    Veya dosyayı buraya sürükleyip bırakın
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2 text-center">
+                    Desteklenen formatlar: .xlsx, .xls
+                  </p>
                   
                   {uploadMessage && (
                     <div className={`mt-4 p-4 rounded-lg ${
                       uploadMessage.type === 'success' 
                         ? 'bg-green-50 border border-green-200 text-green-800' 
+                        : uploadMessage.type === 'warning'
+                        ? 'bg-yellow-50 border border-yellow-200 text-yellow-800'
                         : 'bg-red-50 border border-red-200 text-red-800'
                     }`}>
-                      {uploadMessage.message}
+                      <div className="flex items-center justify-between">
+                        <span>{uploadMessage.text}</span>
+                        {uploadMessage.isDuplicate && uploadMessage.existingData && (
+                          <button
+                            onClick={() => handleDeleteExistingData(uploadMessage.existingData.id)}
+                            disabled={uploadLoading}
+                            className="ml-4 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {uploadLoading ? 'Siliniyor...' : 'Mevcut Veriyi Sil'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3101,6 +3383,24 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                       </>
                     )}
                   </button>
+                  
+                  {cleanupResult && (
+                    <div className={`mt-4 p-4 rounded-lg ${
+                      cleanupResult.type === 'success' 
+                        ? 'bg-green-50 border border-green-200 text-green-800' 
+                        : 'bg-red-50 border border-red-200 text-red-800'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span>{cleanupResult.message}</span>
+                        <button
+                          onClick={() => setCleanupResult(null)}
+                          className="ml-4 px-2 py-1 text-sm rounded hover:bg-opacity-20 hover:bg-black"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -3109,84 +3409,185 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
           {activeTab === 'currentShift' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Şu Anki Vardiya</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Güncel vardiya planı: Geliştiriliyor
-                    </p>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Şu Anki Vardiya</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Güncel vardiya planı: {currentShiftData.length > 0 ? `${currentShiftData.length} personel` : 'Veri yok'}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-lg">
+                    <span className="font-medium">Dönem:</span> {currentPeriod?.week_label || 'Yükleniyor...'}
                   </div>
-                                  <div className="flex items-center space-x-4">
-                    <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-lg">
-                      <span className="font-medium">Dönem:</span> Geliştiriliyor
-                    </div>
-
+                  <button
+                    onClick={loadCurrentShiftData}
+                    disabled={currentShiftLoading}
+                    className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-1 ${currentShiftLoading ? 'animate-spin' : ''}`} />
+                    Yenile
+                  </button>
                 </div>
               </div>
 
               {/* Vardiya Tablosu */}
-              {/* Yapım Aşamasında Mesajı */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="flex flex-col items-center justify-center py-16 px-6">
-                  {/* Modern İkon */}
-                  <div className="relative mb-6">
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                      <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                      </svg>
-                    </div>
-                    {/* Animasyonlu Noktalar */}
-                    <div className="absolute -top-2 -right-2">
-                      <div className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                      </div>
-                    </div>
+              {currentShiftLoading ? (
+                <SkeletonLoading type="table" rows={5} />
+              ) : currentShiftData.length > 0 ? (
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                    <h3 className="text-lg font-bold text-white flex items-center">
+                      📋 Güncel Vardiya Listesi
+                      <span className="ml-2 bg-white bg-opacity-20 px-2 py-1 rounded-full text-sm">
+                        {currentShiftData.length} personel
+                      </span>
+                    </h3>
                   </div>
-                  
-                  {/* Ana Başlık */}
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    🚧 Yapım Aşamasında
-                  </h3>
-                  
-                  {/* Alt Başlık */}
-                  <p className="text-lg text-gray-600 mb-6 text-center max-w-md">
-                    Bu özellik şu anda geliştirme aşamasında. Yakında kullanıma açılacak!
-                  </p>
-                  
-                  {/* İlerleme Çubuğu */}
-                  <div className="w-full max-w-md mb-6">
-                    <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
-                      <span>Geliştirme İlerlemesi</span>
-                      <span>%75</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full w-3/4 animate-pulse"></div>
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-blue-50 border-b border-blue-200">
+                          <th className="text-left py-3 px-4 font-bold text-blue-900 text-xs">
+                            <div className="flex items-center">
+                              <span>#</span>
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleCurrentShiftSort('employee_code')}
+                            className="text-left py-3 px-4 font-bold text-blue-900 text-xs cursor-pointer hover:bg-blue-100 transition-colors"
+                          >
+                            <div className="flex items-center">
+                              <span>Sicil No</span>
+                              {getCurrentShiftSortIcon('employee_code')}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleCurrentShiftSort('full_name')}
+                            className="text-left py-3 px-4 font-bold text-blue-900 text-xs cursor-pointer hover:bg-blue-100 transition-colors"
+                          >
+                            <div className="flex items-center">
+                              <span>Ad Soyad</span>
+                              {getCurrentShiftSortIcon('full_name')}
+                            </div>
+                          </th>
+                          <th className="text-left py-3 px-4 font-bold text-blue-900 text-xs">Görev</th>
+                          <th className="text-left py-3 px-4 font-bold text-blue-900 text-xs">Vardiya</th>
+                          <th className="text-left py-3 px-4 font-bold text-blue-900 text-xs">Detay</th>
+                          <th className="text-left py-3 px-4 font-bold text-blue-900 text-xs">İşlemler</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getSortedCurrentShiftData().map((shift, index) => {
+                          // Pozisyon verilerini kontrol et
+                          console.log(`Row ${index + 1}:`, shift.position);
+                          
+                          // Gerçek pozisyon verilerine göre renk ayır
+                          const positionLower = shift.position?.toLowerCase() || '';
+                          const isSevkiyat = positionLower.includes('sevkiyat') || 
+                                            positionLower.includes('sevkiyat elemanı') || 
+                                            positionLower.includes('sevkiyat elemani') ||
+                                            positionLower.includes('elemanı') ||
+                                            positionLower.includes('elemani');
+                          const isDriver = !isSevkiyat; // Geri kalanı şoför
+                          
+                          return (
+                            <tr key={shift.id} className={`border-b transition-colors ${
+                              isSevkiyat 
+                                ? 'bg-green-50 hover:bg-green-100 border-green-200' 
+                                : 'bg-blue-50 hover:bg-blue-100 border-blue-200'
+                            }`}>
+                              <td className="py-3 px-4 text-xs font-medium">
+                                {index + 1}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-2 ${
+                                    isSevkiyat ? 'bg-green-100' : 'bg-blue-100'
+                                  }`}>
+                                    <User className={`w-4 h-4 ${
+                                      isSevkiyat ? 'text-green-600' : 'text-blue-600'
+                                    }`} />
+                                  </div>
+                                  <span className={`font-bold text-xs ${
+                                    isSevkiyat ? 'text-green-900' : 'text-blue-900'
+                                  }`}>{shift.employee_code}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`font-medium text-xs ${
+                                  isSevkiyat ? 'text-green-900' : 'text-blue-900'
+                                }`}>{shift.full_name}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                                  isSevkiyat 
+                                    ? 'bg-green-500 text-white border-green-600' 
+                                    : 'bg-blue-500 text-white border-blue-600'
+                                }`}>
+                                  {isSevkiyat ? '📦' : '🚛'} {shift.position}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  shift.shift_type === 'gece' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                                  shift.shift_type === 'gunduz' ? 'bg-green-100 text-green-800 border border-green-200' :
+                                  shift.shift_type === 'yillik_izin' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                  shift.shift_type === 'raporlu' ? 'bg-red-100 text-red-800 border border-red-200' :
+
+                                  // Yıllık izinli detayı varsa yıllık izin olarak göster
+                                  shift.shift_details?.toLowerCase().includes('yıllık izin') || shift.shift_details?.toLowerCase().includes('yillik izin') ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                  'bg-gray-100 text-gray-800 border border-gray-200'
+                                }`}>
+                                  {shift.shift_type === 'gece' ? '🌙 Gece' :
+                                   shift.shift_type === 'gunduz' ? '☀️ Gündüz' :
+                                   shift.shift_type === 'yillik_izin' ? '🏖️ Yıllık İzin' :
+                                   shift.shift_type === 'raporlu' ? '🏥 Raporlu' :
+
+                                   // Yıllık izinli detayı varsa yıllık izin olarak göster
+                                   shift.shift_details?.toLowerCase().includes('yıllık izin') || shift.shift_details?.toLowerCase().includes('yillik izin') ? '🏖️ Yıllık İzin' : '❓ Belirsiz'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`text-xs font-medium ${
+                                  isSevkiyat ? 'text-green-600' : 'text-blue-600'
+                                }`}>{shift.shift_details}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center space-x-2">
+                                  <button
+                                    onClick={() => handleEditShift(shift)}
+                                    className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                      isSevkiyat 
+                                        ? 'bg-green-600 text-white hover:bg-green-700' 
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    }`}
+                                    title="Vardiyayı Düzenle"
+                                  >
+                                    <Edit className="w-3 h-3 mr-1" />
+                                    Düzenle
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  
-                  {/* Özellik Listesi */}
-                  <div className="grid grid-cols-1 gap-4 max-w-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm text-gray-600">Gerçek zamanlı vardiya takibi</span>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="flex flex-col items-center justify-center py-16 px-6">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <Clock className="w-8 h-8 text-gray-400" />
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm text-gray-600">Personel vardiya düzenleme</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                      <span className="text-sm text-gray-400">Gelişmiş raporlama</span>
-                    </div>
-                  </div>
-                  
-                  {/* Tahmini Tamamlanma */}
-                  <div className="mt-8 text-center">
-                    <p className="text-sm text-gray-500">
-                      Tahmini tamamlanma: <span className="font-medium text-gray-700">2-3 hafta</span>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Vardiya Verisi Yok</h3>
+                    <p className="text-gray-600 text-center">
+                      Henüz vardiya verisi yüklenmemiş. Excel Yükleme sayfasından veri yükleyebilirsiniz.
                     </p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -4000,7 +4401,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                   >
                     <option value="" disabled>Durum seçin</option>
                     <option value="raporlu">🏥 Raporlu</option>
-                    <option value="habersiz">❌ Habersiz</option>
+
                     <option value="yillik_izin">🏖️ Yıllık İzin</option>
                     <option value="dinlenme">😴 Dinlenme</option>
                   </select>
@@ -4219,168 +4620,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
 
 
           {/* Şu Anki Vardiya Modal */}
-      {showCurrentShiftModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {editingShift ? 'Vardiya Düzenle' : 'Yeni Vardiya Ekle'}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Dönem: {getCurrentPeriod().label}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowCurrentShiftModal(false);
-                    setEditingShift(null);
-                    setShiftForm({
-                      employee_code: '',
-                      shift_type: 'gunduz',
-                      shift_hours: '08:00 - 16:00',
-                      status: 'dinlenme'
-                    });
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
 
-              <form onSubmit={handleSaveShift} className="space-y-4">
-                {!editingShift && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Personel
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Personel ara..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onChange={(e) => {
-                          const searchTerm = e.target.value.toLowerCase();
-                          const filteredPersonnel = personnelList.filter(person => 
-                            person.full_name.toLowerCase().includes(searchTerm) ||
-                            person.employee_code.toString().includes(searchTerm)
-                          );
-                          setFilteredPersonnelForModal(filteredPersonnel);
-                        }}
-                      />
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {filteredPersonnelForModal.map(person => (
-                          <div
-                            key={person.employee_code}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              setShiftForm({...shiftForm, employee_code: person.employee_code});
-                              setFilteredPersonnelForModal([]);
-                            }}
-                          >
-                            <div className="font-medium">{person.full_name}</div>
-                            <div className="text-sm text-gray-500">
-                              {person.employee_code} - {person.position}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {shiftForm.employee_code && (
-                      <div className="mt-2 p-2 bg-blue-50 rounded-md">
-                        <div className="text-sm font-medium text-blue-800">
-                          Seçili: {personnelList.find(p => p.employee_code === shiftForm.employee_code)?.full_name}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {editingShift && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Personel
-                    </label>
-                    <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                      <div className="font-medium text-gray-900">
-                        {personnelList.find(p => p.employee_code === editingShift.employee_code)?.full_name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {editingShift.employee_code} - {personnelList.find(p => p.employee_code === editingShift.employee_code)?.position}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vardiya Tipi
-                  </label>
-                  <select
-                    value={shiftForm.shift_type}
-                    onChange={(e) => {
-                      const shiftType = e.target.value;
-                      let shiftHours = '08:00 - 16:00';
-                      if (shiftType === 'gece') shiftHours = '22:00 - 06:00';
-                      else if (shiftType === 'aksam') shiftHours = '16:00 - 00:00';
-                      setShiftForm({...shiftForm, shift_type: shiftType, shift_hours: shiftHours});
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="gunduz">Gündüz (08:00 - 16:00)</option>
-                    <option value="gece">Gece (22:00 - 06:00)</option>
-                    <option value="aksam">Akşam (16:00 - 00:00)</option>
-                    <option value="yillik_izin">Yıllık İzin</option>
-                    <option value="raporlu">Raporlu</option>
-                    <option value="dinlenme">Dinlenme</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vardiya Saatleri
-                  </label>
-                  <input
-                    type="text"
-                    value={shiftForm.shift_hours}
-                    onChange={(e) => setShiftForm({...shiftForm, shift_hours: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="08:00 - 16:00"
-                    required
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCurrentShiftModal(false);
-                      setEditingShift(null);
-                      setShiftForm({
-                        employee_code: '',
-                        shift_type: 'gunduz',
-                        shift_hours: '08:00 - 16:00',
-                        status: 'dinlenme'
-                      });
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                  >
-                    İptal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    {editingShift ? 'Güncelle' : 'Kaydet'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Genel Tarih Düzenleme Modalı */}
       {globalDateEditModal && (
@@ -4474,6 +4714,23 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                         Seçimi İptal Et
                       </button>
                       <button
+                        onClick={() => handleDeletePeriod(selectedPeriodForEdit.id)}
+                        disabled={globalEditLoading}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {globalEditLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                            Siliniyor...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2 inline" />
+                            Bu Tarihi Sil
+                          </>
+                        )}
+                      </button>
+                      <button
                         onClick={handleUpdateGlobalDate}
                         disabled={globalEditLoading}
                         className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
@@ -4497,6 +4754,115 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
       )}
 
 
+      {/* Vardiya Düzenleme Modal */}
+      {showShiftEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 rounded-t-xl">
+              <h3 className="text-lg font-bold text-white flex items-center">
+                <Edit className="w-5 h-5 mr-2" />
+                Vardiya Düzenle
+              </h3>
+            </div>
+            
+            <div className="p-6">
+              {editingShift && (
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-2">Düzenlenecek Personel:</div>
+                  <div className="font-semibold text-gray-900">{editingShift.full_name}</div>
+                  <div className="text-sm text-gray-600">Sicil No: {editingShift.employee_code}</div>
+                </div>
+              )}
+              
+              <form onSubmit={handleUpdateShift}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vardiya Türü
+                    </label>
+                    <select
+                      value={shiftEditForm.shift_type}
+                      onChange={(e) => {
+                        const newShiftType = e.target.value;
+                        let newShiftDetails = shiftEditForm.shift_details;
+                        
+                        // Vardiya türüne göre otomatik detay güncelleme
+                        if (newShiftType === 'gece') {
+                          newShiftDetails = '22:00 - 06:00';
+                        } else if (newShiftType === 'gunduz') {
+                          newShiftDetails = '08:00 - 16:00';
+                        } else if (newShiftType === 'yillik_izin') {
+                          newShiftDetails = 'Yıllık izinli';
+                        } else if (newShiftType === 'raporlu') {
+                          newShiftDetails = 'Raporlu';
+                        }
+                        
+                        setShiftEditForm({
+                          ...shiftEditForm, 
+                          shift_type: newShiftType,
+                          shift_details: newShiftDetails
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="" disabled>Vardiya seçin</option>
+                      <option value="gece">🌙 Gece Vardiyası</option>
+                      <option value="gunduz">☀️ Gündüz Vardiyası</option>
+                      <option value="yillik_izin">🏖️ Yıllık İzin</option>
+                      <option value="raporlu">🏥 Raporlu</option>
+
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vardiya Detayları (Otomatik)
+                    </label>
+                    <input
+                      type="text"
+                      value={shiftEditForm.shift_details}
+                      readOnly
+                      placeholder="Vardiya türü seçildiğinde otomatik güncellenir"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowShiftEditModal(false);
+                      setEditingShift(null);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={shiftEditLoading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {shiftEditLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                        Güncelleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2 inline" />
+                        Güncelle
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
       </>
     );
 };

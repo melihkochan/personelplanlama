@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Edit3, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
-import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, supabase } from '../services/supabase';
+import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, getCurrentWeeklyShifts, saveCurrentWeekExcelData, supabase } from '../services/supabase';
+import * as XLSX from 'xlsx';
 
 
 const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole }) => {
@@ -121,130 +122,27 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     try {
       console.log('🔄 Güncel vardiya verileri yükleniyor...');
 
-      // En güncel week_label tarihli weekly_periods kaydını bul
-      const { data: allPeriods, error: periodError } = await supabase
-        .from('weekly_periods')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (periodError) {
-        console.error('❌ Dönem verileri çekilemedi:', periodError);
-        setCurrentShiftData([]);
-        return;
-      }
-
-      if (!allPeriods || allPeriods.length === 0) {
-        console.log('📊 Hiç dönem kaydı bulunamadı');
-        setCurrentShiftData([]);
-        return;
-      }
-
-      // week_label'daki tarihi parse edip en güncel olanı bul
-      let latestPeriod = null;
-      let latestDate = null;
-
-      console.log('🔍 Tüm dönemler:', allPeriods.length);
+      // Yeni current_weekly_shifts tablosundan verileri çek
+      const result = await getCurrentWeeklyShifts();
       
-      allPeriods.forEach((period, index) => {
-        console.log(`📅 Dönem ${index + 1}:`, period.week_label);
-        
-        try {
-          // week_label formatı: "20 Temmuz - 26 Temmuz 2025"
-          const weekLabel = period.week_label;
-          if (!weekLabel) {
-            console.log('⚠️ week_label boş:', period);
-            return;
-          }
-
-          // İlk tarihi al (başlangıç tarihi)
-          const dateMatch = weekLabel.match(/(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+-\s+(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/);
-          
-          if (dateMatch) {
-            const [, startDay, startMonth, endDay, endMonth, year] = dateMatch;
-            const monthMap = {
-              'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
-              'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
-            };
-            
-            const startMonthNum = monthMap[startMonth];
-            const endMonthNum = monthMap[endMonth];
-            
-            console.log(`📊 Parse edilen: ${startDay} ${startMonth} ${year} -> ${startMonthNum}`);
-            
-            if (startMonthNum !== undefined && endMonthNum !== undefined) {
-              const periodDate = new Date(parseInt(year), startMonthNum, parseInt(startDay));
-              const today = new Date();
-              today.setHours(0, 0, 0, 0); // Bugünün başlangıcı
-              
-              console.log(`📅 Tarih hesaplandı:`, periodDate);
-              console.log(`📅 Bugün:`, today);
-              console.log(`📅 Gelecek mi:`, periodDate > today);
-              
-              // Sadece bugünden küçük veya eşit tarihleri kabul et
-              if (periodDate <= today) {
-                if (!latestDate || periodDate > latestDate) {
-                  latestDate = periodDate;
-                  latestPeriod = period;
-                  console.log(`✅ Yeni en güncel:`, period.week_label);
-                }
-              } else {
-                console.log(`⏭️ Gelecek tarih atlandı:`, period.week_label);
-              }
-            } else {
-              console.log('⚠️ Ay numarası bulunamadı:', startMonth, endMonth);
-            }
-          } else {
-            console.log('⚠️ Regex eşleşmedi:', weekLabel);
-          }
-        } catch (error) {
-          console.warn('⚠️ week_label parse hatası:', period.week_label, error);
-        }
-      });
-
-      if (!latestPeriod) {
-        console.log('📊 En güncel dönem bulunamadı, en son yüklenen kullanılıyor...');
-        // Fallback: en son yüklenen veriyi kullan
-        latestPeriod = allPeriods[0];
-      }
-
-      const currentPeriod = latestPeriod;
-
-      console.log('📅 En güncel dönem:', currentPeriod);
-      console.log('📅 Dönem detayları:', {
-        id: currentPeriod.id,
-        start_date: currentPeriod.start_date,
-        end_date: currentPeriod.end_date,
-        week_label: currentPeriod.week_label,
-        created_at: currentPeriod.created_at,
-        parsed_date: latestDate
-      });
-
-      // Bu dönem için tüm vardiyaları çek
-      const { data: currentSchedules, error: schedulesError } = await supabase
-        .from('weekly_schedules')
-        .select('*')
-        .eq('period_id', currentPeriod.id);
-
-      if (schedulesError) {
-        console.error('❌ Vardiya verileri çekilemedi:', schedulesError);
+      if (!result.success) {
+        console.error('❌ Güncel vardiya verileri çekilemedi:', result.error);
         setCurrentShiftData([]);
         return;
       }
 
-      console.log('📊 Bu dönem için bulunan vardiya sayısı:', currentSchedules?.length || 0);
+      const currentShifts = result.data;
+      console.log('📊 Güncel vardiya verileri çekildi:', currentShifts.length, 'kayıt');
 
-      if (currentSchedules && currentSchedules.length > 0) {
+      if (currentShifts && currentShifts.length > 0) {
         // Personel bilgilerini zenginleştir
-        const enrichedData = currentSchedules.map(schedule => {
-          const person = personnelData.find(p => p.employee_code === schedule.employee_code);
+        const enrichedData = currentShifts.map(shift => {
+          const person = personnelData.find(p => p.employee_code === shift.employee_code);
           
           return {
-            ...schedule,
-            full_name: person?.full_name || 'Bilinmeyen',
-            position: person?.position || 'Bilinmeyen',
-            period_start_date: currentPeriod.start_date,
-            period_end_date: currentPeriod.end_date,
-            week_label: currentPeriod.week_label
+            ...shift,
+            full_name: person?.full_name || shift.full_name || 'Bilinmeyen',
+            position: person?.position || shift.position || 'Bilinmeyen'
           };
         });
 
@@ -267,7 +165,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
           });
         }
       } else {
-        console.log('📊 Bu dönem için vardiya verisi bulunamadı');
+        console.log('📊 Güncel vardiya verisi bulunamadı');
         setCurrentShiftData([]);
       }
     } catch (error) {
@@ -335,213 +233,101 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     const file = event.target.files[0];
     if (!file) return;
 
-    console.log('📁 Excel dosyası yükleniyor:', file.name);
-    setExcelLoading(true);
-    setExcelError(null);
-    setExcelSuccess(false);
-    setExcelStats(null);
+    try {
+      setLoading(true);
+      console.log('📊 Excel dosyası yükleniyor...');
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = e.target.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        
-        // İlk sheet'i al
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-        
-        console.log('📊 Excel verisi:', jsonData);
-        console.log('🔍 Excel format kontrol:');
-        console.log('  A kolonu (BÖLGE):', jsonData[1]?.[0], '(atlanır)');
-        console.log('  B kolonu (SICIL NO):', jsonData[1]?.[1]);
-        console.log('  C kolonu (ADI SOYADI):', jsonData[1]?.[2]);
-        console.log('  D kolonu (GOREV):', jsonData[1]?.[3]);
-        console.log('  E kolonu (VARDIYA):', jsonData[1]?.[4]);
-        
-        // Başlık satırını atla ve personel verilerini çıkar
-        const personnelFromExcel = [];
-        
-        for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i];
-          if (!row[2] || !row[3]) continue; // Boş satırları atla (C ve D kolonu kontrol)
-          
-          // A kolonu: BÖLGE (çekmeye gerek yok)
-          const employeeCode = row[1]; // B kolonu - SICIL NO
-          const fullName = row[2]; // C kolonu - ADI SOYADI
-          const position = row[3]; // D kolonu - GOREV
-          const vardiyaInfo = row[4]; // E kolonu - VARDIYA
-          
-          // Employee code kontrolü - Excel'de yoksa isimden oluştur
-          let finalEmployeeCode = employeeCode;
-          if (!finalEmployeeCode || finalEmployeeCode.toString().trim() === '') {
-            finalEmployeeCode = fullName.replace(/\s+/g, '').toUpperCase().substring(0, 10); // İlk 10 karakter
-          }
-          
-          console.log(`🔢 Employee code: "${finalEmployeeCode}" (orijinal: "${row[1]}")`);
-          
-          // Vardiya tipini belirle
-          let shiftType = 'gunduz';
-          if (vardiyaInfo) {
-            const vardiyaStr = vardiyaInfo.toString().toLowerCase();
-            
-            // Önce yıllık izin kontrolü yap
-            if (vardiyaStr.includes('yıllık izin') || vardiyaStr.includes('yillik izin') || 
-                vardiyaStr.includes('izin') || vardiyaStr.includes('rapor') || 
-                vardiyaStr.includes('tatil') || vardiyaStr.includes('izinli')) {
-              shiftType = 'izin';
-            }
-            // Sonra gece vardiyası kontrolü
-            else if (vardiyaStr.includes('22:00') || vardiyaStr.includes('23:00') || 
-                     vardiyaStr.includes('00:00') || vardiyaStr.includes('06:00') ||
-                     (vardiyaStr.includes('gece') && !vardiyaStr.includes('izin'))) {
-              shiftType = 'gece';
-            }
-            // Diğer durumlar gündüz
-            else {
-              shiftType = 'gunduz';
-            }
-          }
-          
-          console.log(`👤 ${fullName} - Pozisyon: ${position} - Vardiya: ${vardiyaInfo} → ${shiftType}`);
-          
-          const personnelRecord = {
-            employee_code: finalEmployeeCode,
-            full_name: fullName,
-            position: position || 'SEVKIYAT ELEMANI',
-            shift_type: shiftType.toUpperCase(), // Büyük harfle kaydet
-            is_active: true
-            // experience_level kaldırıldı - veritabanında yok
-            // performance_score kaldırıldı - veritabanında yok
-          };
-          
-          console.log(`📋 Personel kaydı hazırlandı:`, personnelRecord);
-          personnelFromExcel.push(personnelRecord);
-        }
-        
-        console.log('✅ Excel\'den çıkarılan personel:', personnelFromExcel);
-        console.log('📊 Çıkarılan personel sayısı:', personnelFromExcel.length);
-        
-        if (personnelFromExcel.length === 0) {
-          throw new Error('Excel dosyasından personel verisi çıkarılamadı. Lütfen format kontrolü yapın.');
-        }
-        
-        // Mevcut personel sayısını al (duplicate kontrolü için)
-        const beforeCount = personnelData.length;
-        console.log(`📊 Mevcut personel sayısı: ${beforeCount}`);
-        
-        // Mevcut personel kodlarını al (duplicate kontrolü için)
-        const existingCodes = new Set(personnelData.map(p => p.employee_code));
-        console.log(`📊 Mevcut personel kodları:`, Array.from(existingCodes));
-        
-        // Personel verilerini veritabanına kaydet
-        let successCount = 0;
-        let errorCount = 0;
-        let duplicateCount = 0;
-        let newPersonnel = [];
-        let duplicatePersonnel = [];
-        
-        for (const personnel of personnelFromExcel) {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
           try {
-            console.log(`💾 Kaydediliyor: ${personnel.full_name}`, personnel);
+            const workbook = XLSX.read(e.target.result, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             
-            // Duplicate kontrolü
-            const isDuplicate = existingCodes.has(personnel.employee_code);
-            if (isDuplicate) {
-              duplicateCount++;
-              duplicatePersonnel.push(personnel.full_name);
-              console.log(`🔄 Duplicate kayıt: ${personnel.full_name} (${personnel.employee_code})`);
-            } else {
-              newPersonnel.push(personnel.full_name);
-              console.log(`🆕 Yeni kayıt: ${personnel.full_name} (${personnel.employee_code})`);
-            }
+            // İlk satırı başlık olarak kullan
+            const headers = jsonData[0];
+            const rows = jsonData.slice(1);
             
-            const result = await addPersonnel(personnel);
-            console.log(`📡 Kaydetme sonucu:`, result);
+            const result = rows.map(row => {
+              const obj = {};
+              headers.forEach((header, index) => {
+                obj[header] = row[index];
+              });
+              return obj;
+            });
             
-            if (result.success) {
-              successCount++;
-              console.log(`✅ ${personnel.full_name} başarıyla kaydedildi`);
-            } else {
-              errorCount++;
-              console.error(`❌ ${personnel.full_name} kaydedilemedi:`, result.error);
-            }
+            resolve(result);
           } catch (error) {
-            errorCount++;
-            console.error(`❌ ${personnel.full_name} kaydetme hatası:`, error);
+            reject(error);
+          }
+        };
+        reader.readAsBinaryString(file);
+      });
+
+      console.log('📊 Excel verileri parse edildi:', data.length, 'satır');
+
+      // Excel'den tarih bilgisini çıkar
+      const firstRow = data[0];
+      let weekLabel = '';
+      let startDate = '';
+      let endDate = '';
+
+      // Excel'deki sütun başlıklarını kontrol et
+      Object.keys(firstRow).forEach(key => {
+        if (key.includes('Temmuz') || key.includes('Ocak') || key.includes('Şubat') || 
+            key.includes('Mart') || key.includes('Nisan') || key.includes('Mayıs') || 
+            key.includes('Haziran') || key.includes('Ağustos') || key.includes('Eylül') || 
+            key.includes('Ekim') || key.includes('Kasım') || key.includes('Aralık')) {
+          weekLabel = key;
+          
+          // Tarih formatını parse et: "20 Temmuz - 26 Temmuz 2025"
+          const dateMatch = key.match(/(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+-\s+(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/);
+          
+          if (dateMatch) {
+            const [, startDay, startMonth, endDay, endMonth, year] = dateMatch;
+            const monthMap = {
+              'Ocak': '01', 'Şubat': '02', 'Mart': '03', 'Nisan': '04', 'Mayıs': '05', 'Haziran': '06',
+              'Temmuz': '07', 'Ağustos': '08', 'Eylül': '09', 'Ekim': '10', 'Kasım': '11', 'Aralık': '12'
+            };
+            
+            startDate = `${year}-${monthMap[startMonth]}-${startDay.padStart(2, '0')}`;
+            endDate = `${year}-${monthMap[endMonth]}-${endDay.padStart(2, '0')}`;
           }
         }
-        
-        console.log(`✅ ${successCount} personel başarıyla işlendi`);
-        console.log(`🆕 ${newPersonnel.length} yeni personel`);
-        console.log(`🔄 ${duplicateCount} duplicate personel`);
-        console.log(`❌ ${errorCount} personel eklenemedi`);
-        
-        // Personel listesini yenile
-        console.log('🔄 Personel listesi yenileniyor...');
-        await refreshData();
-        console.log('🔄 Personel listesi yenilendi, yeni personel sayısı:', personnelData.length);
-        
-        // Sonuç mesajını hazırla
-        const afterCount = personnelData.length;
-        const actualNewCount = afterCount - beforeCount;
-        
-        console.log(`📊 Önceki sayı: ${beforeCount}, Sonraki sayı: ${afterCount}, Gerçek artış: ${actualNewCount}`);
-        
-        // İstatistikleri kaydet
-        setExcelStats({
-          total: personnelFromExcel.length,
-          newCount: actualNewCount,
-          duplicateCount: duplicateCount,
-          errorCount: errorCount,
-          newPersonnel: newPersonnel,
-          duplicatePersonnel: duplicatePersonnel
-        });
-        
-        if (actualNewCount === 0 && duplicateCount > 0) {
-          // Hiç yeni kayıt yok, sadece duplicate'lar var
-          setExcelError(`Hiç yeni personel eklenmedi! ${duplicateCount} kayıt zaten mevcut.`);
-        } else if (actualNewCount > 0 && duplicateCount > 0) {
-          // Hem yeni hem duplicate kayıtlar var
-          setExcelSuccess(true);
-          setTimeout(() => {
-            setExcelSuccess(false);
-            setExcelStats(null);
-          }, 5000);
-          console.log(`ℹ️ Karışık sonuç: ${actualNewCount} yeni, ${duplicateCount} duplicate`);
-        } else if (actualNewCount > 0 && duplicateCount === 0) {
-          // Sadece yeni kayıtlar var
-          setExcelSuccess(true);
-          setTimeout(() => {
-            setExcelSuccess(false);
-            setExcelStats(null);
-          }, 3000);
-        } else {
-          // Hiç işlem yapılmadı
-          setExcelError(`Hiç personel işlenemedi! ${errorCount} hata oluştu.`);
-        }
-        
-      } catch (error) {
-        console.error('❌ Excel işleme hatası:', error);
-        setExcelError('Excel dosyası işlenirken hata oluştu: ' + error.message);
-        setExcelSuccess(false); // Error durumunda success'i temizle
-        setExcelStats(null); // Error durumunda stats'i temizle
-      } finally {
-        setExcelLoading(false);
-        // File input'u temizle
-        event.target.value = '';
+      });
+
+      console.log('📅 Hafta bilgileri:', { weekLabel, startDate, endDate });
+
+      if (!weekLabel) {
+        alert('Excel dosyasında tarih bilgisi bulunamadı!');
+        return;
       }
-    };
-    
-    reader.onerror = (error) => {
-      console.error('❌ Dosya okuma hatası:', error);
-      setExcelError('Dosya okuma hatası oluştu');
-      setExcelSuccess(false);
-      setExcelStats(null);
-      setExcelLoading(false);
-    };
-    
-    reader.readAsBinaryString(file);
+
+      // Yeni sistemi kullanarak verileri kaydet
+      const result = await saveCurrentWeekExcelData(data, weekLabel, startDate, endDate);
+      
+      if (result.success) {
+        console.log('✅ Güncel hafta verileri başarıyla kaydedildi');
+        alert(`Güncel hafta verileri başarıyla yüklendi!\n${data.length} personel kaydı işlendi.`);
+        
+        // Verileri yenile
+        await loadCurrentShiftData();
+        await calculateShiftStatistics();
+      } else {
+        console.error('❌ Veriler kaydedilemedi:', result.error);
+        alert('Veriler kaydedilirken hata oluştu!');
+      }
+
+    } catch (error) {
+      console.error('❌ Excel yükleme hatası:', error);
+      alert('Excel dosyası yüklenirken hata oluştu!');
+    } finally {
+      setLoading(false);
+      // Input'u temizle
+      event.target.value = '';
+    }
   };
 
   // Veritabanından personel verilerini yükle

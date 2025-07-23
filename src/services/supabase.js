@@ -1570,6 +1570,7 @@ export const getWeeklySchedules = async (year = null) => {
 // Veritabanını temizleme fonksiyonu - TÜM VARDİYA VERİLERİNİ SİLER
 export const clearAllShiftData = async () => {
   try {
+    console.log('🗑️ Eski vardiya verileri temizleniyor...');
     
     const results = {
       weekly_schedules: { success: false, count: 0 },
@@ -1578,49 +1579,150 @@ export const clearAllShiftData = async () => {
 
     // 1. Weekly schedules tablosunu temizle
     try {
+      console.log('🔄 weekly_schedules tablosu kontrol ediliyor...');
       const { data: schedules, error: schedError } = await supabase
         .from('weekly_schedules')
-        .select('id');
+        .select('*');
       
-      if (!schedError && schedules) {
+      console.log('📊 weekly_schedules mevcut kayıtlar:', schedules?.length || 0);
+      
+      if (!schedError && schedules && schedules.length > 0) {
+        console.log('🗑️ weekly_schedules silme işlemi başlatılıyor...');
+        
+        // Tüm kayıtları tek seferde silmeyi dene
         const { error: deleteError } = await supabase
           .from('weekly_schedules')
           .delete()
-          .neq('id', 0); // Tüm kayıtları sil
+          .neq('id', 0);
         
         if (!deleteError) {
           results.weekly_schedules = { success: true, count: schedules.length };
+          console.log('✅ weekly_schedules temizlendi:', schedules.length, 'kayıt');
+        } else {
+          console.error('❌ weekly_schedules silme hatası:', deleteError);
+          results.weekly_schedules = { success: false, count: schedules.length };
         }
+      } else {
+        console.log('ℹ️ weekly_schedules tablosu zaten boş');
+        results.weekly_schedules = { success: true, count: 0 };
       }
     } catch (error) {
       console.error('❌ weekly_schedules temizleme hatası:', error);
+      results.weekly_schedules = { success: false, count: 0 };
     }
 
     // 2. Weekly periods tablosunu temizle
     try {
+      console.log('🔄 weekly_periods tablosu kontrol ediliyor...');
       const { data: periods, error: periodError } = await supabase
         .from('weekly_periods')
-        .select('id');
+        .select('*');
       
-      if (!periodError && periods) {
-        const { error: deleteError } = await supabase
-          .from('weekly_periods')
-          .delete()
-          .neq('id', 0); // Tüm kayıtları sil
+      console.log('📊 weekly_periods mevcut kayıtlar:', periods?.length || 0);
+      
+      if (!periodError && periods && periods.length > 0) {
+        console.log('🗑️ weekly_periods silme işlemi başlatılıyor...');
         
-        if (!deleteError) {
-          results.weekly_periods = { success: true, count: periods.length };
+        // RLS sorunu olabilir, direkt SQL query deneyelim
+        console.log('🔄 SQL query ile silme deneniyor...');
+        
+        try {
+          // SQL query ile direkt silme
+          const { error: sqlError } = await supabase
+            .rpc('execute_sql', { 
+              sql: 'DELETE FROM weekly_periods;' 
+            });
+          
+          if (!sqlError) {
+            console.log('✅ SQL ile silme başarılı');
+          } else {
+            console.error('❌ SQL silme hatası:', sqlError);
+            
+            // SQL çalışmazsa normal delete dene
+            console.log('🔄 Normal delete deneniyor...');
+            const { error: normalDeleteError } = await supabase
+              .from('weekly_periods')
+              .delete()
+              .neq('id', 0);
+            
+            if (!normalDeleteError) {
+              console.log('✅ Normal delete başarılı');
+            } else {
+              console.error('❌ Normal delete hatası:', normalDeleteError);
+              
+              // En son çare: Tek tek silme
+              console.log('🔄 Tek tek silme deneniyor...');
+              for (const period of periods) {
+                console.log('🗑️ Siliniyor:', period.id, period.start_date, period.end_date);
+                const { error: singleDeleteError } = await supabase
+                  .from('weekly_periods')
+                  .delete()
+                  .eq('id', period.id);
+                
+                if (singleDeleteError) {
+                  console.error('❌ Tek kayıt silme hatası:', singleDeleteError);
+                  console.error('❌ Hata detayı:', singleDeleteError.message);
+                  console.error('❌ Hata kodu:', singleDeleteError.code);
+                } else {
+                  console.log('✅ Başarıyla silindi:', period.id);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ SQL query hatası:', error);
+          
+          // Hata durumunda normal delete dene
+          console.log('🔄 Normal delete deneniyor...');
+          const { error: normalDeleteError } = await supabase
+            .from('weekly_periods')
+            .delete()
+            .neq('id', 0);
+          
+          if (!normalDeleteError) {
+            console.log('✅ Normal delete başarılı');
+          } else {
+            console.error('❌ Normal delete hatası:', normalDeleteError);
+          }
         }
+        
+        // Silme sonrası kontrol
+        const { data: remainingPeriods, error: checkError } = await supabase
+          .from('weekly_periods')
+          .select('*');
+        
+        console.log('📊 Silme sonrası kalan kayıtlar:', remainingPeriods?.length || 0);
+        
+        if (!checkError && remainingPeriods.length === 0) {
+          results.weekly_periods = { success: true, count: periods.length };
+          console.log('✅ weekly_periods başarıyla temizlendi:', periods.length, 'kayıt');
+        } else {
+          console.error('❌ weekly_periods tam temizlenemedi, kalan:', remainingPeriods?.length || 0);
+          results.weekly_periods = { success: false, count: periods.length };
+        }
+      } else {
+        console.log('ℹ️ weekly_periods tablosu zaten boş');
+        results.weekly_periods = { success: true, count: 0 };
       }
     } catch (error) {
+      console.error('❌ weekly_periods temizleme hatası:', error);
+      results.weekly_periods = { success: false, count: 0 };
     }
 
-    // shift_statistics tablosu artık kullanılmıyor
-
+    console.log('✅ Eski vardiya verileri temizlendi');
+    
+    // RLS sorunu varsa kullanıcıya bilgi ver
+    if (results.weekly_periods.success === false) {
+      return { 
+        success: false, 
+        message: `⚠️ RLS Sorunu: weekly_periods tablosu silinemedi. Supabase Dashboard'dan manuel olarak silmeniz gerekiyor.`,
+        results 
+      };
+    }
     
     return { 
       success: true, 
-      message: `Temizleme tamamlandı: ${results.weekly_schedules.count} program, ${results.weekly_periods.count} dönem silindi`,
+      message: `Temizleme tamamlandı: ${results.weekly_schedules.count} program, ${results.weekly_periods.count} dönem silindi. Güncel vardiya verileri ve günlük notlar korundu.`,
       results 
     };
     
@@ -1716,5 +1818,275 @@ export const saveExcelData = async (periods, schedules) => {
   } catch (error) {
     console.error('❌ Excel veri kaydetme hatası:', error);
     return { success: false, error: error.message };
+  }
+}; 
+
+// Current Weekly Shifts - Güncel hafta vardiya verileri
+export const saveCurrentWeeklyShifts = async (shiftsData) => {
+  try {
+    console.log('🔄 Güncel hafta vardiya verileri kaydediliyor...');
+    
+    // Önce mevcut güncel verileri temizle
+    const { error: deleteError } = await supabase
+      .from('current_weekly_shifts')
+      .delete()
+      .neq('id', 0); // Tüm kayıtları sil
+    
+    if (deleteError) {
+      console.error('❌ Mevcut veriler silinemedi:', deleteError);
+      return { success: false, error: deleteError };
+    }
+    
+    console.log('✅ Mevcut güncel veriler temizlendi');
+    
+    // Yeni verileri ekle
+    console.log('🔄 Güncel vardiya verileri ekleniyor:', shiftsData.length, 'kayıt');
+    const { data, error } = await supabase
+      .from('current_weekly_shifts')
+      .insert(shiftsData)
+      .select();
+    
+    if (error) {
+      console.error('❌ Güncel vardiya verileri kaydedilemedi:', error);
+      console.error('❌ Hata detayı:', error.message);
+      console.error('❌ Hata kodu:', error.code);
+      return { success: false, error };
+    }
+    
+    console.log('✅ Güncel vardiya verileri kaydedildi:', data.length, 'kayıt');
+    return { success: true, data };
+  } catch (error) {
+    console.error('❌ Güncel vardiya verileri kaydetme hatası:', error);
+    return { success: false, error };
+  }
+};
+
+export const getCurrentWeeklyShifts = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('current_weekly_shifts')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Güncel vardiya verileri çekilemedi:', error);
+      return { success: false, error };
+    }
+    
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('❌ Güncel vardiya verileri çekme hatası:', error);
+    return { success: false, error };
+  }
+};
+
+// Excel'den güncel hafta verilerini yükleme
+export const saveCurrentWeekExcelData = async (excelData, weekLabel, startDate, endDate) => {
+  try {
+    console.log('🔄 Güncel hafta Excel verileri işleniyor...');
+    
+    // 1. Önce aynı tarihli mevcut veriyi kontrol et
+    const { data: existingPeriod, error: checkError } = await supabase
+      .from('weekly_periods')
+      .select('*')
+      .eq('week_label', weekLabel)
+      .eq('start_date', startDate)
+      .eq('end_date', endDate)
+      .single();
+    
+    if (existingPeriod) {
+      console.log('⚠️ Aynı tarihli veri mevcut:', existingPeriod);
+      return { 
+        success: false, 
+        error: 'Aynı tarihli veri zaten mevcut!', 
+        existingData: existingPeriod,
+        isDuplicate: true 
+      };
+    }
+    
+    // 2. Önce weekly_periods'a yeni dönem ekle
+    const periodData = {
+      week_label: weekLabel,
+      start_date: startDate,
+      end_date: endDate,
+      year: new Date(startDate).getFullYear(), // Year değerini ekle
+      is_current: true // Güncel dönem işareti
+    };
+    
+    // Mevcut güncel dönemleri false yap
+    await supabase
+      .from('weekly_periods')
+      .update({ is_current: false })
+      .eq('is_current', true);
+    
+    // Yeni dönemi ekle
+    console.log('🔄 Yeni dönem ekleniyor:', periodData);
+    const { data: periodResult, error: periodError } = await supabase
+      .from('weekly_periods')
+      .insert(periodData)
+      .select()
+      .single();
+    
+    if (periodError) {
+      console.error('❌ Dönem kaydedilemedi:', periodError);
+      console.error('❌ Hata detayı:', periodError.message);
+      console.error('❌ Hata kodu:', periodError.code);
+      return { success: false, error: periodError };
+    }
+    
+    console.log('✅ Yeni dönem kaydedildi:', periodResult);
+    
+    // 2. Excel verilerini current_weekly_shifts'e kaydet
+    const shiftsData = excelData.map(row => {
+      // Sütun adlarını kontrol et ve debug log ekle
+      console.log('🔍 Excel satırı:', row);
+      console.log('🔍 Sütun adları:', Object.keys(row));
+      
+      const employeeCode = row['Personel ID'] || row['PERSONEL ID'] || row['PersonelID'];
+      const fullName = row['ADI SOYADI'] || row['Ad Soyad'] || row['AD SOYAD'];
+      const position = row['GÖREVİ'] || row['Görev'] || row['GOREV'];
+      
+      console.log('🔍 Çıkarılan veriler:', { employeeCode, fullName, position });
+      
+      return {
+        employee_code: employeeCode,
+        full_name: fullName,
+        position: position,
+        shift_type: getShiftTypeFromExcel(row[weekLabel]),
+        shift_details: row[weekLabel],
+        period_id: periodResult.id,
+        week_label: weekLabel,
+        start_date: startDate,
+        end_date: endDate
+      };
+    }).filter(shift => shift.employee_code && shift.full_name); // Boş verileri filtrele
+    
+    console.log('🔍 İşlenecek vardiya verileri:', shiftsData.length, 'kayıt');
+    
+    const shiftsResult = await saveCurrentWeeklyShifts(shiftsData);
+    
+    if (!shiftsResult.success) {
+      return shiftsResult;
+    }
+    
+    // 3. Aynı verileri weekly_schedules tablosuna da kaydet (genel tablo için)
+    const weeklySchedulesData = shiftsData.map(shift => ({
+      employee_code: shift.employee_code,
+      full_name: shift.full_name,
+      position: shift.position,
+      shift_type: shift.shift_type,
+      shift_hours: shift.shift_details,
+      period_id: periodResult.id,
+      week_label: weekLabel,
+      start_date: startDate,
+      end_date: endDate,
+      year: new Date(startDate).getFullYear()
+    }));
+    
+    console.log('🔄 Weekly schedules tablosuna kaydediliyor...');
+    const { data: schedulesData, error: schedulesError } = await supabase
+      .from('weekly_schedules')
+      .insert(weeklySchedulesData)
+      .select();
+    
+    if (schedulesError) {
+      console.error('❌ Weekly schedules kaydedilemedi:', schedulesError);
+      return { success: false, error: schedulesError };
+    }
+    
+    console.log('✅ Weekly schedules kaydedildi:', schedulesData.length, 'kayıt');
+    console.log('✅ Güncel hafta verileri başarıyla kaydedildi');
+    return { success: true, data: { period: periodResult, shifts: shiftsResult.data, schedules: schedulesData } };
+    
+  } catch (error) {
+    console.error('❌ Güncel hafta Excel verileri işleme hatası:', error);
+    return { success: false, error };
+  }
+};
+
+// Excel'deki vardiya tipini belirle
+const getShiftTypeFromExcel = (shiftValue) => {
+  if (!shiftValue) return 'belirsiz';
+  
+  const value = shiftValue.toString().toLowerCase().trim();
+  
+  // Yıllık izin kontrolü
+  if (value.includes('yıllık izin') || value.includes('yillik izin') || 
+      value.includes('izinli')) {
+    return 'yillik_izin';
+  }
+  
+  // Raporlu kontrolü
+  if (value.includes('rapor') || value.includes('raporlu')) {
+    return 'raporlu';
+  }
+  
+  // Habersiz kontrolü
+  if (value.includes('habersiz') || value.includes('gelmedi')) {
+    return 'habersiz';
+  }
+  
+  // Gece vardiyası kontrolü
+  if (value.includes('22:00') || value.includes('23:00') || 
+      value.includes('00:00') || value.includes('06:00') ||
+      value.includes('gece')) {
+    return 'gece';
+  }
+  
+  // Gündüz vardiyası kontrolü
+  if (value.includes('08:00') || value.includes('16:00') ||
+      value.includes('gunduz') || value.includes('gündüz')) {
+    return 'gunduz';
+  }
+  
+  return 'belirsiz';
+};
+
+// Belirli bir dönem ve vardiya verilerini silme
+export const deletePeriodAndShifts = async (periodId) => {
+  try {
+    console.log('🗑️ Dönem ve vardiya verileri siliniyor...', periodId);
+    
+    // Önce dönem bilgisini al
+    const { data: period, error: periodFetchError } = await supabase
+      .from('weekly_periods')
+      .select('week_label')
+      .eq('id', periodId)
+      .single();
+    
+    if (periodFetchError) {
+      console.error('❌ Dönem bilgisi alınamadı:', periodFetchError);
+      return { success: false, error: periodFetchError };
+    }
+    
+    console.log('🔍 Silinecek dönem:', period);
+    
+    // Vardiya verilerini week_label ile sil
+    const { error: shiftsError } = await supabase
+      .from('current_weekly_shifts')
+      .delete()
+      .eq('week_label', period.week_label);
+    
+    if (shiftsError) {
+      console.error('❌ Vardiya verileri silinemedi:', shiftsError);
+      return { success: false, error: shiftsError };
+    }
+    
+    // Sonra dönemi sil
+    const { error: periodError } = await supabase
+      .from('weekly_periods')
+      .delete()
+      .eq('id', periodId);
+    
+    if (periodError) {
+      console.error('❌ Dönem silinemedi:', periodError);
+      return { success: false, error: periodError };
+    }
+    
+    console.log('✅ Dönem ve vardiya verileri başarıyla silindi');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Dönem silme hatası:', error);
+    return { success: false, error };
   }
 }; 

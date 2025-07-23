@@ -27,6 +27,7 @@ function MainApp() {
   const [vehicleData, setVehicleData] = useState([]);
   const [storeData, setStoreData] = useState([]);
   const [generatedPlan, setGeneratedPlan] = useState(null);
+  const [currentShiftData, setCurrentShiftData] = useState([]);
   const [userRole, setUserRole] = useState('user');
   const [userDetails, setUserDetails] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -1099,6 +1100,7 @@ function MainApp() {
                 personnelData={personnelData}
                 vehicleData={vehicleData}
                 userRole={userRole}
+                currentShiftData={currentShiftData}
               />
             )}
             
@@ -1132,7 +1134,11 @@ function MainApp() {
 
             {/* Vardiya Kontrol */}
             {activeTab === 'vardiya-kontrol' && (
-              <PersonelVardiyaKontrol userRole={userRole} onDataUpdate={refreshData} />
+              <PersonelVardiyaKontrol 
+                userRole={userRole} 
+                onDataUpdate={refreshData}
+                onCurrentShiftDataUpdate={setCurrentShiftData}
+              />
             )}
 
             {/* Admin Panel */}

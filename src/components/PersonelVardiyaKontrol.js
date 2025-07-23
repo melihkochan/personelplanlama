@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info, Check } from 'lucide-react';
+import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info, Check, Car, Edit3, Moon, Sun } from 'lucide-react';
 import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, saveCurrentWeekExcelData, deletePeriodAndShifts, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
@@ -113,7 +113,7 @@ const SkeletonLoading = ({ type = 'table', rows = 5 }) => {
   return null;
 };
 
-const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
+const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpdate }) => {
   // getMonthName fonksiyonunu en başta tanımla
   const getMonthName = (month) => {
     const months = [
@@ -221,6 +221,15 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
   });
   const [shiftEditLoading, setShiftEditLoading] = useState(false);
 
+  // Güncel vardiya düzenleme state'leri
+  const [editingCurrentShift, setEditingCurrentShift] = useState(null);
+  const [showCurrentShiftEditModal, setShowCurrentShiftEditModal] = useState(false);
+  const [currentShiftEditForm, setCurrentShiftEditForm] = useState({
+    shift_type: '',
+    shift_hours: ''
+  });
+  const [currentShiftEditLoading, setCurrentShiftEditLoading] = useState(false);
+
   // Personel detay modalı için tarih aralığı state'leri
   const [detailDateRange, setDetailDateRange] = useState({
     startDate: new Date().toISOString().split('T')[0],
@@ -229,9 +238,16 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
   const [filteredPersonnelDetails, setFilteredPersonnelDetails] = useState([]);
   const [filteredDailyNotes, setFilteredDailyNotes] = useState([]);
   
-  // Hafta detayları için state
+  // Güncel vardiya state'leri
+  const [currentShiftData, setCurrentShiftData] = useState([]);
+  const [currentShiftLoading, setCurrentShiftLoading] = useState(false);
+  const [currentPeriod, setCurrentPeriod] = useState(null);
   
-
+  // Infinite scroll state'leri
+  const [currentShiftPage, setCurrentShiftPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageSize] = useState(20); // Sayfa başına 20 kayıt
 
   // Mevcut dönem bilgisini hesapla
   const getCurrentPeriod = () => {
@@ -552,9 +568,22 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
   useEffect(() => {
     loadInitialData();
     loadDailyNotes();
+    loadCurrentShiftData();
   }, []);
 
+  // Güncel vardiya tab'ı aktif olduğunda verileri yükle
+  useEffect(() => {
+    if (activeTab === 'current-shift') {
+      loadCurrentShiftData();
+    }
+  }, [activeTab]);
 
+  // currentShiftData güncellendiğinde parent'a bildir
+  useEffect(() => {
+    if (onCurrentShiftDataUpdate && currentShiftData.length > 0) {
+      onCurrentShiftDataUpdate(currentShiftData);
+    }
+  }, [currentShiftData, onCurrentShiftDataUpdate]);
 
   // Takvim görünümünde veri güncellemesi için
   useEffect(() => {
@@ -1843,6 +1872,160 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
     }
   };
 
+  // Güncel vardiya verilerini yükle (infinite scroll)
+  const loadCurrentShiftData = async (page = 1, append = false) => {
+    if (page === 1) {
+      setCurrentShiftLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
+    try {
+      console.log('🔍 Güncel vardiya verileri yükleniyor...');
+      
+      // En güncel dönemi bul
+      const { data: periods, error: periodsError } = await supabase
+        .from('weekly_periods')
+        .select('*')
+        .order('start_date', { ascending: false })
+        .limit(1);
+      
+      if (periodsError) {
+        console.error('❌ Güncel dönem bulunamadı:', periodsError);
+        return;
+      }
+      
+      console.log('📊 Bulunan dönemler:', periods);
+      
+      if (periods && periods.length > 0) {
+        const latestPeriod = periods[0];
+        setCurrentPeriod(latestPeriod);
+        
+        console.log('✅ En güncel dönem bulundu:', latestPeriod);
+        
+        // Bu dönemdeki tüm vardiya verilerini getir (sayfalama yok)
+        console.log('🔍 Vardiya verileri aranıyor... Period ID:', latestPeriod.id);
+        
+        const { data: shifts, error: shiftsError } = await supabase
+          .from('weekly_schedules')
+          .select('*')
+          .eq('period_id', latestPeriod.id)
+          .order('employee_code', { ascending: true });
+        
+        if (shiftsError) {
+          console.error('❌ Güncel vardiya verileri getirilemedi:', shiftsError);
+          return;
+        }
+        
+        console.log('📊 Bulunan vardiya verileri:', shifts);
+        
+        if (shifts && shifts.length > 0) {
+          // Personel listesini getir (sadece gerekli olanları)
+          const employeeCodes = shifts.map(s => s.employee_code);
+          console.log('🔍 Aranan personel kodları:', employeeCodes);
+          
+          const { data: personnel, error: personnelError } = await supabase
+            .from('personnel')
+            .select('employee_code, full_name, position')
+            .in('employee_code', employeeCodes);
+          
+          if (personnelError) {
+            console.error('❌ Personel verileri getirilemedi:', personnelError);
+            return;
+          }
+          
+          console.log('📊 Bulunan personel verileri:', personnel);
+          
+          // Personel bilgilerini birleştir
+          const personnelMap = {};
+          personnel.forEach(p => {
+            personnelMap[p.employee_code] = p;
+          });
+          
+          const enrichedShifts = shifts.map(shift => {
+            const person = personnelMap[shift.employee_code];
+            return {
+              ...shift,
+              full_name: person?.full_name || 'Bilinmeyen',
+              position: person?.position || 'Belirtilmemiş'
+            };
+          });
+          
+          if (append) {
+            setCurrentShiftData(prev => [...prev, ...enrichedShifts]);
+          } else {
+            setCurrentShiftData(enrichedShifts);
+          }
+          
+          // Daha fazla veri var mı kontrol et
+          setHasMore(shifts.length === pageSize);
+          setCurrentShiftPage(page);
+          
+          console.log('✅ Güncel vardiya verileri yüklendi:', enrichedShifts.length, 'kayıt (sayfa:', page, ')');
+          console.log('📊 Örnek veri:', enrichedShifts[0]);
+        } else {
+          console.log('⚠️ Bu dönemde vardiya verisi bulunamadı');
+          setCurrentShiftData([]);
+          setHasMore(false);
+        }
+      } else {
+        console.log('⚠️ Hiç dönem bulunamadı');
+        setCurrentShiftData([]);
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('❌ Güncel vardiya verileri yükleme hatası:', error);
+    } finally {
+      setCurrentShiftLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Güncel vardiya düzenleme fonksiyonları
+  const handleEditCurrentShift = (shift) => {
+    setEditingCurrentShift(shift);
+    setCurrentShiftEditForm({
+      shift_type: shift.shift_type || '',
+      shift_hours: shift.shift_hours || ''
+    });
+    setShowCurrentShiftEditModal(true);
+  };
+
+  const handleUpdateCurrentShift = async (e) => {
+    e.preventDefault();
+    setCurrentShiftEditLoading(true);
+    
+    try {
+      const { error } = await supabase
+        .from('weekly_schedules')
+        .update({
+          shift_type: currentShiftEditForm.shift_type,
+          shift_hours: currentShiftEditForm.shift_hours
+        })
+        .eq('id', editingCurrentShift.id);
+      
+      if (error) {
+        console.error('❌ Vardiya güncellenemedi:', error);
+        return;
+      }
+      
+      console.log('✅ Vardiya başarıyla güncellendi');
+      
+      // Verileri yenile
+      loadCurrentShiftData();
+      
+      // Modal'ı kapat
+      setShowCurrentShiftEditModal(false);
+      setEditingCurrentShift(null);
+      setCurrentShiftEditForm({ shift_type: '', shift_hours: '' });
+      
+    } catch (error) {
+      console.error('❌ Vardiya güncelleme hatası:', error);
+    } finally {
+      setCurrentShiftEditLoading(false);
+    }
+  };
+
   // Günlük notlar yüklendiğinde bugünkü durumu da güncelle
   useEffect(() => {
     if (dailyNotes.length > 0) {
@@ -2167,6 +2350,18 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
               >
                 <BarChart3 className="w-4 h-4 inline mr-1" />
                 Aylık Detay
+              </button>
+
+              <button
+                onClick={() => setActiveTab('current-shift')}
+                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === 'current-shift'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Users className="w-4 h-4 inline mr-1" />
+                Güncel Vardiya
               </button>
 
               <button
@@ -2918,6 +3113,277 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                     </div>
                   );
                 })()}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'current-shift' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="mb-6">
+                  <h4 className="text-xl font-bold text-gray-900">Güncel Vardiya</h4>
+                </div>
+
+                {currentShiftLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+                      <div className="text-lg font-semibold text-gray-700 mb-2">Güncel Vardiya Verileri Yükleniyor</div>
+                      <div className="text-sm text-gray-500">Lütfen bekleyin...</div>
+                    </div>
+                  </div>
+                ) : currentShiftData.length === 0 ? (
+                  <div className="text-center py-16">
+                    <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Güncel Vardiya Verisi Bulunamadı</h3>
+                    <p className="text-gray-500 mb-6">Henüz yüklenmiş bir vardiya programı bulunmuyor.</p>
+                    <button
+                      onClick={loadCurrentShiftData}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2 inline" />
+                      Tekrar Dene
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Dönem Bilgisi */}
+                    {currentPeriod && (
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="text-lg font-semibold text-blue-900 mb-1">📅 Güncel Dönem</h5>
+                            <p className="text-blue-700">{currentPeriod.week_label}</p>
+                            <p className="text-sm text-blue-600">
+                              {new Date(currentPeriod.start_date).toLocaleDateString('tr-TR')} - {new Date(currentPeriod.end_date).toLocaleDateString('tr-TR')}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-blue-900">{currentShiftData.length}</div>
+                            <div className="text-sm text-blue-600">Personel</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Personel Listesi */}
+                    <div className="space-y-4">
+                      {(() => {
+                        // Önce göreve göre, sonra sicil numarasına göre sırala
+                        const sortedData = [...currentShiftData].sort((a, b) => {
+                          // Önce göreve göre sırala (Sevkiyat Elemanı önce, Şoför sonra)
+                          const aRole = a.position || '';
+                          const bRole = b.position || '';
+                          
+                          const aIsSevkiyat = aRole.toUpperCase().includes('SEVKİYAT');
+                          const bIsSevkiyat = bRole.toUpperCase().includes('SEVKİYAT');
+                          const aIsSofor = aRole.toUpperCase().includes('ŞOFÖR');
+                          const bIsSofor = bRole.toUpperCase().includes('ŞOFÖR');
+                          
+                          // Sevkiyat Elemanı önce, Şoför sonra
+                          if (aIsSevkiyat && !bIsSevkiyat) return -1;
+                          if (!aIsSevkiyat && bIsSevkiyat) return 1;
+                          if (aIsSofor && !bIsSofor) return -1;
+                          if (!aIsSofor && bIsSofor) return 1;
+                          
+                          // Aynı görevdeyse sicil numarasına göre sırala
+                          const aCode = parseInt(a.employee_code) || 0;
+                          const bCode = parseInt(b.employee_code) || 0;
+                          return aCode - bCode;
+                        });
+
+                        // Tüm personelleri tek listede göster, sicil numarasına göre sıralı
+                        return (
+                          <div className="bg-white rounded-xl p-6 border border-gray-200">
+                            <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                              <Users className="w-5 h-5 mr-2" />
+                              Tüm Personel ({sortedData.length})
+                            </h5>
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                              <div className="overflow-x-auto">
+                                <table className="w-full">
+                                  <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                                    <tr>
+                                      <th className="px-6 py-4 text-left text-sm font-semibold">Sicil No</th>
+                                      <th className="px-6 py-4 text-left text-sm font-semibold">Ad Soyad</th>
+                                      <th className="px-6 py-4 text-left text-sm font-semibold">Görev</th>
+                                      <th className="px-6 py-4 text-left text-sm font-semibold">Vardiya</th>
+                                      <th className="px-6 py-4 text-left text-sm font-semibold">Saat</th>
+                                      <th className="px-6 py-4 text-center text-sm font-semibold">İşlem</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200">
+                                    {sortedData.map((person, index) => {
+                                      // Göreve göre renk belirle
+                                      const isSevkiyat = person.position && person.position.toUpperCase().includes('SEVKİYAT');
+                                      const isSofor = person.position && person.position.toUpperCase().includes('ŞOFÖR');
+                                      
+                                      const rowColor = isSevkiyat ? 'bg-blue-50 hover:bg-blue-100' : 
+                                                      isSofor ? 'bg-green-50 hover:bg-green-100' : 
+                                                      'bg-gray-50 hover:bg-gray-100';
+                                      
+                                      const badgeColor = isSevkiyat ? 'bg-blue-100 text-blue-800' : 
+                                                       isSofor ? 'bg-green-100 text-green-800' : 
+                                                       'bg-gray-100 text-gray-800';
+                                      
+                                      const buttonColor = isSevkiyat ? 'bg-blue-600 hover:bg-blue-700' : 
+                                                         isSofor ? 'bg-green-600 hover:bg-green-700' : 
+                                                         'bg-gray-600 hover:bg-gray-700';
+                                      
+                                      return (
+                                        <tr key={person.employee_code} className={`${rowColor} transition-colors duration-200`}>
+                                          <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                                isSevkiyat ? 'bg-blue-600' :
+                                                isSofor ? 'bg-green-600' :
+                                                'bg-gray-600'
+                                              }`}>
+                                                {person.employee_code}
+                                              </div>
+                                            </div>
+                                          </td>
+                                          <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-semibold text-gray-900">{person.full_name}</div>
+                                          </td>
+                                          <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${badgeColor}`}>
+                                              {person.position}
+                                            </span>
+                                          </td>
+                                          <td className="px-6 py-4 whitespace-nowrap">
+                                            {person.shift_type ? (
+                                              <div className="flex items-center">
+                                                {(() => {
+                                                  switch (person.shift_type) {
+                                                    case 'gece':
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                                                          <Moon className="w-3 h-3 mr-1" />
+                                                          Gece
+                                                        </span>
+                                                      );
+                                                    case 'gunduz':
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+                                                          <Sun className="w-3 h-3 mr-1" />
+                                                          Gündüz
+                                                        </span>
+                                                      );
+                                                    case 'aksam':
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300">
+                                                          🌆 Akşam
+                                                        </span>
+                                                      );
+                                                    case 'gecici':
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                                          🔄 Geçici
+                                                        </span>
+                                                      );
+                                                    case 'izin':
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
+                                                          🛌 İzinli
+                                                        </span>
+                                                      );
+                                                    case 'yillik_izin':
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+                                                          🏖️ Yıllık İzin
+                                                        </span>
+                                                      );
+                                                    case 'raporlu':
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
+                                                          🏥 Raporlu
+                                                        </span>
+                                                      );
+                                                    default:
+                                                      return (
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+                                                          ❓ Belirsiz
+                                                        </span>
+                                                      );
+                                                  }
+                                                })()}
+                                              </div>
+                                            ) : (
+                                              <span className="text-sm text-gray-500">-</span>
+                                            )}
+                                          </td>
+                                          <td className="px-6 py-4 whitespace-nowrap">
+                                            {person.shift_type === 'yillik_izin' ? (
+                                              <span className="text-sm px-3 py-1 rounded-lg border font-medium shadow-sm bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-900 border-yellow-400">
+                                                Yıllık izinli
+                                              </span>
+                                            ) : person.shift_type === 'raporlu' ? (
+                                              <span className="text-sm px-3 py-1 rounded-lg border font-medium shadow-sm bg-gradient-to-r from-red-100 to-red-200 text-red-900 border-red-400">
+                                                Raporlu
+                                              </span>
+                                            ) : person.shift_type === 'izin' ? (
+                                              <span className="text-sm px-3 py-1 rounded-lg border font-medium shadow-sm bg-gradient-to-r from-red-100 to-red-200 text-red-900 border-red-400">
+                                                İzinli
+                                              </span>
+                                            ) : person.shift_hours ? (
+                                              <span className={`text-sm px-3 py-1 rounded-lg border font-medium shadow-sm ${
+                                                person.shift_type === 'gece'
+                                                  ? 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-900 border-purple-400' :
+                                                person.shift_type === 'gunduz'
+                                                  ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-900 border-yellow-400' :
+                                                person.shift_type === 'aksam'
+                                                  ? 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-900 border-orange-400' :
+                                                person.shift_type === 'gecici'
+                                                  ? 'bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-900 border-indigo-400' :
+                                                  'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 border-gray-400'
+                                              }`}>
+                                                {person.shift_hours}
+                                              </span>
+                                            ) : (
+                                              <span className="text-sm text-gray-500">-</span>
+                                            )}
+                                          </td>
+                                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <button
+                                              onClick={() => handleEditCurrentShift(person)}
+                                              className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 flex items-center space-x-1 text-white shadow-sm hover:shadow-md transform hover:scale-105 ${buttonColor}`}
+                                            >
+                                              <Edit3 className="w-3 h-3" />
+                                              <span>Düzenle</span>
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                            {/* Loading More Indicator */}
+                            {loadingMore && (
+                              <div className="flex items-center justify-center py-8">
+                                <div className="text-center">
+                                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
+                                  <div className="text-sm text-gray-600">Daha fazla veri yükleniyor...</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* No More Data Indicator */}
+                            {!hasMore && currentShiftData.length > 0 && (
+                              <div className="text-center py-4 text-gray-500 text-sm">
+                                Tüm veriler yüklendi
+                              </div>
+                            )}
+                        
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -4211,6 +4677,126 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
         </div>
       )}
 
+      {/* Güncel Vardiya Düzenleme Modal */}
+      {showCurrentShiftEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 rounded-t-xl">
+              <h3 className="text-lg font-bold text-white flex items-center">
+                <Edit className="w-5 h-5 mr-2" />
+                Güncel Vardiya Düzenle
+              </h3>
+            </div>
+            
+            <div className="p-6">
+              {editingCurrentShift && (
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-2">Düzenlenecek Personel:</div>
+                  <div className="font-semibold text-gray-900">{editingCurrentShift.full_name}</div>
+                  <div className="text-sm text-gray-600">Sicil No: {editingCurrentShift.employee_code}</div>
+                  <div className="text-sm text-gray-600">Görev: {editingCurrentShift.position}</div>
+                </div>
+              )}
+              
+              <form onSubmit={handleUpdateCurrentShift}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vardiya Türü
+                    </label>
+                    <select
+                      value={currentShiftEditForm.shift_type}
+                      onChange={(e) => {
+                        const newShiftType = e.target.value;
+                        let newShiftHours = currentShiftEditForm.shift_hours;
+                        
+                        // Vardiya türüne göre otomatik saat güncelleme
+                        if (newShiftType === 'gece') {
+                          newShiftHours = '22:00 - 06:00';
+                        } else if (newShiftType === 'gunduz') {
+                          newShiftHours = '08:00 - 16:00';
+                        } else if (newShiftType === 'aksam') {
+                          newShiftHours = '16:00 - 00:00';
+                        } else if (newShiftType === 'yillik_izin') {
+                          newShiftHours = 'Yıllık izinli';
+                        } else if (newShiftType === 'raporlu') {
+                          newShiftHours = 'Raporlu';
+                        } else if (newShiftType === 'gecici') {
+                          newShiftHours = 'Geçici görev';
+                        }
+                        
+                        setCurrentShiftEditForm({
+                          ...currentShiftEditForm, 
+                          shift_type: newShiftType,
+                          shift_hours: newShiftHours
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="" disabled>Vardiya seçin</option>
+                      <option value="gece">🌙 Gece Vardiyası</option>
+                      <option value="gunduz">☀️ Gündüz Vardiyası</option>
+                      <option value="aksam">🌆 Akşam Vardiyası</option>
+                      <option value="yillik_izin">🏖️ Yıllık İzin</option>
+                      <option value="raporlu">🏥 Raporlu</option>
+                      <option value="gecici">🔄 Geçici Görev</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vardiya Saatleri
+                    </label>
+                    <input
+                      type="text"
+                      value={currentShiftEditForm.shift_hours}
+                      onChange={(e) => setCurrentShiftEditForm({
+                        ...currentShiftEditForm,
+                        shift_hours: e.target.value
+                      })}
+                      readOnly={true}
+                      placeholder="Vardiya saatleri sabit"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+                      disabled
+                    />
+                                          <p className="text-xs text-gray-500 mt-1">
+                        Vardiya türü ve saatleri sabit olarak ayarlanmıştır
+                      </p>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCurrentShiftEditModal(false);
+                      setEditingCurrentShift(null);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={currentShiftEditLoading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {currentShiftEditLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                        Güncelleniyor...
+                      </>
+                    ) : (
+                      'Güncelle'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Vardiya Düzenleme Modal */}
       {showShiftEditModal && (

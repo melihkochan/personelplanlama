@@ -4,7 +4,7 @@ import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPer
 import * as XLSX from 'xlsx';
 
 
-const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole }) => {
+const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole, currentShiftData = [] }) => {
   const [personnelData, setPersonnelData] = useState(propPersonnelData || []);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -407,7 +407,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
 
   const getVardiyaBadge = (vardiya, employeeCode = null) => {
     // Önce güncel vardiya verilerinden kontrol et
-    if (employeeCode && currentShiftData.length > 0) {
+    if (employeeCode && currentShiftData && currentShiftData.length > 0) {
       const currentShift = currentShiftData.find(shift => shift.employee_code === employeeCode);
       if (currentShift) {
         console.log(`🔍 ${employeeCode} için güncel vardiya bulundu:`, currentShift.shift_type);
@@ -463,7 +463,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         console.log(`⚠️ ${employeeCode} için güncel vardiya bulunamadı. Mevcut vardiya verileri:`, currentShiftData.map(s => s.employee_code));
       }
     } else {
-      console.log(`📊 ${employeeCode} için currentShiftData boş veya employeeCode yok. currentShiftData uzunluğu:`, currentShiftData.length);
+      console.log(`📊 ${employeeCode} için currentShiftData boş veya employeeCode yok. currentShiftData uzunluğu:`, currentShiftData ? currentShiftData.length : 'undefined');
     }
     
     // Eğer güncel vardiya verisi yoksa, eski yöntemi kullan

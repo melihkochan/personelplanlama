@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Edit3, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
-import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules } from '../services/supabase';
+import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, supabase } from '../services/supabase';
 
 
 const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole }) => {
@@ -120,62 +120,159 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   const loadCurrentShiftData = async () => {
     try {
       console.log('🔄 Güncel vardiya verileri yükleniyor...');
+
+      // En güncel week_label tarihli weekly_periods kaydını bul
+      const { data: allPeriods, error: periodError } = await supabase
+        .from('weekly_periods')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (periodError) {
+        console.error('❌ Dönem verileri çekilemedi:', periodError);
+        setCurrentShiftData([]);
+        return;
+      }
+
+      if (!allPeriods || allPeriods.length === 0) {
+        console.log('📊 Hiç dönem kaydı bulunamadı');
+        setCurrentShiftData([]);
+        return;
+      }
+
+      // week_label'daki tarihi parse edip en güncel olanı bul
+      let latestPeriod = null;
+      let latestDate = null;
+
+      console.log('🔍 Tüm dönemler:', allPeriods.length);
       
-      // 1. Weekly periods'ları çek
-      const periodsResult = await getWeeklyPeriods();
-      if (periodsResult.success) {
-        // Weekly periods'ları end_date'e göre sırala (en son biten en üstte)
-        const sortedPeriods = periodsResult.data.sort((a, b) => {
-          const dateA = new Date(a.end_date || 0);
-          const dateB = new Date(b.end_date || 0);
-          return dateB - dateA;
-        });
-        setWeeklyPeriods(sortedPeriods);
-        console.log('✅ Weekly periods yüklendi:', sortedPeriods.length);
-      } else {
-        console.error('❌ Weekly periods yüklenemedi');
-        return;
-      }
-
-      // 2. Güncel dönemi bul
-      const currentPeriod = getCurrentPeriod();
-      if (!currentPeriod) {
-        console.log('⚠️ Güncel dönem bulunamadı');
-        return;
-      }
-
-      console.log('📅 Güncel dönem:', currentPeriod.week_label);
-
-      // 3. Bu döneme ait vardiya verilerini çek
-      const schedulesResult = await getWeeklySchedules();
-      if (schedulesResult.success) {
-        const allSchedules = schedulesResult.data;
+      allPeriods.forEach((period, index) => {
+        console.log(`📅 Dönem ${index + 1}:`, period.week_label);
         
-        // Sadece güncel döneme ait verileri filtrele
-        const currentSchedules = allSchedules.filter(schedule => 
-          schedule.period_id === currentPeriod.id
-        );
+        try {
+          // week_label formatı: "20 Temmuz - 26 Temmuz 2025"
+          const weekLabel = period.week_label;
+          if (!weekLabel) {
+            console.log('⚠️ week_label boş:', period);
+            return;
+          }
 
-        console.log(`📊 Güncel dönem vardiya verileri: ${currentSchedules.length} kayıt`);
+          // İlk tarihi al (başlangıç tarihi)
+          const dateMatch = weekLabel.match(/(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+-\s+(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/);
+          
+          if (dateMatch) {
+            const [, startDay, startMonth, endDay, endMonth, year] = dateMatch;
+            const monthMap = {
+              'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
+              'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
+            };
+            
+            const startMonthNum = monthMap[startMonth];
+            const endMonthNum = monthMap[endMonth];
+            
+            console.log(`📊 Parse edilen: ${startDay} ${startMonth} ${year} -> ${startMonthNum}`);
+            
+            if (startMonthNum !== undefined && endMonthNum !== undefined) {
+              const periodDate = new Date(parseInt(year), startMonthNum, parseInt(startDay));
+              const today = new Date();
+              today.setHours(0, 0, 0, 0); // Bugünün başlangıcı
+              
+              console.log(`📅 Tarih hesaplandı:`, periodDate);
+              console.log(`📅 Bugün:`, today);
+              console.log(`📅 Gelecek mi:`, periodDate > today);
+              
+              // Sadece bugünden küçük veya eşit tarihleri kabul et
+              if (periodDate <= today) {
+                if (!latestDate || periodDate > latestDate) {
+                  latestDate = periodDate;
+                  latestPeriod = period;
+                  console.log(`✅ Yeni en güncel:`, period.week_label);
+                }
+              } else {
+                console.log(`⏭️ Gelecek tarih atlandı:`, period.week_label);
+              }
+            } else {
+              console.log('⚠️ Ay numarası bulunamadı:', startMonth, endMonth);
+            }
+          } else {
+            console.log('⚠️ Regex eşleşmedi:', weekLabel);
+          }
+        } catch (error) {
+          console.warn('⚠️ week_label parse hatası:', period.week_label, error);
+        }
+      });
 
-        // Personel bilgileriyle birleştir
+      if (!latestPeriod) {
+        console.log('📊 En güncel dönem bulunamadı, en son yüklenen kullanılıyor...');
+        // Fallback: en son yüklenen veriyi kullan
+        latestPeriod = allPeriods[0];
+      }
+
+      const currentPeriod = latestPeriod;
+
+      console.log('📅 En güncel dönem:', currentPeriod);
+      console.log('📅 Dönem detayları:', {
+        id: currentPeriod.id,
+        start_date: currentPeriod.start_date,
+        end_date: currentPeriod.end_date,
+        week_label: currentPeriod.week_label,
+        created_at: currentPeriod.created_at,
+        parsed_date: latestDate
+      });
+
+      // Bu dönem için tüm vardiyaları çek
+      const { data: currentSchedules, error: schedulesError } = await supabase
+        .from('weekly_schedules')
+        .select('*')
+        .eq('period_id', currentPeriod.id);
+
+      if (schedulesError) {
+        console.error('❌ Vardiya verileri çekilemedi:', schedulesError);
+        setCurrentShiftData([]);
+        return;
+      }
+
+      console.log('📊 Bu dönem için bulunan vardiya sayısı:', currentSchedules?.length || 0);
+
+      if (currentSchedules && currentSchedules.length > 0) {
+        // Personel bilgilerini zenginleştir
         const enrichedData = currentSchedules.map(schedule => {
           const person = personnelData.find(p => p.employee_code === schedule.employee_code);
+          
           return {
             ...schedule,
             full_name: person?.full_name || 'Bilinmeyen',
             position: person?.position || 'Bilinmeyen',
-            region: 'AND' // Varsayılan bölge
+            period_start_date: currentPeriod.start_date,
+            period_end_date: currentPeriod.end_date,
+            week_label: currentPeriod.week_label
           };
         });
 
         setCurrentShiftData(enrichedData);
-        console.log('✅ Güncel vardiya verileri yüklendi');
+        console.log('✅ Güncel vardiya verileri yüklendi:', enrichedData.length, 'kayıt');
+        
+        // Debug: Her personelin vardiya bilgisini göster
+        enrichedData.forEach((shift, index) => {
+          console.log(`👤 ${index + 1}. ${shift.full_name} (${shift.employee_code}): ${shift.shift_type}`);
+        });
+
+        // Debug: Hangi personellerin vardiya verisi olmadığını göster
+        const personelWithShift = enrichedData.map(shift => shift.employee_code);
+        const personelWithoutShift = personnelData.filter(person => !personelWithShift.includes(person.employee_code));
+        
+        if (personelWithoutShift.length > 0) {
+          console.log('⚠️ Bu dönem için vardiya verisi olmayan personeller:', personelWithoutShift.length);
+          personelWithoutShift.forEach(person => {
+            console.log(`   - ${person.full_name} (${person.employee_code})`);
+          });
+        }
       } else {
-        console.error('❌ Weekly schedules yüklenemedi');
+        console.log('📊 Bu dönem için vardiya verisi bulunamadı');
+        setCurrentShiftData([]);
       }
     } catch (error) {
       console.error('❌ Güncel vardiya verileri yükleme hatası:', error);
+      setCurrentShiftData([]);
     }
   };
 
@@ -468,6 +565,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     loadPersonnelData();
   }, []);
 
+  // Personel verileri yüklendiğinde vardiya verilerini de yükle
+  useEffect(() => {
+    if (personnelData.length > 0) {
+      loadCurrentShiftData();
+      calculateShiftStatistics();
+    }
+  }, [personnelData]);
+
   // PropPersonnelData değiştiğinde local state'i güncelle
   useEffect(() => {
     if (propPersonnelData) {
@@ -567,65 +672,57 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     if (employeeCode && currentShiftData.length > 0) {
       const currentShift = currentShiftData.find(shift => shift.employee_code === employeeCode);
       if (currentShift) {
+        console.log(`🔍 ${employeeCode} için güncel vardiya bulundu:`, currentShift.shift_type);
         const shiftType = currentShift.shift_type;
-        const shiftHours = currentShift.shift_hours;
         
         switch (shiftType) {
           case 'gece':
             return (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
                 <Moon className="w-3 h-3 mr-1" />
-                Gece ({currentShift.shift_hours || '22:00-06:00'})
+                Gece
               </span>
             );
           case 'gunduz':
             return (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
                 <Sun className="w-3 h-3 mr-1" />
-                Gündüz ({currentShift.shift_hours || '08:00-16:00'})
-              </span>
-            );
-          case 'aksam':
-            return (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300">
-                <Calendar className="w-3 h-3 mr-1" />
-                Akşam ({currentShift.shift_hours || '16:00-00:00'})
+                Gündüz
               </span>
             );
           case 'izin':
           case 'yillik_izin':
-            return (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
-                Yıllık İzin
-              </span>
-            );
           case 'raporlu':
-          case 'rapor':
             return (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                Raporlu
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
+                🛌 İzinli
               </span>
             );
-          case 'gecici_gorev':
+          case 'dinlenme':
             return (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                Geçici Görev
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+                😴 Dinlenme
               </span>
             );
           default:
             return (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                Dinlenme
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+                ❓ Belirsiz
               </span>
             );
         }
+      } else {
+        console.log(`⚠️ ${employeeCode} için güncel vardiya bulunamadı. Mevcut vardiya verileri:`, currentShiftData.map(s => s.employee_code));
       }
+    } else {
+      console.log(`📊 ${employeeCode} için currentShiftData boş veya employeeCode yok. currentShiftData uzunluğu:`, currentShiftData.length);
     }
     
-    // Eğer güncel vardiya verisi yoksa, eski sistemi kullan
-    const type = getVardiyaType(vardiya);
+    // Eğer güncel vardiya verisi yoksa, eski yöntemi kullan
+    console.log(`📊 ${employeeCode} için eski vardiya verisi kullanılıyor:`, vardiya);
+    const vardiyaType = getVardiyaType(vardiya);
     
-    switch (type) {
+    switch (vardiyaType) {
       case 'gece':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
@@ -642,16 +739,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         );
       case 'izin':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
-            <Calendar className="w-3 h-3 mr-1" />
-            İzin
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
+            🛌 İzinli
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
-            <Calendar className="w-3 h-3 mr-1" />
-            Belirsiz
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+            ❓ Belirsiz
           </span>
         );
     }

@@ -615,6 +615,11 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
       // Verileri yenile
       await loadCurrentShiftData();
       
+      // Ana sayfayı güncelle
+      if (onDataUpdate) {
+        await onDataUpdate();
+      }
+      
       // Modal'ı kapat
       setShowCurrentShiftModal(false);
       setEditingShift(null);
@@ -708,6 +713,11 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
       
       console.log('✅ Vardiya silindi');
       await loadCurrentShiftData();
+      
+      // Ana sayfayı güncelle
+      if (onDataUpdate) {
+        await onDataUpdate();
+      }
       
     } catch (error) {
       console.error('❌ Vardiya silme hatası:', error);

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Users, Calendar, FileText, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package } from 'lucide-react';
 
 import PersonelList from './components/PersonelList';
 import VehicleList from './components/VehicleList';
 import StoreList from './components/StoreList';
 import VardiyaPlanlama from './components/VardiyaPlanlama';
-import PlanDisplay from './components/PlanDisplay';
 import PerformanceAnalysis from './components/PerformanceAnalysis';
 import PersonelVardiyaKontrol from './components/PersonelVardiyaKontrol';
 import AdminPanel from './components/AdminPanel';
@@ -372,8 +371,7 @@ function MainApp() {
     { id: 'personnel', label: 'Personel Listesi', icon: Users },
     { id: 'vardiya-kontrol', label: 'Personel Kontrol', icon: Clock },
     { id: 'performance', label: 'Performans Analizi', icon: BarChart3 },
-    { id: 'planning', label: 'Vardiya Planlama', icon: Calendar },
-    { id: 'display', label: 'Plan Görüntüle', icon: FileText }
+    { id: 'planning', label: 'Vardiya Planlama', icon: Calendar }
   ];
 
   return (
@@ -560,19 +558,7 @@ function MainApp() {
                 Vardiya Planlama
               </button>
               
-              <button
-                onClick={() => handleTabChange('display')}
-                className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
-                  ${activeTab === 'display'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
-                  }
-                `}
-              >
-                <FileText className="w-5 h-5 mr-3" />
-                Plan Görüntüle
-              </button>
+
             </div>
           </nav>
 
@@ -792,22 +778,7 @@ function MainApp() {
                       Vardiya Planlama
                     </button>
                     
-                    <button
-                      onClick={() => {
-                        handleTabChange('display');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'display'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <FileText className="w-5 h-5 mr-3" />
-                      Plan Görüntüle
-                    </button>
+
                   </div>
                   
                   <div className="h-px bg-gray-200 my-4"></div>
@@ -1137,33 +1108,13 @@ function MainApp() {
             
             {/* Vardiya Planlama */}
             {activeTab === 'planning' && (
-              <div className="space-y-6">
-                <h2 className="text-3xl font-bold text-gray-900">Vardiya Planlama</h2>
-                <div className="bg-white rounded-2xl shadow-lg">
-                  <VardiyaPlanlama 
-                    personnelData={personnelData}
-                    vehicleData={vehicleData}
-                    storeData={storeData}
-                    onPlanGenerated={handlePlanGenerated}
-                  />
-                </div>
-              </div>
+              <VardiyaPlanlama 
+                userRole={userRole}
+                onDataUpdate={refreshData}
+              />
             )}
             
-            {/* Plan Görüntüle */}
-            {activeTab === 'display' && (
-              <div className="space-y-6">
-                <h2 className="text-3xl font-bold text-gray-900">Plan Görüntüle</h2>
-                <div className="bg-white rounded-2xl shadow-lg">
-                  <PlanDisplay 
-                    generatedPlan={generatedPlan}
-                    personnelData={personnelData}
-                    vehicleData={vehicleData}
-                    storeData={storeData}
-                  />
-                </div>
-              </div>
-            )}
+
             
             {/* Performans Analizi */}
             {activeTab === 'performance' && (

@@ -3544,6 +3544,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                           // Veri olan ayları bul
                           const monthsWithData = new Set();
                           dailyNotes.forEach(note => {
+                            const noteDate = new Date(note.date);
                             const noteYear = noteDate.getFullYear();
                             const noteMonth = noteDate.getMonth();
                             monthsWithData.add(`${noteYear}-${noteMonth}`);

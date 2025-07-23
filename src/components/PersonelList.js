@@ -14,7 +14,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   // Vardiya istatistikleri için state
   const [shiftStatistics, setShiftStatistics] = useState({});
   const [weeklyPeriods, setWeeklyPeriods] = useState([]);
-  const [currentShiftData, setCurrentShiftData] = useState([]);
+
   
 
   
@@ -117,62 +117,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     }
   };
 
-  // Güncel vardiya verilerini yükle
-  const loadCurrentShiftData = async () => {
-    try {
-      console.log('🔄 Güncel vardiya verileri yükleniyor...');
 
-      // Yeni current_weekly_shifts tablosundan verileri çek
-      const result = await getCurrentWeeklyShifts();
-      
-      if (!result.success) {
-        console.error('❌ Güncel vardiya verileri çekilemedi:', result.error);
-        setCurrentShiftData([]);
-        return;
-      }
-
-      const currentShifts = result.data;
-      console.log('📊 Güncel vardiya verileri çekildi:', currentShifts.length, 'kayıt');
-
-      if (currentShifts && currentShifts.length > 0) {
-        // Personel bilgilerini zenginleştir
-        const enrichedData = currentShifts.map(shift => {
-          const person = personnelData.find(p => p.employee_code === shift.employee_code);
-          
-          return {
-            ...shift,
-            full_name: person?.full_name || shift.full_name || 'Bilinmeyen',
-            position: person?.position || shift.position || 'Bilinmeyen'
-          };
-        });
-
-        setCurrentShiftData(enrichedData);
-        console.log('✅ Güncel vardiya verileri yüklendi:', enrichedData.length, 'kayıt');
-        
-        // Debug: Her personelin vardiya bilgisini göster
-        enrichedData.forEach((shift, index) => {
-          console.log(`👤 ${index + 1}. ${shift.full_name} (${shift.employee_code}): ${shift.shift_type}`);
-        });
-
-        // Debug: Hangi personellerin vardiya verisi olmadığını göster
-        const personelWithShift = enrichedData.map(shift => shift.employee_code);
-        const personelWithoutShift = personnelData.filter(person => !personelWithShift.includes(person.employee_code));
-        
-        if (personelWithoutShift.length > 0) {
-          console.log('⚠️ Bu dönem için vardiya verisi olmayan personeller:', personelWithoutShift.length);
-          personelWithoutShift.forEach(person => {
-            console.log(`   - ${person.full_name} (${person.employee_code})`);
-          });
-        }
-      } else {
-        console.log('📊 Güncel vardiya verisi bulunamadı');
-        setCurrentShiftData([]);
-      }
-    } catch (error) {
-      console.error('❌ Güncel vardiya verileri yükleme hatası:', error);
-      setCurrentShiftData([]);
-    }
-  };
 
   // Vardiya istatistikleri hesaplama fonksiyonu
   const calculateShiftStatistics = async () => {
@@ -313,8 +258,17 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         alert(`Güncel hafta verileri başarıyla yüklendi!\n${data.length} personel kaydı işlendi.`);
         
         // Verileri yenile
-        await loadCurrentShiftData();
+        console.log('🔄 Veriler güncelleniyor...');
+        await loadPersonnelData();
         await calculateShiftStatistics();
+        
+        // Ana sayfa güncellemesi için callback
+        if (onPersonnelUpdate) {
+          console.log('🔄 Ana sayfa güncelleniyor...');
+          await onPersonnelUpdate();
+        }
+        
+        console.log('✅ Veri güncelleme tamamlandı');
       } else {
         console.error('❌ Veriler kaydedilemedi:', result.error);
         alert('Veriler kaydedilirken hata oluştu!');
@@ -354,7 +308,6 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   // Personel verileri yüklendiğinde vardiya verilerini de yükle
   useEffect(() => {
     if (personnelData.length > 0) {
-      loadCurrentShiftData();
       calculateShiftStatistics();
     }
   }, [personnelData]);
@@ -370,7 +323,6 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   useEffect(() => {
     if (personnelData.length > 0) {
       calculateShiftStatistics();
-      loadCurrentShiftData(); // Güncel vardiya verilerini de yükle
     }
   }, [personnelData]);
 
@@ -477,11 +429,21 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               </span>
             );
           case 'izin':
-          case 'yillik_izin':
-          case 'raporlu':
             return (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
                 🛌 İzinli
+              </span>
+            );
+          case 'yillik_izin':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+                🏖️ Yıllık İzin
+              </span>
+            );
+          case 'raporlu':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
+                🏥 Raporlu
               </span>
             );
           case 'dinlenme':

@@ -1822,63 +1822,9 @@ export const saveExcelData = async (periods, schedules) => {
 }; 
 
 // Current Weekly Shifts - Güncel hafta vardiya verileri
-export const saveCurrentWeeklyShifts = async (shiftsData) => {
-  try {
-    console.log('🔄 Güncel hafta vardiya verileri kaydediliyor...');
-    
-    // Önce mevcut güncel verileri temizle
-    const { error: deleteError } = await supabase
-      .from('current_weekly_shifts')
-      .delete()
-      .neq('id', 0); // Tüm kayıtları sil
-    
-    if (deleteError) {
-      console.error('❌ Mevcut veriler silinemedi:', deleteError);
-      return { success: false, error: deleteError };
-    }
-    
-    console.log('✅ Mevcut güncel veriler temizlendi');
-    
-    // Yeni verileri ekle
-    console.log('🔄 Güncel vardiya verileri ekleniyor:', shiftsData.length, 'kayıt');
-    const { data, error } = await supabase
-      .from('current_weekly_shifts')
-      .insert(shiftsData)
-      .select();
-    
-    if (error) {
-      console.error('❌ Güncel vardiya verileri kaydedilemedi:', error);
-      console.error('❌ Hata detayı:', error.message);
-      console.error('❌ Hata kodu:', error.code);
-      return { success: false, error };
-    }
-    
-    console.log('✅ Güncel vardiya verileri kaydedildi:', data.length, 'kayıt');
-    return { success: true, data };
-  } catch (error) {
-    console.error('❌ Güncel vardiya verileri kaydetme hatası:', error);
-    return { success: false, error };
-  }
-};
-
-export const getCurrentWeeklyShifts = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('current_weekly_shifts')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('❌ Güncel vardiya verileri çekilemedi:', error);
-      return { success: false, error };
-    }
-    
-    return { success: true, data: data || [] };
-  } catch (error) {
-    console.error('❌ Güncel vardiya verileri çekme hatası:', error);
-    return { success: false, error };
-  }
-};
+// Bu fonksiyonlar artık kullanılmıyor - current_weekly_shifts tablosu silindi
+// export const saveCurrentWeeklyShifts = async (shiftsData) => { ... }
+// export const getCurrentWeeklyShifts = async () => { ... }
 
 // Excel'den güncel hafta verilerini yükleme
 export const saveCurrentWeekExcelData = async (excelData, weekLabel, startDate, endDate) => {
@@ -2061,15 +2007,15 @@ export const deletePeriodAndShifts = async (periodId) => {
     
     console.log('🔍 Silinecek dönem:', period);
     
-    // Vardiya verilerini week_label ile sil
-    const { error: shiftsError } = await supabase
-      .from('current_weekly_shifts')
+    // Önce weekly_schedules tablosundan ilgili kayıtları sil
+    const { error: schedulesError } = await supabase
+      .from('weekly_schedules')
       .delete()
-      .eq('week_label', period.week_label);
+      .eq('period_id', periodId);
     
-    if (shiftsError) {
-      console.error('❌ Vardiya verileri silinemedi:', shiftsError);
-      return { success: false, error: shiftsError };
+    if (schedulesError) {
+      console.error('❌ Weekly schedules silinemedi:', schedulesError);
+      return { success: false, error: schedulesError };
     }
     
     // Sonra dönemi sil

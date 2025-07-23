@@ -158,7 +158,10 @@ function MainApp() {
 
   // Veri yenileme fonksiyonu
   const refreshData = async () => {
+    console.log('🔄 refreshData başladı');
     await loadData();
+    await loadDailyNotes();
+    console.log('✅ refreshData tamamlandı');
     showNotification('Veriler yenilendi!', 'success');
   };
 

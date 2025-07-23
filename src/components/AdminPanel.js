@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle } from 'lucide-react';
-import { getAllUsers, addUser, updateUser, deleteUser, resendConfirmationEmail, deleteAllPerformanceData } from '../services/supabase';
+import { getAllUsers, addUser, updateUser, deleteUser, resendConfirmationEmail, deleteAllPerformanceData, clearAllShiftData } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 const AdminPanel = ({ userRole, currentUser }) => {
@@ -20,6 +20,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
   
   // Performans verilerini temizleme state'i
   const [deletingPerformanceData, setDeletingPerformanceData] = useState(false);
+  
+  // Personel kontrol verilerini temizleme state'i
+  const [deletingShiftData, setDeletingShiftData] = useState(false);
   
   // Şifre değiştirme modal'ı için state
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -297,7 +300,50 @@ Devam etmek istediğinizden emin misiniz?`;
     }
   };
 
-  
+  // Tüm personel kontrol verilerini sil
+  const handleDeleteAllShiftData = async () => {
+    const confirmMessage = `⚠️ DİKKAT: Bu işlem TÜM personel kontrol verilerini kalıcı olarak silecek!
+
+Bu işlem:
+• Tüm vardiya programlarını silecek
+• Tüm istatistikleri sıfırlayacak
+• Tüm günlük kayıtları silecek
+• Tüm haftalık dönemleri silecek
+• Bu işlem GERİ ALINAMAZ!
+
+Devam etmek istediğinizden emin misiniz?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    // İkinci onay
+    const secondConfirm = window.confirm('❗ SON UYARI: Tüm personel kontrol verileri silinecek. Bu işlem geri alınamaz!\n\nDevam etmek için "Tamam"a basın.');
+    if (!secondConfirm) {
+      return;
+    }
+
+    setDeletingShiftData(true);
+
+    try {
+      console.log('🗑️ Tüm personel kontrol verileri siliniyor...');
+      const result = await clearAllShiftData();
+      
+      if (result.success) {
+        alert(`✅ Başarılı!\n\nTüm personel kontrol verileri başarıyla silindi.\n\nSayfa yenilenecek.`);
+        // Sayfayı yenile
+        window.location.reload();
+      } else {
+        alert(`❌ Hata!\n\nPersonel kontrol verileri silinemedi:\n${result.error}`);
+        console.error('❌ Personel kontrol verisi silme hatası:', result);
+      }
+    } catch (error) {
+      console.error('❌ Personel kontrol verisi silme genel hatası:', error);
+      alert(`❌ Beklenmeyen Hata!\n\nPersonel kontrol verileri silinemedi:\n${error.message}`);
+    } finally {
+      setDeletingShiftData(false);
+    }
+  };
 
   const MenuButton = ({ id, icon: Icon, label, active, onClick }) => (
     <button
@@ -537,6 +583,30 @@ Devam etmek istediğinizden emin misiniz?`;
               className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {deletingPerformanceData ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Siliniyor...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  <span>Temizle</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <span className="text-sm font-medium text-gray-700">Personel Kontrol Verilerini Temizle</span>
+              <p className="text-xs text-gray-500 mt-1">Tüm vardiya programları, istatistikler ve günlük kayıtları kalıcı olarak siler</p>
+            </div>
+            <button 
+              onClick={handleDeleteAllShiftData}
+              disabled={deletingShiftData}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deletingShiftData ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   <span>Siliniyor...</span>

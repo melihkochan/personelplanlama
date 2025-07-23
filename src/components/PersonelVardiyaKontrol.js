@@ -354,8 +354,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                       periods.push({
                         start_date: startDateStr,
                         end_date: endDateStr,
-                        period_start_date: startDateStr,
-                        period_end_date: endDateStr,
+                        week_label: `${startDay}.${startMonth}.${year} - ${endDay}.${endMonth}.${year}`,
                         year: year
                       });
                     }
@@ -438,6 +437,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate }) => {
                 shift_type: shiftType,
                 shift_hours: shiftHours,
                 status: status,
+                period_start_date: period.start_date,
+                period_end_date: period.end_date,
                 year: period.year
               });
               

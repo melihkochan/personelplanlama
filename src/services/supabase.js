@@ -1633,178 +1633,70 @@ export const clearAllShiftData = async () => {
 // Excel verilerini kaydetme fonksiyonu
 export const saveExcelData = async (periods, schedules) => {
   try {
-
+    console.log('📊 Excel verisi kaydediliyor...');
+    console.log('📋 Periods:', periods.length);
+    console.log('👥 Schedules:', schedules.length);
     
-    // Veritabanındaki tüm vardiya kayıtlarını çek
-    const { data: allExistingSchedules, error: allSchedulesError } = await supabase
-      .from('weekly_schedules')
-      .select('employee_code, period_id');
-    
-    if (allSchedulesError) {
-      throw allSchedulesError;
-    }
-    
-    
-    // Çakışan kayıtları kontrol et
-    const duplicateRecords = [];
-    const existingRecords = new Set();
-    
-    // Mevcut kayıtları Set'e ekle (hızlı arama için)
-    allExistingSchedules?.forEach(schedule => {
-      const key = `${schedule.employee_code}-${schedule.period_id}`;
-      existingRecords.add(key);
-    });
-    
-    // Yeni kayıtları kontrol et - period_id henüz yok, sadece employee_code kontrol et
-    for (const schedule of schedules) {
-      const key = `${schedule.employee_code}`;
-      
-      if (existingRecords.has(key)) {
-        duplicateRecords.push({
-          employee_code: schedule.employee_code
-        });
-      } else {
-      }
-    }
-    
-    // Eğer çakışan kayıt varsa yükleme engelle
-    if (duplicateRecords.length > 0) {
-      const duplicateMessage = duplicateRecords.slice(0, 10).map(record => 
-        `${record.employee_code} - ${record.period_id}`
-      ).join('\n');
-      
-      return {
-        success: false,
-        error: `⚠️ Aşağıdaki personel-dönem kayıtları zaten mevcut:\n\n${duplicateMessage}${duplicateRecords.length > 10 ? '\n... ve daha fazlası' : ''}\n\nBu kayıtlar için veri eklenemedi. Lütfen önce mevcut verileri temizleyin.`,
-        duplicate_records: duplicateRecords
-      };
-    }
-    
-
-    
-    // Genel kontrol: Aynı tarih aralığında veri var mı?
-    if (allExistingSchedules && allExistingSchedules.length > 0) {
-      // Yeni yüklenecek dönemlerin tarih aralıklarını kontrol et
-      const newPeriodDates = periods.map(p => ({
-        start_date: p.start_date,
-        end_date: p.end_date,
-        week_label: p.week_label
-      }));
-      
-      
-      // Mevcut dönemleri çek
-      const { data: existingPeriods, error: existingPeriodsError } = await supabase
-        .from('weekly_periods')
-        .select('start_date, end_date, week_label');
-      
-      if (!existingPeriodsError && existingPeriods) {
-        
-        // Çakışan dönemleri bul
-        const conflictingPeriods = [];
-        newPeriodDates.forEach(newPeriod => {
-          const hasConflict = existingPeriods.some(existingPeriod => 
-            existingPeriod.start_date === newPeriod.start_date && 
-            existingPeriod.end_date === newPeriod.end_date
-          );
-          
-          if (hasConflict) {
-            conflictingPeriods.push(newPeriod);
-          }
-        });
-        
-        if (conflictingPeriods.length > 0) {
-          
-          // Modern mesaj formatı
-          const totalConflicts = conflictingPeriods.length;
-          const firstConflict = conflictingPeriods[0];
-          const lastConflict = conflictingPeriods[conflictingPeriods.length - 1];
-          
-          let conflictMessage = '';
-          if (totalConflicts === 1) {
-            conflictMessage = `⚠️ **${firstConflict.week_label}** dönemi zaten mevcut.\n\nBu dönem için veri eklenemedi.`;
-          } else if (totalConflicts <= 3) {
-            const conflictList = conflictingPeriods.map(period => 
-              `• ${period.week_label} (${period.start_date} - ${period.end_date})`
-            ).join('\n');
-            conflictMessage = `⚠️ **${totalConflicts} dönem** zaten mevcut:\n\n${conflictList}\n\nBu dönemler için veri eklenemedi.`;
-          } else {
-            conflictMessage = `⚠️ **${totalConflicts} dönem** zaten mevcut.\n\nİlk: ${firstConflict.week_label} (${firstConflict.start_date})\nSon: ${lastConflict.week_label} (${lastConflict.end_date})\n\nBu dönemler için veri eklenemedi.`;
-          }
-          
-          return {
-            success: false,
-            error: conflictMessage,
-            conflicting_periods: conflictingPeriods
-          };
-        } else {
-        }
-      }
-    }
-    
-    // Bu kontrol artık gerekli değil - yukarıda dönem çakışması kontrol ediliyor
-    
-        // Bu kontrol artık gerekli değil - yukarıda dönem çakışması kontrol ediliyor
-    
-    // 2. Önce haftalık dönemleri kaydet (insert only)
+    // 1. Önce haftalık dönemleri kaydet (insert only)
     const { data: savedPeriods, error: periodError } = await supabase
       .from('weekly_periods')
       .insert(periods)
       .select();
     
     if (periodError) {
+      console.error('❌ Period kaydetme hatası:', periodError);
       throw periodError;
     }
     
+    console.log('✅ Periods kaydedildi:', savedPeriods.length);
     
-    // 3. Period ID'lerini schedules'a ekle
-    const periodMap = {};
-    savedPeriods.forEach(period => {
-      const key = `${period.start_date}_${period.end_date}_${period.week_label}`;
-      periodMap[key] = period.id;
-    });
+    // 2. Schedules'ı period ID'leri ile güncelle
+    const updatedSchedules = [];
     
-    // 4. Schedules'ı period ID'leri ile güncelle
-    const updatedSchedules = schedules.map(schedule => {
+    for (const schedule of schedules) {
       // Her schedule için uygun period'u bul
       const matchingPeriod = savedPeriods.find(period => 
         period.start_date === schedule.period_start_date && 
         period.end_date === schedule.period_end_date
       );
       
-      if (!matchingPeriod) {
-        return null;
+      if (matchingPeriod) {
+        const updatedSchedule = {
+          employee_code: schedule.employee_code,
+          period_id: matchingPeriod.id,
+          shift_type: schedule.shift_type,
+          shift_hours: schedule.shift_hours,
+          status: schedule.status
+        };
+        updatedSchedules.push(updatedSchedule);
+      } else {
+        console.log('⚠️ Eşleşen period bulunamadı:', {
+          schedule: schedule,
+          available_periods: savedPeriods.map(p => ({ start: p.start_date, end: p.end_date, id: p.id }))
+        });
       }
-      
-      const updatedSchedule = {
-        employee_code: schedule.employee_code,
-        period_id: matchingPeriod.id,
-        shift_type: schedule.shift_type,
-        shift_hours: schedule.shift_hours,
-        status: schedule.status
-      };
-      
-      
-      return updatedSchedule;
-    }).filter(Boolean); // null değerleri filtrele
-    
-    
-    // 5. Vardiya programlarını kaydet (insert only)
-    const { data: savedSchedules, error: scheduleError } = await supabase
-      .from('weekly_schedules')
-      .insert(updatedSchedules)
-      .select();
-    
-    if (scheduleError) {
-      console.error('❌ Vardiya programları kaydedilemedi:', scheduleError);
-      throw scheduleError;
     }
     
+    console.log('✅ Updated schedules:', updatedSchedules.length);
     
-    // İstatistikler artık otomatik hesaplanıyor - ayrı tablo kullanılmıyor
+    // 3. Vardiya programlarını kaydet (insert only)
+    if (updatedSchedules.length > 0) {
+      const { data: savedSchedules, error: scheduleError } = await supabase
+        .from('weekly_schedules')
+        .insert(updatedSchedules)
+        .select();
+      
+      if (scheduleError) {
+        console.error('❌ Vardiya programları kaydedilemedi:', scheduleError);
+        throw scheduleError;
+      }
+      
+      console.log('✅ Schedules kaydedildi:', savedSchedules.length);
+    }
     
     // Modern başarı mesajı
     const totalPeriods = savedPeriods.length;
-    const totalSchedules = savedSchedules.length;
+    const totalSchedules = updatedSchedules.length;
     
     let successMessage = '';
     if (totalPeriods === 1) {
@@ -1816,16 +1708,13 @@ export const saveExcelData = async (periods, schedules) => {
     return {
       success: true,
       periods_count: savedPeriods.length,
-      schedules_count: savedSchedules.length,
+      schedules_count: totalSchedules,
       stats_updated: true,
       message: successMessage
     };
     
   } catch (error) {
-    console.error('❌ Excel verisi kaydetme hatası:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    console.error('❌ Excel veri kaydetme hatası:', error);
+    return { success: false, error: error.message };
   }
 }; 

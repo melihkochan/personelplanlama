@@ -169,29 +169,13 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
-            {/* Sol Panel - Sadece Particle Text Effect */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <ParticleTextEffect 
-          words={[
-            "VARDİYA PLANLAMA",
-            "PERSONEL YÖNETİMİ", 
-            "OTOMATİK OPTİMİZASYON",
-            "GERÇEK ZAMANLI TAKİP",
-            "MODERN SİSTEM"
-          ]}
-        />
-      </div>
-
-      {/* Sağ Panel - Background Boxes ile Login Formu */}
-      <div className="w-full lg:w-1/2 relative overflow-hidden bg-white flex flex-col items-center justify-center">
-        {/* Background Boxes */}
-        <div className="absolute inset-0 w-full h-full bg-white z-20 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
-        <Boxes />
-        
-        {/* Login Form Overlay */}
-        <div className="relative z-30 w-full max-w-md p-8">
-
+    <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+      {/* Background Boxes - Tüm sayfaya yay */}
+      <div className="absolute inset-0 w-full h-full bg-white z-20 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+      <Boxes />
+      
+      {/* Login Form - Ortalanmış */}
+      <div className="relative z-30 w-full max-w-md p-8">
         <motion.div 
           className="w-full max-w-md"
           variants={containerVariants}
@@ -386,7 +370,6 @@ const LoginForm = () => {
             </p>
           </motion.div>
         </motion.div>
-        </div>
       </div>
     </div>
   );

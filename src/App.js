@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin } from 'lucide-react';
 
 import PersonelList from './components/PersonelList';
 import VehicleList from './components/VehicleList';
@@ -7,6 +7,7 @@ import StoreList from './components/StoreList';
 import VardiyaPlanlama from './components/VardiyaPlanlama';
 import PerformanceAnalysis from './components/PerformanceAnalysis';
 import PersonelVardiyaKontrol from './components/PersonelVardiyaKontrol';
+import StoreDistribution from './components/StoreDistribution';
 import AdminPanel from './components/AdminPanel';
 import LoginForm from './components/LoginForm';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -501,6 +502,20 @@ function MainApp() {
                 <BarChart3 className="w-5 h-5 mr-3" />
                 Performans Analizi
               </button>
+              
+              <button
+                onClick={() => handleTabChange('store-distribution')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'store-distribution'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <MapPin className="w-5 h-5 mr-3" />
+                Personel Konum Dağılımı
+              </button>
             </div>
 
             {/* Sistem Yönetimi Grubu */}
@@ -711,6 +726,23 @@ function MainApp() {
                     >
                       <BarChart3 className="w-5 h-5 mr-3" />
                       Performans Analizi
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleTabChange('store-distribution');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'store-distribution'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <MapPin className="w-5 h-5 mr-3" />
+                      Personel Konum Dağılımı
                     </button>
                   </div>
 
@@ -1139,6 +1171,11 @@ function MainApp() {
                 onDataUpdate={refreshData}
                 onCurrentShiftDataUpdate={setCurrentShiftData}
               />
+            )}
+
+            {/* Mağaza Konum Dağılımı */}
+            {activeTab === 'store-distribution' && (
+              <StoreDistribution />
             )}
 
             {/* Admin Panel */}

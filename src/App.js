@@ -17,7 +17,7 @@ import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
 function MainApp() {
-  const { user, isAuthenticated, loading, signOut, isLoggingOut } = useAuth();
+  const { user, isAuthenticated, loading, signOut, isLoggingOut, isLoggingIn } = useAuth();
   
   // localStorage'dan aktif tab'i oku, yoksa 'home' kullan
   const [activeTab, setActiveTab] = useState(() => {
@@ -389,6 +389,17 @@ function MainApp() {
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-white/20 border-t-white mx-auto mb-6"></div>
             <h2 className="text-2xl font-bold mb-2">Çıkış Yapılıyor</h2>
             <p className="text-white/80">Güvenli çıkış için hazırlanıyor...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Login Animation Overlay */}
+      {isLoggingIn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="text-center text-white">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-white/20 border-t-white mx-auto mb-6"></div>
+            <h2 className="text-2xl font-bold mb-2">Giriş Yapılıyor</h2>
+            <p className="text-white/80">Hesabınıza giriş yapılıyor...</p>
           </div>
         </div>
       )}

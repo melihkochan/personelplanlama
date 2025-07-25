@@ -15,16 +15,15 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
-    // Get initial session
     const getSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
+        setUser(session?.user || null);
       } catch (error) {
-        console.error('Error getting session:', error);
-        setUser(null);
+        console.error('Session error:', error);
       } finally {
         setLoading(false);
       }
@@ -32,11 +31,9 @@ export const AuthProvider = ({ children }) => {
 
     getSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Auth state changed
-        setUser(session?.user ?? null);
+        setUser(session?.user || null);
         setLoading(false);
       }
     );
@@ -46,6 +43,9 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (usernameOrEmail, password) => {
     try {
+      // Giriş animasyonunu başlat
+      setIsLoggingIn(true);
+      
       let email = usernameOrEmail;
       
       // Eğer @ işareti yoksa kullanıcı adı olarak kabul et
@@ -77,10 +77,15 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
       
+      // Giriş başarılı animasyonu için 1 saniye bekle
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       return { success: true, data };
     } catch (error) {
       console.error('Sign in error:', error);
       return { success: false, error: error.message };
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -130,7 +135,8 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     isAuthenticated: !!user,
-    isLoggingOut
+    isLoggingOut,
+    isLoggingIn
   };
 
   return (

@@ -60,6 +60,23 @@ const ChatSystem = ({ currentUser }) => {
           loadConversations(); // Conversation list'i yenile
         }
       )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users'
+        },
+        (payload) => {
+          // Online status değişikliklerini dinle
+          console.log('🔄 Online status değişti:', payload);
+          // Sadece online status değişikliklerini dinle
+          if (payload.new.is_online !== payload.old.is_online || 
+              payload.new.last_seen !== payload.old.last_seen) {
+            console.log('🔄 Online status değişti, sohbetler yenileniyor...');
+            loadConversations(); // Conversation list'i yenile
+          }
+        }
+      )
       .subscribe();
 
     return () => {

@@ -111,6 +111,43 @@ const AdminPanel = ({ userRole, currentUser }) => {
     loadUsers();
   }, []);
 
+  // Real-time users güncelleme
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const subscription = supabase
+      .channel('users_updates')
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users'
+        },
+        (payload) => {
+          // Sadece online status değişikliklerini dinle
+          if (payload.new.is_online !== payload.old.is_online || 
+              payload.new.last_seen !== payload.old.last_seen) {
+            loadUsers(); // Kullanıcı listesini yenile
+          }
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'users'
+        },
+        (payload) => {
+          loadUsers(); // Kullanıcı listesini yenile
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [currentUser?.id]);
+
   const loadUsers = async () => {
     setLoading(true);
     try {
@@ -118,10 +155,10 @@ const AdminPanel = ({ userRole, currentUser }) => {
       if (result.success) {
         setUsers(result.data);
       } else {
-        console.error('Kullanıcılar yüklenemedi:', result.error);
+        console.error('❌ Kullanıcılar yüklenemedi:', result.error);
       }
     } catch (error) {
-      console.error('Kullanıcı yükleme hatası:', error);
+      console.error('❌ Kullanıcı yükleme hatası:', error);
     } finally {
       setLoading(false);
     }
@@ -455,6 +492,20 @@ Devam etmek istediğinizden emin misiniz?`;
               <h3 className="font-bold text-gray-900 text-lg">{user.full_name || user.username || 'Kullanıcı'}</h3>
               <p className="text-sm text-gray-600 mb-1">{user.email}</p>
               {user.full_name && <p className="text-xs text-gray-500 font-medium">@{user.username}</p>}
+              
+              {/* Online Status ve Last Seen */}
+              <div className="flex items-center gap-2 mt-2">
+                <div className={`w-2 h-2 rounded-full ${user.is_online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                <span className={`text-xs font-medium ${user.is_online ? 'text-green-600' : 'text-gray-500'}`}>
+                  {user.is_online ? 'Çevrimiçi' : user.last_seen ? `Son görülme: ${new Date(user.last_seen).toLocaleString('tr-TR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}` : 'Hiç görülmedi'}
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">

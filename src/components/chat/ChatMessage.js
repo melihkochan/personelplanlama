@@ -15,12 +15,27 @@ const ChatMessage = ({ message, isOwn, currentUser, conversation }) => {
       // WhatsApp tarzı durum ikonları
       switch (message.message_status) {
         case 'read':
-          return <CheckCheck className="w-4 h-4 text-blue-600 font-bold" />; // Çift mavi tik - daha büyük ve net
+          return (
+            <div className="flex items-center gap-1">
+              <CheckCheck className="w-4 h-4 text-blue-600 font-bold" />
+              <span className="text-xs text-blue-600 font-medium">Görüldü</span>
+            </div>
+          );
         case 'delivered':
-          return <CheckCheck className="w-3 h-3 text-gray-400" />; // Çift beyaz tik
+          return (
+            <div className="flex items-center gap-1">
+              <CheckCheck className="w-3 h-3 text-gray-400" />
+              <span className="text-xs text-gray-400">İletildi</span>
+            </div>
+          );
         case 'sent':
         default:
-          return <Check className="w-3 h-3 text-gray-400" />; // Tek tik
+          return (
+            <div className="flex items-center gap-1">
+              <Check className="w-3 h-3 text-gray-400" />
+              <span className="text-xs text-gray-400">Gönderildi</span>
+            </div>
+          );
       }
     }
     return null;
@@ -119,6 +134,14 @@ const ChatMessage = ({ message, isOwn, currentUser, conversation }) => {
               {formatTime(message.created_at)}
             </span>
             {getStatusIcon()}
+            {message.message_status === 'read' && message.read_at && (
+              <span className="text-xs text-blue-600 font-medium">
+                • {new Date(message.read_at).toLocaleTimeString('tr-TR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            )}
           </div>
         </div>
       </div>

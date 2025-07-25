@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MessageCircle, X } from 'lucide-react';
+import { Plus, MessageCircle, X, Check, CheckCheck } from 'lucide-react';
 import { supabase, getChatUsers } from '../../services/supabase';
 
 const ChatSidebar = ({ 
@@ -246,10 +246,33 @@ const ChatSidebar = ({
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-500 truncate">
-                        {isLastMessageFromMe ? 'Siz: ' : ''}
-                        {lastMessage?.content || 'Henüz mesaj yok'}
-                      </p>
+                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                        <p className="text-sm text-gray-500 truncate">
+                          {isLastMessageFromMe ? 'Siz: ' : ''}
+                          {lastMessage?.content || 'Henüz mesaj yok'}
+                        </p>
+                        {/* Mesaj durumu - sadece kendi mesajlarımız için */}
+                        {isLastMessageFromMe && lastMessage && (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {lastMessage.message_status === 'read' ? (
+                              <div className="flex items-center gap-1">
+                                <CheckCheck className="w-3 h-3 text-blue-600" />
+                                <span className="text-xs text-blue-600 font-medium">Görüldü</span>
+                              </div>
+                            ) : lastMessage.message_status === 'delivered' ? (
+                              <div className="flex items-center gap-1">
+                                <CheckCheck className="w-3 h-3 text-gray-400" />
+                                <span className="text-xs text-gray-400">İletildi</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <Check className="w-3 h-3 text-gray-400" />
+                                <span className="text-xs text-gray-400">Gönderildi</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       {unreadCount > 0 && (
                         <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-red-500 text-white">
                           {unreadCount}

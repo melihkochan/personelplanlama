@@ -331,9 +331,10 @@ export const getAllUsers = async () => {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
+    
     return { success: true, data: data || [] };
   } catch (error) {
-    
+    console.error('❌ getAllUsers hatası:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -3323,21 +3324,22 @@ export const updateUserOnlineStatus = async (userId, isOnline) => {
   try {
     console.log('🔄 Online durumu güncelleniyor:', { userId, isOnline });
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('users')
       .update({ 
         is_online: isOnline,
         last_seen: new Date().toISOString()
       })
-      .eq('id', userId);
+      .eq('id', userId)
+      .select();
 
     if (error) {
       console.error('❌ Online durumu güncellenirken hata:', error);
       return { success: false, error };
     }
 
-   
-    return { success: true };
+    console.log('✅ Online durumu güncellendi:', data);
+    return { success: true, data };
   } catch (error) {
     console.error('❌ Online durumu güncelleme hatası:', error);
     return { success: false, error };

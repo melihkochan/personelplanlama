@@ -18,7 +18,7 @@ import SimpleNotification from './components/notifications/SimpleNotification';
 import UnauthorizedAccess from './components/ui/UnauthorizedAccess';
 import ChatSystem from './components/chat/ChatSystem';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, supabase } from './services/supabase';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -61,6 +61,7 @@ function MainApp() {
   const [showSimpleNotification, setShowSimpleNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // Tab değiştiğinde URL'yi güncelle
   const handleTabChange = (tabId) => {
@@ -149,6 +150,48 @@ function MainApp() {
     }
     setLastNotificationCount(unreadNotificationCount);
   }, [unreadNotificationCount, lastNotificationCount]);
+
+  // Okunmamış mesaj sayısını yükle
+  useEffect(() => {
+    const loadUnreadMessageCount = async () => {
+      if (user?.id) {
+        try {
+          const { data: conversations, error } = await supabase
+            .from('conversations')
+            .select(`
+              id,
+              chat_participants!inner(user_id),
+              messages!inner(
+                id,
+                sender_id,
+                is_read
+              )
+            `)
+            .eq('chat_participants.user_id', user.id);
+
+          if (!error && conversations) {
+            let totalUnread = 0;
+            for (const conversation of conversations) {
+              const unreadMessages = conversation.messages?.filter(msg => 
+                msg.sender_id !== user.id && !msg.is_read
+              ) || [];
+              totalUnread += unreadMessages.length;
+            }
+            setUnreadMessageCount(totalUnread);
+          }
+        } catch (error) {
+          console.error('❌ Unread message count error:', error);
+        }
+      }
+    };
+
+    // Hemen yükle
+    loadUnreadMessageCount();
+    
+    // 5 saniyede bir güncelle (daha sık)
+    const interval = setInterval(loadUnreadMessageCount, 5000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Veritabanından veri yükleme fonksiyonu
   const loadData = async () => {
@@ -554,7 +597,7 @@ function MainApp() {
             <button
               onClick={() => handleTabChange('chat')}
               className={`
-                w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 relative
                 ${activeTab === 'chat'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
@@ -563,6 +606,11 @@ function MainApp() {
             >
               <MessageCircle className="w-5 h-5 mr-3" />
               Mesajlar
+              {unreadMessageCount > 0 && (
+                <span className="absolute top-1 -right-1 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-sm">
+                  {unreadMessageCount}
+                </span>
+              )}
             </button>
 
             {/* Personel Yönetimi Grubu */}

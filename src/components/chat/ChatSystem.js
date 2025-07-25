@@ -69,7 +69,26 @@ const ChatSystem = ({ currentUser }) => {
           if (payload.new.is_online !== payload.old.is_online || 
               payload.new.last_seen !== payload.old.last_seen) {
             console.log('🔄 Online status değişti, sohbetler yenileniyor...');
-            loadConversations(); // Conversation list'i yenile
+            // Sadece conversations state'ini güncelle, tüm verileri yeniden yükleme
+            setConversations(prevConversations => {
+              return prevConversations.map(conv => {
+                const updatedParticipants = conv.chat_participants.map(p => {
+                  if (p.user_id === payload.new.id) {
+                    return {
+                      ...p,
+                      is_online: payload.new.is_online,
+                      last_seen: payload.new.last_seen
+                    };
+                  }
+                  return p;
+                });
+                
+                return {
+                  ...conv,
+                  chat_participants: updatedParticipants
+                };
+              });
+            });
           }
         }
       )

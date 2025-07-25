@@ -22,6 +22,46 @@ const ChatSidebar = ({
     }
   }, [currentUser?.id]);
 
+  // Real-time user status updates
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const subscription = supabase
+      .channel('user_status_updates')
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users'
+        },
+        (payload) => {
+          // Online status değişikliklerini dinle
+          if (payload.new.is_online !== payload.old.is_online || 
+              payload.new.last_seen !== payload.old.last_seen) {
+            console.log('🔄 User status değişti, kullanıcı listesi güncelleniyor...');
+            // Sadece allUsers state'ini güncelle
+            setAllUsers(prevUsers => {
+              return prevUsers.map(user => {
+                if (user.id === payload.new.id) {
+                  return {
+                    ...user,
+                    is_online: payload.new.is_online,
+                    last_seen: payload.new.last_seen
+                  };
+                }
+                return user;
+              });
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [currentUser?.id]);
+
   const loadAllUsers = async () => {
     try {
       console.log('🔄 Kullanıcılar yükleniyor...');

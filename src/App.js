@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle } from 'lucide-react';
 
 import PersonelList from './components/personnel/PersonelList';
 import VehicleList from './components/vehicles/VehicleList';
@@ -16,6 +16,7 @@ import NotificationPanel from './components/notifications/NotificationPanel';
 import ToastManager from './components/notifications/ToastManager';
 import SimpleNotification from './components/notifications/SimpleNotification';
 import UnauthorizedAccess from './components/ui/UnauthorizedAccess';
+import ChatSystem from './components/chat/ChatSystem';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount } from './services/supabase';
 import './App.css';
@@ -116,17 +117,17 @@ function MainApp() {
     const loadUnreadCount = async () => {
       if (user) {
         try {
-          console.log('🔔 Okunmamış bildirim sayısı yükleniyor...');
+        
           const result = await getUnreadNotificationCount(user.id);
           if (result.success) {
             const newCount = result.count;
             const oldCount = unreadNotificationCount;
             
-            console.log('🔔 Okunmamış bildirim sayısı:', newCount, '(önceki:', oldCount, ')');
+         
             setUnreadNotificationCount(newCount);
           }
         } catch (error) {
-          console.error('❌ Okunmamış bildirim sayısı yüklenemedi:', error);
+         
         }
       }
     };
@@ -144,7 +145,7 @@ function MainApp() {
       const increase = unreadNotificationCount - lastNotificationCount;
       setNotificationMessage(`${increase} yeni bildirim geldi!`);
       setShowSimpleNotification(true);
-      console.log('🔔 Bildirim gösteriliyor:', increase, 'yeni bildirim');
+      
     }
     setLastNotificationCount(unreadNotificationCount);
   }, [unreadNotificationCount, lastNotificationCount]);
@@ -152,7 +153,7 @@ function MainApp() {
   // Veritabanından veri yükleme fonksiyonu
   const loadData = async () => {
     try {
-      console.log('🔄 Ana sayfa verileri yükleniyor...');
+      
       
       const [personnelResult, vehicleResult, storeResult, dailyNotesResult] = await Promise.all([
         getAllPersonnel(),
@@ -209,9 +210,9 @@ function MainApp() {
       }
 
       setDataLoaded(true);
-      console.log('✅ Ana sayfa verileri yüklendi');
+      
     } catch (error) {
-      console.error('❌ Ana sayfa veri yükleme hatası:', error);
+     
       showNotification('Veri yükleme hatası!', 'error');
     }
   };
@@ -449,7 +450,7 @@ function MainApp() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-slate-100">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-slate-100 overflow-hidden">
       {/* Logout Animation Overlay */}
       {isLoggingOut && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -547,6 +548,21 @@ function MainApp() {
             >
               <Home className="w-5 h-5 mr-3" />
               Ana Sayfa
+            </button>
+
+            {/* Chat */}
+            <button
+              onClick={() => handleTabChange('chat')}
+              className={`
+                w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                ${activeTab === 'chat'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                }
+              `}
+            >
+              <MessageCircle className="w-5 h-5 mr-3" />
+              Mesajlar
             </button>
 
             {/* Personel Yönetimi Grubu */}
@@ -1372,6 +1388,13 @@ function MainApp() {
                   />
                 )}
               </>
+            )}
+
+            {/* Chat Sistemi */}
+            {activeTab === 'chat' && (
+              <div className="flex-1 h-full">
+                <ChatSystem currentUser={user} />
+              </div>
             )}
           </main>
         </div>

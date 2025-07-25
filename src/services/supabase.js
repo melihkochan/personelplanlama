@@ -333,7 +333,7 @@ export const getAllUsers = async () => {
     if (error) throw error;
     return { success: true, data: data || [] };
   } catch (error) {
-    console.error('Get all users error:', error);
+    
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -403,9 +403,10 @@ export const addUser = async (user) => {
     
     if (error) throw error;
     
-    // Eğer admin session'ı varsa, geri yükle
-    if (currentSession?.session) {
-      await supabase.auth.setSession(currentSession.session);
+    // Session'ı geri yükle (eğer varsa)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await supabase.auth.setSession(session);
     }
     
     return { 
@@ -3046,3 +3047,320 @@ export const getUnreadNotificationCount = async (userId) => {
     return { success: false, error: error.message, count: 0 };
   }
 };
+
+// Chat için gerçek kullanıcıları getir
+export const getChatUsers = async (currentUserId) => {
+  try {
+    // Users tablosundan gerçek kullanıcıları al
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, username, is_online, last_seen')
+      .eq('is_active', true)
+      .neq('id', currentUserId)
+      .order('full_name');
+
+    if (error) {
+      console.error('❌ Users yüklenirken hata:', error);
+      return { success: false, error };
+    }
+
+    // Users verilerini kullanıcı formatına çevir
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı',
+      is_online: user.is_online,
+      last_seen: user.last_seen,
+      user_metadata: { 
+        full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı'
+      }
+    }));
+
+    return { success: true, data: formattedUsers };
+  } catch (error) {
+    console.error('❌ Chat kullanıcıları getirilirken hata:', error);
+    return { success: false, error };
+  }
+};
+
+// Test kullanıcıları oluştur
+export const createTestUsers = async () => {
+  try {
+    const testUsers = [
+      {
+        id: 'test-user-1',
+        email: 'test1@example.com',
+        full_name: 'Test Kullanıcı 1',
+        role: 'user'
+      },
+      {
+        id: 'test-user-2',
+        email: 'test2@example.com', 
+        full_name: 'Test Kullanıcı 2',
+        role: 'user'
+      },
+      {
+        id: 'test-user-3',
+        email: 'test3@example.com',
+        full_name: 'Test Kullanıcı 3', 
+        role: 'user'
+      }
+    ];
+
+    // Her test kullanıcısını profiles tablosuna ekle
+    for (const user of testUsers) {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error(`${user.email} eklenirken hata:`, error);
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Test kullanıcıları oluşturulurken hata:', error);
+    return { success: false, error };
+  }
+};
+
+// Gerçek kullanıcıları profiles tablosuna ekle
+export const syncRealUsers = async () => {
+  try {
+    console.log('🔄 Gerçek kullanıcılar senkronize ediliyor...');
+    
+    // Mevcut kullanıcıları al (admin yetkisi gerektirir)
+    const { data: { users }, error } = await supabase.auth.admin.listUsers();
+    
+    if (error) {
+      console.error('❌ Kullanıcılar alınırken hata:', error);
+      return { success: false, error };
+    }
+
+    console.log('👥 Bulunan kullanıcılar:', users.length);
+
+    // Her kullanıcıyı profiles tablosuna ekle/güncelle
+    for (const user of users) {
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Kullanıcı',
+          role: user.user_metadata?.role || 'user',
+          created_at: user.created_at,
+          updated_at: new Date().toISOString()
+        });
+
+      if (upsertError) {
+        console.error(`❌ ${user.email} eklenirken hata:`, upsertError);
+      } else {
+        console.log(`✅ ${user.email} başarıyla eklendi`);
+      }
+    }
+
+    return { success: true, count: users.length };
+  } catch (error) {
+    console.error('❌ Gerçek kullanıcılar senkronize edilirken hata:', error);
+    return { success: false, error };
+  }
+};
+
+// Gerçek kullanıcıları getir (admin yetkisi olmadan)
+export const getRealUsers = async (currentUserId) => {
+  try {
+    console.log('👥 Gerçek kullanıcılar getiriliyor...');
+    
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .neq('id', currentUserId)
+      .order('full_name');
+
+    if (error) {
+      console.error('❌ Profiles yüklenirken hata:', error);
+      return { success: false, error };
+    }
+
+    console.log('👥 Bulunan profiles:', profiles.length);
+
+    // Profiles verilerini kullanıcı formatına çevir
+    const users = profiles.map(profile => ({
+      id: profile.id,
+      email: profile.email,
+      user_metadata: { 
+        full_name: profile.full_name || profile.email?.split('@')[0] || 'Kullanıcı'
+      }
+    }));
+
+    return { success: true, data: users };
+  } catch (error) {
+    console.error('❌ Gerçek kullanıcılar getirilirken hata:', error);
+    return { success: false, error };
+  }
+};
+
+// Users tablosundan direkt kullanıcıları al
+export const getUsersFromUsersTable = async () => {
+  try {
+    // Users tablosundan tüm aktif kullanıcıları al
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('is_active', true);
+    
+    if (error) {
+      console.error('❌ Users tablosundan veri alınırken hata:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data: users };
+  } catch (error) {
+    console.error('❌ Kullanıcılar alınırken hata:', error);
+    return { success: false, error };
+  }
+};
+
+// Test kullanıcılarını profiles tablosundan sil
+export const removeTestUsers = async () => {
+  try {
+    console.log('🗑️ Test kullanıcıları siliniyor...');
+    
+    // Test kullanıcılarını email ile sil (UUID olmadığı için)
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .in('email', ['test-user-1@example.com', 'test-user-2@example.com', 'test-user-3@example.com']);
+
+    if (error) {
+      console.error('❌ Test kullanıcıları silinirken hata:', error);
+      return { success: false, error };
+    }
+
+    console.log('✅ Test kullanıcıları başarıyla silindi');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Test kullanıcıları silinirken hata:', error);
+    return { success: false, error };
+  }
+};
+
+// Duplicate profilleri temizle
+export const cleanDuplicateProfiles = async () => {
+  try {
+    console.log('🧹 Duplicate profiller temizleniyor...');
+    
+    // Tüm profilleri al
+    const { data: allProfiles, error: fetchError } = await supabase
+      .from('profiles')
+      .select('*');
+    
+    if (fetchError) {
+      console.error('❌ Profiller getirilirken hata:', fetchError);
+      return { success: false, error: fetchError };
+    }
+    
+    console.log('📋 Tüm profiller:', allProfiles);
+    
+    // Email'e göre grupla
+    const emailGroups = {};
+    allProfiles.forEach(profile => {
+      if (!emailGroups[profile.email]) {
+        emailGroups[profile.email] = [];
+      }
+      emailGroups[profile.email].push(profile);
+    });
+    
+    // Duplicate'leri bul
+    const duplicatesToDelete = [];
+    Object.entries(emailGroups).forEach(([email, profiles]) => {
+      if (profiles.length > 1) {
+        console.log(`🔍 Duplicate bulundu: ${email} - ${profiles.length} profil`);
+        // En son oluşturulanı tut, diğerlerini sil
+        profiles.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        profiles.slice(1).forEach(profile => {
+          duplicatesToDelete.push(profile.id);
+        });
+      }
+    });
+    
+    if (duplicatesToDelete.length > 0) {
+      console.log('🗑️ Silinecek duplicate profiller:', duplicatesToDelete);
+      
+      const { error: deleteError } = await supabase
+        .from('profiles')
+        .delete()
+        .in('id', duplicatesToDelete);
+      
+      if (deleteError) {
+        console.error('❌ Duplicate profiller silinirken hata:', deleteError);
+        return { success: false, error: deleteError };
+      } else {
+        console.log('✅ Duplicate profiller temizlendi');
+        return { success: true, deletedCount: duplicatesToDelete.length };
+      }
+    } else {
+      console.log('✅ Duplicate profil yok');
+      return { success: true, deletedCount: 0 };
+    }
+  } catch (error) {
+    console.error('❌ Duplicate profil temizleme hatası:', error);
+    return { success: false, error };
+  }
+};
+
+
+
+// Online durumu fonksiyonları
+export const updateUserOnlineStatus = async (userId, isOnline) => {
+  try {
+    console.log('🔄 Online durumu güncelleniyor:', { userId, isOnline });
+    
+    const { error } = await supabase
+      .from('users')
+      .update({ 
+        is_online: isOnline,
+        last_seen: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('❌ Online durumu güncellenirken hata:', error);
+      return { success: false, error };
+    }
+
+   
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Online durumu güncelleme hatası:', error);
+    return { success: false, error };
+  }
+};
+
+export const getUserOnlineStatus = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('is_online, last_seen')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('❌ Online durumu alınırken hata:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('❌ Online durumu alma hatası:', error);
+    return { success: false, error };
+  }
+};
+

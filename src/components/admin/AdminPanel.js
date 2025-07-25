@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText } from 'lucide-react';
+import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText, RefreshCw, UserPlus, MessageCircle } from 'lucide-react';
 import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, getAuditLogs, getAuditLogStats, supabase } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
@@ -44,6 +44,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
     limit: 50
   });
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+
 
   // Mevcut kullanıcının email'ini al
   const getCurrentUserEmail = () => {
@@ -1096,6 +1097,8 @@ Devam etmek istediğinizden emin misiniz?`;
     );
   };
 
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="h-full">
@@ -1191,7 +1194,51 @@ Devam etmek istediğinizden emin misiniz?`;
 
             {/* Main Content */}
             <div className="lg:col-span-3">
-              {activeSection === 'users' && <UsersSection />}
+              {activeSection === 'users' && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-900">Kullanıcı Yönetimi</h3>
+                    <button
+                      onClick={() => setShowAddUserModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Yeni Kullanıcı
+                    </button>
+                  </div>
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Yükleniyor...</p>
+                    </div>
+                  ) : (
+                    <>
+                      {users.length === 0 ? (
+                        <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-100">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Users className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <p className="text-lg font-medium text-gray-900 mb-2">Henüz kullanıcı yok</p>
+                          <p className="text-gray-600 mb-6">Yeni kullanıcı ekleyerek başlayabilirsiniz.</p>
+                          <button
+                            onClick={() => setShowAddUserModal(true)}
+                            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium"
+                          >
+                            <Plus className="w-5 h-5 inline mr-2" />
+                            İlk Kullanıcıyı Ekle
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {users.map((user) => (
+                            <UserCard key={user.id} user={user} />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
               {activeSection === 'settings' && <SettingsSection />}
               {activeSection === 'database' && <DatabaseSection />}
               {activeSection === 'audit_logs' && <AuditLogsSection />}
@@ -1458,6 +1505,8 @@ Devam etmek istediğinizden emin misiniz?`;
           </div>
         </div>
       )}
+
+
 
 
     </div>

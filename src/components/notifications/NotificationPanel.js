@@ -9,7 +9,7 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen && currentUser) {
-      console.log('🔔 Bildirim paneli açıldı, veriler yükleniyor...');
+      
       loadNotifications();
       loadUnreadCount();
     }
@@ -31,7 +31,7 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
         setNotifications(result.data);
       }
     } catch (error) {
-      console.error('Bildirimler yüklenemedi:', error);
+      
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,7 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
         setUnreadCount(result.count);
       }
     } catch (error) {
-      console.error('Okunmamış bildirim sayısı yüklenemedi:', error);
+     
     }
   };
 
@@ -62,16 +62,16 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
         loadUnreadCount();
       }
     } catch (error) {
-      console.error('Bildirim okundu işaretlenemedi:', error);
+     
     }
   };
 
   const handleDeleteNotification = async (notificationId) => {
     try {
-      console.log('🗑️ Bildirim siliniyor:', notificationId);
+     
       const result = await deleteNotification(notificationId, currentUser.id);
       if (result.success) {
-        console.log('✅ Bildirim başarıyla silindi');
+       
         // State'i güncelle
         setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
         // Okunmamış sayısını yenile
@@ -81,11 +81,11 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
           loadNotifications();
         }, 500);
       } else {
-        console.error('❌ Bildirim silinemedi:', result.error);
+      
         alert('Bildirim silinemedi: ' + result.error);
       }
     } catch (error) {
-      console.error('❌ Bildirim silme hatası:', error);
+    
       alert('Bildirim silme hatası: ' + error.message);
     }
   };

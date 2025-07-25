@@ -7,32 +7,32 @@ const ToastManager = ({ onViewNotifications }) => {
   // Bildirim dinleyicisi
   useEffect(() => {
     const handleNewNotification = (event) => {
-      console.log('🔔 Toast event alındı:', event.detail);
+      
       const notification = event.detail;
       addToast(notification);
     };
 
-    console.log('🔔 Toast event listener eklendi');
+    
     window.addEventListener('new-notification', handleNewNotification);
     
     return () => {
-      console.log('🔔 Toast event listener kaldırıldı');
+     
       window.removeEventListener('new-notification', handleNewNotification);
     };
   }, []);
 
   const addToast = (notification) => {
-    console.log('🔔 Toast ekleniyor:', notification);
+    
     const id = Date.now() + Math.random();
     const newToast = {
       id,
       ...notification
     };
     
-    console.log('🔔 Yeni toast:', newToast);
+   
     setToasts(prev => {
       const newToasts = [...prev, newToast];
-      console.log('🔔 Toplam toast sayısı:', newToasts.length);
+   
       return newToasts;
     });
   };

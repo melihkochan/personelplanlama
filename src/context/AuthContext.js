@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, logAuditEvent } from '../services/supabase';
+import { supabase, logAuditEvent, updateUserOnlineStatus } from '../services/supabase';
 
 const AuthContext = createContext();
 
@@ -98,6 +98,25 @@ export const AuthProvider = ({ children }) => {
       } catch (auditError) {
         console.error('Audit log hatası:', auditError);
       }
+
+      // Online durumunu güncelle
+      try {
+        // Önce users tablosundan kullanıcıyı bul
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', data.user?.email)
+          .single();
+        
+        if (!userError && userData) {
+          console.log('🔄 Online durumu güncelleniyor:', userData.id);
+          await updateUserOnlineStatus(userData.id, true);
+        } else {
+          console.error('❌ Users tablosunda kullanıcı bulunamadı:', data.user?.email);
+        }
+      } catch (onlineError) {
+        console.error('Online durumu güncelleme hatası:', onlineError);
+      }
       
       return { success: true, data };
     } catch (error) {
@@ -153,6 +172,25 @@ export const AuthProvider = ({ children }) => {
         });
       } catch (auditError) {
         console.error('Audit log hatası:', auditError);
+      }
+
+      // Online durumunu güncelle
+      try {
+        // Önce users tablosundan kullanıcıyı bul
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', currentUser?.email)
+          .single();
+        
+        if (!userError && userData) {
+          console.log('🔄 Online durumu güncelleniyor (çıkış):', userData.id);
+          await updateUserOnlineStatus(userData.id, false);
+        } else {
+          console.error('❌ Users tablosunda kullanıcı bulunamadı (çıkış):', currentUser?.email);
+        }
+      } catch (onlineError) {
+        console.error('Online durumu güncelleme hatası:', onlineError);
       }
       
       // 3. Local storage'ı temizle

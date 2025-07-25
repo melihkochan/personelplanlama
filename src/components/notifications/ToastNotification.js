@@ -6,17 +6,17 @@ const ToastNotification = ({ notification, onClose, onViewNotifications }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
-    console.log('🔔 Toast notification render edildi:', notification.title);
+  
     
     // Animasyon için kısa gecikme
     const timer = setTimeout(() => {
-      console.log('🔔 Toast görünür hale getiriliyor');
+     
       setIsVisible(true);
     }, 100);
 
     // 5 saniye sonra otomatik kapat
     const autoCloseTimer = setTimeout(() => {
-      console.log('🔔 Toast otomatik kapatılıyor');
+   
       handleClose();
     }, 5000);
 

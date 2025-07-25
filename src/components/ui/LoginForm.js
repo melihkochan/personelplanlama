@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, User, Lock, LogIn, AlertCircle, Shield, Eye, EyeOff, Zap, Globe, Users, Truck, Settings, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { Boxes } from './BackgroundBoxes';
 
 const LoginForm = () => {

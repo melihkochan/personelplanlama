@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Car, Plus, Edit3, Trash2, Save, X, Truck, User, Users, Wrench } from 'lucide-react';
-import { getAllVehicles, addVehicleWithAudit, updateVehicleWithAudit, deleteVehicleWithAudit } from '../services/supabase';
+import { getAllVehicles, addVehicleWithAudit, updateVehicleWithAudit, deleteVehicleWithAudit } from '../../services/supabase';
 
 const VehicleList = ({ vehicleData: propVehicleData, currentUser }) => {
   const [vehicleData, setVehicleData] = useState(propVehicleData || []);

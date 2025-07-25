@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell } from 'lucide-react';
 
-import PersonelList from './components/PersonelList';
-import VehicleList from './components/VehicleList';
-import StoreList from './components/StoreList';
-import VardiyaPlanlama from './components/VardiyaPlanlama';
-import PerformanceAnalysis from './components/PerformanceAnalysis';
-import PersonelVardiyaKontrol from './components/PersonelVardiyaKontrol';
-import StoreDistribution from './components/StoreDistribution';
-import VehicleDistribution from './components/VehicleDistribution';
-import AdminPanel from './components/AdminPanel';
-import LoginForm from './components/LoginForm';
-import NotificationPanel from './components/NotificationPanel';
-import ToastManager from './components/ToastManager';
-import SimpleNotification from './components/SimpleNotification';
+import PersonelList from './components/personnel/PersonelList';
+import VehicleList from './components/vehicles/VehicleList';
+import StoreList from './components/stores/StoreList';
+import VardiyaPlanlama from './components/personnel/VardiyaPlanlama';
+import PerformanceAnalysis from './components/personnel/PerformanceAnalysis';
+import PersonelVardiyaKontrol from './components/personnel/PersonelVardiyaKontrol';
+import StoreDistribution from './components/personnel/StoreDistribution';
+import VehicleDistribution from './components/vehicles/VehicleDistribution';
+import AdminPanel from './components/admin/AdminPanel';
+import LoginForm from './components/ui/LoginForm';
+import NotificationPanel from './components/notifications/NotificationPanel';
+import ToastManager from './components/notifications/ToastManager';
+import SimpleNotification from './components/notifications/SimpleNotification';
+import UnauthorizedAccess from './components/ui/UnauthorizedAccess';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount } from './services/supabase';
 import './App.css';
@@ -21,11 +23,14 @@ import './App.css';
 // Ana uygulama component'i (Authentication wrapper içinde)
 function MainApp() {
   const { user, isAuthenticated, loading, signOut, isLoggingOut, isLoggingIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   
-  // localStorage'dan aktif tab'i oku, yoksa 'home' kullan
+  // URL'den aktif tab'i al
   const [activeTab, setActiveTab] = useState(() => {
-    const savedTab = localStorage.getItem('activeTab');
-    return savedTab || 'home';
+    const path = location.pathname;
+    if (path === '/') return 'home';
+    return path.substring(1) || 'home';
   });
   
   const [personnelData, setPersonnelData] = useState([]);
@@ -56,11 +61,25 @@ function MainApp() {
   const [notificationMessage, setNotificationMessage] = useState('');
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
 
-  // Tab değiştiğinde localStorage'a kaydet
+  // Tab değiştiğinde URL'yi güncelle
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    localStorage.setItem('activeTab', tabId);
+    if (tabId === 'home') {
+      navigate('/');
+    } else {
+      navigate(`/${tabId}`);
+    }
   };
+
+  // URL değişikliklerini dinle
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/') {
+      setActiveTab('home');
+    } else {
+      setActiveTab(path.substring(1));
+    }
+  }, [location]);
 
   // Kullanıcı rolünü al
   useEffect(() => {
@@ -391,6 +410,9 @@ function MainApp() {
   const handleLogout = async () => {
     try {
       await signOut();
+      // Çıkış yaptıktan sonra ana sayfaya yönlendir
+      navigate('/');
+      setActiveTab('home');
       showNotification('Başarıyla çıkış yapıldı!', 'success');
     } catch (error) {
       console.error('❌ Logout error:', error);
@@ -1204,23 +1226,53 @@ function MainApp() {
                             
                             if (dayNotes.length > 0) {
                               return (
-                                <div className="mt-2 space-y-1">
-                                  <div className="flex items-center gap-1">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                    <div className="text-xs text-gray-500">
+                                <div className="mt-2 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                    <div className="text-sm font-semibold text-gray-700">
                                       {dayNotes.length} kayıt
                                     </div>
                                   </div>
                                   {/* Kayıt detayları */}
-                                  <div className="text-xs text-gray-600 max-h-24 overflow-y-auto space-y-0.5 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
-                                    {dayNotes.slice(0, 4).map((note, index) => (
-                                      <div key={index} className="truncate leading-tight">
-                                        {note.full_name} - {note.status}
-                                      </div>
-                                    ))}
-                                    {dayNotes.length > 4 && (
-                                      <div className="text-gray-400 leading-tight mt-1 font-medium">
-                                        +{dayNotes.length - 4} daha
+                                  <div className="text-sm text-gray-800 max-h-28 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
+                                    {dayNotes.slice(0, 3).map((note, index) => {
+                                      // Duruma göre renk belirle
+                                      let borderColor = 'border-blue-400';
+                                      let bgColor = 'bg-blue-50';
+                                      let statusColor = 'text-blue-600';
+                                      
+                                      if (note.status === 'raporlu') {
+                                        borderColor = 'border-red-400';
+                                        bgColor = 'bg-red-50';
+                                        statusColor = 'text-red-600';
+                                      } else if (note.status === 'dinlenme') {
+                                        borderColor = 'border-green-400';
+                                        bgColor = 'bg-green-50';
+                                        statusColor = 'text-green-600';
+                                      } else if (note.status === 'izinli') {
+                                        borderColor = 'border-purple-400';
+                                        bgColor = 'bg-purple-50';
+                                        statusColor = 'text-purple-600';
+                                      } else if (note.status === 'hastalık') {
+                                        borderColor = 'border-orange-400';
+                                        bgColor = 'bg-orange-50';
+                                        statusColor = 'text-orange-600';
+                                      }
+                                      
+                                      return (
+                                        <div key={index} className={`${bgColor} rounded-lg p-2 border-l-2 ${borderColor}`}>
+                                          <div className="font-medium text-gray-900 text-xs">
+                                            {note.full_name}
+                                          </div>
+                                          <div className={`text-xs font-medium mt-1 ${statusColor}`}>
+                                            {note.status}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                    {dayNotes.length > 3 && (
+                                      <div className="text-xs text-gray-500 font-medium bg-gray-100 rounded-lg p-2 text-center">
+                                        +{dayNotes.length - 3} daha
                                       </div>
                                     )}
                                   </div>
@@ -1307,10 +1359,19 @@ function MainApp() {
             )}
 
             {/* Admin Panel */}
-            {activeTab === 'admin' && (userRole === 'admin' || userRole === 'yönetici') && (
-              <div className="space-y-6">
-                <AdminPanel userRole={userRole} currentUser={user} />
-              </div>
+            {activeTab === 'admin' && (
+              <>
+                {(userRole === 'admin' || userRole === 'yönetici') ? (
+                  <div className="space-y-6">
+                    <AdminPanel userRole={userRole} currentUser={user} />
+                  </div>
+                ) : (
+                  <UnauthorizedAccess 
+                    userRole={userRole} 
+                    onNavigateHome={() => handleTabChange('home')}
+                  />
+                )}
+              </>
             )}
           </main>
         </div>
@@ -1346,9 +1407,11 @@ function MainApp() {
 // Ana App component'i - AuthProvider ile wrap edilmiş
 function App() {
   return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
+    </Router>
   );
 }
 

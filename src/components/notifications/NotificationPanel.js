@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X, Check, Trash2, Info, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { getNotifications, markNotificationAsRead, deleteNotification, getUnreadNotificationCount } from '../services/supabase';
+import { getNotifications, markNotificationAsRead, deleteNotification, getUnreadNotificationCount } from '../../services/supabase';
 
 const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
   const [notifications, setNotifications] = useState([]);

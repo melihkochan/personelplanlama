@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
-import { getAllPersonnel, addPersonnelWithAudit, deletePersonnelWithAudit, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, getCurrentWeeklyShifts, saveCurrentWeekExcelData, supabase } from '../services/supabase';
+import { getAllPersonnel, addPersonnelWithAudit, deletePersonnelWithAudit, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, getCurrentWeeklyShifts, saveCurrentWeekExcelData, supabase } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
 

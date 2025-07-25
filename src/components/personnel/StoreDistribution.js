@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Users, TrendingUp, Calendar, Filter, RefreshCw, Download, BarChart3, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getPerformanceData, getStoreLocationsByCodes, getAllPersonnel } from '../services/supabase';
+import { getPerformanceData, getStoreLocationsByCodes, getAllPersonnel } from '../../services/supabase';
 
 const StoreDistribution = () => {
   const [performanceData, setPerformanceData] = useState([]);

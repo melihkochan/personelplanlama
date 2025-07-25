@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, FileSpreadsheet, Check, X, AlertCircle, Eye, AlertTriangle, Info } from 'lucide-react';
-import { addPersonnelWithAudit, addVehicleWithAudit, addStoreWithAudit, getAllPersonnel, getAllVehicles, getAllStores, bulkSavePerformanceData } from '../services/supabase';
+import { addPersonnelWithAudit, addVehicleWithAudit, addStoreWithAudit, getAllPersonnel, getAllVehicles, getAllStores, bulkSavePerformanceData } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
 const FileUpload = ({ onDataUpload, currentUser }) => {
@@ -31,17 +31,14 @@ const FileUpload = ({ onDataUpload, currentUser }) => {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           
-          console.log('📊 Excel dosyası bilgileri:');
-          console.log('Sheet isimleri:', workbook.SheetNames);
+        
 
           const sheetName = workbook.SheetNames[0];
-          console.log('Kullanılan sheet:', sheetName);
+          
           
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
-          console.log('Toplam satır sayısı:', jsonData.length);
-          console.log('İlk 3 satır:', jsonData.slice(0, 3));
           
           // Excel sütun yapısını kontrol et
           if (jsonData.length > 0) {

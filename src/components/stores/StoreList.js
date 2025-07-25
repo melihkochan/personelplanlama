@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Store, Plus, Edit3, Trash2, MapPin, User, UserCheck, Building, Phone, Mail, Users, SortAsc, SortDesc } from 'lucide-react';
-import { getAllStores, addStoreWithAudit, updateStoreWithAudit, deleteStoreWithAudit } from '../services/supabase';
+import { getAllStores, addStoreWithAudit, updateStoreWithAudit, deleteStoreWithAudit } from '../../services/supabase';
 
 const StoreList = ({ storeData: propStoreData, currentUser }) => {
   const [storeData, setStoreData] = useState(propStoreData || []);

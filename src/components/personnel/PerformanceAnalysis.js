@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes } from '../services/supabase';
+import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes } from '../../services/supabase';
 
 const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole, currentUser }) => {
   // PerformanceAnalysis başladı

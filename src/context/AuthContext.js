@@ -131,6 +131,11 @@ export const AuthProvider = ({ children }) => {
       // 2. Local state'i temizle
       setUser(null);
       
+      // 3. URL'yi ana sayfaya yönlendir
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/');
+      }
+      
       // 3. Audit log kaydet
       try {
         await logAuditEvent({

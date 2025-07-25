@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle } from 'lucide-react';
-import { getAllUsers, addUser, updateUser, deleteUser, resendConfirmationEmail, deleteAllPerformanceData, clearAllShiftData } from '../services/supabase';
+import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText } from 'lucide-react';
+import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, getAuditLogs, getAuditLogStats, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 const AdminPanel = ({ userRole, currentUser }) => {
@@ -32,6 +32,19 @@ const AdminPanel = ({ userRole, currentUser }) => {
     confirmPassword: ''
   });
 
+  // Audit Log state'leri
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditStats, setAuditStats] = useState({});
+  const [auditFilters, setAuditFilters] = useState({
+    userEmail: '',
+    action: '',
+    tableName: '',
+    dateFrom: '',
+    dateTo: '',
+    limit: 50
+  });
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+
   // Mevcut kullanıcının email'ini al
   const getCurrentUserEmail = () => {
     return currentUser?.email;
@@ -61,7 +74,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
         return;
       }
       
-      const result = await updateUser(currentUserData.id, {
+      const result = await updateUserWithAudit(currentUserData.id, {
         password: passwordChangeData.newPassword
       });
       
@@ -147,7 +160,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
         email: `${normalizedUsername}@gratis.com`
       };
       
-      const result = await addUser(userDataWithEmail);
+      const result = await addUserWithAudit(userDataWithEmail, currentUser);
       if (result.success) {
         setShowAddUserModal(false);
         setFormData({
@@ -214,7 +227,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
       const normalizedUsername = normalizeForEmail(formData.username);
       updateData.email = `${normalizedUsername}@gratis.com`;
       
-      const result = await updateUser(editingUser.id, updateData);
+      const result = await updateUserWithAudit(editingUser.id, updateData, currentUser);
       if (result.success) {
         setShowEditUserModal(false);
         setEditingUser(null);
@@ -242,7 +255,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
       setLoading(true);
       
       try {
-        const result = await deleteUser(userId);
+        const result = await deleteUserWithAudit(userId, currentUser);
         if (result.success) {
           loadUsers();
           alert('Kullanıcı başarıyla silindi!');
@@ -282,7 +295,7 @@ Devam etmek istediğinizden emin misiniz?`;
 
     try {
       console.log('🗑️ Tüm performans verileri siliniyor...');
-      const result = await deleteAllPerformanceData();
+      const result = await deleteAllPerformanceDataWithAudit(currentUser);
       
       if (result.success) {
         alert(`✅ Başarılı!\n\n${result.message}\n\nSayfa yenilenecek.`);
@@ -327,7 +340,7 @@ Devam etmek istediğinizden emin misiniz?`;
 
     try {
       console.log('🗑️ Tüm personel kontrol verileri siliniyor...');
-      const result = await clearAllShiftData();
+      const result = await clearAllShiftDataWithAudit(currentUser);
       
       if (result.success) {
         alert(`✅ Başarılı!\n\nTüm personel kontrol verileri başarıyla silindi.\n\nSayfa yenilenecek.`);
@@ -671,11 +684,423 @@ Devam etmek istediğinizden emin misiniz?`;
     </div>
   );
 
+  const AuditLogsSection = () => {
+    const [logs, setLogs] = useState([]);
+    const [stats, setStats] = useState({});
+    const [loadingLogs, setLoadingLogs] = useState(false);
+    const [availableUsers, setAvailableUsers] = useState([]);
+    const [availableActions, setAvailableActions] = useState([]);
+    const [availableTables, setAvailableTables] = useState([]);
+    const [filters, setFilters] = useState({
+      userEmail: '',
+      action: '',
+      tableName: '',
+      dateFrom: '',
+      dateTo: '',
+      limit: 50
+    });
+
+    useEffect(() => {
+      loadAuditLogs();
+      loadAuditStats();
+      loadAvailableFilters();
+    }, []);
+    
+    const loadAvailableFilters = async () => {
+      try {
+        console.log('🔍 Filtre verileri yükleniyor...');
+        
+        // Mevcut audit loglardan kullanıcıları, action'ları ve tabloları çıkar
+        const { data: allLogs, error } = await supabase
+          .from('audit_logs')
+          .select('user_email, user_name, action, table_name')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('❌ Audit log verileri getirilemedi:', error);
+          return;
+        }
+        
+        console.log('🔍 Bulunan audit loglar:', allLogs?.length || 0);
+        
+        if (allLogs && allLogs.length > 0) {
+          // Benzersiz kullanıcıları çıkar
+          const uniqueUsers = [...new Set(allLogs.map(log => `${log.user_name} (${log.user_email})`))];
+          console.log('🔍 Benzersiz kullanıcılar:', uniqueUsers);
+          setAvailableUsers(uniqueUsers);
+          
+          // Benzersiz action'ları çıkar
+          const uniqueActions = [...new Set(allLogs.map(log => log.action))];
+          console.log('🔍 Benzersiz action\'lar:', uniqueActions);
+          setAvailableActions(uniqueActions);
+          
+          // Benzersiz tabloları çıkar
+          const uniqueTables = [...new Set(allLogs.map(log => log.table_name))];
+          console.log('🔍 Benzersiz tablolar:', uniqueTables);
+          setAvailableTables(uniqueTables);
+        } else {
+          console.log('🔍 Audit log verisi bulunamadı');
+        }
+      } catch (error) {
+        console.error('❌ Filtre verileri yüklenemedi:', error);
+      }
+    };
+
+    const loadAuditLogs = async () => {
+      setLoadingLogs(true);
+      try {
+        const result = await getAuditLogs(filters);
+        if (result.success) {
+          setLogs(result.data);
+        } else {
+          console.error('Audit logları yüklenemedi:', result.error);
+        }
+      } catch (error) {
+        console.error('Audit log yükleme hatası:', error);
+      } finally {
+        setLoadingLogs(false);
+      }
+    };
+
+    const loadAuditStats = async () => {
+      try {
+        const result = await getAuditLogStats();
+        if (result.success) {
+          setStats(result.data);
+        }
+      } catch (error) {
+        console.error('Audit stats yükleme hatası:', error);
+      }
+    };
+
+    const handleFilterChange = (e) => {
+      const { name, value } = e.target;
+      const newFilters = {
+        ...filters,
+        [name]: value
+      };
+      
+      setFilters(newFilters);
+      
+      // Otomatik filtreleme - dropdown değişikliklerinde
+      if (name === 'userEmail' || name === 'action' || name === 'tableName') {
+        // Kısa bir gecikme ile filtreleme yap (debounce)
+        setTimeout(() => {
+          loadAuditLogsWithFilters(newFilters);
+        }, 300);
+      }
+      
+      // Tarih filtreleri için de otomatik filtreleme
+      if (name === 'dateFrom' || name === 'dateTo') {
+        // Tarih değişikliklerinde biraz daha uzun gecikme
+        setTimeout(() => {
+          loadAuditLogsWithFilters(newFilters);
+        }, 500);
+      }
+    };
+    
+    const loadAuditLogsWithFilters = async (customFilters = null) => {
+      setLoadingLogs(true);
+      try {
+        const filtersToUse = customFilters || filters;
+        const result = await getAuditLogs(filtersToUse);
+        if (result.success) {
+          setLogs(result.data);
+        } else {
+          console.error('Audit logları yüklenemedi:', result.error);
+        }
+      } catch (error) {
+        console.error('Audit log yükleme hatası:', error);
+      } finally {
+        setLoadingLogs(false);
+      }
+    };
+
+    const handleApplyFilters = () => {
+      loadAuditLogsWithFilters();
+    };
+
+    const getActionBadge = (action) => {
+      const actionMap = {
+        'CREATE': { label: 'Oluşturma', color: 'bg-green-100 text-green-800' },
+        'UPDATE': { label: 'Güncelleme', color: 'bg-blue-100 text-blue-800' },
+        'DELETE': { label: 'Silme', color: 'bg-red-100 text-red-800' },
+        'BULK_DELETE': { label: 'Toplu Silme', color: 'bg-orange-100 text-orange-800' },
+        'LOGIN': { label: 'Giriş', color: 'bg-purple-100 text-purple-800' },
+        'LOGOUT': { label: 'Çıkış', color: 'bg-gray-100 text-gray-800' }
+      };
+      
+      const actionInfo = actionMap[action] || { label: action, color: 'bg-gray-100 text-gray-800' };
+      
+      return (
+        <span className={`px-2 py-1 rounded-full text-xs font-semibold shadow-sm ${actionInfo.color}`}>
+          {actionInfo.label}
+        </span>
+      );
+    };
+
+    const getTableName = (tableName) => {
+      const tableMap = {
+        'users': 'Kullanıcılar',
+        'personnel': 'Personel',
+        'vehicles': 'Araçlar',
+        'stores': 'Mağazalar',
+        'daily_notes': 'Günlük Notlar',
+        'weekly_schedules': 'Haftalık Vardiyalar',
+        'performance_data': 'Performans Verileri',
+        'shift_data': 'Vardiya Verileri',
+        'audit_logs': 'İşlem Geçmişi',
+        'auth': 'Kimlik Doğrulama'
+      };
+      
+      return tableMap[tableName] || tableName;
+    };
+
+    return (
+      <div className="space-y-4">
+        {/* İstatistikler */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Toplam İşlem</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalCount || 0}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-blue-500">
+                <Activity className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Son 7 Gün</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.recentCount || 0}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-green-500">
+                <Clock className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Aktif Kullanıcı</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.topUsers?.length || 0}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-purple-500">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filtreler */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 mb-4">
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Filtreler
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kullanıcı</label>
+              <select
+                name="userEmail"
+                value={filters.userEmail}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Tüm Kullanıcılar</option>
+                {availableUsers.map((user, index) => (
+                  <option key={index} value={user.split('(')[1]?.replace(')', '') || user}>
+                    {user}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">İşlem Türü</label>
+              <select
+                name="action"
+                value={filters.action}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Tüm İşlemler</option>
+                {availableActions.map((action, index) => (
+                  <option key={index} value={action}>
+                    {getActionBadge(action).props.children}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tablo</label>
+              <select
+                name="tableName"
+                value={filters.tableName}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Tüm Tablolar</option>
+                {availableTables.map((table, index) => (
+                  <option key={index} value={table}>
+                    {getTableName(table)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Başlangıç Tarihi</label>
+              <input
+                type="date"
+                name="dateFrom"
+                value={filters.dateFrom}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
+              <input
+                type="date"
+                name="dateTo"
+                value={filters.dateTo}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div className="flex items-end">
+              <button
+                onClick={handleApplyFilters}
+                className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                disabled={loadingLogs}
+              >
+                {loadingLogs ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Yükleniyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    <span>Filtrele</span>
+                  </>
+                )}
+              </button>
+            </div>
+            
+
+          </div>
+        </div>
+
+
+        {/* İşlem Listesi */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-green-600" />
+            İşlem Geçmişi
+          </h3>
+          
+          {loadingLogs ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Yükleniyor...</p>
+            </div>
+          ) : (
+            <>
+              {logs.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-lg font-medium text-gray-900 mb-2">İşlem geçmişi bulunamadı</p>
+                  <p className="text-gray-600">Seçilen filtrelere uygun işlem bulunamadı.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            Tarih
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            <User className="w-4 h-4" />
+                            Kullanıcı
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            <Activity className="w-4 h-4" />
+                            İşlem
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            <Database className="w-4 h-4" />
+                            Tablo
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-4 h-4" />
+                            Detay
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {logs.map((log, index) => (
+                        <tr key={log.id || index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(log.created_at).toLocaleString('tr-TR')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{log.user_name || log.user_email}</div>
+                            <div className="text-sm text-gray-500">{log.user_email}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getActionBadge(log.action)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {getTableName(log.table_name)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            <div className="max-w-xs truncate" title={log.details}>
+                              {log.details}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+      <div className="h-full">
         {/* Bilgilendirme Banner */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-4 mb-6 shadow-lg">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 shadow-lg">
           <div className="flex items-center gap-3 text-white">
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
               <Shield className="w-4 h-4" />
@@ -696,8 +1121,8 @@ Devam etmek istediğinizden emin misiniz?`;
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8">
-          <div className="flex items-center justify-between mb-8">
+        <div className="bg-white p-6">
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
                 <Shield className="w-6 h-6 text-white" />
@@ -710,7 +1135,7 @@ Devam etmek istediğinizden emin misiniz?`;
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <StatCard
               title="Toplam Kullanıcı"
               value={users.length}
@@ -731,7 +1156,7 @@ Devam etmek istediğinizden emin misiniz?`;
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left Menu */}
             <div className="space-y-2">
               <MenuButton
@@ -755,6 +1180,13 @@ Devam etmek istediğinizden emin misiniz?`;
                 active={activeSection === 'database'}
                 onClick={setActiveSection}
               />
+              <MenuButton
+                id="audit_logs"
+                icon={Activity}
+                label="İşlem Geçmişi"
+                active={activeSection === 'audit_logs'}
+                onClick={setActiveSection}
+              />
             </div>
 
             {/* Main Content */}
@@ -762,6 +1194,7 @@ Devam etmek istediğinizden emin misiniz?`;
               {activeSection === 'users' && <UsersSection />}
               {activeSection === 'settings' && <SettingsSection />}
               {activeSection === 'database' && <DatabaseSection />}
+              {activeSection === 'audit_logs' && <AuditLogsSection />}
             </div>
           </div>
         </div>

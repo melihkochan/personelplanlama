@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Upload, FileSpreadsheet, Check, X, AlertCircle, Eye, AlertTriangle, Info } from 'lucide-react';
-import { addPersonnel, addVehicle, addStore, getAllPersonnel, getAllVehicles, getAllStores, bulkSavePerformanceData } from '../services/supabase';
+import { addPersonnelWithAudit, addVehicleWithAudit, addStoreWithAudit, getAllPersonnel, getAllVehicles, getAllStores, bulkSavePerformanceData } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
-const FileUpload = ({ onDataUpload }) => {
+const FileUpload = ({ onDataUpload, currentUser }) => {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState(null);
@@ -304,7 +304,7 @@ const FileUpload = ({ onDataUpload }) => {
       console.log(`💾 ${personnel.length} personel kaydediliyor...`);
       for (const person of personnel) {
         try {
-          const result = await addPersonnel(person);
+          const result = await addPersonnelWithAudit(person, currentUser);
           if (result.success) {
             results.personnel.success++;
             console.log(`✅ Personel eklendi/güncellendi: ${person.full_name}`);
@@ -324,7 +324,7 @@ const FileUpload = ({ onDataUpload }) => {
       console.log(`🚗 ${vehicles.length} araç kaydediliyor...`);
       for (const vehicle of vehicles) {
         try {
-          const result = await addVehicle(vehicle);
+          const result = await addVehicleWithAudit(vehicle, currentUser);
           if (result.success) {
             results.vehicles.success++;
             console.log(`✅ Araç eklendi/güncellendi: ${vehicle.license_plate}`);
@@ -344,7 +344,7 @@ const FileUpload = ({ onDataUpload }) => {
       console.log(`🏪 ${stores.length} mağaza kaydediliyor...`);
       for (const store of stores) {
         try {
-          const result = await addStore(store);
+          const result = await addStoreWithAudit(store, currentUser);
           if (result.success) {
             results.stores.success++;
             console.log(`✅ Mağaza eklendi/güncellendi: ${store.store_name}`);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Car, Plus, Edit3, Trash2, Save, X, Truck, User, Users, Wrench } from 'lucide-react';
-import { getAllVehicles, addVehicle, updateVehicle, deleteVehicle } from '../services/supabase';
+import { getAllVehicles, addVehicleWithAudit, updateVehicleWithAudit, deleteVehicleWithAudit } from '../services/supabase';
 
-const VehicleList = ({ vehicleData: propVehicleData }) => {
+const VehicleList = ({ vehicleData: propVehicleData, currentUser }) => {
   const [vehicleData, setVehicleData] = useState(propVehicleData || []);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,7 +69,7 @@ const VehicleList = ({ vehicleData: propVehicleData }) => {
 
     setLoading(true);
     try {
-      const result = await addVehicle(newVehicle);
+      const result = await addVehicleWithAudit(newVehicle, currentUser);
       if (result.success) {
         setNewVehicle({
           license_plate: '',
@@ -95,7 +95,7 @@ const VehicleList = ({ vehicleData: propVehicleData }) => {
   const handleUpdateVehicle = async (vehicleId) => {
     setLoading(true);
     try {
-      const result = await updateVehicle(vehicleId, editingVehicle);
+      const result = await updateVehicleWithAudit(vehicleId, editingVehicle, currentUser);
       if (result.success) {
         setEditingVehicle(null);
         await refreshVehicleData();
@@ -119,7 +119,7 @@ const VehicleList = ({ vehicleData: propVehicleData }) => {
 
     setLoading(true);
     try {
-      const result = await deleteVehicle(vehicleId);
+      const result = await deleteVehicleWithAudit(vehicleId, currentUser);
       if (result.success) {
         await refreshVehicleData();
         alert('Araç başarıyla silindi!');

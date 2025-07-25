@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase, logAuditEvent } from '../services/supabase';
 
 const AuthContext = createContext();
 
@@ -80,6 +80,25 @@ export const AuthProvider = ({ children }) => {
       // Giriş başarılı animasyonu için 1 saniye bekle
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Audit log kaydet
+      try {
+        await logAuditEvent({
+          userId: data.user?.id,
+          userEmail: data.user?.email,
+          userName: data.user?.user_metadata?.full_name || data.user?.email,
+          action: 'LOGIN',
+          tableName: 'auth',
+          recordId: null,
+          oldValues: null,
+          newValues: { loginTime: new Date().toISOString() },
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Kullanıcı giriş yaptı: ${data.user?.email}`
+        });
+      } catch (auditError) {
+        console.error('Audit log hatası:', auditError);
+      }
+      
       return { success: true, data };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -93,6 +112,9 @@ export const AuthProvider = ({ children }) => {
     try {
       // Logout animasyonunu başlat
       setIsLoggingOut(true);
+      
+      // Mevcut kullanıcı bilgilerini sakla
+      const currentUser = user;
       
       // Animasyon için 1.5 saniye bekle
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -108,6 +130,25 @@ export const AuthProvider = ({ children }) => {
       
       // 2. Local state'i temizle
       setUser(null);
+      
+      // 3. Audit log kaydet
+      try {
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'LOGOUT',
+          tableName: 'auth',
+          recordId: null,
+          oldValues: null,
+          newValues: { logoutTime: new Date().toISOString() },
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Kullanıcı çıkış yaptı: ${currentUser?.email}`
+        });
+      } catch (auditError) {
+        console.error('Audit log hatası:', auditError);
+      }
       
       // 3. Local storage'ı temizle
       try {

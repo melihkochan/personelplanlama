@@ -11,6 +11,7 @@ const StoreDistribution = () => {
   const [storeLocations, setStoreLocations] = useState({});
   const [uniqueLocations, setUniqueLocations] = useState([]);
   const [personnelData, setPersonnelData] = useState({});
+  const [allPersonnelCount, setAllPersonnelCount] = useState(0);
   const [sortConfig, setSortConfig] = useState({
     column: 'default',
     direction: 'asc'
@@ -56,6 +57,7 @@ const StoreDistribution = () => {
             personnelMap[person.employee_code] = person;
           });
           setPersonnelData(personnelMap);
+          setAllPersonnelCount(personnelResult.data.length);
           console.log('👥 Personel verisi yüklendi:', Object.keys(personnelMap).length, 'kişi');
         }
         
@@ -254,8 +256,15 @@ const StoreDistribution = () => {
   };
 
   const getSortedPersonnel = () => {
-    const personnelArray = Object.entries(personnelStats).map(([employeeCode, stats]) => {
-      const personnel = personnelData[employeeCode] || {};
+    // Tüm personelleri al ve performans verisi olmayanlar için 0 değerler ekle
+    const personnelArray = Object.entries(personnelData).map(([employeeCode, personnel]) => {
+      const stats = personnelStats[employeeCode] || {
+        name: personnel.full_name || 'Bilinmeyen',
+        totalVisits: 0,
+        storeVisits: {},
+        locationVisits: {}
+      };
+      
       return {
         employeeCode,
         ...stats,
@@ -476,7 +485,7 @@ const StoreDistribution = () => {
           
           <div className="bg-green-50 rounded-lg p-3">
             <div className="text-xl font-bold text-green-600">
-              {Object.keys(personnelStats).length}
+              {allPersonnelCount}
             </div>
             <div className="text-xs text-green-600">Aktif Personel</div>
           </div>

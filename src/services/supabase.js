@@ -2117,3 +2117,932 @@ export const deletePeriodAndShifts = async (periodId) => {
     return { success: false, error };
   }
 }; 
+
+// Audit Log functions - İşlem geçmişi fonksiyonları
+export const logAuditEvent = async (eventData) => {
+  try {
+    console.log('🔍 Audit log kaydediliyor:', {
+      action: eventData.action,
+      tableName: eventData.tableName,
+      details: eventData.details
+    });
+    
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .insert([{
+        user_id: eventData.userId,
+        user_email: eventData.userEmail,
+        user_name: eventData.userName,
+        action: eventData.action,
+        table_name: eventData.tableName,
+        record_id: eventData.recordId,
+        old_values: eventData.oldValues,
+        new_values: eventData.newValues,
+        ip_address: eventData.ipAddress,
+        user_agent: eventData.userAgent,
+        details: eventData.details,
+        created_at: new Date().toISOString()
+      }])
+      .select();
+    
+    if (error) {
+      console.error('❌ Audit log kaydetme hatası:', error);
+      throw error;
+    }
+    
+    console.log('✅ Audit log başarıyla kaydedildi:', data?.[0]?.id);
+    
+    // Bildirim oluştur - sadece önemli işlemler için
+    try {
+      // Giriş/çıkış bildirimlerini gösterme
+      if (eventData.action === 'LOGIN' || eventData.action === 'LOGOUT') {
+        console.log('ℹ️ Giriş/çıkış bildirimi oluşturulmadı');
+        return { success: true, data: data?.[0] };
+      }
+      
+      const notificationTitle = getNotificationTitle(eventData.action, eventData.tableName);
+      const notificationMessage = getNotificationMessage(eventData.action, eventData.tableName, eventData.details);
+      
+      const notificationData = {
+        user_id: eventData.userId,
+        user_email: eventData.userEmail,
+        user_name: eventData.userName,
+        title: notificationTitle,
+        message: notificationMessage,
+        type: 'audit',
+        action_type: eventData.action,
+        table_name: eventData.tableName,
+        record_id: eventData.recordId
+      };
+      
+      await createNotification(notificationData);
+      
+      // Toast bildirimi tetikle
+      console.log('🔔 Toast bildirimi tetikleniyor...');
+      const toastEvent = new CustomEvent('new-notification', {
+        detail: {
+          title: notificationTitle,
+          message: notificationMessage,
+          type: 'audit',
+          created_at: new Date().toISOString()
+        }
+      });
+      
+      window.dispatchEvent(toastEvent);
+      console.log('✅ Bildirim başarıyla oluşturuldu ve toast tetiklendi');
+    } catch (notificationError) {
+      console.error('❌ Bildirim oluşturma hatası:', notificationError);
+    }
+    
+    return { success: true, data: data?.[0] };
+  } catch (error) {
+    console.error('❌ Audit log kaydetme hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Bildirim başlığı oluştur
+const getNotificationTitle = (action, tableName) => {
+  const actionMap = {
+    'CREATE': 'Yeni Kayıt',
+    'UPDATE': 'Güncelleme',
+    'DELETE': 'Silme',
+    'BULK_CREATE': 'Toplu Ekleme',
+    'BULK_DELETE': 'Toplu Silme',
+    'LOGIN': 'Giriş',
+    'LOGOUT': 'Çıkış'
+  };
+  
+  const tableMap = {
+    'users': 'Kullanıcı',
+    'personnel': 'Personel',
+    'vehicles': 'Araç',
+    'stores': 'Mağaza',
+    'daily_notes': 'Günlük Not',
+    'weekly_schedules': 'Vardiya',
+    'performance_data': 'Performans Verisi',
+    'auth': 'Kimlik Doğrulama'
+  };
+  
+  const actionText = actionMap[action] || action;
+  const tableText = tableMap[tableName] || tableName;
+  
+  return `${actionText} - ${tableText}`;
+};
+
+// Bildirim mesajı oluştur
+const getNotificationMessage = (action, tableName, details) => {
+  const actionMap = {
+    'CREATE': 'yeni kayıt oluşturuldu',
+    'UPDATE': 'kayıt güncellendi',
+    'DELETE': 'kayıt silindi',
+    'BULK_CREATE': 'toplu kayıt eklendi',
+    'BULK_DELETE': 'toplu kayıt silindi',
+    'LOGIN': 'sisteme giriş yapıldı',
+    'LOGOUT': 'sistemden çıkış yapıldı'
+  };
+  
+  const tableMap = {
+    'users': 'kullanıcı',
+    'personnel': 'personel',
+    'vehicles': 'araç',
+    'stores': 'mağaza',
+    'daily_notes': 'günlük not',
+    'weekly_schedules': 'vardiya',
+    'performance_data': 'performans verisi',
+    'auth': 'kimlik doğrulama'
+  };
+  
+  const actionText = actionMap[action] || action.toLowerCase();
+  const tableText = tableMap[tableName] || tableName;
+  
+  return `${tableText} için ${actionText}. ${details}`;
+};
+
+export const getAuditLogs = async (filters = {}) => {
+  try {
+    console.log('🔍 Audit loglar getiriliyor, filtreler:', filters);
+    
+    let query = supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    // Filtreleri uygula
+    if (filters.userId) {
+      query = query.eq('user_id', filters.userId);
+    }
+    
+    if (filters.userEmail) {
+      query = query.eq('user_email', filters.userEmail);
+    }
+    
+    if (filters.action) {
+      query = query.eq('action', filters.action);
+    }
+    
+    if (filters.tableName) {
+      query = query.eq('table_name', filters.tableName);
+    }
+    
+    if (filters.dateFrom) {
+      query = query.gte('created_at', filters.dateFrom);
+    }
+    
+    if (filters.dateTo) {
+      query = query.lte('created_at', filters.dateTo);
+    }
+    
+    // Sayfalama
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('❌ Audit log getirme hatası:', error);
+      throw error;
+    }
+    
+    console.log('✅ Audit loglar başarıyla getirildi:', data?.length || 0, 'kayıt');
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('❌ Audit log getirme hatası:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const getAuditLogStats = async () => {
+  try {
+    // Toplam kayıt sayısı
+    const { count: totalCount, error: countError } = await supabase
+      .from('audit_logs')
+      .select('*', { count: 'exact', head: true });
+    
+    if (countError) throw countError;
+    
+    // Son 7 günlük kayıt sayısı
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const { count: recentCount, error: recentError } = await supabase
+      .from('audit_logs')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', sevenDaysAgo.toISOString());
+    
+    if (recentError) throw recentError;
+    
+    // En aktif kullanıcılar
+    const { data: topUsers, error: usersError } = await supabase
+      .from('audit_logs')
+      .select('user_email, user_name')
+      .gte('created_at', sevenDaysAgo.toISOString());
+    
+    if (usersError) throw usersError;
+    
+    // Kullanıcı bazında sayım
+    const userStats = {};
+    topUsers?.forEach(log => {
+      const key = log.user_email;
+      if (!userStats[key]) {
+        userStats[key] = {
+          email: log.user_email,
+          name: log.user_name,
+          count: 0
+        };
+      }
+      userStats[key].count++;
+    });
+    
+    const topUsersList = Object.values(userStats)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    return {
+      success: true,
+      data: {
+        totalCount,
+        recentCount,
+        topUsers: topUsersList
+      }
+    };
+  } catch (error) {
+    console.error('Audit log istatistikleri hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Mevcut fonksiyonları audit log ile güncelle
+export const addUserWithAudit = async (user, currentUser) => {
+  try {
+    const result = await addUser(user);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'CREATE',
+        tableName: 'users',
+        recordId: result.data?.id,
+        oldValues: null,
+        newValues: {
+          email: user.email,
+          username: user.username,
+          full_name: user.full_name,
+          role: user.role,
+          is_active: user.is_active
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: 'Yeni kullanıcı oluşturuldu'
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Add user with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateUserWithAudit = async (id, updates, currentUser) => {
+  try {
+    // Önce mevcut kullanıcı bilgilerini al
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await updateUser(id, updates);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'users',
+        recordId: id,
+        oldValues: existingUser,
+        newValues: { ...existingUser, ...updates },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: 'Kullanıcı bilgileri güncellendi'
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Update user with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteUserWithAudit = async (id, currentUser) => {
+  try {
+    // Önce mevcut kullanıcı bilgilerini al
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await deleteUser(id);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'DELETE',
+        tableName: 'users',
+        recordId: id,
+        oldValues: existingUser,
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: 'Kullanıcı silindi'
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Delete user with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteAllPerformanceDataWithAudit = async (currentUser) => {
+  try {
+    // Önce silinecek veri sayısını al
+    const { count: totalCount } = await supabase
+      .from('performance_data')
+      .select('*', { count: 'exact', head: true });
+    
+    const result = await deleteAllPerformanceData();
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'BULK_DELETE',
+        tableName: 'performance_data',
+        recordId: null,
+        oldValues: { deletedCount: totalCount },
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Tüm performans verileri silindi (${totalCount} kayıt)`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Delete all performance data with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const clearAllShiftDataWithAudit = async (currentUser) => {
+  try {
+    // Önce silinecek veri sayılarını al
+    const { count: schedulesCount } = await supabase
+      .from('weekly_schedules')
+      .select('*', { count: 'exact', head: true });
+    
+    const { count: periodsCount } = await supabase
+      .from('weekly_periods')
+      .select('*', { count: 'exact', head: true });
+    
+    const result = await clearAllShiftData();
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'BULK_DELETE',
+        tableName: 'shift_data',
+        recordId: null,
+        oldValues: { 
+          schedulesCount: schedulesCount || 0,
+          periodsCount: periodsCount || 0
+        },
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Tüm vardiya verileri silindi (${schedulesCount || 0} program, ${periodsCount || 0} dönem)`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Clear all shift data with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Personnel functions with audit logging
+export const addPersonnelWithAudit = async (personnel, currentUser) => {
+  try {
+    const result = await addPersonnel(personnel);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'CREATE',
+        tableName: 'personnel',
+        recordId: result.data?.id,
+        oldValues: null,
+        newValues: {
+          employee_code: personnel.employee_code,
+          full_name: personnel.full_name,
+          position: personnel.position,
+          shift_type: personnel.shift_type,
+          is_active: personnel.is_active
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Yeni personel eklendi: ${personnel.full_name} (${personnel.employee_code})`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Add personnel with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updatePersonnelWithAudit = async (id, updates, currentUser) => {
+  try {
+    // Önce mevcut personel bilgilerini al
+    const { data: existingPersonnel } = await supabase
+      .from('personnel')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await updatePersonnel(id, updates);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'personnel',
+        recordId: id,
+        oldValues: existingPersonnel,
+        newValues: { ...existingPersonnel, ...updates },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Personel güncellendi: ${existingPersonnel?.full_name} (${existingPersonnel?.employee_code})`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Update personnel with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deletePersonnelWithAudit = async (id, currentUser) => {
+  try {
+    // Önce mevcut personel bilgilerini al
+    const { data: existingPersonnel } = await supabase
+      .from('personnel')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await deletePersonnel(id);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'DELETE',
+        tableName: 'personnel',
+        recordId: id,
+        oldValues: existingPersonnel,
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Personel silindi: ${existingPersonnel?.full_name} (${existingPersonnel?.employee_code})`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Delete personnel with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Vehicle functions with audit logging
+export const addVehicleWithAudit = async (vehicle, currentUser) => {
+  try {
+    const result = await addVehicle(vehicle);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'CREATE',
+        tableName: 'vehicles',
+        recordId: result.data?.id,
+        oldValues: null,
+        newValues: {
+          license_plate: vehicle.license_plate,
+          vehicle_type: vehicle.vehicle_type,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          year: vehicle.year
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Yeni araç eklendi: ${vehicle.license_plate} (${vehicle.vehicle_type})`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Add vehicle with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateVehicleWithAudit = async (id, updates, currentUser) => {
+  try {
+    // Önce mevcut araç bilgilerini al
+    const { data: existingVehicle } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await updateVehicle(id, updates);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'vehicles',
+        recordId: id,
+        oldValues: existingVehicle,
+        newValues: { ...existingVehicle, ...updates },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Araç güncellendi: ${existingVehicle?.license_plate}`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Update vehicle with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteVehicleWithAudit = async (id, currentUser) => {
+  try {
+    // Önce mevcut araç bilgilerini al
+    const { data: existingVehicle } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await deleteVehicle(id);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'DELETE',
+        tableName: 'vehicles',
+        recordId: id,
+        oldValues: existingVehicle,
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Araç silindi: ${existingVehicle?.license_plate}`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Delete vehicle with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Store functions with audit logging
+export const addStoreWithAudit = async (store, currentUser) => {
+  try {
+    const result = await addStore(store);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'CREATE',
+        tableName: 'stores',
+        recordId: result.data?.id,
+        oldValues: null,
+        newValues: {
+          store_code: store.store_code,
+          store_name: store.store_name,
+          location: store.location,
+          address: store.address
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Yeni mağaza eklendi: ${store.store_name} (${store.store_code})`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Add store with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateStoreWithAudit = async (id, updates, currentUser) => {
+  try {
+    // Önce mevcut mağaza bilgilerini al
+    const { data: existingStore } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await updateStore(id, updates);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'stores',
+        recordId: id,
+        oldValues: existingStore,
+        newValues: { ...existingStore, ...updates },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Mağaza güncellendi: ${existingStore?.store_name} (${existingStore?.store_code})`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Update store with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteStoreWithAudit = async (id, currentUser) => {
+  try {
+    // Önce mevcut mağaza bilgilerini al
+    const { data: existingStore } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    const result = await deleteStore(id);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'DELETE',
+        tableName: 'stores',
+        recordId: id,
+        oldValues: existingStore,
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Mağaza silindi: ${existingStore?.store_name} (${existingStore?.store_code})`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Delete store with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Test fonksiyonu - audit log ekleme testi
+export const testAuditLog = async (currentUser) => {
+  try {
+    console.log('🧪 Test audit log ekleniyor...');
+    
+    const testData = {
+      userId: currentUser?.id,
+      userEmail: currentUser?.email,
+      userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+      action: 'CREATE',
+      tableName: 'test',
+      recordId: null,
+      oldValues: null,
+      newValues: { test: true },
+      ipAddress: null,
+      userAgent: navigator.userAgent,
+      details: 'Test audit log kaydı'
+    };
+    
+    const result = await logAuditEvent(testData);
+    
+    if (result.success) {
+      console.log('✅ Test audit log başarıyla eklendi!');
+      return { success: true, message: 'Test audit log başarıyla eklendi' };
+    } else {
+      console.error('❌ Test audit log eklenemedi:', result.error);
+      return { success: false, error: result.error };
+    }
+  } catch (error) {
+    console.error('❌ Test audit log hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const bulkSavePerformanceDataWithAudit = async (performanceDataArray, currentUser, sheetNames = []) => {
+  try {
+    console.log('🔍 Bulk performance data audit ile kaydediliyor:', performanceDataArray.length, 'kayıt');
+    
+    const result = await bulkSavePerformanceData(performanceDataArray, sheetNames);
+    
+    if (result.success) {
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'BULK_CREATE',
+        tableName: 'performance_data',
+        recordId: null,
+        oldValues: null,
+        newValues: { count: performanceDataArray.length },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Toplu performans verisi eklendi: ${performanceDataArray.length} kayıt`
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Bulk save performance data with audit error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Bildirim fonksiyonları
+export const createNotification = async (notificationData) => {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert([notificationData])
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Bildirim oluşturma hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getNotifications = async (userId, filters = {}) => {
+  try {
+    let query = supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (filters.isRead !== undefined) {
+      query = query.eq('is_read', filters.isRead);
+    }
+    
+    if (filters.type) {
+      query = query.eq('type', filters.type);
+    }
+    
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Bildirim getirme hatası:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const markNotificationAsRead = async (notificationId, userId) => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ 
+        is_read: true, 
+        read_at: new Date().toISOString() 
+      })
+      .eq('id', notificationId)
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Bildirim okundu işaretleme hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteNotification = async (notificationId, userId) => {
+  try {
+    console.log('🗑️ Bildirim silme isteği:', { notificationId, userId });
+    
+    // Önce bildirimin var olduğunu ve kullanıcıya ait olduğunu kontrol et
+    const { data: existingNotification, error: checkError } = await supabase
+      .from('notifications')
+      .select('id, user_id')
+      .eq('id', notificationId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (checkError || !existingNotification) {
+      console.error('❌ Bildirim bulunamadı veya erişim izni yok:', checkError);
+      return { success: false, error: 'Bildirim bulunamadı veya erişim izni yok' };
+    }
+    
+    // Bildirimi sil
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId)
+      .eq('user_id', userId);
+    
+    if (error) {
+      console.error('❌ Supabase silme hatası:', error);
+      throw error;
+    }
+    
+    console.log('✅ Bildirim başarıyla silindi');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Bildirim silme hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getUnreadNotificationCount = async (userId) => {
+  try {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+    
+    if (error) throw error;
+    return { success: true, count: count || 0 };
+  } catch (error) {
+    console.error('Okunmamış bildirim sayısı getirme hatası:', error);
+    return { success: false, error: error.message, count: 0 };
+  }
+};

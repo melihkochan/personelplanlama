@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Edit3, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
-import { getAllPersonnel, addPersonnel, updatePersonnel, deletePersonnel, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, getCurrentWeeklyShifts, saveCurrentWeekExcelData, supabase } from '../services/supabase';
+import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
+import { getAllPersonnel, addPersonnelWithAudit, deletePersonnelWithAudit, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, getCurrentWeeklyShifts, saveCurrentWeekExcelData, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 
-const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole, currentShiftData = [] }) => {
+const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, userRole, currentShiftData = [], currentUser }) => {
   const [personnelData, setPersonnelData] = useState(propPersonnelData || []);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,8 +20,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   
   // Modal states
   const [showAddPersonnelModal, setShowAddPersonnelModal] = useState(false);
-  const [showEditPersonnelModal, setShowEditPersonnelModal] = useState(false);
-  const [editingPersonnel, setEditingPersonnel] = useState(null);
+
   const [formData, setFormData] = useState({
     employee_code: '',
     full_name: '',
@@ -557,7 +556,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     setLoading(true);
     
     try {
-      const result = await addPersonnel(formData);
+      const result = await addPersonnelWithAudit(formData, currentUser);
       if (result.success) {
         setShowAddPersonnelModal(false);
         setFormData({
@@ -582,55 +581,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     }
   };
 
-  const handleEditPersonnel = (person) => {
-    setEditingPersonnel(person);
-    console.log('👤 Düzenlenecek personel RAW:', person);
-    console.log('📝 Vardiya bilgisi RAW:', person.shift_type);
-    console.log('📝 Vardiya bilgisi TYPE:', typeof person.shift_type);
-    console.log('📝 Vardiya bilgisi LENGTH:', person.shift_type ? person.shift_type.length : 'null');
-    console.log('📝 Vardiya bilgisi TRIM:', person.shift_type ? person.shift_type.trim() : 'null');
-    
-    // Vardiya bilgisini normalize et
-    const normalizedShiftType = person.shift_type ? person.shift_type.trim().toLowerCase() : 'gunduz';
-    console.log('📝 Normalized shift_type:', normalizedShiftType);
-    
-    const formShiftType = normalizedShiftType === 'gece' ? 'gece' : 
-                         normalizedShiftType === 'izin' ? 'izin' : 'gunduz';
-    console.log('📝 Form shift_type:', formShiftType);
-    
-    setFormData({
-      employee_code: person.employee_code || '',
-      full_name: person.full_name || '',
-      position: person.position || 'ŞOFÖR',
-      shift_type: formShiftType,
-      is_active: person.is_active !== undefined ? person.is_active : true
-      // experience_level kaldırıldı - veritabanında yok
-      // performance_score kaldırıldı - veritabanında yok
-    });
-    setShowEditPersonnelModal(true);
-  };
 
-  const handleUpdatePersonnel = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const result = await updatePersonnel(editingPersonnel.id, formData);
-      if (result.success) {
-        setShowEditPersonnelModal(false);
-        setEditingPersonnel(null);
-        await refreshData();
-        alert('Personel başarıyla güncellendi!');
-      } else {
-        alert('Personel güncellenirken hata oluştu: ' + result.error);
-      }
-    } catch (error) {
-      console.error('❌ Personel güncelleme hatası:', error);
-      alert('Personel güncellenirken hata oluştu!');
-    } finally {
-      setLoading(false);
-    }
-  };
+
+
 
   const handleDeletePersonnel = async (id) => {
     if (!window.confirm('Bu personeli silmek istediğinizden emin misiniz?')) {
@@ -640,7 +593,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     setLoading(true);
     
     try {
-      const result = await deletePersonnel(id);
+      const result = await deletePersonnelWithAudit(id, currentUser);
       if (result.success) {
         await refreshData();
         alert('Personel başarıyla silindi!');
@@ -952,14 +905,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   {(userRole === 'admin' || userRole === 'yönetici') && (
                     <>
                       <button
-                        onClick={() => handleEditPersonnel(person)}
-                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
                         onClick={() => handleDeletePersonnel(person.id)}
                         className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                        title="Personel sil (düzenleme için Personel Kontrol sayfasını kullan)"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1104,14 +1052,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                         {(userRole === 'admin' || userRole === 'yönetici') && (
                           <>
                             <button
-                              onClick={() => handleEditPersonnel(person)}
-                              className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </button>
-                            <button
                               onClick={() => handleDeletePersonnel(person.id)}
                               className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                              title="Personel sil (düzenleme için Personel Kontrol sayfasını kullan)"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -1234,96 +1177,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
           </div>
         )}
 
-      {/* Edit Personnel Modal */}
-      {showEditPersonnelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4">
-            <h3 className="text-2xl font-bold mb-6 text-gray-900">Personel Düzenle</h3>
-            
-            <form onSubmit={handleUpdatePersonnel} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sicil No</label>
-                <input
-                  type="text"
-                  name="employee_code"
-                  value={formData.employee_code}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ad Soyad</label>
-                <input
-                  type="text"
-                  name="full_name"
-                  value={formData.full_name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Görev</label>
-                <select
-                  name="position"
-                  value={formData.position}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ŞOFÖR">Şoför</option>
-                  <option value="SEVKİYAT ELEMANI">Sevkiyat Elemanı</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vardiya</label>
-                <select
-                  name="shift_type"
-                  value={formData.shift_type}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="gunduz">Gündüz</option>
-                  <option value="gece">Gece</option>
-                  <option value="izin">İzin</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Durum</label>
-                <select
-                  name="is_active"
-                  value={formData.is_active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.value === 'true' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="true">Aktif</option>
-                  <option value="false">İzinli</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowEditPersonnelModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Güncelle
-                </button>
-              </div>
-            </form>
-          </div>
-      </div>
-      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell } from 'lucide-react';
 
 import PersonelList from './components/PersonelList';
 import VehicleList from './components/VehicleList';
@@ -11,8 +11,11 @@ import StoreDistribution from './components/StoreDistribution';
 import VehicleDistribution from './components/VehicleDistribution';
 import AdminPanel from './components/AdminPanel';
 import LoginForm from './components/LoginForm';
+import NotificationPanel from './components/NotificationPanel';
+import ToastManager from './components/ToastManager';
+import SimpleNotification from './components/SimpleNotification';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount } from './services/supabase';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -47,6 +50,11 @@ function MainApp() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [calendarAnimation, setCalendarAnimation] = useState('');
   const [notification, setNotification] = useState(null);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [showSimpleNotification, setShowSimpleNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [lastNotificationCount, setLastNotificationCount] = useState(0);
 
   // Tab değiştiğinde localStorage'a kaydet
   const handleTabChange = (tabId) => {
@@ -83,6 +91,44 @@ function MainApp() {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 7000); // 7 saniye göster
   };
+
+  // Okunmamış bildirim sayısını yükle
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (user) {
+        try {
+          console.log('🔔 Okunmamış bildirim sayısı yükleniyor...');
+          const result = await getUnreadNotificationCount(user.id);
+          if (result.success) {
+            const newCount = result.count;
+            const oldCount = unreadNotificationCount;
+            
+            console.log('🔔 Okunmamış bildirim sayısı:', newCount, '(önceki:', oldCount, ')');
+            setUnreadNotificationCount(newCount);
+          }
+        } catch (error) {
+          console.error('❌ Okunmamış bildirim sayısı yüklenemedi:', error);
+        }
+      }
+    };
+
+    loadUnreadCount();
+    
+    // Her 3 saniyede bir güncelle (daha sık)
+    const interval = setInterval(loadUnreadCount, 3000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Bildirim sayısı değişikliğini izle
+  useEffect(() => {
+    if (unreadNotificationCount > lastNotificationCount && lastNotificationCount > 0) {
+      const increase = unreadNotificationCount - lastNotificationCount;
+      setNotificationMessage(`${increase} yeni bildirim geldi!`);
+      setShowSimpleNotification(true);
+      console.log('🔔 Bildirim gösteriliyor:', increase, 'yeni bildirim');
+    }
+    setLastNotificationCount(unreadNotificationCount);
+  }, [unreadNotificationCount, lastNotificationCount]);
 
   // Veritabanından veri yükleme fonksiyonu
   const loadData = async () => {
@@ -445,6 +491,18 @@ function MainApp() {
                   {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
                 </p>
               </div>
+              {/* Bildirim Butonu */}
+              <button
+                onClick={() => setShowNotificationPanel(true)}
+                className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <Bell className="w-5 h-5 text-gray-600" />
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center animate-pulse">
+                    {unreadNotificationCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -472,20 +530,6 @@ function MainApp() {
                 <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
-              
-              <button
-                onClick={() => handleTabChange('personnel')}
-                className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
-                  ${activeTab === 'personnel'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
-                  }
-                `}
-              >
-                <Users className="w-5 h-5 mr-3" />
-                Personel Listesi
-              </button>
               
               <button
                 onClick={() => handleTabChange('vardiya-kontrol')}
@@ -551,6 +595,20 @@ function MainApp() {
                 <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Sistem Yönetimi</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
+              
+              <button
+                onClick={() => handleTabChange('personnel')}
+                className={`
+                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'personnel'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Users className="w-5 h-5 mr-3" />
+                Personel Listesi
+              </button>
               
               <button
                 onClick={() => handleTabChange('vehicles')}
@@ -644,12 +702,25 @@ function MainApp() {
                   <h1 className="text-lg font-bold text-gray-900">Personel Takip</h1>
                 </div>
               </div>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowNotificationPanel(true)}
+                  className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center animate-pulse">
+                      {unreadNotificationCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
           </header>
 
@@ -1166,6 +1237,7 @@ function MainApp() {
             {activeTab === 'vehicles' && (
               <VehicleList 
                 vehicleData={vehicleData}
+                currentUser={user}
               />
             )}
             
@@ -1176,6 +1248,7 @@ function MainApp() {
                 vehicleData={vehicleData}
                 userRole={userRole}
                 currentShiftData={currentShiftData}
+                currentUser={user}
               />
             )}
             
@@ -1183,6 +1256,7 @@ function MainApp() {
             {activeTab === 'stores' && (
               <StoreList 
                 storeData={storeData}
+                currentUser={user}
               />
             )}
             
@@ -1204,6 +1278,7 @@ function MainApp() {
                 vehicleData={vehicleData}
                 storeData={storeData}
                 onNavigateToHome={() => handleTabChange('home')}
+                currentUser={user}
               />
             )}
 
@@ -1213,6 +1288,7 @@ function MainApp() {
                 userRole={userRole} 
                 onDataUpdate={refreshData}
                 onCurrentShiftDataUpdate={setCurrentShiftData}
+                currentUser={user}
               />
             )}
 
@@ -1235,6 +1311,30 @@ function MainApp() {
           </main>
         </div>
       </div>
+
+      {/* Bildirim Paneli */}
+      <NotificationPanel 
+        currentUser={user}
+        isOpen={showNotificationPanel}
+        onClose={() => setShowNotificationPanel(false)}
+      />
+
+      {/* Toast Bildirim Yöneticisi */}
+      <ToastManager 
+        onViewNotifications={() => setShowNotificationPanel(true)}
+      />
+
+      {/* Basit Bildirim */}
+      {showSimpleNotification && (
+        <SimpleNotification
+          message={notificationMessage}
+          onClose={() => setShowSimpleNotification(false)}
+          onViewNotifications={() => {
+            setShowSimpleNotification(false);
+            setShowNotificationPanel(true);
+          }}
+        />
+      )}
     </div>
   );
 }

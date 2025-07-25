@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllPersonnel, bulkSavePerformanceData, getPerformanceData, getStoreLocationsByCodes } from '../services/supabase';
+import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes } from '../services/supabase';
 
-const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole }) => {
+const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole, currentUser }) => {
   // PerformanceAnalysis başladı
   
   // State'ler
@@ -581,7 +581,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                       // Kayıtlar birleştirildi
       
       if (finalData.length > 0) {
-        const result = await bulkSavePerformanceData(finalData);
+        const result = await bulkSavePerformanceDataWithAudit(finalData, currentUser);
         if (result.success) {
           // Performans verileri kaydedildi
           alert('✅ Performans verileri veritabanına kaydedildi!');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info, Check, Car, Edit3, Moon, Sun } from 'lucide-react';
-import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, saveCurrentWeekExcelData, deletePeriodAndShifts, supabase } from '../services/supabase';
+import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, saveCurrentWeekExcelData, deletePeriodAndShifts, logAuditEvent, supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 // Skeleton Loading Component
@@ -113,7 +113,7 @@ const SkeletonLoading = ({ type = 'table', rows = 5 }) => {
   return null;
 };
 
-const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpdate }) => {
+const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpdate, currentUser }) => {
   // getMonthName fonksiyonunu en başta tanımla
   const getMonthName = (month) => {
     const months = [
@@ -123,7 +123,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     return months[month] || 'Bilinmeyen';
   };
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('current-shift');
   const [scheduleData, setScheduleData] = useState([]);
   const [shiftStatistics, setShiftStatistics] = useState([]);
   const [dailyAttendance, setDailyAttendance] = useState([]);
@@ -188,7 +188,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   
   // Filtre state'leri
   const [filterType, setFilterType] = useState('all'); // all, gece, gunduz, aksam, gecici, hastalik_izni, yillik_izin
-  const [sortOrder, setSortOrder] = useState('name'); // name, code, position
+  const [sortOrder, setSortOrder] = useState('code'); // name, code, position
   const [sortDirection, setSortDirection] = useState('asc'); // asc, desc - varsayılan A-Z sıralama
   
   // Günlük takip sıralama state'leri
@@ -482,6 +482,21 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           const result = await saveExcelData(periods, schedules);
           
           if (result.success) {
+            // Audit log kaydet
+            await logAuditEvent({
+              userId: currentUser?.id,
+              userEmail: currentUser?.email,
+              userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+              action: 'BULK_CREATE',
+              tableName: 'weekly_periods',
+              recordId: null,
+              oldValues: null,
+              newValues: { periods: periods.length, schedules: schedules.length },
+              ipAddress: null,
+              userAgent: navigator.userAgent,
+              details: `Excel yükleme: ${periods.length} haftalık dönem, ${schedules.length} vardiya kaydı eklendi`
+            });
+            
             console.log('✅ Excel verisi başarıyla yüklendi');
             setUploadMessage({
               type: 'success',
@@ -640,14 +655,47 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           .eq('id', editingShift.id);
         
         if (error) throw error;
+        
+        // Audit log kaydet
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'UPDATE',
+          tableName: 'weekly_schedules',
+          recordId: editingShift.id,
+          oldValues: editingShift,
+          newValues: shiftData,
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Vardiya güncellendi: ${shiftData.employee_code} - ${shiftData.shift_type}`
+        });
+        
         console.log('✅ Vardiya güncellendi');
       } else {
         // Yeni kayıt
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('weekly_schedules')
-          .insert(shiftData);
+          .insert(shiftData)
+          .select();
         
         if (error) throw error;
+        
+        // Audit log kaydet
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'CREATE',
+          tableName: 'weekly_schedules',
+          recordId: data?.[0]?.id,
+          oldValues: null,
+          newValues: shiftData,
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Yeni vardiya eklendi: ${shiftData.employee_code} - ${shiftData.shift_type}`
+        });
+        
         console.log('✅ Yeni vardiya eklendi');
       }
 
@@ -705,6 +753,25 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       
       if (weeklySchedulesError) {
         console.error('❌ Weekly schedules güncellenemedi:', weeklySchedulesError);
+      } else {
+        // Audit log kaydet
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'UPDATE',
+          tableName: 'weekly_schedules',
+          recordId: editingShift.id,
+          oldValues: editingShift,
+          newValues: {
+            ...editingShift,
+            shift_type: shiftEditForm.shift_type,
+            shift_hours: shiftEditForm.shift_details
+          },
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Vardiya güncellendi: ${editingShift.employee_code} - ${shiftEditForm.shift_type}`
+        });
       }
       
       console.log('✅ Vardiya güncellendi');
@@ -731,12 +798,38 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     }
 
     try {
+      // Önce silinecek vardiyayı al
+      const { data: shiftToDelete, error: fetchError } = await supabase
+        .from('weekly_schedules')
+        .select('*')
+        .eq('id', shiftId)
+        .single();
+      
+      if (fetchError) {
+        throw fetchError;
+      }
+      
       const { error } = await supabase
         .from('weekly_schedules')
         .delete()
         .eq('id', shiftId);
       
       if (error) throw error;
+      
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'DELETE',
+        tableName: 'weekly_schedules',
+        recordId: shiftId,
+        oldValues: shiftToDelete,
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Vardiya silindi: ${shiftToDelete?.employee_code} - ${shiftToDelete?.shift_type}`
+      });
       
       console.log('✅ Vardiya silindi');
       
@@ -992,52 +1085,38 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       });
     }
     
-    // Sıralama
+    // Sıralama - Önce pozisyona göre, sonra Sicil numarasına göre
     filtered.sort((a, b) => {
-      let aValue, bValue;
+      // Önce pozisyona göre sırala
+      const aPosition = a.position || '';
+      const bPosition = b.position || '';
       
-      switch (sortOrder) {
-        case 'name':
-          aValue = a.full_name || '';
-          bValue = b.full_name || '';
-          return sortDirection === 'asc' ? aValue.localeCompare(bValue, 'tr') : bValue.localeCompare(aValue, 'tr');
-        case 'code':
-          aValue = a.employee_code || '';
-          bValue = b.employee_code || '';
-          return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-        case 'position':
-          aValue = a.position || '';
-          bValue = b.position || '';
-          return sortDirection === 'asc' ? aValue.localeCompare(bValue, 'tr') : bValue.localeCompare(aValue, 'tr');
-        case 'gece':
-          aValue = a.total_night_shifts || 0;
-          bValue = b.total_night_shifts || 0;
-          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-        case 'gunduz':
-          aValue = a.total_day_shifts || 0;
-          bValue = b.total_day_shifts || 0;
-          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-        case 'aksam':
-          aValue = a.total_evening_shifts || 0;
-          bValue = b.total_evening_shifts || 0;
-          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-        case 'gecici':
-          aValue = a.total_temp_assignments || 0;
-          bValue = b.total_temp_assignments || 0;
-          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-        case 'raporlu':
-          aValue = a.total_sick_days || 0;
-          bValue = b.total_sick_days || 0;
-          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-        case 'izin':
-          aValue = a.total_annual_leave || 0;
-          bValue = b.total_annual_leave || 0;
-          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-        default:
-          aValue = a.full_name || '';
-          bValue = b.full_name || '';
-          return sortDirection === 'asc' ? aValue.localeCompare(bValue, 'tr') : bValue.localeCompare(aValue, 'tr');
+      // Sevkiyat Elemanları önce, Şoförler sonra
+      const positionOrder = {
+        'SEVKİYAT ELEMANI': 1,
+        'ŞOFÖR': 2
+      };
+      
+      const aPositionOrder = positionOrder[aPosition] || 3;
+      const bPositionOrder = positionOrder[bPosition] || 3;
+      
+      if (aPositionOrder !== bPositionOrder) {
+        return aPositionOrder - bPositionOrder;
       }
+      
+      // Pozisyon aynıysa Sicil numarasına göre sırala
+      const aCode = a.employee_code || '';
+      const bCode = b.employee_code || '';
+      const codeComparison = aCode.localeCompare(bCode);
+      
+      if (codeComparison !== 0) {
+        return sortDirection === 'asc' ? codeComparison : -codeComparison;
+      }
+      
+      // Sicil numarası da aynıysa isme göre sırala
+      const aName = a.full_name || '';
+      const bName = b.full_name || '';
+      return aName.localeCompare(bName, 'tr');
     });
     
     return filtered;
@@ -1160,6 +1239,27 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         if (result.error) {
           throw result.error;
         }
+        
+        // Audit log kaydet
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'UPDATE',
+          tableName: 'daily_notes',
+          recordId: editingRecord.id,
+          oldValues: editingRecord,
+          newValues: {
+            employee_code: newAbsence.employee_code,
+            date: newAbsence.date,
+            status: newAbsence.status,
+            reason: newAbsence.notes
+          },
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Günlük not güncellendi: ${newAbsence.employee_code} - ${newAbsence.status} (${newAbsence.date})`
+        });
+        
         setShowAbsenceModal(false);
         setEditMode(false);
         setEditingRecord(null);
@@ -1177,6 +1277,27 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         if (result.error) {
           throw result.error;
         }
+        
+        // Audit log kaydet
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'CREATE',
+          tableName: 'daily_notes',
+          recordId: result.data?.[0]?.id,
+          oldValues: null,
+          newValues: {
+            employee_code: newAbsence.employee_code,
+            date: newAbsence.date,
+            status: newAbsence.status,
+            reason: newAbsence.notes
+          },
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Günlük not eklendi: ${newAbsence.employee_code} - ${newAbsence.status} (${newAbsence.date})`
+        });
+        
         setShowAbsenceModal(false);
       }
       
@@ -1677,6 +1798,17 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   const handleDeleteAttendance = async (id) => {
     if (window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
       try {
+        // Önce silinecek kaydı al
+        const { data: recordToDelete, error: fetchError } = await supabase
+          .from('daily_notes')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (fetchError) {
+          throw fetchError;
+        }
+        
         const result = await supabase
           .from('daily_notes')
           .delete()
@@ -1685,6 +1817,21 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         if (result.error) {
           throw result.error;
         }
+        
+        // Audit log kaydet
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'DELETE',
+          tableName: 'daily_notes',
+          recordId: id,
+          oldValues: recordToDelete,
+          newValues: null,
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Günlük not silindi: ${recordToDelete?.employee_code} - ${recordToDelete?.status} (${recordToDelete?.date})`
+        });
         
         loadDailyNotes(); // Günlük notları yenile
       } catch (error) {
@@ -1771,6 +1918,25 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
       console.log(`✅ ${schedules.length} vardiya kaydı güncellendi`);
 
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'weekly_periods',
+        recordId: selectedPeriodForEdit.id,
+        oldValues: selectedPeriodForEdit,
+        newValues: {
+          ...selectedPeriodForEdit,
+          start_date: globalEditForm.new_start_date,
+          end_date: globalEditForm.new_end_date
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Haftalık dönem güncellendi: ${selectedPeriodForEdit.start_date} - ${selectedPeriodForEdit.end_date} → ${globalEditForm.new_start_date} - ${globalEditForm.new_end_date} (${schedules.length} vardiya etkilendi)`
+      });
+
       // 3. Modal'ı kapat ve verileri yenile
       setGlobalDateEditModal(false);
       setSelectedPeriodForEdit(null);
@@ -1808,6 +1974,21 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       console.log('📊 Silme sonucu:', result);
       
       if (result.success) {
+        // Audit log kaydet
+        await logAuditEvent({
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          action: 'DELETE',
+          tableName: 'weekly_periods',
+          recordId: periodId,
+          oldValues: { periodId, deletedAt: new Date().toISOString() },
+          newValues: null,
+          ipAddress: null,
+          userAgent: navigator.userAgent,
+          details: `Haftalık dönem ve vardiya verileri silindi: Period ID ${periodId}`
+        });
+        
         console.log('✅ Dönem başarıyla silindi');
         alert('Dönem ve vardiya verileri başarıyla silindi!');
         
@@ -1993,6 +2174,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
   const handleUpdateCurrentShift = async (e) => {
     e.preventDefault();
+    console.log('🔍 handleUpdateCurrentShift fonksiyonu çalışıyor...');
     setCurrentShiftEditLoading(true);
     
     try {
@@ -2008,6 +2190,45 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         console.error('❌ Vardiya güncellenemedi:', error);
         return;
       }
+      
+      // Audit log kaydet
+      console.log('🔍 Audit log ekleniyor...', {
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'weekly_schedules',
+        recordId: editingCurrentShift.id,
+        oldValues: editingCurrentShift,
+        newValues: {
+          ...editingCurrentShift,
+          shift_type: currentShiftEditForm.shift_type,
+          shift_hours: currentShiftEditForm.shift_hours
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Güncel vardiya güncellendi: ${editingCurrentShift.employee_code} - ${currentShiftEditForm.shift_type}`
+      });
+      
+      const auditResult = await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'weekly_schedules',
+        recordId: null, // UUID sorunu için null yapıyoruz
+        oldValues: editingCurrentShift,
+        newValues: {
+          ...editingCurrentShift,
+          shift_type: currentShiftEditForm.shift_type,
+          shift_hours: currentShiftEditForm.shift_hours
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Güncel vardiya güncellendi: ${editingCurrentShift.employee_code} - ${currentShiftEditForm.shift_type} (ID: ${editingCurrentShift.id})`
+      });
+      
+      console.log('🔍 Audit log sonucu:', auditResult);
       
       console.log('✅ Vardiya başarıyla güncellendi');
       
@@ -2319,6 +2540,18 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-4 overflow-x-auto">
               <button
+                onClick={() => setActiveTab('current-shift')}
+                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === 'current-shift'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Users className="w-4 h-4 inline mr-1" />
+                Güncel Vardiya
+              </button>
+
+              <button
                 onClick={() => setActiveTab('overview')}
                 className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === 'overview'
@@ -2350,18 +2583,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
               >
                 <BarChart3 className="w-4 h-4 inline mr-1" />
                 Aylık Detay
-              </button>
-
-              <button
-                onClick={() => setActiveTab('current-shift')}
-                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  activeTab === 'current-shift'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Users className="w-4 h-4 inline mr-1" />
-                Güncel Vardiya
               </button>
 
               <button

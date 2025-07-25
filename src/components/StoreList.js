@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Store, Plus, Edit3, Trash2, MapPin, User, UserCheck, Building, Phone, Mail, Users, SortAsc, SortDesc } from 'lucide-react';
-import { getAllStores, addStore, updateStore, deleteStore } from '../services/supabase';
+import { getAllStores, addStoreWithAudit, updateStoreWithAudit, deleteStoreWithAudit } from '../services/supabase';
 
-const StoreList = ({ storeData: propStoreData }) => {
+const StoreList = ({ storeData: propStoreData, currentUser }) => {
   const [storeData, setStoreData] = useState(propStoreData || []);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,7 +103,7 @@ const StoreList = ({ storeData: propStoreData }) => {
 
     setLoading(true);
     try {
-      const result = await addStore(newStore);
+      const result = await addStoreWithAudit(newStore, currentUser);
       if (result.success) {
         setNewStore({
           store_code: '',
@@ -135,7 +135,7 @@ const StoreList = ({ storeData: propStoreData }) => {
   const handleUpdateStore = async (storeId) => {
     setLoading(true);
     try {
-      const result = await updateStore(storeId, editingStore);
+      const result = await updateStoreWithAudit(storeId, editingStore, currentUser);
       if (result.success) {
         setEditingStore(null);
         await refreshStoreData();
@@ -159,7 +159,7 @@ const StoreList = ({ storeData: propStoreData }) => {
 
     setLoading(true);
     try {
-      const result = await deleteStore(storeId);
+      const result = await deleteStoreWithAudit(storeId, currentUser);
       if (result.success) {
         await refreshStoreData();
         alert('Mağaza başarıyla silindi!');

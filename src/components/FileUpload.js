@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, FileSpreadsheet, Check, X, AlertCircle, Eye, AlertTriangle, Info } from 'lucide-react';
-import { addPersonnel, addVehicle, addStore, getAllPersonnel, getAllVehicles, getAllStores } from '../services/supabase';
+import { addPersonnel, addVehicle, addStore, getAllPersonnel, getAllVehicles, getAllStores, bulkSavePerformanceData } from '../services/supabase';
 import * as XLSX from 'xlsx';
 
 const FileUpload = ({ onDataUpload }) => {
@@ -42,6 +42,18 @@ const FileUpload = ({ onDataUpload }) => {
           
           console.log('Toplam satır sayısı:', jsonData.length);
           console.log('İlk 3 satır:', jsonData.slice(0, 3));
+          
+          // Excel sütun yapısını kontrol et
+          if (jsonData.length > 0) {
+            console.log('🔍 Excel sütun yapısı:');
+            console.log('Tüm sütunlar:', Object.keys(jsonData[0]));
+            console.log('A-Z sütunları:', Object.keys(jsonData[0]).filter(key => /^[A-Z]$/.test(key)));
+            console.log('M sütunu var mı?', 'M' in jsonData[0]);
+            console.log('M sütunu değeri:', jsonData[0]['M']);
+            console.log('PLAKA sütunu var mı?', 'PLAKA' in jsonData[0]);
+            console.log('PLAKA sütunu değeri:', jsonData[0]['PLAKA']);
+            console.log('İlk 3 satırın PLAKA değerleri:', jsonData.slice(0, 3).map(row => row['PLAKA']));
+          }
           
           resolve(jsonData);
         } catch (error) {
@@ -200,11 +212,91 @@ const FileUpload = ({ onDataUpload }) => {
     return stores;
   };
 
-  const saveToDatabase = async (personnel, vehicles, stores) => {
+  const processPerformanceData = (data) => {
+    const performanceData = [];
+    
+    // Excel başlıklarını kontrol et
+    if (data.length > 0) {
+      console.log('🔍 Performance Excel başlıkları (ilk satır):', Object.keys(data[0]));
+      console.log('🔍 İlk performance veri satırı:', data[0]);
+      console.log('🔍 Tüm kolonlar (A-Z):', Object.keys(data[0]).filter(key => /^[A-Z]$/.test(key)));
+      console.log('🔍 M sütunu var mı?', 'M' in data[0]);
+      console.log('🔍 M sütunu değeri:', data[0]['M']);
+    }
+    
+    data.forEach((row, index) => {
+      if (index === 0) return; // Skip header row
+      
+      // Esnek kolon eşleştirme
+      const findColumn = (possibleNames) => {
+        for (let name of possibleNames) {
+          if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+            const value = String(row[name]).trim();
+            if (index < 5) {
+              console.log(`🔍 Kolon ${name} bulundu:`, value);
+            }
+            return value;
+          }
+        }
+        if (index < 5) {
+          console.log(`🔍 Kolonlar bulunamadı:`, possibleNames);
+          console.log(`🔍 Mevcut kolonlar:`, Object.keys(row));
+        }
+        return null;
+      };
+      
+      const performance = {
+        date: findColumn(['A', 'Tarih', 'DATE', 'Date', 'Gün', 'GUN', 'Day', 'SİPARİŞ TARİH']),
+        employee_code: findColumn(['B', 'Sicil No', 'SICIL_NO', 'Employee Code', 'Sicil', 'SICIL', 'SicilNo', 'SİPARİŞ NUMARAS']),
+        full_name: findColumn(['C', 'Ad Soyad', 'ADI SOYADI', 'Full Name', 'İsim', 'Isim', 'AD_SOYAD', 'NAME', 'ŞOFOR']),
+        position: findColumn(['D', 'Pozisyon', 'POZISYON', 'Position', 'Görev', 'GOREV', 'Job', 'Lokasyon']),
+        license_plate: findColumn(['PLAKA', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'LICENSE_PLATE', 'License Plate', 'Araç', 'ARAC', 'Vehicle', 'Plaka No']),
+        store_codes: findColumn(['F', 'MAĞAZA KODU', 'Mağaza Kodları', 'STORE_CODES', 'Store Codes', 'Mağazalar', 'MAGAZALAR', 'Stores']),
+        shift_type: findColumn(['G', 'Vardiya', 'VARDIYA', 'Shift', 'Vardiya Türü', 'VARDIYA_TURU', 'SHIFT']),
+        sheet_name: 'performance_data'
+      };
+      
+      if (index < 5) { // İlk 5 satır için debug
+        console.log(`🔍 Performance ${index}:`, performance);
+        console.log(`🔍 Excel satırı ${index} ham veri:`, row);
+        console.log(`🔍 M sütunu değeri:`, row['M'] || 'BOŞ');
+        console.log(`🔍 PLAKA sütunu değeri:`, row['PLAKA'] || 'BOŞ');
+        console.log(`🔍 Tüm sütun isimleri:`, Object.keys(row));
+        console.log(`🔍 Plaka bulundu mu:`, !!performance.license_plate);
+        console.log(`🔍 Plaka değeri:`, performance.license_plate);
+      }
+      
+      // Performance data ekleme kriterleri: date ve employee_code mutlaka olmalı
+      if (performance.date && performance.employee_code) {
+        // Tarih formatını düzelt
+        try {
+          const dateObj = new Date(performance.date);
+          if (isNaN(dateObj.getTime())) {
+            console.log(`⚠️ Geçersiz tarih formatı: ${performance.date}`);
+            return;
+          }
+          performance.date = dateObj.toISOString().split('T')[0];
+        } catch (error) {
+          console.log(`⚠️ Tarih dönüştürme hatası: ${performance.date}`);
+          return;
+        }
+        
+        performanceData.push(performance);
+      } else {
+        console.log(`⚠️ Performance ${index} atlandı - tarih veya sicil no bulunamadı`);
+      }
+    });
+    
+    console.log(`✅ Toplam ${performanceData.length} performance kaydı bulundu`);
+    return performanceData;
+  };
+
+  const saveToDatabase = async (personnel, vehicles, stores, performanceData = []) => {
     const results = {
       personnel: { success: 0, error: 0 },
       vehicles: { success: 0, error: 0 },
-      stores: { success: 0, error: 0 }
+      stores: { success: 0, error: 0 },
+      performance: { success: 0, error: 0 }
     };
 
     // Save personnel only if exists
@@ -264,6 +356,24 @@ const FileUpload = ({ onDataUpload }) => {
           results.stores.error++;
           console.log(`❌ Mağaza hatası: ${store.store_name} - ${error.message}`);
         }
+      }
+    }
+
+    // Save performance data only if exists
+    if (performanceData.length > 0) {
+      console.log(`📊 ${performanceData.length} performance kaydı kaydediliyor...`);
+      try {
+        const result = await bulkSavePerformanceData(performanceData, ['performance_data']);
+        if (result.success) {
+          results.performance.success = performanceData.length;
+          console.log(`✅ Performance data başarıyla kaydedildi: ${performanceData.length} kayıt`);
+        } else {
+          results.performance.error = performanceData.length;
+          console.log(`❌ Performance data hatası: ${result.error}`);
+        }
+      } catch (error) {
+        results.performance.error = performanceData.length;
+        console.log(`❌ Performance data hatası: ${error.message}`);
       }
     }
 
@@ -387,14 +497,29 @@ const FileUpload = ({ onDataUpload }) => {
       const personnel = processPersonnelData(data);
       const vehicles = processVehicleData(data);
       const stores = processStoreData(data);
+      const performance = processPerformanceData(data);
 
       console.log('📊 İşleme sonuçları:', {
         personel: personnel.length,
         araç: vehicles.length,
-        mağaza: stores.length
+        mağaza: stores.length,
+        performance: performance.length
       });
 
-      if (personnel.length === 0 && vehicles.length === 0 && stores.length === 0) {
+      // Performance data kontrolü
+      if (performance.length > 0) {
+        console.log('🔍 Performance data örnekleri:');
+        performance.slice(0, 3).forEach((item, index) => {
+          console.log(`Performance ${index}:`, {
+            date: item.date,
+            employee_code: item.employee_code,
+            license_plate: item.license_plate,
+            vehicle_type: item.vehicle_type
+          });
+        });
+      }
+
+      if (personnel.length === 0 && vehicles.length === 0 && stores.length === 0 && performance.length === 0) {
         setError('Excel dosyasında geçerli veri bulunamadı. Lütfen dosya formatını kontrol edin.');
         setAnalyzing(false);
         return;
@@ -403,7 +528,7 @@ const FileUpload = ({ onDataUpload }) => {
       console.log('⚖️ Çakışma analizi başlatılıyor...');
       const conflicts = await analyzeData(personnel, vehicles, stores);
 
-      setPreviewData({ personnel, vehicles, stores });
+      setPreviewData({ personnel, vehicles, stores, performance });
       setConflicts(conflicts);
       setShowConfirmation(true);
       
@@ -422,20 +547,22 @@ const FileUpload = ({ onDataUpload }) => {
     setError('');
 
     try {
-      let dataToUpload = { personnel: [], vehicles: [], stores: [] };
+      let dataToUpload = { personnel: [], vehicles: [], stores: [], performance: [] };
 
       // ActionType'a göre hangi verileri yükleyeceğimizi belirle
       if (actionType === 'new_only') {
         dataToUpload = {
           personnel: conflicts.personnel.new,
           vehicles: conflicts.vehicles.new,
-          stores: conflicts.stores.new
+          stores: conflicts.stores.new,
+          performance: previewData.performance || []
         };
       } else if (actionType === 'update_only') {
         dataToUpload = {
           personnel: conflicts.personnel.existing,
           vehicles: conflicts.vehicles.existing,
-          stores: conflicts.stores.existing
+          stores: conflicts.stores.existing,
+          performance: previewData.performance || []
         };
       } else if (actionType === 'all') {
         dataToUpload = previewData;
@@ -445,7 +572,8 @@ const FileUpload = ({ onDataUpload }) => {
       const dbResults = await saveToDatabase(
         dataToUpload.personnel, 
         dataToUpload.vehicles, 
-        dataToUpload.stores
+        dataToUpload.stores,
+        dataToUpload.performance
       );
 
       // Update parent component
@@ -456,14 +584,16 @@ const FileUpload = ({ onDataUpload }) => {
       if (dataToUpload.personnel.length > 0) processedDataTypes.push(`${dataToUpload.personnel.length} personel`);
       if (dataToUpload.vehicles.length > 0) processedDataTypes.push(`${dataToUpload.vehicles.length} araç`);
       if (dataToUpload.stores.length > 0) processedDataTypes.push(`${dataToUpload.stores.length} mağaza`);
+      if (dataToUpload.performance.length > 0) processedDataTypes.push(`${dataToUpload.performance.length} performance kaydı`);
 
       setResults({
         personnel: dataToUpload.personnel.length,
         vehicles: dataToUpload.vehicles.length,
         stores: dataToUpload.stores.length,
+        performance: dataToUpload.performance.length,
         database: dbResults,
         processedDataTypes,
-        totalProcessed: dataToUpload.personnel.length + dataToUpload.vehicles.length + dataToUpload.stores.length,
+        totalProcessed: dataToUpload.personnel.length + dataToUpload.vehicles.length + dataToUpload.stores.length + dataToUpload.performance.length,
         actionType
       });
 

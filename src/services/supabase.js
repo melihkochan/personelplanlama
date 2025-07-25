@@ -560,9 +560,51 @@ export const getAllPlans = async () => {
 // Performance data functions
 export const savePerformanceData = async (performanceData) => {
   try {
+    // Araç tipini belirle
+    let vehicleType = 'Kamyon'; // Varsayılan olarak Kamyon
+    if (performanceData.license_plate) {
+      const plate = performanceData.license_plate.toString().toUpperCase();
+      
+      // Ana plakayı bul (-2, -3 gibi sonekleri kaldır)
+      const basePlate = plate.split('-')[0];
+      
+      // Önce vehicles tablosundan araç tipini bul (RLS bypass ile)
+      const { data: vehicleData, error: vehicleError } = await supabaseAdmin
+        .from('vehicles')
+        .select('vehicle_type')
+        .eq('license_plate', basePlate)
+        .single();
+      
+      if (!vehicleError && vehicleData && vehicleData.vehicle_type) {
+        vehicleType = vehicleData.vehicle_type;
+        console.log(`✅ Araç tipi bulundu: ${performanceData.license_plate} (ana plaka: ${basePlate}) -> ${vehicleType}`);
+      } else {
+        // Vehicles tablosunda bulunamazsa, plaka içeriğinden tahmin et
+        if (plate.includes('KAMYON') || plate.includes('TRUCK')) {
+          vehicleType = 'Kamyon';
+        } else if (plate.includes('KAMYONET') || plate.includes('PICKUP')) {
+          vehicleType = 'Kamyonet';
+        } else if (plate.includes('TIR') || plate.includes('SEMI')) {
+          vehicleType = 'Tır';
+        } else if (plate.includes('KÜÇÜK') || plate.includes('SMALL')) {
+          vehicleType = 'Küçük Araç';
+        } else {
+          // Hiçbir şey bulunamazsa varsayılan olarak Kamyon
+          vehicleType = 'Kamyon';
+        }
+        console.log(`⚠️ Araç tipi tahmin edildi: ${performanceData.license_plate} -> ${vehicleType}`);
+      }
+    }
+    
+    // Vehicle type'ı ekle
+    const enrichedData = {
+      ...performanceData,
+      vehicle_type: vehicleType
+    };
+    
     const { data, error } = await supabase
       .from('performance_data')
-      .upsert([performanceData], { 
+      .upsert([enrichedData], { 
         onConflict: 'date,employee_code',
         ignoreDuplicates: false 
       })
@@ -670,10 +712,53 @@ export const bulkSavePerformanceData = async (performanceDataArray, sheetNames =
       }
     }
     
+    // Araç tiplerini belirle ve verileri zenginleştir
+    const enrichedDataArray = await Promise.all(performanceDataArray.map(async (record) => {
+              let vehicleType = 'Kamyon'; // Varsayılan olarak Kamyon
+        if (record.license_plate) {
+          const plate = record.license_plate.toString().toUpperCase();
+          
+          // Ana plakayı bul (-2, -3 gibi sonekleri kaldır)
+          const basePlate = plate.split('-')[0];
+          
+          // Önce vehicles tablosundan araç tipini bul (RLS bypass ile)
+          const { data: vehicleData, error: vehicleError } = await supabaseAdmin
+            .from('vehicles')
+            .select('vehicle_type')
+            .eq('license_plate', basePlate)
+            .single();
+          
+          if (!vehicleError && vehicleData && vehicleData.vehicle_type) {
+            vehicleType = vehicleData.vehicle_type;
+            console.log(`✅ Araç tipi bulundu: ${record.license_plate} (ana plaka: ${basePlate}) -> ${vehicleType}`);
+          } else {
+            // Vehicles tablosunda bulunamazsa, plaka içeriğinden tahmin et
+            if (plate.includes('KAMYON') || plate.includes('TRUCK')) {
+              vehicleType = 'Kamyon';
+            } else if (plate.includes('KAMYONET') || plate.includes('PICKUP')) {
+              vehicleType = 'Kamyonet';
+            } else if (plate.includes('TIR') || plate.includes('SEMI')) {
+              vehicleType = 'Tır';
+            } else if (plate.includes('KÜÇÜK') || plate.includes('SMALL')) {
+              vehicleType = 'Küçük Araç';
+            } else {
+              // Hiçbir şey bulunamazsa varsayılan olarak Kamyon
+              vehicleType = 'Kamyon';
+            }
+            console.log(`⚠️ Araç tipi tahmin edildi: ${record.license_plate} -> ${vehicleType}`);
+          }
+        }
+      
+      return {
+        ...record,
+        vehicle_type: vehicleType
+      };
+    }));
+    
     // Yeni verileri ekle (upsert ile duplicate kontrolü)
     const { data, error } = await supabase
       .from('performance_data')
-      .upsert(performanceDataArray, { 
+      .upsert(enrichedDataArray, { 
         onConflict: 'date,employee_code',
         ignoreDuplicates: false 
       })
@@ -1570,7 +1655,6 @@ export const getWeeklySchedules = async (year = null) => {
 // Veritabanını temizleme fonksiyonu - TÜM VARDİYA VERİLERİNİ SİLER
 export const clearAllShiftData = async () => {
   try {
-    console.log('🗑️ Eski vardiya verileri temizleniyor...');
     
     const results = {
       weekly_schedules: { success: false, count: 0 },
@@ -1579,16 +1663,13 @@ export const clearAllShiftData = async () => {
 
     // 1. Weekly schedules tablosunu temizle
     try {
-      console.log('🔄 weekly_schedules tablosu kontrol ediliyor...');
       const { data: schedules, error: schedError } = await supabase
         .from('weekly_schedules')
         .select('*');
-      
-      console.log('📊 weekly_schedules mevcut kayıtlar:', schedules?.length || 0);
+  
       
       if (!schedError && schedules && schedules.length > 0) {
-        console.log('🗑️ weekly_schedules silme işlemi başlatılıyor...');
-        
+ 
         // Tüm kayıtları tek seferde silmeyi dene
         const { error: deleteError } = await supabase
           .from('weekly_schedules')

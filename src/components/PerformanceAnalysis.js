@@ -499,6 +499,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             employee_type: isDriverPosition ? 'driver' : 'personnel',
             date_shift_type: dateShiftType, // Tarihin gece/gündüz olması
             sheet_name: normalizeSheetName(sheetName), // Normalize edilmiş sheet adı
+            license_plate: dayData.license_plate || '', // Plaka bilgisi
             trips: dayData.trips || 0,
             pallets: dayData.pallets || 0,
             boxes: dayData.boxes || 0,
@@ -546,6 +547,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             employee_type: isDriverPosition ? 'driver' : 'personnel',
             date_shift_type: dateShiftType, // Tarihin gece/gündüz olması
             sheet_name: normalizeSheetName(sheetName), // Normalize edilmiş sheet adı
+            license_plate: dayData.license_plate || '', // Plaka bilgisi
             trips: dayData.trips || 0,
             pallets: dayData.pallets || 0,
             boxes: dayData.boxes || 0,
@@ -859,9 +861,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         const magazaKodu = (row[4] || '').toString().trim();
         const palet = parseInt(row[7]) || 0;
         const kasa = parseInt(row[11]) || 0;
+        const plaka = (row[12] || '').toString().trim(); // M sütunu - PLAKA
         const sofor = (row[13] || '').toString().trim();
         const personel1 = (row[14] || '').toString().trim();
         const personel2 = (row[15] || '').toString().trim();
+        
+        // Debug için plaka bilgisini logla
+        if (rowIndex < 5) {
+          console.log(`🔍 Satır ${rowIndex}: Plaka = "${plaka}"`);
+        }
         
         if (!magazaKodu || !sofor) return;
         
@@ -882,12 +890,14 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           if (matchedDriver) {
             if (!results.drivers[matchedDriver].dayData[sheetName]) {
               results.drivers[matchedDriver].dayData[sheetName] = {
-                trips: 0, pallets: 0, boxes: 0, stores: []
+                trips: 0, pallets: 0, boxes: 0, stores: [], license_plate: plaka
               };
             }
             results.drivers[matchedDriver].dayData[sheetName].trips += 1;
             results.drivers[matchedDriver].dayData[sheetName].pallets += palet;
             results.drivers[matchedDriver].dayData[sheetName].boxes += kasa;
+            // Plaka bilgisini güncelle (son plaka bilgisini al)
+            results.drivers[matchedDriver].dayData[sheetName].license_plate = plaka;
             // Mağaza kodunu ekle (duplicate olmaması için kontrol et)
             if (!results.drivers[matchedDriver].dayData[sheetName].stores.includes(magazaKodu)) {
               results.drivers[matchedDriver].dayData[sheetName].stores.push(magazaKodu);
@@ -900,12 +910,14 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           if (matchedPersonnel) {
             if (!results.personnel[matchedPersonnel].dayData[sheetName]) {
               results.personnel[matchedPersonnel].dayData[sheetName] = {
-                trips: 0, pallets: 0, boxes: 0, stores: []
+                trips: 0, pallets: 0, boxes: 0, stores: [], license_plate: plaka
               };
             }
             results.personnel[matchedPersonnel].dayData[sheetName].trips += 1;
             results.personnel[matchedPersonnel].dayData[sheetName].pallets += palet;
             results.personnel[matchedPersonnel].dayData[sheetName].boxes += kasa;
+            // Plaka bilgisini güncelle (son plaka bilgisini al)
+            results.personnel[matchedPersonnel].dayData[sheetName].license_plate = plaka;
             // Mağaza kodunu ekle (duplicate olmaması için kontrol et)
             if (!results.personnel[matchedPersonnel].dayData[sheetName].stores.includes(magazaKodu)) {
               results.personnel[matchedPersonnel].dayData[sheetName].stores.push(magazaKodu);

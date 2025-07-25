@@ -39,7 +39,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
       const allPeriods = weeklyPeriods || [];
       
       if (allPeriods.length === 0) {
-        console.log('⚠️ Hiç weekly_periods bulunamadı');
+        
         return null;
       }
 
@@ -47,15 +47,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
       let latestPeriod = null;
       let latestDate = null;
 
-      console.log('🔍 Tüm dönemler:', allPeriods.length);
-
+      
       allPeriods.forEach((period, index) => {
-        console.log(`📅 Dönem ${index + 1}:`, period.week_label);
+   
 
         try {
           const weekLabel = period.week_label;
           if (!weekLabel) {
-            console.log('⚠️ week_label boş:', period);
+          
             return;
           }
 
@@ -71,48 +70,44 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
             const startMonthNum = monthMap[startMonth];
             const endMonthNum = monthMap[endMonth];
 
-            console.log(`📊 Parse edilen: ${startDay} ${startMonth} ${year} -> ${startMonthNum}`);
 
             if (startMonthNum !== undefined && endMonthNum !== undefined) {
               const periodDate = new Date(parseInt(year), startMonthNum, parseInt(startDay));
               const today = new Date();
               today.setHours(0, 0, 0, 0); // Bugünün başlangıcı
 
-              console.log(`📅 Tarih hesaplandı:`, periodDate);
-              console.log(`📅 Bugün:`, today);
-              console.log(`📅 Gelecek mi:`, periodDate > today);
 
               // Sadece bugünden küçük veya eşit tarihleri kabul et
               if (periodDate <= today) {
                 if (!latestDate || periodDate > latestDate) {
                   latestDate = periodDate;
                   latestPeriod = period;
-                  console.log(`✅ Yeni en güncel:`, period.week_label);
+                 
                 }
               } else {
-                console.log(`⏭️ Gelecek tarih atlandı:`, period.week_label);
+             
               }
             } else {
-              console.log('⚠️ Ay numarası bulunamadı:', startMonth, endMonth);
+           
             }
           } else {
-            console.log('⚠️ Regex eşleşmedi:', weekLabel);
+          
           }
         } catch (error) {
-          console.warn('⚠️ week_label parse hatası:', period.week_label, error);
+          
         }
       });
 
       if (!latestPeriod) {
-        console.log('📊 En güncel dönem bulunamadı, en son yüklenen kullanılıyor...');
+    
         // Fallback: en son yüklenen veriyi kullan
         latestPeriod = allPeriods[0];
       }
 
-      console.log('🎯 Seçilen dönem:', latestPeriod?.week_label);
+      
       return latestPeriod;
     } catch (error) {
-      console.error('❌ Güncel dönem bulma hatası:', error);
+   
       return null;
     }
   };
@@ -122,7 +117,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   // Vardiya istatistikleri hesaplama fonksiyonu
   const calculateShiftStatistics = async () => {
     try {
-      console.log('🔄 Vardiya istatistikleri hesaplanıyor...');
+   
       const stats = {};
       
       // Her personel için vardiya verilerini çek
@@ -146,7 +141,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               totalDays
             };
             
-            console.log(`📊 ${person.full_name}: ${nightShifts} gece, ${dayShifts} gündüz, ${eveningShifts} akşam, toplam ${totalDays} gün`);
+           
           } else {
             stats[person.full_name] = {
               nightShifts: 0,
@@ -156,7 +151,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
             };
           }
         } catch (error) {
-          console.error(`${person.full_name} için vardiya verisi çekilemedi:`, error);
+        
           stats[person.full_name] = {
             nightShifts: 0,
             dayShifts: 0,
@@ -167,9 +162,9 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
       }
       
       setShiftStatistics(stats);
-      console.log('✅ Vardiya istatistikleri güncellendi');
+    
     } catch (error) {
-      console.error('Vardiya istatistikleri hesaplama hatası:', error);
+    
     }
   };
 
@@ -180,7 +175,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
 
     try {
       setLoading(true);
-      console.log('📊 Excel dosyası yükleniyor...');
+    
 
       const data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -211,7 +206,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         reader.readAsBinaryString(file);
       });
 
-      console.log('📊 Excel verileri parse edildi:', data.length, 'satır');
+    
 
       // Excel'den tarih bilgisini çıkar
       const firstRow = data[0];
@@ -243,7 +238,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         }
       });
 
-      console.log('📅 Hafta bilgileri:', { weekLabel, startDate, endDate });
+     
 
       if (!weekLabel) {
         alert('Excel dosyasında tarih bilgisi bulunamadı!');
@@ -254,28 +249,28 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
       const result = await saveCurrentWeekExcelData(data, weekLabel, startDate, endDate);
       
       if (result.success) {
-        console.log('✅ Güncel hafta verileri başarıyla kaydedildi');
+    
         alert(`Güncel hafta verileri başarıyla yüklendi!\n${data.length} personel kaydı işlendi.`);
         
         // Verileri yenile
-        console.log('🔄 Veriler güncelleniyor...');
+       
         await loadPersonnelData();
         await calculateShiftStatistics();
         
         // Ana sayfa güncellemesi için callback
         if (onPersonnelUpdate) {
-          console.log('🔄 Ana sayfa güncelleniyor...');
+       
           await onPersonnelUpdate();
         }
         
-        console.log('✅ Veri güncelleme tamamlandı');
+        
       } else {
-        console.error('❌ Veriler kaydedilemedi:', result.error);
+       
         alert('Veriler kaydedilirken hata oluştu!');
       }
 
     } catch (error) {
-      console.error('❌ Excel yükleme hatası:', error);
+   
       alert('Excel dosyası yüklenirken hata oluştu!');
     } finally {
       setLoading(false);
@@ -294,7 +289,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         setPersonnelData(personnelResult.data);
       }
     } catch (error) {
-      console.error('❌ Veri yükleme hatası:', error);
+     
     } finally {
       setLoading(false);
     }
@@ -328,22 +323,21 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
 
   // Veri yenileme fonksiyonu
   const refreshData = async () => {
-    console.log('🔄 refreshData başladı');
+  
     setLoading(true);
     try {
       const personnelResult = await getAllPersonnel();
-      console.log('📡 getAllPersonnel sonucu:', personnelResult);
+   
       
       if (personnelResult.success) {
-        console.log('✅ Personel verileri yenilendi:', personnelResult.data.length, 'kayıt');
-        console.log('👥 Personel listesi:', personnelResult.data);
+   
         setPersonnelData(personnelResult.data);
         // onPersonnelUpdate callback'ini kaldırdık - sonsuz döngü yaratıyordu
       } else {
-        console.error('❌ Personel verileri yenilenemedi:', personnelResult.error);
+       
       }
     } catch (error) {
-      console.error('❌ Veri yenileme hatası:', error);
+    
     } finally {
       setLoading(false);
     }
@@ -410,7 +404,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     if (employeeCode && currentShiftData && currentShiftData.length > 0) {
       const currentShift = currentShiftData.find(shift => shift.employee_code === employeeCode);
       if (currentShift) {
-        console.log(`🔍 ${employeeCode} için güncel vardiya bulundu:`, currentShift.shift_type);
+        
         const shiftType = currentShift.shift_type;
         
         switch (shiftType) {
@@ -460,14 +454,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
             );
         }
       } else {
-        console.log(`⚠️ ${employeeCode} için güncel vardiya bulunamadı. Mevcut vardiya verileri:`, currentShiftData.map(s => s.employee_code));
+       
       }
     } else {
-      console.log(`📊 ${employeeCode} için currentShiftData boş veya employeeCode yok. currentShiftData uzunluğu:`, currentShiftData ? currentShiftData.length : 'undefined');
+    
     }
     
     // Eğer güncel vardiya verisi yoksa, eski yöntemi kullan
-    console.log(`📊 ${employeeCode} için eski vardiya verisi kullanılıyor:`, vardiya);
+    
     const vardiyaType = getVardiyaType(vardiya);
     
     switch (vardiyaType) {

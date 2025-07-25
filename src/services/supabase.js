@@ -3052,13 +3052,16 @@ export const getUnreadNotificationCount = async (userId) => {
 // Chat için gerçek kullanıcıları getir
 export const getChatUsers = async (currentUserId) => {
   try {
+    console.log('🔍 getChatUsers çağrıldı, currentUserId:', currentUserId);
+    
     // Users tablosundan gerçek kullanıcıları al
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, email, full_name, username, is_online, last_seen')
-      .eq('is_active', true)
+      .select('id, email, full_name, username, is_online, last_seen, role')
       .neq('id', currentUserId)
       .order('full_name');
+
+    console.log('📋 Veritabanından gelen kullanıcılar:', users);
 
     if (error) {
       console.error('❌ Users yüklenirken hata:', error);
@@ -3073,7 +3076,8 @@ export const getChatUsers = async (currentUserId) => {
       is_online: user.is_online,
       last_seen: user.last_seen,
       user_metadata: { 
-        full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı'
+        full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı',
+        role: user.role || 'Kullanıcı' // Gerçek rolü kullan
       }
     }));
 

@@ -17,14 +17,17 @@ const ChatSidebar = ({
   const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
-    if (currentUser?.id && allUsers.length === 0) {
+    if (currentUser?.id) {
       loadAllUsers();
     }
   }, [currentUser?.id]);
 
   const loadAllUsers = async () => {
     try {
+      console.log('🔄 Kullanıcılar yükleniyor...');
       const result = await getChatUsers(currentUser.id);
+      
+      console.log('📋 getChatUsers sonucu:', result);
       
       if (result.success && result.data.length > 0) {
         // Duplicate'leri kaldır ve current user'ı filtrele
@@ -34,8 +37,10 @@ const ChatSidebar = ({
           )
           .filter(user => user.id !== currentUser.id);
         
+        console.log('👥 Filtrelenmiş kullanıcılar:', uniqueUsers);
         setAllUsers(uniqueUsers);
       } else {
+        console.log('⚠️ Kullanıcı bulunamadı veya hata var');
         setAllUsers([]);
       }
     } catch (error) {
@@ -165,14 +170,14 @@ const ChatSidebar = ({
                   <div className="ml-3 flex-1">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium text-gray-900">
-                        {user.full_name || user.user_metadata?.full_name || user.email?.split('@')[0]}
+                        {user.full_name || user.user_metadata?.full_name || 'Kullanıcı'}
                       </h4>
                       <span className="text-xs text-gray-500">
                         {isOnline(user) ? 'Çevrimiçi' : 'Çevrimdışı'}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 truncate">
-                      {user.email}
+                      {user.user_metadata?.role || 'Kullanıcı'}
                     </p>
                   </div>
                 </div>
@@ -227,7 +232,7 @@ const ChatSidebar = ({
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${getAvatarColor(otherUser?.email || '')}`}>
                       {getInitials(otherUserName)}
                     </div>
-                    {isOnline(otherUser?.user_id) && (
+                    {isOnline(otherUser) && (
                       <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                     )}
                   </div>

@@ -50,8 +50,6 @@ const ChatSystem = ({ currentUser }) => {
           table: 'messages'
         }, 
         (payload) => {
-          
-          
           // Eğer mesaj başka birinden geldiyse toast göster
           if (payload.new.sender_id !== currentUser.id) {
             showToastNotification(`Yeni mesaj: ${payload.new.content}`);
@@ -68,8 +66,6 @@ const ChatSystem = ({ currentUser }) => {
         },
         (payload) => {
           // Online status değişikliklerini dinle
-          console.log('🔄 Online status değişti:', payload);
-          // Sadece online status değişikliklerini dinle
           if (payload.new.is_online !== payload.old.is_online || 
               payload.new.last_seen !== payload.old.last_seen) {
             console.log('🔄 Online status değişti, sohbetler yenileniyor...');
@@ -104,7 +100,7 @@ const ChatSystem = ({ currentUser }) => {
     try {
       console.log('🔄 Sohbetler yükleniyor...');
       
-      // Basit sohbet yükleme - sadece conversations
+      // Önce conversations'ları al
       const { data: conversations, error: convError } = await supabase
         .from('conversations')
         .select('*');
@@ -116,11 +112,11 @@ const ChatSystem = ({ currentUser }) => {
 
       console.log('📋 Bulunan sohbetler:', conversations?.length || 0);
 
-      // Basit participants yükleme
-      const conversationsWithParticipants = [];
-      
-      for (const conv of conversations) {
+      // Her conversation için participants ve messages'ları ayrı ayrı al
+      const conversationsWithData = [];
+      for (const conv of conversations || []) {
         try {
+          // Participants'ları al
           const { data: participants, error: partError } = await supabase
             .from('chat_participants')
             .select('user_id')
@@ -131,105 +127,65 @@ const ChatSystem = ({ currentUser }) => {
             continue;
           }
 
-          // Gerçek kullanıcı bilgilerini al
+          // Her participant için user bilgilerini al
           const participantsWithData = [];
           for (const participant of participants || []) {
-            try {
-                            // Users tablosundan kullanıcı bilgilerini al
-              console.log('🔍 Kullanıcı bilgisi aranıyor:', participant.user_id);
-              console.log('🔍 Current user ID:', currentUser.id);
-              console.log('🔍 Current user email:', currentUser.email);
-              
-              // Önce ID ile dene
-              let { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('id, email, full_name, username, last_seen, is_online')
-                .eq('id', participant.user_id)
-                .single();
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('id, email, full_name, username, last_seen, is_online')
+              .eq('id', participant.user_id)
+              .single();
 
-              // Eğer bulunamazsa, email ile dene
-              if (userError) {
-                console.log('⚠️ ID ile bulunamadı, email ile deneniyor...');
-                const { data: emailUserData, error: emailError } = await supabase
-                  .from('users')
-                  .select('id, email, full_name, username, last_seen, is_online')
-                  .eq('email', currentUser.email)
-                  .single();
-                
-                if (!emailError && emailUserData) {
-                  userData = emailUserData;
-                  userError = null;
-                  console.log('✅ Email ile kullanıcı bulundu:', userData);
-                }
-              }
-
-              console.log('🔍 UserData:', userData);
-              console.log('🔍 UserError:', userError);
-
-              if (!userError && userData) {
-                console.log('✅ Kullanıcı bulundu:', userData);
-                participantsWithData.push({
-                  user_id: userData.id,
-                  email: userData.email,
-                  full_name: userData.full_name || userData.username || 'Kullanıcı',
-                  username: userData.username,
-                  last_seen: userData.last_seen,
-                  is_online: userData.is_online
-                });
-              } else {
-                console.log('⚠️ Kullanıcı bilgisi bulunamadı:', participant.user_id, userError);
-                // Fallback
-                participantsWithData.push({
-                  user_id: participant.user_id,
-                  email: 'bilinmeyen@kullanici.com',
-                  full_name: 'Bilinmeyen Kullanıcı',
-                  last_seen: null,
-                  is_online: false
-                });
-              }
-            } catch (error) {
-              console.error('❌ Kullanıcı bilgisi alınırken genel hata:', error);
+            if (!userError && userData) {
               participantsWithData.push({
-                user_id: participant.user_id,
-                email: 'bilinmeyen@kullanici.com',
-                full_name: 'Bilinmeyen Kullanıcı',
-                last_seen: null,
-                is_online: false
+                user_id: userData.id,
+                email: userData.email,
+                full_name: userData.full_name || userData.username || 'Kullanıcı',
+                username: userData.username,
+                last_seen: userData.last_seen,
+                is_online: userData.is_online || false
               });
             }
           }
 
-          // Mesajları al
-          const { data: allMessages, error: msgError } = await supabase
+          // Messages'ları al
+          const { data: messages, error: msgError } = await supabase
             .from('messages')
             .select('*')
             .eq('conversation_id', conv.id)
             .order('created_at', { ascending: true });
 
           if (msgError) {
-            console.error(`❌ Mesajlar yüklenirken hata (conv ${conv.id}):`, msgError);
+            console.error(`❌ Messages yüklenirken hata (conv ${conv.id}):`, msgError);
           }
 
-          // Current user kontrolü
-          const hasCurrentUser = participantsWithData.some(p => p.user_id === currentUser.id);
-          if (hasCurrentUser) {
-            const convWithParticipants = {
-              ...conv,
-              chat_participants: participantsWithData,
-              messages: allMessages || []
-            };
-            conversationsWithParticipants.push(convWithParticipants);
-            console.log('✅ Sohbet eklendi:', conv.id, 'mesaj sayısı:', allMessages?.length || 0);
-          }
+          conversationsWithData.push({
+            ...conv,
+            chat_participants: participantsWithData,
+            messages: messages || []
+          });
         } catch (error) {
-          console.error(`❌ Sohbet işlenirken hata (conv ${conv.id}):`, error);
+          console.error(`❌ Conversation işlenirken hata (conv ${conv.id}):`, error);
         }
       }
-      
+
+      if (convError) {
+        console.error('❌ Conversations yüklenirken hata:', convError);
+        throw convError;
+      }
+
+      console.log('📋 Bulunan sohbetler:', conversations?.length || 0);
+
+      // Sadece current user'ın dahil olduğu sohbetleri filtrele
+      const conversationsWithParticipants = conversationsWithData.filter(conv => {
+        return conv.chat_participants?.some(p => p.user_id === currentUser.id);
+      });
+
       console.log('📊 Toplam sohbet sayısı:', conversationsWithParticipants.length);
       setConversations(conversationsWithParticipants);
     } catch (error) {
-      console.error('Sohbetler yüklenirken hata:', error);
+      console.error('❌ Sohbetler yüklenirken genel hata:', error);
+      setConversations([]);
     }
   };
 

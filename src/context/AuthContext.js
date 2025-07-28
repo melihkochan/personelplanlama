@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase, logAuditEvent, updateUserOnlineStatus } from '../services/supabase';
 
 const AuthContext = createContext();
@@ -16,6 +16,149 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  
+  // Oturum zaman aşımı için state'ler
+  const [showSessionTimeout, setShowSessionTimeout] = useState(false);
+  const [sessionTimeoutCountdown, setSessionTimeoutCountdown] = useState(0);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
+  
+  // Timeout referansları
+  const sessionTimeoutRef = useRef(null);
+  const warningTimeoutRef = useRef(null);
+  const countdownRef = useRef(null);
+  
+  // Oturum zaman aşımı ayarları (dakika cinsinden)
+  const SESSION_TIMEOUT_MINUTES = 30; // 30 dakika hareketsizlik
+  const WARNING_BEFORE_TIMEOUT_MINUTES = 5; // 5 dakika önce uyarı
+  const COUNTDOWN_SECONDS = 60; // 60 saniye geri sayım
+
+  // Kullanıcı aktivitesini takip eden fonksiyon
+  const resetSessionTimeout = () => {
+    if (!user) return;
+    
+    // Mevcut timeout'ları temizle
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+    }
+    if (warningTimeoutRef.current) {
+      clearTimeout(warningTimeoutRef.current);
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+    
+    // Uyarı ve oturum kapatma timeout'larını ayarla
+    warningTimeoutRef.current = setTimeout(() => {
+      setShowSessionTimeout(true);
+      setSessionTimeoutCountdown(COUNTDOWN_SECONDS);
+      
+      // Geri sayım başlat
+      countdownRef.current = setInterval(() => {
+        setSessionTimeoutCountdown(prev => {
+          if (prev <= 1) {
+            // Süre doldu, oturumu kapat
+            handleSessionExpired();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }, (SESSION_TIMEOUT_MINUTES - WARNING_BEFORE_TIMEOUT_MINUTES) * 60 * 1000);
+    
+    sessionTimeoutRef.current = setTimeout(() => {
+      handleSessionExpired();
+    }, SESSION_TIMEOUT_MINUTES * 60 * 1000);
+  };
+
+  // Oturum zaman aşımı durumunda yapılacak işlemler
+  const handleSessionExpired = async () => {
+    setIsSessionExpired(true);
+    setShowSessionTimeout(false);
+    setSessionTimeoutCountdown(0);
+    
+    // Audit log kaydet
+    try {
+      await logAuditEvent({
+        userId: user?.id,
+        userEmail: user?.email,
+        userName: user?.user_metadata?.full_name || user?.email,
+        action: 'SESSION_TIMEOUT',
+        tableName: 'auth',
+        recordId: null,
+        oldValues: null,
+        newValues: { timeoutTime: new Date().toISOString() },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Oturum zaman aşımı: ${user?.email}`
+      });
+    } catch (auditError) {
+      console.error('Audit log hatası:', auditError);
+    }
+
+    // Online durumunu güncelle
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user?.email)
+        .single();
+      
+      if (!userError && userData) {
+        await updateUserOnlineStatus(userData.id, false);
+      }
+    } catch (onlineError) {
+      console.error('Online durumu güncelleme hatası:', onlineError);
+    }
+    
+    // Oturumu kapat
+    await performSignOut();
+  };
+
+  // Kullanıcı aktivitesini yenile
+  const extendSession = () => {
+    setShowSessionTimeout(false);
+    setSessionTimeoutCountdown(0);
+    
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+    
+    resetSessionTimeout();
+  };
+
+  // Aktivite event listener'ları
+  useEffect(() => {
+    if (!user) return;
+    
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const handleActivity = () => {
+      resetSessionTimeout();
+    };
+    
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity, true);
+    });
+    
+    // İlk timeout'u başlat
+    resetSessionTimeout();
+    
+    return () => {
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleActivity, true);
+      });
+      
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, [user]);
 
   useEffect(() => {
     const getSession = async () => {
@@ -127,18 +270,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signOut = async () => {
+  const performSignOut = async () => {
     try {
-      // Logout animasyonunu başlat
-      setIsLoggingOut(true);
-      
       // Mevcut kullanıcı bilgilerini sakla
       const currentUser = user;
-      
-      // Animasyon için 1.5 saniye bekle
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Vercel için güçlü logout
       
       // 1. Supabase'den çıkış yap
       const { error } = await supabase.auth.signOut({ scope: 'global' });
@@ -155,7 +290,7 @@ export const AuthProvider = ({ children }) => {
         window.history.replaceState(null, '', '/');
       }
       
-      // 3. Audit log kaydet
+      // 4. Audit log kaydet
       try {
         await logAuditEvent({
           userId: currentUser?.id,
@@ -193,7 +328,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Online durumu güncelleme hatası:', onlineError);
       }
       
-      // 3. Local storage'ı temizle
+      // 5. Local storage'ı temizle
       try {
         localStorage.removeItem('sb-' + supabase.supabaseUrl.split('//')[1].split('.')[0] + '-auth-token');
         localStorage.removeItem('supabase.auth.token');
@@ -208,6 +343,24 @@ export const AuthProvider = ({ children }) => {
       // Hata olsa bile user'ı null yap
       setUser(null);
       return { success: false, error: error.message };
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      // Logout animasyonunu başlat
+      setIsLoggingOut(true);
+      
+      // Animasyon için 1.5 saniye bekle
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Oturumu kapat
+      await performSignOut();
+      
+      return { success: true };
+    } catch (error) {
+      console.error('SignOut error:', error);
+      return { success: false, error: error.message };
     } finally {
       setIsLoggingOut(false);
     }
@@ -220,7 +373,11 @@ export const AuthProvider = ({ children }) => {
     signOut,
     isAuthenticated: !!user,
     isLoggingOut,
-    isLoggingIn
+    isLoggingIn,
+    showSessionTimeout,
+    sessionTimeoutCountdown,
+    isSessionExpired,
+    extendSession
   };
 
   return (

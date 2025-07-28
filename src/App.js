@@ -17,6 +17,7 @@ import ToastManager from './components/notifications/ToastManager';
 import SimpleNotification from './components/notifications/SimpleNotification';
 import UnauthorizedAccess from './components/ui/UnauthorizedAccess';
 import ChatSystem from './components/chat/ChatSystem';
+import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, supabase } from './services/supabase';
 import './App.css';
@@ -1130,6 +1131,8 @@ function MainApp() {
                       <span>Veriler Hazır</span>
                     </div>
                   </div>
+                  
+
                 </div>
 
                 {/* İstatistik Kartları */}
@@ -1471,6 +1474,9 @@ function MainApp() {
           }}
         />
       )}
+
+      {/* Oturum Zaman Aşımı Modalı */}
+      <SessionTimeoutModal />
     </div>
   );
 }

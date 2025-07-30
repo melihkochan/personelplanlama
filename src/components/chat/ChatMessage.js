@@ -130,14 +130,14 @@ const ChatMessage = ({ message, isOwn, currentUser, conversation }) => {
           {/* Zaman ve Durum */}
           <div className={`flex items-center gap-2 mt-2 px-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
             <span className={`text-xs font-medium ${
-              isOwn ? 'text-blue-100' : 'text-gray-400'
+              isOwn ? 'text-gray-300' : 'text-gray-600'
             }`}>
               {formatTime(message.created_at)}
             </span>
             {getStatusIcon()}
             {message.message_status === 'read' && message.read_at && (
               <span className={`text-xs font-medium ${
-                isOwn ? 'text-blue-100' : 'text-blue-500'
+                isOwn ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 • {new Date(message.read_at).toLocaleTimeString('tr-TR', {
                   hour: '2-digit',

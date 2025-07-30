@@ -144,38 +144,40 @@ const ChatSidebar = ({
   return (
     <div className="w-80 bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 flex flex-col h-full shadow-lg">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100 bg-white">
+      <div className="p-4 border-b border-gray-100 bg-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Mesajlar</h2>
-              <p className="text-sm text-gray-500">{conversations.length} sohbet</p>
-            </div>
-            {conversations.reduce((total, conv) => {
-              const unreadMessages = conv.messages?.filter(msg => 
-                msg.is_read === false && msg.sender_id !== currentUser.id
-              ) || [];
-              return total + unreadMessages.length;
-            }, 0) > 0 && (
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold bg-red-500 text-white animate-pulse">
+              <h2 className="text-lg font-bold text-gray-900">Sohbetler</h2>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-gray-500">{conversations.length} sohbet</p>
                 {conversations.reduce((total, conv) => {
                   const unreadMessages = conv.messages?.filter(msg => 
                     msg.is_read === false && msg.sender_id !== currentUser.id
                   ) || [];
                   return total + unreadMessages.length;
-                }, 0)}
-              </span>
-            )}
+                }, 0) > 0 && (
+                  <span className="text-xs text-red-500 font-medium">
+                    • {conversations.reduce((total, conv) => {
+                      const unreadMessages = conv.messages?.filter(msg => 
+                        msg.is_read === false && msg.sender_id !== currentUser.id
+                      ) || [];
+                      return total + unreadMessages.length;
+                    }, 0)} okunmamış
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <button
             onClick={() => setShowUserList(!showUserList)}
-            className="p-3 bg-gradient-to-r from-purple-500 to-blue-600 text-white rounded-xl hover:from-purple-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+            className="p-2 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-md"
             title="Yeni Sohbet"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -188,7 +190,7 @@ const ChatSidebar = ({
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <Plus className="w-4 h-4 text-white" />
+                  <MessageCircle className="w-4 h-4 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">Yeni Sohbet</h3>
               </div>
@@ -257,7 +259,7 @@ const ChatSidebar = ({
           </div>
         ) : (
           /* Conversation List */
-          <div className="p-4 space-y-3">
+          <div className="p-2 space-y-1">
             {conversations.map((conversation, index) => {
               // Diğer kullanıcıyı bul
               const otherUser = conversation.chat_participants?.find(p => p.user_id !== currentUser.id);
@@ -276,28 +278,28 @@ const ChatSidebar = ({
                 <div
                   key={conversation.id}
                   onClick={() => onSelectConversation(conversation)}
-                  className={`group flex items-center p-4 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.02] ${
+                  className={`group flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
                     currentConversation?.id === conversation.id 
-                      ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 shadow-lg' 
-                      : 'hover:bg-white hover:shadow-md border border-transparent hover:border-gray-200'
+                      ? 'bg-green-50 border border-green-200' 
+                      : 'border-b border-gray-100'
                   }`}
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <div className="relative">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-lg ${getAvatarColor(otherUser?.email || '')}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(otherUser?.email || '')}`}>
                       {getInitials(otherUserName)}
                     </div>
                     {isOnline(otherUser) && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-3 border-white rounded-full animate-pulse"></div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                     )}
                   </div>
                   
-                  <div className="ml-4 flex-1 min-w-0">
+                  <div className="ml-3 flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-semibold text-gray-900 truncate group-hover:text-purple-600 transition-colors">
+                      <h4 className="font-medium text-gray-900 truncate text-sm">
                         {otherUserName}
                       </h4>
-                      <span className={`text-xs font-medium ${unreadCount > 0 ? 'text-purple-600' : 'text-gray-500'}`}>
+                      <span className={`text-xs ${unreadCount > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
                         {lastMessage?.created_at ? 
                           new Date(lastMessage.created_at).toLocaleTimeString('tr-TR', { 
                             hour: '2-digit', 
@@ -306,8 +308,8 @@ const ChatSidebar = ({
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <p className="text-sm text-gray-600 truncate">
+                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                        <p className="text-xs text-gray-500 truncate">
                           {isLastMessageFromMe ? 'Siz: ' : ''}
                           {lastMessage?.content || 'Henüz mesaj yok'}
                         </p>
@@ -315,26 +317,17 @@ const ChatSidebar = ({
                         {isLastMessageFromMe && lastMessage && (
                           <div className="flex items-center gap-1 flex-shrink-0">
                             {lastMessage.message_status === 'read' ? (
-                              <div className="flex items-center gap-1">
-                                <CheckCheck className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs text-blue-600 font-medium">Görüldü</span>
-                              </div>
+                              <CheckCheck className="w-3 h-3 text-blue-500" />
                             ) : lastMessage.message_status === 'delivered' ? (
-                              <div className="flex items-center gap-1">
-                                <CheckCheck className="w-4 h-4 text-gray-400" />
-                                <span className="text-xs text-gray-400">İletildi</span>
-                              </div>
+                              <CheckCheck className="w-3 h-3 text-gray-400" />
                             ) : (
-                              <div className="flex items-center gap-1">
-                                <Check className="w-4 h-4 text-gray-400" />
-                                <span className="text-xs text-gray-400">Gönderildi</span>
-                              </div>
+                              <Check className="w-3 h-3 text-gray-400" />
                             )}
                           </div>
                         )}
                       </div>
                       {unreadCount > 0 && (
-                        <span className="ml-3 inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg animate-pulse">
+                        <span className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full text-xs font-bold bg-green-500 text-white">
                           {unreadCount}
                         </span>
                       )}

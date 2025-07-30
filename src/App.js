@@ -529,28 +529,28 @@ function MainApp() {
         {/* Sidebar */}
         <div className="w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col">
           {/* Sidebar Header */}
-          <div className="p-6 border-b border-gray-200/50">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
+          <div className="p-4 border-b border-gray-200/50">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Personel Takip</h1>
+                <h1 className="text-lg font-bold text-gray-900">Personel Takip</h1>
                 <p className="text-xs text-gray-500">Modern İş Yönetimi</p>
               </div>
             </div>
           </div>
 
           {/* User Info */}
-          <div className="p-6 border-b border-gray-200/50">
+          <div className="p-4 border-b border-gray-200/50">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
+              <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold text-xs">
                   {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-xs font-medium text-gray-900 truncate">
                   {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}
                 </p>
                 <p className="text-xs text-gray-500 flex items-center gap-1">
@@ -567,7 +567,7 @@ function MainApp() {
                     : 'hover:bg-gray-100 text-gray-600'
                 }`}
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4" />
                 {unreadNotificationCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center animate-pulse">
                     {unreadNotificationCount}
@@ -578,19 +578,19 @@ function MainApp() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-3 space-y-1">
             {/* Ana Sayfa */}
             <button
               onClick={() => handleTabChange('home')}
               className={`
-                w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                 ${activeTab === 'home'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                 }
               `}
             >
-              <Home className="w-5 h-5 mr-3" />
+              <Home className="w-4 h-4 mr-2" />
               Ana Sayfa
             </button>
 
@@ -598,14 +598,14 @@ function MainApp() {
             <button
               onClick={() => handleTabChange('chat')}
               className={`
-                w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 relative
+                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative
                 ${activeTab === 'chat'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                 }
               `}
             >
-              <MessageCircle className="w-5 h-5 mr-3" />
+              <MessageCircle className="w-4 h-4 mr-2" />
               Mesajlar
               {unreadMessageCount > 0 && (
                 <span className="absolute top-1 -right-1 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-sm">
@@ -615,140 +615,140 @@ function MainApp() {
             </button>
 
             {/* Personel Yönetimi Grubu */}
-            <div className="space-y-2">
-              <div className="flex items-center px-4 py-2">
+            <div className="space-y-1">
+              <div className="flex items-center px-3 py-1">
                 <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
               
               <button
                 onClick={() => handleTabChange('vardiya-kontrol')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'vardiya-kontrol'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <Clock className="w-5 h-5 mr-3" />
+                <Clock className="w-4 h-4 mr-2" />
                 Personel Kontrol
               </button>
               
               <button
                 onClick={() => handleTabChange('performance')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'performance'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <BarChart3 className="w-5 h-5 mr-3" />
+                <BarChart3 className="w-4 h-4 mr-2" />
                 Performans Analizi
               </button>
               
               <button
                 onClick={() => handleTabChange('store-distribution')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'store-distribution'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <MapPin className="w-5 h-5 mr-3" />
+                <MapPin className="w-4 h-4 mr-2" />
                 Personel Konum Dağılımı
               </button>
               
               <button
                 onClick={() => handleTabChange('vehicle-distribution')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'vehicle-distribution'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <Car className="w-5 h-5 mr-3" />
+                <Car className="w-4 h-4 mr-2" />
                 Personel Araç Dağılımı
               </button>
             </div>
 
             {/* Sistem Yönetimi Grubu */}
-            <div className="space-y-2">
-              <div className="flex items-center px-4 py-2">
+            <div className="space-y-1">
+              <div className="flex items-center px-3 py-1">
                 <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Sistem Yönetimi</span>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Sistem Yönetimi</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
               
               <button
                 onClick={() => handleTabChange('personnel')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'personnel'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <Users className="w-5 h-5 mr-3" />
+                <Users className="w-4 h-4 mr-2" />
                 Personel Listesi
               </button>
               
               <button
                 onClick={() => handleTabChange('vehicles')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'vehicles'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <Car className="w-5 h-5 mr-3" />
+                <Car className="w-4 h-4 mr-2" />
                 Araç Listesi
               </button>
               
               <button
                 onClick={() => handleTabChange('stores')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'stores'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <Store className="w-5 h-5 mr-3" />
+                <Store className="w-4 h-4 mr-2" />
                 Mağaza Listesi
               </button>
             </div>
 
             {/* Vardiya Planlama Grubu */}
-            <div className="space-y-2">
-              <div className="flex items-center px-4 py-2">
+            <div className="space-y-1">
+              <div className="flex items-center px-3 py-1">
                 <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vardiya Planlama</span>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Vardiya Planlama</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
               
               <button
                 onClick={() => handleTabChange('planning')}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
                   ${activeTab === 'planning'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
                 `}
               >
-                <Calendar className="w-5 h-5 mr-3" />
+                <Calendar className="w-4 h-4 mr-2" />
                 Vardiya Planlama
               </button>
               
@@ -757,14 +757,14 @@ function MainApp() {
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-4 border-t border-gray-200/50 space-y-2">
+          <div className="p-3 border-t border-gray-200/50 space-y-2">
             {/* Admin Panel Button */}
             {(userRole === 'admin' || userRole === 'yönetici') && (
               <button
                 onClick={() => handleTabChange('admin')}
-                className="w-full flex items-center px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 text-sm shadow-lg"
+                className="w-full flex items-center px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 text-xs shadow-lg"
               >
-                <Shield className="w-5 h-5 mr-3" />
+                <Shield className="w-4 h-4 mr-2" />
                 Admin Panel
               </button>
             )}
@@ -772,9 +772,9 @@ function MainApp() {
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="w-full flex items-center px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-sm shadow-lg"
+              className="w-full flex items-center px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 text-xs shadow-lg"
             >
-              <LogOut className="w-5 h-5 mr-3" />
+              <LogOut className="w-4 h-4 mr-2" />
               Çıkış Yap
             </button>
           </div>
@@ -1114,14 +1114,14 @@ function MainApp() {
           <main className="flex-1 overflow-auto p-8">
             {/* Ana Sayfa Dashboard */}
             {activeTab === 'home' && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Hoş Geldiniz */}
-                <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 text-white">
-                  <h1 className="text-3xl font-bold mb-2">
+                <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-2xl p-6 text-white">
+                  <h1 className="text-xl font-bold mb-2">
                     Hoş Geldin {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
                   </h1>
-                  <p className="text-blue-100 mb-6">Personel Takip Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
-                  <div className="flex items-center gap-4 text-sm">
+                  <p className="text-blue-100 mb-4 text-sm">Personel Takip Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
+                  <div className="flex items-center gap-4 text-xs">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       <span>Sistem Aktif</span>
@@ -1136,82 +1136,82 @@ function MainApp() {
                 </div>
 
                 {/* İstatistik Kartları */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                          <Users className="w-6 h-6 text-blue-600" />
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Users className="w-5 h-5 text-blue-600" />
                         </div>
-                        <div className="ml-4">
-                          <h3 className="text-2xl font-bold text-gray-900">{dataStatus.personnel.count}</h3>
-                          <p className="text-sm text-gray-600">Toplam Personel</p>
+                        <div className="ml-3">
+                          <h3 className="text-lg font-bold text-gray-900">{dataStatus.personnel.count}</h3>
+                          <p className="text-xs text-gray-600">Toplam Personel</p>
                         </div>
                       </div>
                       <div className={`w-3 h-3 rounded-full ${dataStatus.personnel.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                     </div>
                     {!dataStatus.personnel.hasExisting && (
-                      <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                      <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                         Veri yok - Excel yükleyin
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-green-500 hover:shadow-xl transition-all duration-300">
+                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-green-500 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                          <Car className="w-6 h-6 text-green-600" />
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <Car className="w-5 h-5 text-green-600" />
                         </div>
-                        <div className="ml-4">
-                          <h3 className="text-2xl font-bold text-gray-900">{dataStatus.vehicles.count}</h3>
-                          <p className="text-sm text-gray-600">Toplam Araç</p>
+                        <div className="ml-3">
+                          <h3 className="text-lg font-bold text-gray-900">{dataStatus.vehicles.count}</h3>
+                          <p className="text-xs text-gray-600">Toplam Araç</p>
                         </div>
                       </div>
                       <div className={`w-3 h-3 rounded-full ${dataStatus.vehicles.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                     </div>
                     {!dataStatus.vehicles.hasExisting && (
-                      <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                      <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                         Veri yok - Excel yükleyin
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-500 hover:shadow-xl transition-all duration-300">
+                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-purple-500 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                          <Store className="w-6 h-6 text-purple-600" />
+                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <Store className="w-5 h-5 text-purple-600" />
                         </div>
-                        <div className="ml-4">
-                          <h3 className="text-2xl font-bold text-gray-900">{dataStatus.stores.count}</h3>
-                          <p className="text-sm text-gray-600">Toplam Mağaza</p>
+                        <div className="ml-3">
+                          <h3 className="text-lg font-bold text-gray-900">{dataStatus.stores.count}</h3>
+                          <p className="text-xs text-gray-600">Toplam Mağaza</p>
                         </div>
                       </div>
                       <div className={`w-3 h-3 rounded-full ${dataStatus.stores.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                     </div>
                     {!dataStatus.stores.hasExisting && (
-                      <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                      <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                         Veri yok - Excel yükleyin
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-orange-500 hover:shadow-xl transition-all duration-300">
+                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-orange-500 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                          <Calendar className="w-6 h-6 text-orange-600" />
+                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                          <Calendar className="w-5 h-5 text-orange-600" />
                         </div>
-                        <div className="ml-4">
-                          <h3 className="text-2xl font-bold text-gray-900">{generatedPlan ? 1 : 0}</h3>
-                          <p className="text-sm text-gray-600">Aktif Planlar</p>
+                        <div className="ml-3">
+                          <h3 className="text-lg font-bold text-gray-900">{generatedPlan ? 1 : 0}</h3>
+                          <p className="text-xs text-gray-600">Aktif Planlar</p>
                         </div>
                       </div>
                       <div className={`w-3 h-3 rounded-full ${generatedPlan ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                     </div>
                     {!generatedPlan && (
-                      <div className="mt-3 text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                      <div className="mt-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
                         Plan oluşturun
                       </div>
                     )}
@@ -1220,10 +1220,10 @@ function MainApp() {
 
                 {/* Takvim Görünümü */}
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">📅 Aylık Takip Takvimi</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">📅 Aylık Takip Takvimi</h3>
                   
                   {/* Takvim Kontrolleri */}
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-4">
                     <button
                       onClick={() => {
                         const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
@@ -1232,10 +1232,10 @@ function MainApp() {
                       }}
                       className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
                     >
-                      <ChevronDown className="w-5 h-5 transform rotate-90" />
+                      <ChevronDown className="w-4 h-4 transform rotate-90" />
                     </button>
                     
-                    <h4 className="text-xl font-semibold text-gray-900">
+                    <h4 className="text-base font-semibold text-gray-900">
                       {getMonthName(selectedMonth)} {selectedYear}
                     </h4>
                     
@@ -1247,16 +1247,16 @@ function MainApp() {
                       }}
                       className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
                     >
-                      <ChevronDown className="w-5 h-5 transform -rotate-90" />
+                      <ChevronDown className="w-4 h-4 transform -rotate-90" />
                     </button>
                   </div>
 
                   {/* Takvim Grid */}
-                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                  <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                     {/* Gün başlıkları */}
                     <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
                       {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
-                        <div key={day} className="p-3 text-center text-sm font-medium text-gray-600">
+                        <div key={day} className="p-2 text-center text-xs font-medium text-gray-600">
                           {day}
                         </div>
                       ))}
@@ -1268,14 +1268,14 @@ function MainApp() {
                                                                 <div
                                           key={index}
                                           className={`
-                                            p-2 border-r border-b border-gray-100 min-h-[120px] relative
+                                            p-2 border-r border-b border-gray-100 min-h-[100px] relative
                                             ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
                                             ${day.isToday ? 'bg-blue-50 border-blue-200' : ''}
                                             ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
                                           `}
                                         >
                           <div className={`
-                            text-sm font-medium mb-1
+                            text-xs font-medium mb-1
                             ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                             ${day.isToday ? 'text-blue-600' : ''}
                           `}>
@@ -1293,16 +1293,16 @@ function MainApp() {
                             
                             if (dayNotes.length > 0) {
                               return (
-                                <div className="mt-2 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                    <div className="text-sm font-semibold text-gray-700">
+                                <div className="mt-1 space-y-1">
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <div className="text-xs font-semibold text-gray-700">
                                       {dayNotes.length} kayıt
                                     </div>
                                   </div>
                                   {/* Kayıt detayları */}
-                                  <div className="text-sm text-gray-800 max-h-28 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
-                                    {dayNotes.slice(0, 3).map((note, index) => {
+                                  <div className="text-xs text-gray-800 max-h-20 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
+                                    {dayNotes.slice(0, 2).map((note, index) => {
                                       // Duruma göre renk belirle
                                       let borderColor = 'border-blue-400';
                                       let bgColor = 'bg-blue-50';
@@ -1327,7 +1327,7 @@ function MainApp() {
                                       }
                                       
                                       return (
-                                        <div key={index} className={`${bgColor} rounded-lg p-2 border-l-2 ${borderColor}`}>
+                                        <div key={index} className={`${bgColor} rounded-lg p-1 border-l-2 ${borderColor}`}>
                                           <div className="font-medium text-gray-900 text-xs">
                                             {note.full_name}
                                           </div>
@@ -1337,9 +1337,9 @@ function MainApp() {
                                         </div>
                                       );
                                     })}
-                                    {dayNotes.length > 3 && (
-                                      <div className="text-xs text-gray-500 font-medium bg-gray-100 rounded-lg p-2 text-center">
-                                        +{dayNotes.length - 3} daha
+                                    {dayNotes.length > 2 && (
+                                      <div className="text-xs text-gray-500 font-medium bg-gray-100 rounded-lg p-1 text-center">
+                                        +{dayNotes.length - 2} daha
                                       </div>
                                     )}
                                   </div>

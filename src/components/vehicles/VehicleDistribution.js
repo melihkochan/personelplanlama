@@ -411,37 +411,37 @@ const VehicleDistribution = () => {
         {/* Header - Kutusuz */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               🚗 Personel Araç Dağılımı
             </h1>
-            <p className="text-sm text-gray-600 mt-1">Personellerin araç kullanım istatistikleri ve çift tur analizleri</p>
+            <p className="text-xs text-gray-600 mt-1">Personellerin araç kullanım istatistikleri ve çift tur analizleri</p>
           </div>
         </div>
 
         {/* Ana İçerik Kartı */}
-        <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-3">
           {/* Özet İstatistikler */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div className="bg-blue-50 rounded-lg p-3">
-              <div className="text-xl font-bold text-blue-600">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+            <div className="bg-blue-50 rounded-lg p-2">
+              <div className="text-lg font-bold text-blue-600">
                 {summaryStats.totalPersonnel}
               </div>
               <div className="text-xs text-blue-600">Toplam Personel</div>
             </div>
-            <div className="bg-orange-50 rounded-lg p-3">
-              <div className="text-xl font-bold text-orange-600">
+            <div className="bg-orange-50 rounded-lg p-2">
+              <div className="text-lg font-bold text-orange-600">
                 {summaryStats.totalKamyon}
               </div>
               <div className="text-xs text-orange-600">Kamyon Turu ({summaryStats.kamyonPersonnel} personel)</div>
             </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <div className="text-xl font-bold text-green-600">
+            <div className="bg-green-50 rounded-lg p-2">
+              <div className="text-lg font-bold text-green-600">
                 {summaryStats.totalKamyonet}
               </div>
               <div className="text-xs text-green-600">Kamyonet Turu ({summaryStats.kamyonetPersonnel} personel)</div>
             </div>
-            <div className="bg-purple-50 rounded-lg p-3">
-              <div className="text-xl font-bold text-purple-600">
+            <div className="bg-purple-50 rounded-lg p-2">
+              <div className="text-lg font-bold text-purple-600">
                 {summaryStats.totalPanelvan}
               </div>
               <div className="text-xs text-purple-600">Panelvan Turu ({summaryStats.panelvanPersonnel} personel)</div>
@@ -449,25 +449,25 @@ const VehicleDistribution = () => {
           </div>
           
           {/* Veri Tarihi */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-700">Veri Tarihi:</span>
+          <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-700">Veri Tarihi:</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-semibold text-gray-900">
+              <span className="text-sm font-semibold text-gray-900">
                 {availableMonthsAndYears.months.find(m => m.value === selectedMonth)?.label} {selectedYear}
               </span>
             </div>
           </div>
           
           {/* Filtreler */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ay Seçin</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Ay Seçin</label>
               <select 
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
               >
                 {availableMonthsAndYears.months.map(month => (
                   <option key={`${month.year}-${month.value}`} value={month.value}>
@@ -477,11 +477,11 @@ const VehicleDistribution = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Yıl</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Yıl</label>
               <select 
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
               >
                 {availableMonthsAndYears.years.map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -489,11 +489,11 @@ const VehicleDistribution = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Gün (Opsiyonel)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Gün (Opsiyonel)</label>
               <input 
                 type="date"
                 onChange={(e) => setSelectedDay(e.target.value ? new Date(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
               />
             </div>
           </div>
@@ -501,11 +501,11 @@ const VehicleDistribution = () => {
 
         {/* Ana Tablo */}
         <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
               📊 Personel Araç Kullanım Tablosu
             </h2>
-            <p className="text-blue-100 text-sm mt-1">Her personelin araç türlerine göre kullanım istatistikleri</p>
+            <p className="text-blue-100 text-xs mt-1">Her personelin araç türlerine göre kullanım istatistikleri</p>
           </div>
           
           <div className="overflow-x-auto">
@@ -513,7 +513,7 @@ const VehicleDistribution = () => {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th 
-                    className="px-3 py-3 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('employee_code')}
                   >
                     <div className="flex items-center gap-1">
@@ -522,7 +522,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-left text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-left text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('full_name')}
                   >
                     <div className="flex items-center gap-1">
@@ -531,7 +531,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-left text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-left text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('position')}
                   >
                     <div className="flex items-center gap-1">
@@ -540,7 +540,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('kamyon_total')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -554,7 +554,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('kamyon_double')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -568,7 +568,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('kamyonet_total')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -582,7 +582,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('kamyonet_double')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -596,7 +596,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('panelvan_total')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -610,7 +610,7 @@ const VehicleDistribution = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-3 py-3 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-2 py-2 text-center text-xs font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('panelvan_double')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -641,23 +641,23 @@ const VehicleDistribution = () => {
                       key={personnel.employee_code} 
                       className={`${rowColor} transition-colors border-b border-gray-100`}
                     >
-                      <td className="px-3 py-3 text-gray-900 font-bold text-sm sticky left-0 bg-inherit">
+                      <td className="px-2 py-2 text-gray-900 font-bold text-xs sticky left-0 bg-inherit">
                         {personnel.employee_code}
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-2">
                         <div className="flex items-center space-x-2">
-                          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                          <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
                             {personnel.full_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
                           </div>
-                          <span className="font-semibold text-gray-900 text-sm">{personnel.full_name}</span>
+                          <span className="font-semibold text-gray-900 text-xs">{personnel.full_name}</span>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-2">
                         <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${getPositionColor(personnel.position)}`}>
                           {personnel.position}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-2 py-2 text-center">
                         {personnel.vehicleStats.Kamyon.total > 0 ? (
                           <span className={`inline-flex px-2 py-1 rounded-lg font-bold text-xs ${getVehicleTripColor(personnel.vehicleStats.Kamyon.total, 'orange')}`}>
                             {personnel.vehicleStats.Kamyon.total}
@@ -666,7 +666,7 @@ const VehicleDistribution = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-2 py-2 text-center">
                         {personnel.vehicleStats.Kamyon.doubleTrips > 0 ? (
                           <span className={`inline-flex px-2 py-1 rounded-lg font-bold text-xs ${getDoubleTripColor(personnel.vehicleStats.Kamyon.doubleTrips)}`}>
                             {personnel.vehicleStats.Kamyon.doubleTrips}
@@ -675,7 +675,7 @@ const VehicleDistribution = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-2 py-2 text-center">
                         {personnel.vehicleStats.Kamyonet.total > 0 ? (
                           <span className={`inline-flex px-2 py-1 rounded-lg font-bold text-xs ${getVehicleTripColor(personnel.vehicleStats.Kamyonet.total, 'blue')}`}>
                             {personnel.vehicleStats.Kamyonet.total}
@@ -684,7 +684,7 @@ const VehicleDistribution = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-2 py-2 text-center">
                         {personnel.vehicleStats.Kamyonet.doubleTrips > 0 ? (
                           <span className={`inline-flex px-2 py-1 rounded-lg font-bold text-xs ${getDoubleTripColor(personnel.vehicleStats.Kamyonet.doubleTrips)}`}>
                             {personnel.vehicleStats.Kamyonet.doubleTrips}
@@ -693,7 +693,7 @@ const VehicleDistribution = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-2 py-2 text-center">
                         {personnel.vehicleStats.Panelvan.total > 0 ? (
                           <span className={`inline-flex px-2 py-1 rounded-lg font-bold text-xs ${getVehicleTripColor(personnel.vehicleStats.Panelvan.total, 'green')}`}>
                             {personnel.vehicleStats.Panelvan.total}
@@ -702,7 +702,7 @@ const VehicleDistribution = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-2 py-2 text-center">
                         {personnel.vehicleStats.Panelvan.doubleTrips > 0 ? (
                           <span className={`inline-flex px-2 py-1 rounded-lg font-bold text-xs ${getDoubleTripColor(personnel.vehicleStats.Panelvan.doubleTrips)}`}>
                             {personnel.vehicleStats.Panelvan.doubleTrips}

@@ -148,100 +148,100 @@ const VehicleList = ({ vehicleData: propVehicleData, currentUser }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Car className="w-6 h-6 text-white" />
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <Car className="w-5 h-5 text-white" />
               </div>
               Araç Listesi
             </h1>
-            <p className="text-gray-600 mt-2">Sisteme kayıtlı {vehicleData.length} araç</p>
+            <p className="text-sm text-gray-600 mt-1">Sisteme kayıtlı {vehicleData.length} araç</p>
           </div>
           
           <button
             onClick={() => setShowAddVehicleModal(true)}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             Araç Ekle
           </button>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
             placeholder="Plaka, tip veya şoför ismi ile ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-sm"
           />
         </div>
       </div>
 
       {/* Vehicle Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredVehicles.map((vehicle, index) => (
-          <div key={index} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-xl flex items-center justify-center">
-                  <Truck className="w-6 h-6 text-white" />
+          <div key={index} className="bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
+                  <Truck className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">{vehicle.license_plate}</h3>
-                  <p className="text-gray-600 text-sm">{vehicle.vehicle_type}</p>
+                  <h3 className="text-base font-bold text-gray-900">{vehicle.license_plate}</h3>
+                  <p className="text-gray-600 text-xs">{vehicle.vehicle_type}</p>
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEditingVehicle(vehicle)}
-                  className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                  className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
                 >
-                  <Edit3 className="w-4 h-4" />
+                  <Edit3 className="w-3 h-3" />
                 </button>
                 <button
                   onClick={() => handleDeleteVehicle(vehicle.id)}
-                  className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                  className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {/* Araç Tipi */}
-              <div className="flex items-center gap-2 text-sm">
-                <Wrench className="w-4 h-4 text-blue-600" />
+              <div className="flex items-center gap-2 text-xs">
+                <Wrench className="w-3 h-3 text-blue-600" />
                 <div>
                   <span className="text-gray-500">Araç Tipi:</span>
-                  <span className="font-medium text-gray-900 ml-2">
+                  <span className="font-medium text-gray-900 ml-1">
                     {vehicle.vehicle_type || 'Belirtilmemiş'}
                   </span>
                 </div>
               </div>
 
               {/* 1. Şoför */}
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4 text-green-600" />
+              <div className="flex items-center gap-2 text-xs">
+                <User className="w-3 h-3 text-green-600" />
                 <div>
                   <span className="text-gray-500">1. Şoför:</span>
-                  <span className="font-medium text-gray-900 ml-2">
+                  <span className="font-medium text-gray-900 ml-1">
                     {vehicle.first_driver || 'Belirtilmemiş'}
                   </span>
                 </div>
               </div>
 
               {/* 2. Şoför */}
-              <div className="flex items-center gap-2 text-sm">
-                <Users className="w-4 h-4 text-purple-600" />
+              <div className="flex items-center gap-2 text-xs">
+                <Users className="w-3 h-3 text-purple-600" />
                 <div>
                   <span className="text-gray-500">2. Şoför:</span>
-                  <span className="font-medium text-gray-900 ml-2">
+                  <span className="font-medium text-gray-900 ml-1">
                     {vehicle.second_driver || 'Belirtilmemiş'}
                   </span>
                 </div>

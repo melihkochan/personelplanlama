@@ -1728,59 +1728,59 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (!filteredData) return null;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-xs">🌙 gece vardiyası</p>
-              <p className="text-2xl font-bold">{filteredData.summary.geceDays}</p>
+              <p className="text-base font-bold">{filteredData.summary.geceDays}</p>
               <p className="text-blue-200 text-xs">Toplam Gün</p>
             </div>
-            <Calendar className="w-10 h-10 text-blue-200" />
+            <Calendar className="w-6 h-6 text-blue-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl p-4">
+        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-indigo-100 text-xs">🌅 gündüz vardiyası</p>
-              <p className="text-2xl font-bold">{filteredData.summary.gunduzDays}</p>
+              <p className="text-base font-bold">{filteredData.summary.gunduzDays}</p>
               <p className="text-indigo-200 text-xs">Toplam Gün</p>
             </div>
-            <Calendar className="w-10 h-10 text-indigo-200" />
+            <Calendar className="w-6 h-6 text-indigo-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4">
+        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-xs">Toplam Sefer</p>
-              <p className="text-2xl font-bold">{filteredData.summary.totalDeliveries}</p>
+              <p className="text-base font-bold">{filteredData.summary.totalDeliveries}</p>
               <p className="text-green-200 text-xs">🚚 sefer</p>
             </div>
-            <Truck className="w-10 h-10 text-green-200" />
+            <Truck className="w-6 h-6 text-green-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl p-4">
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-xs">Toplam Palet</p>
-              <p className="text-2xl font-bold">{filteredData.summary.totalPallets}</p>
+              <p className="text-base font-bold">{filteredData.summary.totalPallets}</p>
               <p className="text-purple-200 text-xs">📦 palet</p>
             </div>
-            <Package className="w-10 h-10 text-purple-200" />
+            <Package className="w-6 h-6 text-purple-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl p-4">
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-orange-100 text-xs">Toplam Kasa</p>
-              <p className="text-2xl font-bold">{filteredData.summary.totalBoxes}</p>
+              <p className="text-base font-bold">{filteredData.summary.totalBoxes}</p>
               <p className="text-orange-200 text-xs">📦 kasa</p>
             </div>
-            <Package className="w-10 h-10 text-orange-200" />
+            <Package className="w-6 h-6 text-orange-200" />
           </div>
         </div>
       </div>
@@ -1797,15 +1797,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <Users className="w-5 h-5" />
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Users className="w-4 h-4" />
             Şoför Performans Analizi ({drivers.length} kişi)
           </h3>
           
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Sırala:</span>
+            <span className="text-xs text-gray-600">Sırala:</span>
             <div className="flex gap-1">
               {['trips', 'pallets', 'boxes', 'avgPallets', 'avgBoxes'].map(sortType => (
               <button
@@ -1827,20 +1827,20 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-center py-2 px-2 font-semibold text-gray-700 w-12">Sıra</th>
-                <th className="text-left py-2 px-2 font-semibold text-gray-700">Şoför</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Mağaza</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Palet</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Kasa</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Palet</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Kasa</th>
+                <th className="text-center py-1 px-1 font-semibold text-gray-700 w-8">Sıra</th>
+                <th className="text-left py-1 px-1 font-semibold text-gray-700 w-24">Şoför</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Mağaza</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Palet</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Kasa</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Ort.Palet</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Ort.Kasa</th>
               </tr>
             </thead>
             <tbody>
               {drivers.map((driver, index) => {
                 const rank = index + 1;
                 const isTopThree = rank <= 3;
-                const textSize = rank <= 3 ? 'text-sm' : rank <= 6 ? 'text-sm' : 'text-xs';
+                const textSize = rank <= 3 ? 'text-xs' : rank <= 6 ? 'text-xs' : 'text-xs';
                 
                 // Renk geçişi için opacity hesapla
                 let opacity = 'opacity-100';
@@ -1879,19 +1879,19 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 
                 return (
                   <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity} ${bgColor}`}>
-                  <td className="py-2 px-2 text-center">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold border-2 ${textColor} ${borderColor}`}>
+                  <td className="py-1 px-1 text-center">
+                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold border-2 ${textColor} ${borderColor}`}>
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
                     </span>
                   </td>
-                    <td className={`py-2 px-2 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
+                    <td className={`py-1 px-1 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {driver.name}
                   </td>
-                    <td className="py-2 px-2 text-right text-gray-600">{driver.totalTrips || 0}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{driver.totalPallets || 0}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{driver.totalBoxes || 0}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{driver.averagePallets}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{driver.averageBoxes}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{driver.totalTrips || 0}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{driver.totalPallets || 0}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{driver.totalBoxes || 0}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{driver.averagePallets}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{driver.averageBoxes}</td>
                 </tr>
                 );
               })}
@@ -1914,15 +1914,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <Package className="w-5 h-5" />
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Package className="w-4 h-4" />
             Sevkiyat Elemanı Performans Analizi ({personnel.length} kişi)
           </h3>
           
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Sırala:</span>
+            <span className="text-xs text-gray-600">Sırala:</span>
             <div className="flex gap-1">
               {['trips', 'pallets', 'boxes', 'avgPallets', 'avgBoxes'].map(sortType => (
               <button
@@ -1944,20 +1944,20 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-center py-2 px-2 font-semibold text-gray-700 w-12">Sıra</th>
-                <th className="text-left py-2 px-2 font-semibold text-gray-700">Personel</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Mağaza</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Palet</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Kasa</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Palet</th>
-                <th className="text-right py-2 px-2 font-semibold text-gray-700">Ort.Kasa</th>
+                <th className="text-center py-1 px-1 font-semibold text-gray-700 w-8">Sıra</th>
+                <th className="text-left py-1 px-1 font-semibold text-gray-700 w-24">Personel</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Mağaza</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Palet</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Kasa</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Ort.Palet</th>
+                <th className="text-right py-1 px-1 font-semibold text-gray-700 w-16">Ort.Kasa</th>
               </tr>
             </thead>
             <tbody>
               {personnel.map((person, index) => {
                 const rank = index + 1;
                 const isTopThree = rank <= 3;
-                const textSize = rank <= 3 ? 'text-sm' : rank <= 6 ? 'text-sm' : 'text-xs';
+                const textSize = rank <= 3 ? 'text-xs' : rank <= 6 ? 'text-xs' : 'text-xs';
                 
                 // Renk geçişi için opacity hesapla
                 let opacity = 'opacity-100';
@@ -1996,19 +1996,19 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 
                 return (
                   <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${textSize} ${opacity} ${bgColor}`}>
-                  <td className="py-2 px-2 text-center">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold border-2 ${textColor} ${borderColor}`}>
+                  <td className="py-1 px-1 text-center">
+                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold border-2 ${textColor} ${borderColor}`}>
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
                     </span>
                   </td>
-                    <td className={`py-2 px-2 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
+                    <td className={`py-1 px-1 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {person.name}
                   </td>
-                    <td className="py-2 px-2 text-right text-gray-600">{person.totalTrips || 0}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{person.totalPallets || 0}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{person.totalBoxes || 0}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{person.averagePallets}</td>
-                    <td className="py-2 px-2 text-right text-gray-600">{person.averageBoxes}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{person.totalTrips || 0}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{person.totalPallets || 0}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{person.totalBoxes || 0}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{person.averagePallets}</td>
+                    <td className="py-1 px-1 text-right text-gray-600">{person.averageBoxes}</td>
                 </tr>
                 );
               })}
@@ -2020,40 +2020,40 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   };
 
   return (
-    <div className="w-full px-2 py-8">
-      <div className="mb-8">
+    <div className="w-full px-2 py-2">
+      <div className="mb-2">
         {/* Modern Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+        <div className="text-center mb-2">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-1">
             Performans Analizi
           </h1>
-          <p className="text-lg text-gray-600 mb-6">Şoför ve personel performansını analiz edin</p>
+          <p className="text-xs text-gray-600 mb-2">Şoför ve personel performansını analiz edin</p>
           
           {/* Modern Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
           {analysisData && (
               <button
                 onClick={handleExportToExcel}
                 disabled={loadingPlans}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingPlans ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
                 ) : (
-                  <Download className="w-4 h-4" />
+                  <Download className="w-3 h-3" />
                 )}
                 {loadingPlans ? 'İndiriliyor...' : 'Excel İndir'}
               </button>
             )}
             
             <label className="cursor-pointer">
-              <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                 {loadingPlans ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
                 ) : (
-                  <Upload className="w-4 h-4" />
+                  <Upload className="w-3 h-3" />
                 )}
-                <span className="font-medium">
+                <span className="font-medium text-sm">
                   {loadingPlans ? 'İşleniyor...' : 'Yeni Veri Ekle'}
                 </span>
         </div>
@@ -2173,12 +2173,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       {!initialDataLoading && analysisData && (
         <>
           {/* Filtreleme Paneli */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-2 mb-3">
             {/* Üst Bar: Başlık + Görünüm Butonları */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-800">Filtreleme Seçenekleri</h3>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-800">Filtreleme Seçenekleri</h3>
             </div>
             
                   <button
@@ -2190,7 +2190,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     setShiftFilter('all');
                   }
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 ${
                   weeklyView ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
@@ -2242,7 +2242,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                           setSelectedWeeks(weeks.map(w => w.id));
                           setSelectedDates(availableDates.map(item => item.id));
                         }}
-                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                        className="px-2 py-0.5 bg-green-500 text-white rounded text-xs hover:bg-green-600"
                       >
                         Tüm Haftalar
                   </button>
@@ -2251,7 +2251,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                           setSelectedWeeks([]);
                           setSelectedDates([]);
                         }}
-                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                        className="px-2 py-0.5 bg-red-500 text-white rounded text-xs hover:bg-red-600"
                       >
                         Temizle
                       </button>
@@ -2323,13 +2323,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 <div className="flex gap-2 mb-2">
                   <button
                         onClick={() => setSelectedDates(availableDates.map(item => item.id))}
-                    className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                    className="px-2 py-0.5 bg-green-500 text-white rounded text-xs hover:bg-green-600"
                   >
                     Tümünü Seç
                   </button>
                   <button
                     onClick={() => setSelectedDates([])}
-                    className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                    className="px-2 py-0.5 bg-red-500 text-white rounded text-xs hover:bg-red-600"
                   >
                     Tümünü Kaldır
                   </button>
@@ -2406,12 +2406,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
           {/* Haftalık İstatistikler */}
           {weeklyView && selectedWeeks.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-              <div className="flex items-center gap-3 mb-3">
-                <BarChart3 className="w-5 h-5 text-purple-600" />
-                <h3 className="text-lg font-semibold text-gray-800">Haftalık İstatistikler</h3>
+            <div className="bg-white rounded-lg border border-gray-200 p-3 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="w-4 h-4 text-purple-600" />
+                <h3 className="text-base font-semibold text-gray-800">Haftalık İstatistikler</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
                 {groupDatesByWeeks(availableDates).filter(week => selectedWeeks.includes(week.id)).map((week) => {
                   const weekShiftIds = week.dates.map(d => d.id); // Tarih+shift kombinasyonları (01.07.2025_GÜNDÜZ formatında)
                   const weekStats = {
@@ -2457,9 +2457,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   
                   
                   return (
-                    <div key={week.id} className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
-                      <div className="text-sm font-medium text-purple-800 mb-2">{week.label}</div>
-                      <div className="space-y-2 text-sm">
+                    <div key={week.id} className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-200">
+                      <div className="text-xs font-medium text-purple-800 mb-2">{week.label}</div>
+                      <div className="space-y-1 text-xs">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Toplam Sefer:</span>
                           <span className="font-medium text-purple-600">{weekStats.totalTrips}</span>
@@ -2472,7 +2472,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                           <span className="text-gray-600">Toplam Kasa:</span>
                           <span className="font-medium text-green-600">{weekStats.totalBoxes}</span>
                         </div>
-                        <div className="border-t border-purple-200 pt-2 mt-2">
+                        <div className="border-t border-purple-200 pt-1 mt-1">
                           <div className="flex justify-between text-xs">
                             <span className="text-gray-500">Aktif Şoför:</span>
                             <span className="font-medium text-orange-600">{weekStats.activeDrivers}</span>

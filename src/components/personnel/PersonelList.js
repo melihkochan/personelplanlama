@@ -620,27 +620,27 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <Users className="w-6 h-6 text-white" />
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <Users className="w-5 h-5 text-white" />
           </div>
               Personel Listesi
             </h1>
-            <p className="text-gray-600 mt-2">Sisteme kayıtlı {personnelData.length} personel</p>
+            <p className="text-sm text-gray-600 mt-1">Sisteme kayıtlı {personnelData.length} personel</p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {(userRole === 'admin' || userRole === 'yönetici') && (
               <button
                 onClick={() => setShowAddPersonnelModal(true)}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 Personel Ekle
               </button>
             )}
@@ -650,52 +650,52 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         </div>
         
         {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Personel adı veya sicil numarası ile ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-sm"
             />
           </div>
           
           {/* Filter Tabs */}
           <div className="flex items-center gap-2">
-            <div className="flex bg-gray-100 rounded-xl p-1">
+            <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setGorevFilter('ALL')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-300 ${
                   gorevFilter === 'ALL'
                     ? 'bg-white text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Users className="w-4 h-4" />
+                <Users className="w-3 h-3" />
                 Tümü
               </button>
               <button
                 onClick={() => setGorevFilter('ŞOFÖR')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-300 ${
                   gorevFilter === 'ŞOFÖR'
                     ? 'bg-white text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Car className="w-4 h-4" />
+                <Car className="w-3 h-3" />
                 Şoförler
               </button>
               <button
                 onClick={() => setGorevFilter('SEVKİYAT ELEMANI')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-300 ${
                   gorevFilter === 'SEVKİYAT ELEMANI'
                     ? 'bg-white text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Truck className="w-4 h-4" />
+                <Truck className="w-3 h-3" />
                 Sevkiyat
               </button>
             </div>
@@ -703,16 +703,16 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
       </div>
 
       {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           {/* Şoför İstatistikleri */}
-          <div className="bg-blue-50 rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
-            <Users className="w-6 h-6 text-white" />
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+            <Users className="w-5 h-5 text-white" />
           </div>
               <div>
-                <p className="text-2xl font-bold text-blue-900">{soforler.length}</p>
-                <p className="text-sm text-blue-600">Şoför</p>
+                <p className="text-lg font-bold text-blue-900">{soforler.length}</p>
+                <p className="text-xs text-blue-600">Şoför</p>
               </div>
             </div>
             <div className="text-xs text-blue-700 space-y-1">
@@ -741,14 +741,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         </div>
         
           {/* Sevkiyat Elemanı İstatistikleri */}
-          <div className="bg-green-50 rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-            <UserCheck className="w-6 h-6 text-white" />
+          <div className="bg-green-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+            <UserCheck className="w-5 h-5 text-white" />
           </div>
               <div>
-                <p className="text-2xl font-bold text-green-900">{sevkiyatlar.length}</p>
-                <p className="text-sm text-green-600">Sevkiyat Elemanı</p>
+                <p className="text-lg font-bold text-green-900">{sevkiyatlar.length}</p>
+                <p className="text-xs text-green-600">Sevkiyat Elemanı</p>
             </div>
             </div>
             <div className="text-xs text-green-700 space-y-1">
@@ -777,14 +777,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         </div>
         
           {/* Toplam Personel */}
-          <div className="bg-purple-50 rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
+          <div className="bg-purple-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-white" />
           </div>
               <div>
-                <p className="text-2xl font-bold text-purple-900">{personnelData.length}</p>
-                <p className="text-sm text-purple-600">Toplam Personel</p>
+                <p className="text-lg font-bold text-purple-900">{personnelData.length}</p>
+                <p className="text-xs text-purple-600">Toplam Personel</p>
             </div>
             </div>
             <div className="text-xs text-purple-700 space-y-1">
@@ -808,19 +808,19 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   İzinli
                 </span>
                 <span className="font-medium">{izinliPersonel.length}</span>
-                </div>
               </div>
             </div>
+          </div>
 
           {/* Genel İstatistik */}
-          <div className="bg-slate-50 rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 bg-slate-500 rounded-xl flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-white" />
+          <div className="bg-slate-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-10 h-10 bg-slate-500 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                <p className="text-2xl font-bold text-slate-900">%{Math.round((personnelData.length - izinliPersonel.length) / personnelData.length * 100) || 0}</p>
-                <p className="text-sm text-slate-600">Aktif Oran</p>
+                <p className="text-lg font-bold text-slate-900">%{Math.round((personnelData.length - izinliPersonel.length) / personnelData.length * 100) || 0}</p>
+                <p className="text-xs text-slate-600">Aktif Oran</p>
               </div>
             </div>
             <div className="text-xs text-slate-700 space-y-1">
@@ -844,10 +844,10 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
 
 
       {/* View Toggle */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => setViewMode('cards')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
             viewMode === 'cards' 
               ? 'bg-blue-500 text-white' 
               : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
@@ -857,7 +857,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         </button>
         <button
           onClick={() => setViewMode('table')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
             viewMode === 'table' 
               ? 'bg-blue-500 text-white' 
               : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
@@ -869,14 +869,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         
       {/* Personnel Cards */}
       {viewMode === 'cards' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPersonel.map((person, index) => (
-            <div key={index} className={`relative bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 ${
+            <div key={index} className={`relative bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 ${
               person.position === 'ŞOFÖR' ? 'border-blue-500' : 'border-green-500'
             }`}>
               {/* Position Badge at Top */}
-              <div className="absolute -top-2 left-6">
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
+              <div className="absolute -top-2 left-4">
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                   person.position === 'ŞOFÖR' 
                     ? 'bg-blue-500 text-white' 
                     : 'bg-green-500 text-white'
@@ -886,18 +886,18 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               </div>
               </div>
               
-              <div className="flex items-center justify-between mb-4 mt-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              <div className="flex items-center justify-between mb-3 mt-3">
+                <div className="flex items-center gap-2">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                     person.position === 'ŞOFÖR' 
                       ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
                       : 'bg-gradient-to-r from-green-500 to-green-600'
                   }`}>
-                    {person.position === 'ŞOFÖR' ? <Car className="w-6 h-6 text-white" /> : <Truck className="w-6 h-6 text-white" />}
+                    {person.position === 'ŞOFÖR' ? <Car className="w-5 h-5 text-white" /> : <Truck className="w-5 h-5 text-white" />}
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{person.full_name}</h3>
-                    <p className="text-gray-600 text-sm">#{person.employee_code}</p>
+                    <h3 className="text-base font-bold text-gray-900">{person.full_name}</h3>
+                    <p className="text-gray-600 text-xs">#{person.employee_code}</p>
                   </div>
                 </div>
                 
@@ -906,27 +906,27 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                     <>
                       <button
                         onClick={() => handleDeletePersonnel(person.id)}
-                        className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                        className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                         title="Personel sil (düzenleme için Personel Kontrol sayfasını kullan)"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Şu an ki vardiya:</span>
+                  <span className="text-xs text-gray-600">Şu an ki vardiya:</span>
                   {getVardiyaBadge(person.shift_type, person.employee_code)}
             </div>
 
                 {/* Vardiya İstatistikleri */}
                 {shiftStatistics[person.full_name] && (
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <h4 className="text-xs font-semibold text-gray-700 mb-2">Çalışma İstatistikleri:</h4>
-                    <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-gray-50 rounded-lg p-2 space-y-1">
+                    <h4 className="text-xs font-semibold text-gray-700 mb-1">Çalışma İstatistikleri:</h4>
+                    <div className="grid grid-cols-3 gap-1">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1 text-xs text-gray-600">
                           <Moon className="w-3 h-3" />
@@ -966,7 +966,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 
                 {/* Additional Info */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Durumu:</span>
+                  <span className="text-xs text-gray-600">Durumu:</span>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     person.is_active === false || person.shift_type === 'izin'
                       ? 'bg-red-100 text-red-700' 
@@ -983,18 +983,18 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         
       {/* Personnel Table */}
       {viewMode === 'table' && (
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
             <table className="w-full">
                 <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">#</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Sicil No</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Ad Soyad</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Görev</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Şu an ki vardiya</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">Vardiya İstatistikleri</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 text-xs">İşlemler</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">#</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Sicil No</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Ad Soyad</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Görev</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Şu an ki vardiya</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Vardiya İstatistikleri</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">İşlemler</th>
                   </tr>
                 </thead>
                 <tbody>

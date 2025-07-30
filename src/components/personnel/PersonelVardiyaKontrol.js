@@ -2528,7 +2528,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center">
                 <Users className="h-8 w-8 text-blue-600" />
-                <h1 className="ml-3 text-2xl font-bold text-gray-900">Personel Kontrol Sistemi</h1>
+                <h1 className="ml-3 text-xl font-bold text-gray-900">Personel Kontrol Sistemi</h1>
               </div>
               
             </div>
@@ -2536,12 +2536,12 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         </div>
 
         {/* Tab Navigation */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-4 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('current-shift')}
-                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs whitespace-nowrap ${
                   activeTab === 'current-shift'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -2553,7 +2553,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs whitespace-nowrap ${
                   activeTab === 'overview'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -2564,7 +2564,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
               </button>
               <button
                 onClick={() => setActiveTab('tracking')}
-                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs whitespace-nowrap ${
                   activeTab === 'tracking'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -2575,7 +2575,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
               </button>
               <button
                 onClick={() => setActiveTab('monthly')}
-                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs whitespace-nowrap ${
                   activeTab === 'monthly'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -2587,7 +2587,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
               <button
                 onClick={() => setActiveTab('upload')}
-                className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs whitespace-nowrap ${
                   activeTab === 'upload'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -2601,7 +2601,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         </div>
 
         {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-900">Genel İstatistikler</h2>
@@ -2623,7 +2623,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-blue-700 mb-1">🌙 Gece Vardiyası</p>
-                          <p className="text-3xl font-bold text-blue-900">
+                          <p className="text-xl font-bold text-blue-900">
                             {shiftStatistics.filter(s => s.total_night_shifts > 0).length}
                           </p>
                           <p className="text-xs text-blue-600 font-medium">farklı personel</p>
@@ -2637,7 +2637,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-green-700 mb-1">☀️ Gündüz Vardiyası</p>
-                          <p className="text-3xl font-bold text-green-900">
+                          <p className="text-xl font-bold text-green-900">
                             {shiftStatistics.filter(s => s.total_day_shifts > 0).length}
                           </p>
                           <p className="text-xs text-green-600 font-medium">farklı personel</p>
@@ -2651,7 +2651,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-orange-700 mb-1">🌅 Akşam Vardiyası</p>
-                          <p className="text-3xl font-bold text-orange-900">
+                          <p className="text-xl font-bold text-orange-900">
                             {shiftStatistics.filter(s => s.total_evening_shifts > 0).length}
                           </p>
                           <p className="text-xs text-orange-600 font-medium">farklı personel</p>
@@ -2665,7 +2665,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-purple-700 mb-1">🔄 Geçici Görev</p>
-                          <p className="text-3xl font-bold text-purple-900">
+                          <p className="text-xl font-bold text-purple-900">
                             {shiftStatistics.filter(s => s.total_temp_assignments > 0).length}
                           </p>
                           <p className="text-xs text-purple-600 font-medium">farklı personel</p>
@@ -2679,7 +2679,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-red-700 mb-1">🏥 Toplam Raporlu</p>
-                          <p className="text-3xl font-bold text-red-900">
+                          <p className="text-xl font-bold text-red-900">
                             {shiftStatistics.filter(s => s.total_sick_days > 0).length}
                           </p>
                           <p className="text-xs text-red-600 font-medium">farklı personel</p>
@@ -2693,7 +2693,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-yellow-700 mb-1">🏖️ Yıllık İzin</p>
-                          <p className="text-3xl font-bold text-yellow-900">
+                          <p className="text-xl font-bold text-yellow-900">
                             {shiftStatistics.filter(s => s.total_annual_leave > 0).length}
                           </p>
                           <p className="text-xs text-yellow-600 font-medium">farklı personel</p>
@@ -3370,17 +3370,17 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                   <div className="space-y-6">
                     {/* Dönem Bilgisi */}
                     {currentPeriod && (
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h5 className="text-lg font-semibold text-blue-900 mb-1">📅 Güncel Dönem</h5>
+                            <h5 className="text-base font-semibold text-blue-900 mb-1">📅 Güncel Dönem</h5>
                             <p className="text-blue-700">{currentPeriod.week_label}</p>
                             <p className="text-sm text-blue-600">
                               {new Date(currentPeriod.start_date).toLocaleDateString('tr-TR')} - {new Date(currentPeriod.end_date).toLocaleDateString('tr-TR')}
                             </p>
                           </div>
                           <div className="text-right">
-                            <div className="text-2xl font-bold text-blue-900">{currentShiftData.length}</div>
+                            <div className="text-xl font-bold text-blue-900">{currentShiftData.length}</div>
                             <div className="text-sm text-blue-600">Personel</div>
                           </div>
                         </div>
@@ -3415,8 +3415,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
                         // Tüm personelleri tek listede göster, sicil numarasına göre sıralı
                         return (
-                          <div className="bg-white rounded-xl p-6 border border-gray-200">
-                            <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                                      <div className="bg-white rounded-xl p-4 border border-gray-200">
+                            <h5 className="text-base font-semibold text-gray-900 mb-3 flex items-center">
                               <Users className="w-5 h-5 mr-2" />
                               Tüm Personel ({sortedData.length})
                             </h5>
@@ -3425,12 +3425,12 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                 <table className="w-full">
                                   <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
                                     <tr>
-                                      <th className="px-6 py-4 text-left text-sm font-semibold">Sicil No</th>
-                                      <th className="px-6 py-4 text-left text-sm font-semibold">Ad Soyad</th>
-                                      <th className="px-6 py-4 text-left text-sm font-semibold">Görev</th>
-                                      <th className="px-6 py-4 text-left text-sm font-semibold">Vardiya</th>
-                                      <th className="px-6 py-4 text-left text-sm font-semibold">Saat</th>
-                                      <th className="px-6 py-4 text-center text-sm font-semibold">İşlem</th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold">Sicil No</th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold">Ad Soyad</th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold">Görev</th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold">Vardiya</th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold">Saat</th>
+                                      <th className="px-4 py-3 text-center text-xs font-semibold">İşlem</th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-200">
@@ -3453,9 +3453,9 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                       
                                       return (
                                         <tr key={person.employee_code} className={`${rowColor} transition-colors duration-200`}>
-                                          <td className="px-6 py-4 whitespace-nowrap">
+                                          <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex items-center">
-                                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${
                                                 isSevkiyat ? 'bg-blue-600' :
                                                 isSofor ? 'bg-green-600' :
                                                 'bg-gray-600'
@@ -3464,15 +3464,15 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                               </div>
                                             </div>
                                           </td>
-                                          <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-semibold text-gray-900">{person.full_name}</div>
+                                          <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="text-xs font-semibold text-gray-900">{person.full_name}</div>
                                           </td>
-                                          <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${badgeColor}`}>
+                                          <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${badgeColor}`}>
                                               {person.position}
                                             </span>
                                           </td>
-                                          <td className="px-6 py-4 whitespace-nowrap">
+                                          <td className="px-4 py-3 whitespace-nowrap">
                                             {person.shift_type ? (
                                               <div className="flex items-center">
                                                 {(() => {
@@ -3534,7 +3534,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                               <span className="text-sm text-gray-500">-</span>
                                             )}
                                           </td>
-                                          <td className="px-6 py-4 whitespace-nowrap">
+                                          <td className="px-4 py-3 whitespace-nowrap">
                                             {person.shift_type === 'yillik_izin' ? (
                                               <span className="text-sm px-3 py-1 rounded-lg border font-medium shadow-sm bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-900 border-yellow-400">
                                                 Yıllık izinli
@@ -3565,7 +3565,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                               <span className="text-sm text-gray-500">-</span>
                                             )}
                                           </td>
-                                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                                          <td className="px-4 py-3 whitespace-nowrap text-center">
                                             <button
                                               onClick={() => handleEditCurrentShift(person)}
                                               className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 flex items-center space-x-1 text-white shadow-sm hover:shadow-md transform hover:scale-105 ${buttonColor}`}
@@ -4241,37 +4241,37 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-blue-200">
-                        <div className="text-3xl font-bold text-blue-600 mb-2">
+                        <div className="text-xl font-bold text-blue-600 mb-2">
                           {personnelDetails.filter(d => d.shift_type === 'gece').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🌙 Gece Haftası</div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-green-200">
-                        <div className="text-3xl font-bold text-green-600 mb-2">
+                        <div className="text-xl font-bold text-green-600 mb-2">
                           {personnelDetails.filter(d => d.shift_type === 'gunduz').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">☀️ Gündüz Haftası</div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-orange-200">
-                        <div className="text-3xl font-bold text-orange-600 mb-2">
+                        <div className="text-xl font-bold text-orange-600 mb-2">
                           {personnelDetails.filter(d => d.shift_type === 'aksam').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🌅 Akşam Haftası</div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-purple-200">
-                        <div className="text-3xl font-bold text-purple-600 mb-2">
+                        <div className="text-xl font-bold text-purple-600 mb-2">
                           {personnelDetails.filter(d => d.shift_type === 'gecici_gorev').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🔄 Geçici Görev Haftası</div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-red-200">
-                        <div className="text-3xl font-bold text-red-600 mb-2">
+                        <div className="text-xl font-bold text-red-600 mb-2">
                           {personnelDetails.filter(d => d.shift_type === 'raporlu').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🏥 Raporlu Haftası</div>
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-yellow-200">
-                        <div className="text-3xl font-bold text-yellow-600 mb-2">
+                        <div className="text-xl font-bold text-yellow-600 mb-2">
                           {personnelDetails.filter(d => d.shift_type === 'yillik_izin').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🏖️ Yıllık İzin Haftası</div>

@@ -1673,13 +1673,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       // Şoför sheet
       const drivers = Object.values(filteredData.drivers).filter(d => d.totalTrips > 0);
       const driverData = [
-        ['Şoför Adı', 'Vardiya', 'Sefer', 'Palet', 'Kasa', 'Ort. Palet', 'Ort. Kasa']
+        ['Şoför Adı', 'Sefer', 'Palet', 'Kasa', 'Ort. Palet', 'Ort. Kasa']
       ];
       
       drivers.forEach(driver => {
         driverData.push([
           driver.name,
-          driver.shift === 'İZİNLİ' ? 'İzinli' : driver.shift === 'GÜNDÜZ' ? 'Gündüz' : 'Gece',
           driver.totalTrips,
           driver.totalPallets,
           driver.totalBoxes,
@@ -1694,13 +1693,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       // Personel sheet
       const personnel = Object.values(filteredData.personnel).filter(p => p.totalTrips > 0);
       const personnelData = [
-        ['Personel Adı', 'Vardiya', 'Sefer', 'Palet', 'Kasa', 'Ort. Palet', 'Ort. Kasa']
+        ['Personel Adı', 'Sefer', 'Palet', 'Kasa', 'Ort. Palet', 'Ort. Kasa']
       ];
       
       personnel.forEach(person => {
         personnelData.push([
           person.name,
-          person.shift === 'İZİNLİ' ? 'İzinli' : person.shift === 'GÜNDÜZ' ? 'Gündüz' : 'Gece',
           person.totalTrips,
           person.totalPallets,
           person.totalBoxes,
@@ -1831,7 +1829,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               <tr className="border-b border-gray-200">
                 <th className="text-center py-2 px-2 font-semibold text-gray-700 w-12">Sıra</th>
                 <th className="text-left py-2 px-2 font-semibold text-gray-700">Şoför</th>
-                <th className="text-center py-2 px-2 font-semibold text-gray-700">Vardiya</th>
                 <th className="text-right py-2 px-2 font-semibold text-gray-700">Mağaza</th>
                 <th className="text-right py-2 px-2 font-semibold text-gray-700">Palet</th>
                 <th className="text-right py-2 px-2 font-semibold text-gray-700">Kasa</th>
@@ -1889,14 +1886,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   </td>
                     <td className={`py-2 px-2 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {driver.name}
-                  </td>
-                  <td className="py-2 px-2 text-center">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        driver.shift === 'İZİNLİ' ? 'bg-gray-100 text-gray-800' : 
-                        driver.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {driver.shift === 'İZİNLİ' ? '🏖️ İzinli' : driver.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
-                          </span>
                   </td>
                     <td className="py-2 px-2 text-right text-gray-600">{driver.totalTrips || 0}</td>
                     <td className="py-2 px-2 text-right text-gray-600">{driver.totalPallets || 0}</td>
@@ -1957,7 +1946,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               <tr className="border-b border-gray-200">
                 <th className="text-center py-2 px-2 font-semibold text-gray-700 w-12">Sıra</th>
                 <th className="text-left py-2 px-2 font-semibold text-gray-700">Personel</th>
-                <th className="text-center py-2 px-2 font-semibold text-gray-700">Vardiya</th>
                 <th className="text-right py-2 px-2 font-semibold text-gray-700">Mağaza</th>
                 <th className="text-right py-2 px-2 font-semibold text-gray-700">Palet</th>
                 <th className="text-right py-2 px-2 font-semibold text-gray-700">Kasa</th>
@@ -2015,14 +2003,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   </td>
                     <td className={`py-2 px-2 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {person.name}
-                  </td>
-                  <td className="py-2 px-2 text-center">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        person.shift === 'İZİNLİ' ? 'bg-gray-100 text-gray-800' : 
-                        person.shift === 'GÜNDÜZ' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {person.shift === 'İZİNLİ' ? '🏖️ İzinli' : person.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
-                          </span>
                   </td>
                     <td className="py-2 px-2 text-right text-gray-600">{person.totalTrips || 0}</td>
                     <td className="py-2 px-2 text-right text-gray-600">{person.totalPallets || 0}</td>

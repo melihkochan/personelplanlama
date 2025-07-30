@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Store, Plus, Edit3, Trash2, MapPin, User, UserCheck, Building, Phone, Mail, Users, SortAsc, SortDesc } from 'lucide-react';
+import { Search, Store, Plus, Edit3, Trash2, MapPin, User, UserCheck, Building, Phone, Mail, Users, SortAsc, SortDesc, Map } from 'lucide-react';
 import { getAllStores, addStoreWithAudit, updateStoreWithAudit, deleteStoreWithAudit } from '../../services/supabase';
+import StoreMap from './StoreMap';
 
 const StoreList = ({ storeData: propStoreData, currentUser }) => {
   const [storeData, setStoreData] = useState(propStoreData || []);
@@ -10,6 +11,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
   const [sortOrder, setSortOrder] = useState('asc');
   const [showAddStoreModal, setShowAddStoreModal] = useState(false);
   const [editingStore, setEditingStore] = useState(null);
+  const [selectedStore, setSelectedStore] = useState(null);
   const [newStore, setNewStore] = useState({
     store_code: '',
     store_name: '',
@@ -20,7 +22,9 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
     sales_manager: '',
     phone: '',
     email: '',
-    staff_count: 0
+    staff_count: 0,
+    latitude: null,
+    longitude: null
   });
 
   useEffect(() => {
@@ -29,7 +33,6 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
       try {
         const result = await getAllStores();
         if (result.success) {
-          console.log('✅ Mağaza verileri veritabanından yüklendi:', result.data.length, 'kayıt');
           setStoreData(result.data);
         }
       } catch (error) {
@@ -63,7 +66,6 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
       let aValue = a[sortBy] || '';
       let bValue = b[sortBy] || '';
       
-      // String değerler için
       if (typeof aValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
@@ -115,7 +117,9 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
           sales_manager: '',
           phone: '',
           email: '',
-          staff_count: 0
+          staff_count: 0,
+          latitude: null,
+          longitude: null
         });
         setShowAddStoreModal(false);
         await refreshStoreData();
@@ -186,159 +190,220 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                <Store className="w-6 h-6 text-white" />
-              </div>
-              Anadolu Mağaza Listesi
-            </h1>
-            <p className="text-gray-600 mt-2">Sisteme kayıtlı {storeData.length} mağaza</p>
-          </div>
-          
-          <button
-            onClick={() => setShowAddStoreModal(true)}
-            className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <Plus className="w-5 h-5" />
-            Mağaza Ekle
-          </button>
-        </div>
-
-        {/* Search and Sort */}
-        <div className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Mağaza kodu, adı, bölge, konum veya müdür ismi ile ara..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
-            />
-          </div>
-          
-          {/* Sort Controls */}
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-gray-700">Sıralama:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-sm"
-            >
-              <option value="store_code">Mağaza Kodu</option>
-              <option value="store_name">Mağaza Adı</option>
-              <option value="region">Bölge</option>
-              <option value="location">Konum</option>
-              <option value="region_manager">Bölge Müdürü</option>
-              <option value="sales_manager">Satış Müdürü</option>
-            </select>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sol Panel - Mağaza Listesi */}
+      <div className="w-1/2 p-6 overflow-y-auto">
+        {/* Header */}
+        <div className="bg-white rounded-2xl p-6 shadow-lg mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+                  <Store className="w-5 h-5 text-white" />
+                </div>
+                Mağaza Listesi
+              </h1>
+              <p className="text-gray-600 mt-1">İstanbul Anadolu'da Toplam {storeData.length} Mağaza</p>
+            </div>
             
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-300 text-sm"
-            >
-              {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
-              {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAddStoreModal(true)}
+                className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:from-purple-600 hover:to-pink-700 transition-all duration-300"
+              >
+                <Plus className="w-4 h-4" />
+                Mağaza Ekle
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Store Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredStores.map((store, index) => (
-          <div key={index} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <Store className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">{store.store_name || store.magaza_adi || 'Mağaza'}</h3>
-                  <p className="text-gray-600 text-sm font-medium">{store.store_code || store.kod}</p>
-                </div>
-              </div>
+          {/* Search and Sort */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Mağaza ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-sm"
+              />
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">Sıralama:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-sm"
+              >
+                <option value="store_code">Mağaza Kodu</option>
+                <option value="store_name">Mağaza Adı</option>
+                <option value="region">Bölge</option>
+                <option value="location">Konum</option>
+              </select>
               
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setEditingStore(store)}
-                  className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteStore(store.id)}
-                  className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {/* Bölge ve Tür */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Building className="w-4 h-4 text-purple-600" />
-                  <div>
-                    <p className="text-gray-500">Bölge:</p>
-                    <p className="font-medium text-gray-900">{store.region || store.bolge || 'Belirtilmemiş'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Store className="w-4 h-4 text-purple-600" />
-                  <div>
-                    <p className="text-gray-500">Tür:</p>
-                    <p className="font-medium text-gray-900">{store.store_type || store.tip || 'Standart'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Konum */}
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="w-4 h-4 text-purple-600" />
-                <div>
-                  <p className="text-gray-500">Konum:</p>
-                  <p className="font-medium text-gray-900">{store.location || store.konum || 'Belirtilmemiş'}</p>
-                </div>
-              </div>
-
-              {/* Bölge Müdürü */}
-              <div className="flex items-center gap-2 text-sm">
-                <UserCheck className="w-4 h-4 text-purple-600" />
-                <div>
-                  <p className="text-gray-500">Bölge Müdürü:</p>
-                  <p className="font-medium text-gray-900">{store.region_manager || store.bolge_muduru || 'Belirtilmemiş'}</p>
-                </div>
-              </div>
-
-              {/* Satış Müdürü */}
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4 text-purple-600" />
-                <div>
-                  <p className="text-gray-500">Satış Müdürü:</p>
-                  <p className="font-medium text-gray-900">{store.sales_manager || store.satis_muduru || 'Belirtilmemiş'}</p>
-                </div>
-              </div>
-
-           
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-300 text-sm"
+              >
+                {sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />}
+                {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+              </button>
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Store Cards */}
+        <div className="space-y-3">
+          {filteredStores.map((store, index) => (
+            <div 
+              key={index} 
+              className={`bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-2 ${
+                selectedStore?.id === store.id ? 'border-purple-500 bg-purple-50' : 'border-transparent'
+              }`}
+              onClick={() => setSelectedStore(store)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <Store className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{store.store_name || store.magaza_adi || 'Mağaza'}</h3>
+                    <p className="text-gray-600 text-sm">{store.store_code || store.kod}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingStore(store);
+                    }}
+                    className="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteStore(store.id);
+                    }}
+                    className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <Building className="w-3 h-3 text-purple-600" />
+                  <span className="text-gray-500">Bölge:</span>
+                  <span className="font-medium">{store.region || store.bolge || '-'}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-purple-600" />
+                  <span className="text-gray-500">Konum:</span>
+                  <span className="font-medium">{store.location || store.konum || '-'}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filteredStores.length === 0 && (
+          <div className="text-center py-12">
+            <Store className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Mağaza bulunamadı</p>
+          </div>
+        )}
       </div>
 
-      {filteredStores.length === 0 && (
-        <div className="text-center py-12">
-          <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Mağaza bulunamadı</p>
-        </div>
-      )}
+      {/* Sağ Panel - Detay ve Harita */}
+      <div className="w-1/2 p-6 bg-white border-l border-gray-200">
+        {selectedStore ? (
+          <div className="h-full flex flex-col">
+            {/* Mağaza Detayları */}
+            <div className="bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl p-6 text-white mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                    <Store className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">{selectedStore.store_name || selectedStore.magaza_adi}</h2>
+                    <p className="text-purple-100">Kod: {selectedStore.store_code || selectedStore.kod}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-purple-200">Bölge</p>
+                  <p className="font-semibold">{selectedStore.region || selectedStore.bolge || 'Belirtilmemiş'}</p>
+                </div>
+                <div>
+                  <p className="text-purple-200">Tür</p>
+                  <p className="font-semibold">{selectedStore.store_type || selectedStore.tip || 'Standart'}</p>
+                </div>
+                <div>
+                  <p className="text-purple-200">Konum</p>
+                  <p className="font-semibold">{selectedStore.location || selectedStore.konum || 'Belirtilmemiş'}</p>
+                </div>
+                <div>
+                  <p className="text-purple-200">Koordinatlar</p>
+                  <p className="font-semibold">
+                    {selectedStore.latitude && selectedStore.longitude 
+                      ? `${selectedStore.latitude.toFixed(6)}, ${selectedStore.longitude.toFixed(6)}`
+                      : 'Belirtilmemiş'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Müdür Bilgileri */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Yönetim Bilgileri</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <UserCheck className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="text-gray-500 text-sm">Bölge Müdürü</p>
+                    <p className="font-medium">{selectedStore.region_manager || selectedStore.bolge_muduru || 'Belirtilmemiş'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="text-gray-500 text-sm">Satış Müdürü</p>
+                    <p className="font-medium">{selectedStore.sales_manager || selectedStore.satis_muduru || 'Belirtilmemiş'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Harita */}
+            <div className="flex-1">
+              <StoreMap 
+                latitude={selectedStore.latitude}
+                longitude={selectedStore.longitude}
+                storeName={selectedStore.store_name || selectedStore.magaza_adi}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">Mağaza seçin</p>
+              <p className="text-sm text-gray-500 mt-2">Detayları görmek için sol panelden bir mağaza seçin</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Add Store Modal */}
       {showAddStoreModal && (
@@ -427,7 +492,29 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
                 />
               </div>
 
-             
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Enlem</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={newStore.latitude || ''}
+                  onChange={(e) => setNewStore({...newStore, latitude: parseFloat(e.target.value) || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="41.0082"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Boylam</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={newStore.longitude || ''}
+                  onChange={(e) => setNewStore({...newStore, longitude: parseFloat(e.target.value) || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="28.9784"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
@@ -529,9 +616,27 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
                 />
               </div>
 
-             
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Enlem</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editingStore.latitude || ''}
+                  onChange={(e) => setEditingStore({...editingStore, latitude: parseFloat(e.target.value) || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
 
-            
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Boylam</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editingStore.longitude || ''}
+                  onChange={(e) => setEditingStore({...editingStore, longitude: parseFloat(e.target.value) || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-6">

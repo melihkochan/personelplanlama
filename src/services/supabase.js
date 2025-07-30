@@ -3370,3 +3370,79 @@ export const getUserOnlineStatus = async (userId) => {
   }
 };
 
+// Excel'den mağaza koordinatlarını güncelleme
+export const updateStoreCoordinatesFromExcel = async (excelData) => {
+  try {
+    if (!excelData || excelData.length === 0) {
+      return { success: false, error: 'Excel verisi boş' };
+    }
+
+    // İlk satırı kontrol et ve tüm anahtarları logla
+    const firstRow = excelData[0];
+    console.log('📋 İlk satırın tüm anahtarları:', Object.keys(firstRow));
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < excelData.length; i++) {
+      const row = excelData[i];
+               const storeCode = row['Mağaza'];
+         const latValue = row['Enlem'];
+         const lngValue = row['Boylam'];
+
+               // Her satır için okunan ham değerleri ve tiplerini logla
+         console.log(`📋 Satır ${i + 1}: Mağaza=${storeCode}, Enlem=${latValue} (tip: ${typeof latValue}), Boylam=${lngValue} (tip: ${typeof lngValue})`);
+
+      if (storeCode && latValue !== undefined && lngValue !== undefined) {
+        const latStr = String(latValue).trim().replace(',', '.'); // String'e çevir, boşlukları temizle, virgülü nokta yap
+        const lngStr = String(lngValue).trim().replace(',', '.'); // String'e çevir, boşlukları temizle, virgülü nokta yap
+
+        const latitude = parseFloat(latStr);
+        const longitude = parseFloat(lngStr);
+
+        // Parsing sonrası değerleri logla
+        console.log(`🔍 Mağaza: ${storeCode}, Enlem: "${latStr}" → ${latitude}, Boylam: "${lngStr}" → ${longitude}`);
+
+        if (!isNaN(latitude) && !isNaN(longitude)) {
+          try {
+            const { error } = await supabase
+              .from('stores')
+              .update({ latitude, longitude })
+              .eq('store_code', storeCode);
+
+            if (error) {
+              console.error(`❌ Mağaza ${storeCode} güncellenirken hata:`, error);
+              errorCount++;
+            } else {
+              console.log(`✅ Mağaza ${storeCode} başarıyla güncellendi`);
+              successCount++;
+            }
+          } catch (dbError) {
+            console.error(`❌ Mağaza ${storeCode} veritabanı işlemi sırasında hata:`, dbError);
+            errorCount++;
+          }
+        } else {
+          console.log(`❌ Geçersiz koordinat: Mağaza ${storeCode}, Enlem: ${latitude}, Boylam: ${longitude}`);
+          errorCount++; // Geçersiz koordinatları da hata sayısına ekleyelim
+        }
+               } else {
+           console.log(`❌ Eksik veri: Mağaza=${storeCode}, Enlem=${latValue}, Boylam=${lngValue}`);
+           errorCount++; // Eksik verileri de hata sayısına ekleyelim
+         }
+    }
+
+    console.log(`📊 Sonuç: ${successCount} başarılı, ${errorCount} hata`);
+
+    return {
+      success: true,
+      message: `${successCount} mağaza güncellendi, ${errorCount} hata oluştu`,
+      successCount,
+      errorCount
+    };
+
+  } catch (error) {
+    console.error('❌ Koordinat güncelleme hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+

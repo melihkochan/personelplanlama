@@ -1528,6 +1528,20 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     }
   };
 
+  // Rank-based renklendirme fonksiyonu
+  const getRankColor = (index, type = 'text') => {
+    const rank = index + 1;
+    
+    if (type === 'text') {
+      if (rank === 1) return 'text-yellow-600 font-bold';
+      if (rank === 2) return 'text-gray-600 font-semibold';
+      if (rank === 3) return 'text-orange-600 font-semibold';
+      return 'text-gray-500';
+    }
+    
+    return 'text-gray-500';
+  };
+
     // HAFTALİK GRUPLANDIRMA - SABİT DÖNGÜ: Pazar başlangıç, 6 gün çalışma sistemi
   const groupDatesByWeeks = (dateItems) => {
     const weeks = [];
@@ -1732,9 +1746,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-xs">🌙 gece vardiyası</p>
-              <p className="text-base font-bold">{filteredData.summary.geceDays}</p>
-              <p className="text-blue-200 text-xs">Toplam Gün</p>
+              <p className="text-blue-100 text-sm">🌙 gece vardiyası</p>
+              <p className="text-lg font-bold">{filteredData.summary.geceDays}</p>
+              <p className="text-blue-200 text-sm">Toplam Gün</p>
             </div>
             <Calendar className="w-6 h-6 text-blue-200" />
           </div>
@@ -1743,9 +1757,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-indigo-100 text-xs">🌅 gündüz vardiyası</p>
-              <p className="text-base font-bold">{filteredData.summary.gunduzDays}</p>
-              <p className="text-indigo-200 text-xs">Toplam Gün</p>
+              <p className="text-indigo-100 text-sm">🌅 gündüz vardiyası</p>
+              <p className="text-lg font-bold">{filteredData.summary.gunduzDays}</p>
+              <p className="text-indigo-200 text-sm">Toplam Gün</p>
             </div>
             <Calendar className="w-6 h-6 text-indigo-200" />
           </div>
@@ -1754,9 +1768,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-xs">Toplam Sefer</p>
-              <p className="text-base font-bold">{filteredData.summary.totalDeliveries}</p>
-              <p className="text-green-200 text-xs">🚚 sefer</p>
+              <p className="text-green-100 text-sm">Toplam Sefer</p>
+              <p className="text-lg font-bold">{filteredData.summary.totalDeliveries}</p>
+              <p className="text-green-200 text-sm">🚚 sefer</p>
             </div>
             <Truck className="w-6 h-6 text-green-200" />
           </div>
@@ -1765,9 +1779,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-xs">Toplam Palet</p>
-              <p className="text-base font-bold">{filteredData.summary.totalPallets}</p>
-              <p className="text-purple-200 text-xs">📦 palet</p>
+              <p className="text-purple-100 text-sm">Toplam Palet</p>
+              <p className="text-lg font-bold">{filteredData.summary.totalPallets}</p>
+              <p className="text-purple-200 text-sm">📦 palet</p>
             </div>
             <Package className="w-6 h-6 text-purple-200" />
           </div>
@@ -1776,9 +1790,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-xs">Toplam Kasa</p>
-              <p className="text-base font-bold">{filteredData.summary.totalBoxes}</p>
-              <p className="text-orange-200 text-xs">📦 kasa</p>
+              <p className="text-orange-100 text-sm">Toplam Kasa</p>
+              <p className="text-lg font-bold">{filteredData.summary.totalBoxes}</p>
+              <p className="text-orange-200 text-sm">📦 kasa</p>
             </div>
             <Package className="w-6 h-6 text-orange-200" />
           </div>
@@ -1887,11 +1901,31 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     <td className={`py-1 px-1 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {driver.name}
                   </td>
-                    <td className="py-1 px-1 text-right text-gray-600">{driver.totalTrips || 0}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{driver.totalPallets || 0}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{driver.totalBoxes || 0}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{driver.averagePallets}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{driver.averageBoxes}</td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {driver.totalTrips || 0}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {driver.totalPallets || 0}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {driver.totalBoxes || 0}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {driver.averagePallets}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {driver.averageBoxes}
+                      </span>
+                    </td>
                 </tr>
                 );
               })}
@@ -2004,11 +2038,31 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     <td className={`py-1 px-1 font-medium ${isTopThree ? 'text-gray-900' : 'text-gray-700'}`}>
                       {person.name}
                   </td>
-                    <td className="py-1 px-1 text-right text-gray-600">{person.totalTrips || 0}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{person.totalPallets || 0}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{person.totalBoxes || 0}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{person.averagePallets}</td>
-                    <td className="py-1 px-1 text-right text-gray-600">{person.averageBoxes}</td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {person.totalTrips || 0}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {person.totalPallets || 0}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {person.totalBoxes || 0}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {person.averagePallets}
+                      </span>
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      <span className={getRankColor(index, 'text')}>
+                        {person.averageBoxes}
+                      </span>
+                    </td>
                 </tr>
                 );
               })}

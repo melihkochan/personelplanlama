@@ -27,14 +27,14 @@ function MainApp() {
   const { user, isAuthenticated, loading, signOut, isLoggingOut, isLoggingIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // URL'den aktif tab'i al
   const [activeTab, setActiveTab] = useState(() => {
     const path = location.pathname;
     if (path === '/') return 'home';
     return path.substring(1) || 'home';
   });
-  
+
   const [personnelData, setPersonnelData] = useState([]);
   const [vehicleData, setVehicleData] = useState([]);
   const [storeData, setStoreData] = useState([]);
@@ -64,6 +64,16 @@ function MainApp() {
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
+
+  // Bildirim sayısına göre renk belirleme fonksiyonu
+  const getNotificationColor = (count) => {
+    if (count === 0) return 'bg-gray-400';
+    if (count <= 3) return 'bg-green-500';
+    if (count <= 7) return 'bg-yellow-500';
+    if (count <= 15) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
   // Tab değiştiğinde URL'yi güncelle
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -91,7 +101,7 @@ function MainApp() {
         try {
           const role = await getUserRole(user.id);
           setUserRole(role);
-          
+
           // Kullanıcı detaylarını da çek
           const userDetailsResult = await getUserDetails(user.id, user.email);
           if (userDetailsResult.success && userDetailsResult.data) {
@@ -119,23 +129,23 @@ function MainApp() {
     const loadUnreadCount = async () => {
       if (user) {
         try {
-        
+
           const result = await getUnreadNotificationCount(user.id);
           if (result.success) {
             const newCount = result.count;
             const oldCount = unreadNotificationCount;
-            
-         
+
+
             setUnreadNotificationCount(newCount);
           }
         } catch (error) {
-         
+
         }
       }
     };
 
     loadUnreadCount();
-    
+
     // Her 3 saniyede bir güncelle (daha sık)
     const interval = setInterval(loadUnreadCount, 3000);
     return () => clearInterval(interval);
@@ -147,7 +157,7 @@ function MainApp() {
       const increase = unreadNotificationCount - lastNotificationCount;
       setNotificationMessage(`${increase} yeni bildirim geldi!`);
       setShowSimpleNotification(true);
-      
+
     }
     setLastNotificationCount(unreadNotificationCount);
   }, [unreadNotificationCount, lastNotificationCount]);
@@ -173,7 +183,7 @@ function MainApp() {
           if (!error && conversations) {
             let totalUnread = 0;
             for (const conversation of conversations) {
-              const unreadMessages = conversation.messages?.filter(msg => 
+              const unreadMessages = conversation.messages?.filter(msg =>
                 msg.sender_id !== user.id && !msg.is_read
               ) || [];
               totalUnread += unreadMessages.length;
@@ -188,7 +198,7 @@ function MainApp() {
 
     // Hemen yükle
     loadUnreadMessageCount();
-    
+
     // 5 saniyede bir güncelle (daha sık)
     const interval = setInterval(loadUnreadMessageCount, 5000);
     return () => clearInterval(interval);
@@ -197,8 +207,8 @@ function MainApp() {
   // Veritabanından veri yükleme fonksiyonu
   const loadData = async () => {
     try {
-      
-      
+
+
       const [personnelResult, vehicleResult, storeResult, dailyNotesResult] = await Promise.all([
         getAllPersonnel(),
         getAllVehicles(),
@@ -254,9 +264,9 @@ function MainApp() {
       }
 
       setDataLoaded(true);
-      
+
     } catch (error) {
-     
+
       showNotification('Veri yükleme hatası!', 'error');
     }
   };
@@ -266,6 +276,15 @@ function MainApp() {
     if (isAuthenticated && user) {
       loadData();
       loadDailyNotes(); // Daily notes'u da yükle
+      loadCurrentShiftData(); // Güncel vardiya verilerini yükle
+    }
+  }, [isAuthenticated, user]);
+
+  // Periyodik olarak güncel vardiya verilerini yenile (her 2 dakikada bir)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const interval = setInterval(loadCurrentShiftData, 120000); // 2 dakika
+      return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
 
@@ -274,8 +293,84 @@ function MainApp() {
     console.log('🔄 refreshData başladı');
     await loadData();
     await loadDailyNotes();
+    await loadCurrentShiftData(); // Güncel vardiya verilerini de yenile
     console.log('✅ refreshData tamamlandı');
     showNotification('Veriler yenilendi!', 'success');
+  };
+
+  // Güncel vardiya verilerini yükle
+  const loadCurrentShiftData = async () => {
+    try {
+      console.log('🔍 Güncel vardiya verileri yükleniyor...');
+      
+      // En güncel dönemi bul
+      const { data: periods, error: periodsError } = await supabase
+        .from('weekly_periods')
+        .select('*')
+        .order('start_date', { ascending: false })
+        .limit(1);
+      
+      if (periodsError) {
+        console.error('❌ Güncel dönem bulunamadı:', periodsError);
+        return;
+      }
+      
+      if (periods && periods.length > 0) {
+        const latestPeriod = periods[0];
+        
+        // Bu dönemdeki tüm vardiya verilerini getir
+        const { data: shifts, error: shiftsError } = await supabase
+          .from('weekly_schedules')
+          .select('*')
+          .eq('period_id', latestPeriod.id)
+          .order('employee_code', { ascending: true });
+        
+        if (shiftsError) {
+          console.error('❌ Güncel vardiya verileri getirilemedi:', shiftsError);
+          return;
+        }
+        
+        if (shifts && shifts.length > 0) {
+          // Personel listesini getir
+          const employeeCodes = shifts.map(s => s.employee_code);
+          
+          const { data: personnel, error: personnelError } = await supabase
+            .from('personnel')
+            .select('employee_code, full_name, position')
+            .in('employee_code', employeeCodes);
+          
+          if (personnelError) {
+            console.error('❌ Personel verileri getirilemedi:', personnelError);
+            return;
+          }
+          
+          // Personel bilgilerini birleştir
+          const personnelMap = {};
+          personnel.forEach(p => {
+            personnelMap[p.employee_code] = p;
+          });
+          
+          const enrichedShifts = shifts.map(shift => {
+            const person = personnelMap[shift.employee_code];
+            return {
+              ...shift,
+              full_name: person?.full_name || 'Bilinmeyen',
+              position: person?.position || 'Belirtilmemiş'
+            };
+          });
+          
+          setCurrentShiftData(enrichedShifts);
+          console.log('✅ Güncel vardiya verileri yüklendi:', enrichedShifts.length, 'kayıt');
+        } else {
+          setCurrentShiftData([]);
+        }
+      } else {
+        setCurrentShiftData([]);
+      }
+    } catch (error) {
+      console.error('❌ Güncel vardiya verileri yükleme hatası:', error);
+      setCurrentShiftData([]);
+    }
   };
 
   // Günlük notları yükle
@@ -317,7 +412,7 @@ function MainApp() {
     const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
     const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
     const daysInPrevMonth = getDaysInMonth(prevYear, prevMonth);
-    
+
     for (let i = firstDay - 1; i >= 0; i--) {
       days.push({
         day: daysInPrevMonth - i,
@@ -331,10 +426,10 @@ function MainApp() {
     // Mevcut ayın günleri
     const today = new Date();
     for (let day = 1; day <= daysInMonth; day++) {
-      const isToday = today.getDate() === day && 
-                     today.getMonth() === selectedMonth && 
-                     today.getFullYear() === selectedYear;
-      
+      const isToday = today.getDate() === day &&
+        today.getMonth() === selectedMonth &&
+        today.getFullYear() === selectedYear;
+
       days.push({
         day,
         month: selectedMonth,
@@ -348,7 +443,7 @@ function MainApp() {
     const nextMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
     const nextYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
     const remainingDays = 42 - days.length; // 6 satır x 7 gün = 42
-    
+
     for (let day = 1; day <= remainingDays; day++) {
       days.push({
         day,
@@ -393,7 +488,7 @@ function MainApp() {
   const handleMonthChange = (newMonth, newYear) => {
     const direction = newMonth > selectedMonth || (newMonth === 0 && selectedMonth === 11) ? 'right' : 'left';
     animateCalendar(direction);
-    
+
     setTimeout(() => {
       setSelectedMonth(newMonth);
       setSelectedYear(newYear);
@@ -407,7 +502,7 @@ function MainApp() {
       if (result.success) {
         // Performans verilerini işle
         const performanceData = result.data || [];
-        
+
         // Haftalık planları yükle
         const weeklySchedulesResult = await getWeeklySchedules();
         if (weeklySchedulesResult.success) {
@@ -425,7 +520,7 @@ function MainApp() {
   // Performans özeti hesapla
   const getPerformanceSummary = () => {
     const performanceData = dataStatus.weeklySchedules || [];
-    
+
     if (performanceData.length === 0) {
       return {
         totalPersonnel: 0,
@@ -439,9 +534,9 @@ function MainApp() {
     const totalPersonnel = performanceData.reduce((sum, item) => sum + (item.personnel_count || 0), 0);
     const totalVehicles = performanceData.reduce((sum, item) => sum + (item.vehicle_count || 0), 0);
     const totalStores = performanceData.reduce((sum, item) => sum + (item.store_count || 0), 0);
-    
-    const averageEfficiency = performanceData.length > 0 
-      ? performanceData.reduce((sum, item) => sum + (item.efficiency || 0), 0) / performanceData.length 
+
+    const averageEfficiency = performanceData.length > 0
+      ? performanceData.reduce((sum, item) => sum + (item.efficiency || 0), 0) / performanceData.length
       : 0;
 
     return {
@@ -516,7 +611,7 @@ function MainApp() {
           </div>
         </div>
       )}
-      
+
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)]"></div>
@@ -561,15 +656,14 @@ function MainApp() {
               {/* Bildirim Butonu */}
               <button
                 onClick={() => setShowNotificationPanel(true)}
-                className={`relative p-2 rounded-lg transition-colors ${
-                  unreadNotificationCount > 0 
-                    ? 'bg-green-50 hover:bg-green-100 text-green-600' 
+                className={`relative p-2 rounded-lg transition-colors ${unreadNotificationCount > 0
+                    ? 'bg-green-50 hover:bg-green-100 text-green-600'
                     : 'hover:bg-gray-100 text-gray-600'
-                }`}
+                  }`}
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotificationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center animate-pulse">
+                  <span className={`absolute -top-1 -right-1 ${getNotificationColor(unreadNotificationCount)} text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center shadow-lg border-2 border-white animate-pulse`}>
                     {unreadNotificationCount}
                   </span>
                 )}
@@ -605,10 +699,10 @@ function MainApp() {
                 }
               `}
             >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Mesajlar
+                                      <MessageCircle className="w-4 h-4 mr-2" />
+                        Mesajlar
               {unreadMessageCount > 0 && (
-                <span className="absolute top-1 -right-1 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-sm">
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-lg border-2 border-white animate-pulse">
                   {unreadMessageCount}
                 </span>
               )}
@@ -621,7 +715,7 @@ function MainApp() {
                 <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
-              
+
               <button
                 onClick={() => handleTabChange('vardiya-kontrol')}
                 className={`
@@ -635,7 +729,7 @@ function MainApp() {
                 <Clock className="w-4 h-4 mr-2" />
                 Personel Kontrol
               </button>
-              
+
               <button
                 onClick={() => handleTabChange('performance')}
                 className={`
@@ -649,7 +743,7 @@ function MainApp() {
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Performans Analizi
               </button>
-              
+
               <button
                 onClick={() => handleTabChange('store-distribution')}
                 className={`
@@ -663,7 +757,7 @@ function MainApp() {
                 <MapPin className="w-4 h-4 mr-2" />
                 Personel Konum Dağılımı
               </button>
-              
+
               <button
                 onClick={() => handleTabChange('vehicle-distribution')}
                 className={`
@@ -677,16 +771,7 @@ function MainApp() {
                 <Car className="w-4 h-4 mr-2" />
                 Personel Araç Dağılımı
               </button>
-            </div>
 
-            {/* Sistem Yönetimi Grubu */}
-            <div className="space-y-1">
-              <div className="flex items-center px-3 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Sistem Yönetimi</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
-              </div>
-              
               <button
                 onClick={() => handleTabChange('personnel')}
                 className={`
@@ -700,21 +785,16 @@ function MainApp() {
                 <Users className="w-4 h-4 mr-2" />
                 Personel Listesi
               </button>
-              
-              <button
-                onClick={() => handleTabChange('vehicles')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
-                  ${activeTab === 'vehicles'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
-                  }
-                `}
-              >
-                <Car className="w-4 h-4 mr-2" />
-                Araç Listesi
-              </button>
-              
+            </div>
+
+            {/* Mağaza Yönetimi Grubu */}
+            <div className="space-y-1">
+              <div className="flex items-center px-3 py-1">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Mağaza Yönetimi</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+
               <button
                 onClick={() => handleTabChange('stores')}
                 className={`
@@ -728,6 +808,57 @@ function MainApp() {
                 <Store className="w-4 h-4 mr-2" />
                 Mağaza Listesi
               </button>
+
+              <button
+                onClick={() => handleTabChange('store-distance')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'store-distance'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Mağaza Uzaklık Ölçer
+              </button>
+            </div>
+
+            {/* Araç Yönetimi Grubu */}
+            <div className="space-y-1">
+              <div className="flex items-center px-3 py-1">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Araç Yönetimi</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+
+              <button
+                onClick={() => handleTabChange('vehicles')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'vehicles'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Car className="w-4 h-4 mr-2" />
+                Araç Listesi
+              </button>
+
+              <button
+                onClick={() => handleTabChange('vehicle-data')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'vehicle-data'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Truck className="w-4 h-4 mr-2" />
+                Araç İstatistikleri
+              </button>
             </div>
 
             {/* Vardiya Planlama Grubu */}
@@ -737,7 +868,7 @@ function MainApp() {
                 <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Vardiya Planlama</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
-              
+
               <button
                 onClick={() => handleTabChange('planning')}
                 className={`
@@ -751,7 +882,7 @@ function MainApp() {
                 <Calendar className="w-4 h-4 mr-2" />
                 Vardiya Planlama
               </button>
-              
+
 
             </div>
           </nav>
@@ -800,7 +931,7 @@ function MainApp() {
                 >
                   <Bell className="w-5 h-5 text-gray-600" />
                   {unreadNotificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center animate-pulse">
+                    <span className={`absolute -top-1 -right-1 ${getNotificationColor(unreadNotificationCount)} text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center shadow-lg border-2 border-white animate-pulse`}>
                       {unreadNotificationCount}
                     </span>
                   )}
@@ -857,6 +988,29 @@ function MainApp() {
                     Ana Sayfa
                   </button>
 
+                  {/* Mesajlar */}
+                  <button
+                    onClick={() => {
+                      handleTabChange('chat');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`
+                      w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative
+                      ${activeTab === 'chat'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      }
+                    `}
+                  >
+                    <MessageCircle className="w-5 h-5 mr-3" />
+                                         Mesajlar
+                    {unreadMessageCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-lg border-2 border-white animate-pulse">
+                        {unreadMessageCount}
+                      </span>
+                    )}
+                  </button>
+
                   {/* Personel Yönetimi Grubu */}
                   <div className="space-y-2">
                     <div className="flex items-center px-4 py-2">
@@ -864,7 +1018,7 @@ function MainApp() {
                       <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('personnel');
@@ -881,7 +1035,7 @@ function MainApp() {
                       <Users className="w-5 h-5 mr-3" />
                       Personel Listesi
                     </button>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('vardiya-kontrol');
@@ -898,7 +1052,7 @@ function MainApp() {
                       <Clock className="w-5 h-5 mr-3" />
                       Personel Kontrol
                     </button>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('performance');
@@ -915,7 +1069,7 @@ function MainApp() {
                       <BarChart3 className="w-5 h-5 mr-3" />
                       Performans Analizi
                     </button>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('store-distribution');
@@ -932,7 +1086,7 @@ function MainApp() {
                       <MapPin className="w-5 h-5 mr-3" />
                       Personel Konum Dağılımı
                     </button>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('vehicle-distribution');
@@ -958,7 +1112,7 @@ function MainApp() {
                       <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Sistem Yönetimi</span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('vehicles');
@@ -975,7 +1129,7 @@ function MainApp() {
                       <Car className="w-5 h-5 mr-3" />
                       Araç Listesi
                     </button>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('stores');
@@ -1001,7 +1155,7 @@ function MainApp() {
                       <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vardiya Planlama</span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         handleTabChange('planning');
@@ -1018,12 +1172,12 @@ function MainApp() {
                       <Calendar className="w-5 h-5 mr-3" />
                       Vardiya Planlama
                     </button>
-                    
+
 
                   </div>
-                  
+
                   <div className="h-px bg-gray-200 my-4"></div>
-                  
+
                   {(userRole === 'admin' || userRole === 'yönetici') && (
                     <button
                       onClick={() => {
@@ -1036,7 +1190,7 @@ function MainApp() {
                       Admin Panel
                     </button>
                   )}
-                  
+
                   <button
                     onClick={() => {
                       handleLogout();
@@ -1059,16 +1213,16 @@ function MainApp() {
                 relative overflow-hidden rounded-2xl shadow-2xl border backdrop-blur-lg min-w-[320px] max-w-md
                 ${notification.type === 'success' ? 'bg-green-50/95 border-green-200 text-green-900' :
                   notification.type === 'error' ? 'bg-red-50/95 border-red-200 text-red-900' :
-                  notification.type === 'warning' ? 'bg-amber-50/95 border-amber-200 text-amber-900' :
-                  'bg-blue-50/95 border-blue-200 text-blue-900'}
+                    notification.type === 'warning' ? 'bg-amber-50/95 border-amber-200 text-amber-900' :
+                      'bg-blue-50/95 border-blue-200 text-blue-900'}
               `}>
                 {/* Colored top border */}
                 <div className={`
                   absolute top-0 left-0 w-full h-1
                   ${notification.type === 'success' ? 'bg-gradient-to-r from-green-400 to-green-600' :
                     notification.type === 'error' ? 'bg-gradient-to-r from-red-400 to-red-600' :
-                    notification.type === 'warning' ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
-                    'bg-gradient-to-r from-blue-400 to-blue-600'}
+                      notification.type === 'warning' ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
+                        'bg-gradient-to-r from-blue-400 to-blue-600'}
                 `}></div>
 
                 <div className="p-5">
@@ -1077,15 +1231,15 @@ function MainApp() {
                       flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
                       ${notification.type === 'success' ? 'bg-green-100' :
                         notification.type === 'error' ? 'bg-red-100' :
-                        notification.type === 'warning' ? 'bg-amber-100' :
-                        'bg-blue-100'}
+                          notification.type === 'warning' ? 'bg-amber-100' :
+                            'bg-blue-100'}
                     `}>
                       {notification.type === 'success' && <Check className="w-4 h-4 text-green-600" />}
                       {notification.type === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
                       {notification.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-600" />}
                       {notification.type === 'info' && <Upload className="w-4 h-4 text-blue-600" />}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium leading-relaxed">
                         {notification.message}
@@ -1098,8 +1252,8 @@ function MainApp() {
                         flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors
                         ${notification.type === 'success' ? 'hover:bg-green-200 text-green-600' :
                           notification.type === 'error' ? 'hover:bg-red-200 text-red-600' :
-                          notification.type === 'warning' ? 'hover:bg-amber-200 text-amber-600' :
-                          'hover:bg-blue-200 text-blue-600'}
+                            notification.type === 'warning' ? 'hover:bg-amber-200 text-amber-600' :
+                              'hover:bg-blue-200 text-blue-600'}
                       `}
                     >
                       <X className="w-4 h-4" />
@@ -1131,7 +1285,7 @@ function MainApp() {
                       <span>Veriler Hazır</span>
                     </div>
                   </div>
-                  
+
 
                 </div>
 
@@ -1221,7 +1375,7 @@ function MainApp() {
                 {/* Takvim Görünümü */}
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 mb-4">📅 Aylık Takip Takvimi</h3>
-                  
+
                   {/* Takvim Kontrolleri */}
                   <div className="flex items-center justify-between mb-4">
                     <button
@@ -1234,11 +1388,11 @@ function MainApp() {
                     >
                       <ChevronDown className="w-4 h-4 transform rotate-90" />
                     </button>
-                    
+
                     <h4 className="text-base font-semibold text-gray-900">
                       {getMonthName(selectedMonth)} {selectedYear}
                     </h4>
-                    
+
                     <button
                       onClick={() => {
                         const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
@@ -1265,15 +1419,15 @@ function MainApp() {
                     {/* Takvim günleri */}
                     <div className={`grid grid-cols-7 ${calendarAnimation === 'left' ? 'animate-slide-left' : calendarAnimation === 'right' ? 'animate-slide-right' : ''}`}>
                       {getCalendarDays().map((day, index) => (
-                                                                <div
-                                          key={index}
-                                          className={`
+                        <div
+                          key={index}
+                          className={`
                                             p-2 border-r border-b border-gray-100 min-h-[100px] relative
                                             ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
                                             ${day.isToday ? 'bg-blue-50 border-blue-200' : ''}
                                             ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
                                           `}
-                                        >
+                        >
                           <div className={`
                             text-xs font-medium mb-1
                             ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
@@ -1281,16 +1435,16 @@ function MainApp() {
                           `}>
                             {day.day}
                           </div>
-                          
+
                           {/* Günlük notlar */}
                           {(() => {
                             const dayNotes = dataStatus.dailyNotes.filter(note => {
                               const noteDate = new Date(note.date);
-                              return noteDate.getDate() === day.day && 
-                                     noteDate.getMonth() === day.month && 
-                                     noteDate.getFullYear() === day.year;
+                              return noteDate.getDate() === day.day &&
+                                noteDate.getMonth() === day.month &&
+                                noteDate.getFullYear() === day.year;
                             });
-                            
+
                             if (dayNotes.length > 0) {
                               return (
                                 <div className="mt-1 space-y-1">
@@ -1307,7 +1461,7 @@ function MainApp() {
                                       let borderColor = 'border-blue-400';
                                       let bgColor = 'bg-blue-50';
                                       let statusColor = 'text-blue-600';
-                                      
+
                                       if (note.status === 'raporlu') {
                                         borderColor = 'border-red-400';
                                         bgColor = 'bg-red-50';
@@ -1325,7 +1479,7 @@ function MainApp() {
                                         bgColor = 'bg-orange-50';
                                         statusColor = 'text-orange-600';
                                       }
-                                      
+
                                       return (
                                         <div key={index} className={`${bgColor} rounded-lg p-1 border-l-2 ${borderColor}`}>
                                           <div className="font-medium text-gray-900 text-xs">
@@ -1358,15 +1512,15 @@ function MainApp() {
 
             {/* Araç Listesi */}
             {activeTab === 'vehicles' && (
-              <VehicleList 
+              <VehicleList
                 vehicleData={vehicleData}
                 currentUser={user}
               />
             )}
-            
+
             {/* Personel Listesi */}
             {activeTab === 'personnel' && (
-              <PersonelList 
+              <PersonelList
                 personnelData={personnelData}
                 vehicleData={vehicleData}
                 userRole={userRole}
@@ -1374,28 +1528,182 @@ function MainApp() {
                 currentUser={user}
               />
             )}
-            
+
             {/* Mağaza Listesi */}
             {activeTab === 'stores' && (
-              <StoreList 
+              <StoreList
                 storeData={storeData}
                 currentUser={user}
               />
             )}
-            
+
+            {/* Mağaza Uzaklık Ölç */}
+            {activeTab === 'store-distance' && (
+              <div className="flex-1 p-6">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <MapPin className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Mağaza Uzaklık Ölçer</h1>
+                        <p className="text-gray-600">Mağazalar arası mesafe hesaplama ve analiz</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">!</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-yellow-800">Geliştirme Aşamasında</h3>
+                          <p className="text-yellow-700">Bu özellik şu anda geliştirme aşamasındadır. Yakında kullanıma açılacaktır.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Özellikler</h3>
+                        <ul className="space-y-2 text-gray-700">
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span>Mağazalar arası mesafe hesaplama</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span>En optimal rota belirleme</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span>Zaman ve maliyet analizi</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span>Harita üzerinde görselleştirme</span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border border-green-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Yakında Gelecek</h3>
+                        <ul className="space-y-2 text-gray-700">
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Gerçek zamanlı trafik verisi</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Yakıt tüketimi optimizasyonu</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Personel dağılımı önerileri</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Raporlama ve analiz araçları</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Araç Verileri */}
+            {activeTab === 'vehicle-data' && (
+              <div className="flex-1 p-6">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <Truck className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Araç Verileri</h1>
+                        <p className="text-gray-600">Araç performans ve veri analizi</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">!</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-orange-800">Geliştirme Aşamasında</h3>
+                          <p className="text-orange-700">Bu özellik şu anda geliştirme aşamasındadır. Yakında kullanıma açılacaktır.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border border-green-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Özellikler</h3>
+                        <ul className="space-y-2 text-gray-700">
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Araç performans takibi</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Yakıt tüketimi analizi</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Bakım takip sistemi</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Rota optimizasyonu</span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Yakında Gelecek</h3>
+                        <ul className="space-y-2 text-gray-700">
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span>Gerçek zamanlı konum takibi</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span>Otomatik raporlama</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span>Arıza tahmin sistemi</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span>Maliyet analizi</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Vardiya Planlama */}
             {activeTab === 'planning' && (
-              <VardiyaPlanlama 
+              <VardiyaPlanlama
                 userRole={userRole}
                 onDataUpdate={refreshData}
               />
             )}
-            
 
-            
+
+
             {/* Performans Analizi */}
             {activeTab === 'performance' && (
-              <PerformanceAnalysis 
+              <PerformanceAnalysis
                 generatedPlan={generatedPlan}
                 personnelData={personnelData}
                 vehicleData={vehicleData}
@@ -1407,8 +1715,8 @@ function MainApp() {
 
             {/* Vardiya Kontrol */}
             {activeTab === 'vardiya-kontrol' && (
-              <PersonelVardiyaKontrol 
-                userRole={userRole} 
+              <PersonelVardiyaKontrol
+                userRole={userRole}
                 onDataUpdate={refreshData}
                 onCurrentShiftDataUpdate={setCurrentShiftData}
                 currentUser={user}
@@ -1433,8 +1741,8 @@ function MainApp() {
                     <AdminPanel userRole={userRole} currentUser={user} />
                   </div>
                 ) : (
-                  <UnauthorizedAccess 
-                    userRole={userRole} 
+                  <UnauthorizedAccess
+                    userRole={userRole}
                     onNavigateHome={() => handleTabChange('home')}
                   />
                 )}
@@ -1444,7 +1752,10 @@ function MainApp() {
             {/* Chat Sistemi */}
             {activeTab === 'chat' && (
               <div className="flex-1 h-full">
-                <ChatSystem currentUser={user} />
+                <ChatSystem 
+              currentUser={user} 
+              
+            />
               </div>
             )}
           </main>
@@ -1452,14 +1763,14 @@ function MainApp() {
       </div>
 
       {/* Bildirim Paneli */}
-      <NotificationPanel 
+      <NotificationPanel
         currentUser={user}
         isOpen={showNotificationPanel}
         onClose={() => setShowNotificationPanel(false)}
       />
 
       {/* Toast Bildirim Yöneticisi */}
-      <ToastManager 
+      <ToastManager
         onViewNotifications={() => setShowNotificationPanel(true)}
       />
 

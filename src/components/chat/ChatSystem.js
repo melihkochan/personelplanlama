@@ -36,6 +36,8 @@ const ChatSystem = ({ currentUser }) => {
       loadOnlineUsers();
     }
   }, [currentUser?.id]);
+
+
   
   // Real-time conversation updates
   useEffect(() => {
@@ -200,8 +202,20 @@ const ChatSystem = ({ currentUser }) => {
         return conv.chat_participants?.some(p => p.user_id === currentUser.id);
       });
 
-      console.log('📊 Toplam sohbet sayısı:', conversationsWithParticipants.length);
-      setConversations(conversationsWithParticipants);
+      // Son mesajın tarihine göre sırala (en yeni üstte)
+      const sortedConversations = conversationsWithParticipants.sort((a, b) => {
+        const aLastMessage = a.messages && a.messages.length > 0 
+          ? new Date(a.messages[a.messages.length - 1].created_at) 
+          : new Date(a.created_at);
+        const bLastMessage = b.messages && b.messages.length > 0 
+          ? new Date(b.messages[b.messages.length - 1].created_at) 
+          : new Date(b.created_at);
+        
+        return bLastMessage - aLastMessage; // En yeni üstte
+      });
+
+      console.log('📊 Toplam sohbet sayısı:', sortedConversations.length);
+      setConversations(sortedConversations);
     } catch (error) {
       console.error('❌ Sohbetler yüklenirken genel hata:', error);
       setConversations([]);
@@ -578,10 +592,32 @@ const ChatSystem = ({ currentUser }) => {
                             ) : (
                               <span className="text-gray-400">
                                 Son görülme {otherUser?.last_seen ? 
-                                  new Date(otherUser.last_seen).toLocaleTimeString('tr-TR', { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
-                                  }) : 
+                                  (() => {
+                                    const lastSeenDate = new Date(otherUser.last_seen);
+                                    const now = new Date();
+                                    const diffInMs = now - lastSeenDate;
+                                    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+                                    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+                                    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+                                    
+                                    let timeAgo = '';
+                                    if (diffInDays > 0) {
+                                      timeAgo = `${diffInDays} gün önce`;
+                                    } else if (diffInHours > 0) {
+                                      timeAgo = `${diffInHours} saat önce`;
+                                    } else if (diffInMinutes > 0) {
+                                      timeAgo = `${diffInMinutes} dakika önce`;
+                                    } else {
+                                      timeAgo = 'Az önce';
+                                    }
+                                    
+                                    const timeString = lastSeenDate.toLocaleTimeString('tr-TR', { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    });
+                                    
+                                    return `${timeAgo} ${timeString}`;
+                                  })() : 
                                   'Bilinmiyor'
                                 }
                               </span>

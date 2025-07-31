@@ -387,6 +387,26 @@ const LoginForm = () => {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Developer Credit */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+          className="text-gray-600 text-sm"
+        >
+          <span>Developed by </span>
+          <a 
+            href="https://www.melihkochan.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            Melih KOÇHAN
+          </a>
+        </motion.div>
+      </div>
     </div>
   );
 };

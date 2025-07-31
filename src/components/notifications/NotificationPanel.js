@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X, Check, Trash2, Info, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { getNotifications, markNotificationAsRead, deleteNotification, getUnreadNotificationCount } from '../../services/supabase';
+import { Bell, X, Check, Trash2, Info, AlertCircle, CheckCircle, XCircle, CheckCheck, Trash } from 'lucide-react';
+import { getNotifications, markNotificationAsRead, deleteNotification, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications } from '../../services/supabase';
 
 const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
   const [notifications, setNotifications] = useState([]);
@@ -66,12 +66,12 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
     }
   };
 
-  const handleDeleteNotification = async (notificationId) => {
+    const handleDeleteNotification = async (notificationId) => {
     try {
-     
+      
       const result = await deleteNotification(notificationId, currentUser.id);
       if (result.success) {
-       
+        
         // State'i güncelle
         setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
         // Okunmamış sayısını yenile
@@ -86,6 +86,47 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
       }
     } catch (error) {
     
+      alert('Bildirim silme hatası: ' + error.message);
+    }
+  };
+
+  // Tüm bildirimleri okundu olarak işaretle
+  const handleMarkAllAsRead = async () => {
+    try {
+      const result = await markAllNotificationsAsRead(currentUser.id);
+      if (result.success) {
+        // Tüm bildirimleri okundu olarak güncelle
+        setNotifications(prev => 
+          prev.map(notif => ({ 
+            ...notif, 
+            is_read: true, 
+            read_at: new Date().toISOString() 
+          }))
+        );
+        setUnreadCount(0);
+      } else {
+        alert('Bildirimler okundu işaretlenemedi: ' + result.error);
+      }
+    } catch (error) {
+      alert('Bildirim işaretleme hatası: ' + error.message);
+    }
+  };
+
+  // Tüm bildirimleri sil
+  const handleClearAllNotifications = async () => {
+    if (!window.confirm('Tüm bildirimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+      return;
+    }
+
+    try {
+      const result = await deleteAllNotifications(currentUser.id);
+      if (result.success) {
+        setNotifications([]);
+        setUnreadCount(0);
+      } else {
+        alert('Bildirimler silinemedi: ' + result.error);
+      }
+    } catch (error) {
       alert('Bildirim silme hatası: ' + error.message);
     }
   };
@@ -142,12 +183,34 @@ const NotificationPanel = ({ currentUser, isOpen, onClose }) => {
                 </span>
               )}
             </h3>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center space-x-2">
+              {notifications.length > 0 && (
+                <>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="text-white hover:text-green-200 transition-colors p-1 rounded"
+                      title="Tümünü okundu yap"
+                    >
+                      <CheckCheck className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={handleClearAllNotifications}
+                    className="text-white hover:text-red-200 transition-colors p-1 rounded"
+                    title="Tümünü temizle"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={onClose}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
         

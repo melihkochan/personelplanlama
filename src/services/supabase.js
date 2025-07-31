@@ -3049,6 +3049,42 @@ export const getUnreadNotificationCount = async (userId) => {
   }
 };
 
+// Tüm bildirimleri okundu olarak işaretle
+export const markAllNotificationsAsRead = async (userId) => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ 
+        is_read: true, 
+        read_at: new Date().toISOString() 
+      })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Tüm bildirimleri okundu işaretleme hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Kullanıcının tüm bildirimlerini sil
+export const deleteAllNotifications = async (userId) => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Tüm bildirimleri silme hatası:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Chat için gerçek kullanıcıları getir
 export const getChatUsers = async (currentUserId) => {
   try {

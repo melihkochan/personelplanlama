@@ -20,7 +20,7 @@ import UnauthorizedAccess from './components/ui/UnauthorizedAccess';
 import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, supabase } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, supabase } from './services/supabase';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -637,40 +637,7 @@ function MainApp() {
             </div>
           </div>
 
-          {/* User Info */}
-          <div className="p-4 border-b border-gray-200/50">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-xs">
-                  {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-900 truncate">
-                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}
-                </p>
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : userRole === 'yönetici' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
-                  {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
-                </p>
-              </div>
-              {/* Bildirim Butonu */}
-              <button
-                onClick={() => setShowNotificationPanel(true)}
-                className={`relative p-2 rounded-lg transition-colors ${unreadNotificationCount > 0
-                    ? 'bg-green-50 hover:bg-green-100 text-green-600'
-                    : 'hover:bg-gray-100 text-gray-600'
-                  }`}
-              >
-                <Bell className="w-4 h-4" />
-                {unreadNotificationCount > 0 && (
-                  <span className={`absolute -top-1 -right-1 ${getNotificationColor(unreadNotificationCount)} text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center shadow-lg border-2 border-white animate-pulse`}>
-                    {unreadNotificationCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
+          {/* User Info - Moved to bottom */}
 
           {/* Navigation */}
           <nav className="flex-1 p-3 space-y-1">
@@ -878,6 +845,39 @@ function MainApp() {
 
           {/* Sidebar Footer */}
           <div className="p-3 border-t border-gray-200/50 space-y-2">
+            {/* User Info - Moved here */}
+            <div className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
+              <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold text-xs">
+                  {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-900 truncate">
+                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                </p>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : userRole === 'yönetici' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
+                  {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
+                </p>
+              </div>
+              {/* Bildirim Butonu */}
+              <button
+                onClick={() => setShowNotificationPanel(true)}
+                className={`relative p-2 rounded-lg transition-colors ${unreadNotificationCount > 0
+                    ? 'bg-green-50 hover:bg-green-100 text-green-600'
+                    : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotificationCount > 0 && (
+                  <span className={`absolute -top-1 -right-1 ${getNotificationColor(unreadNotificationCount)} text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center shadow-lg border-2 border-white animate-pulse`}>
+                    {unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
             {/* Admin Panel Button */}
             {(userRole === 'admin' || userRole === 'yönetici') && (
               <button

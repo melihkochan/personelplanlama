@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Lock, LogIn, UserPlus, Eye, EyeOff, AlertCircle, ArrowRight, UserCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -15,6 +15,11 @@ const LoginForm = () => {
   const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { signIn } = useAuth();
+
+  // Component mount olduğunda şifre alanını temizle
+  useEffect(() => {
+    setPassword('');
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -127,7 +132,7 @@ const LoginForm = () => {
             )}
           </AnimatePresence>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
                 <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Kullanıcı Adı
@@ -156,11 +161,14 @@ const LoginForm = () => {
                       <Lock className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
                 </div>
                 <input
+                  key="login-password"
+                  name="login-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-gray-50/50"
                   placeholder="••••••••"
+                  autoComplete="off"
                   required
                 />
                 <button
@@ -216,7 +224,7 @@ const LoginForm = () => {
               <div>
                 <h2 className="text-3xl font-bold mb-4">Merhaba!</h2>
                 <p className="text-white/90 mb-8 text-lg">
-                  Tüm site özelliklerini kullanmak için kişisel bilgilerinizi girin
+                  Tüm site özelliklerini kullanmak için kişisel bilgilerinizi girin.
                 </p>
                 
                 <motion.button
@@ -283,7 +291,7 @@ const LoginForm = () => {
                 )}
               </AnimatePresence>
 
-              <form onSubmit={handleSignUp} className="space-y-6">
+              <form onSubmit={handleSignUp} className="space-y-6" autoComplete="off">
                 <div className="group">
                   <div className="relative">
                     <input
@@ -313,11 +321,14 @@ const LoginForm = () => {
                 <div className="group">
                   <div className="relative">
                     <input
+                      key="signup-password"
+                      name="signup-password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-4 pr-12 py-3 border-b-2 border-white/30 focus:border-white transition-all bg-transparent text-white placeholder-white/70"
                       placeholder="Şifre"
+                      autoComplete="off"
                       required
                     />
                     <button
@@ -371,7 +382,7 @@ const LoginForm = () => {
             >
               <h2 className="text-3xl font-bold text-gray-800 mb-4">Hoş Geldiniz!</h2>
               <p className="text-gray-600 mb-8 text-lg">
-                Zaten hesabınız var mı? Giriş yaparak devam edin
+                Zaten hesabınız var mı? Giriş yaparak devam edin.
               </p>
               
               <motion.button

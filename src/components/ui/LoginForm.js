@@ -74,8 +74,8 @@ const LoginForm = () => {
           setIsSignUp(false);
           setSuccess('');
         }, 3000);
-          } else {
-        setError('Kayıt isteği gönderilemedi. Lütfen tekrar deneyin.');
+      } else {
+        setError(result.error || 'Kayıt isteği gönderilemedi. Lütfen tekrar deneyin.');
       }
     } catch (error) {
       setError('Bir hata oluştu. Lütfen tekrar deneyin.');

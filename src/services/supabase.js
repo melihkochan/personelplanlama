@@ -81,6 +81,62 @@ export const checkPendingRegistration = async (username) => {
 
 export const createPendingRegistration = async (registrationData) => {
   try {
+    // Önce kullanıcı adının zaten mevcut olup olmadığını kontrol et
+    const username = registrationData.username;
+    
+    // 1. Pending registrations tablosunda kontrol
+    const { data: existingPending, error: pendingError } = await supabase
+      .from('pending_registrations')
+      .select('username')
+      .eq('username', username)
+      .single();
+    
+    if (pendingError && pendingError.code !== 'PGRST116') {
+      throw pendingError;
+    }
+    
+    if (existingPending) {
+      return { 
+        success: false, 
+        error: 'Bu kullanıcı adı zaten bekleyen onaylar listesinde bulunuyor.' 
+      };
+    }
+    
+    // 2. Users tablosunda kontrol
+    const { data: existingUser, error: userError } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', username)
+      .single();
+    
+    if (userError && userError.code !== 'PGRST116') {
+      throw userError;
+    }
+    
+    if (existingUser) {
+      return { 
+        success: false, 
+        error: 'Bu kullanıcı adı zaten kullanımda.' 
+      };
+    }
+    
+    // 3. Auth tablosunda kontrol (email ile)
+    const email = `${username}@gratis.com`;
+    const { data: existingAuthUser, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (authError) {
+      throw authError;
+    }
+    
+    const authUserExists = existingAuthUser.users.find(user => user.email === email);
+    if (authUserExists) {
+      return { 
+        success: false, 
+        error: 'Bu kullanıcı adı zaten kullanımda.' 
+      };
+    }
+    
+    // Tüm kontroller geçildi, kayıt oluştur
     const { data, error } = await supabase
       .from('pending_registrations')
       .insert([registrationData])

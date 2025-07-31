@@ -81,15 +81,22 @@ export const checkPendingRegistration = async (username) => {
 
 export const createPendingRegistration = async (registrationData) => {
   try {
+    console.log('📝 createPendingRegistration çağrıldı, data:', registrationData);
+    
     const { data, error } = await supabase
       .from('pending_registrations')
       .insert([registrationData])
       .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Create pending registration error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Pending registration oluşturuldu:', data[0]);
     return { success: true, data: data[0] };
   } catch (error) {
-    console.error('Create pending registration error:', error);
+    console.error('❌ Create pending registration error:', error);
     return { success: false, error: error.message };
   }
 };
@@ -129,6 +136,8 @@ export const getPendingRegistrationsCount = async () => {
 
 export const approveRegistration = async (pendingRegId) => {
   try {
+    console.log('🔍 approveRegistration başladı, pendingRegId:', pendingRegId);
+    
     // Önce pending registration'ı al
     const { data: pendingReg, error: getError } = await supabase
       .from('pending_registrations')
@@ -136,10 +145,76 @@ export const approveRegistration = async (pendingRegId) => {
       .eq('id', pendingRegId)
       .single();
     
-    if (getError) throw getError;
+    if (getError) {
+      console.error('❌ Pending registration getirme hatası:', getError);
+      throw getError;
+    }
+    
+    console.log('📊 Pending registration verisi:', pendingReg);
     
     // Email'i username + @gratis.com olarak oluştur
     const email = `${pendingReg.username}@gratis.com`;
+    console.log('📧 Oluşturulan email:', email);
+    
+    // full_name veya fullName kontrolü
+    const fullName = pendingReg.full_name || pendingReg.fullName;
+    console.log('👤 Full name değeri:', fullName);
+    
+    // Önce mevcut kullanıcıyı kontrol et
+    const { data: existingUser, error: getUserError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (getUserError) {
+      console.error('❌ Kullanıcı listesi alma hatası:', getUserError);
+      throw getUserError;
+    }
+    
+    // Email zaten mevcut mu kontrol et
+    const userExists = existingUser.users.find(user => user.email === email);
+    
+    if (userExists) {
+      console.log('⚠️ Kullanıcı zaten mevcut, sadece users tablosuna ekleme yapılacak');
+      
+      // Users tablosuna ekle (auth kullanıcısı zaten var)
+      const userInsertData = {
+        id: userExists.id,
+        email: email,
+        username: pendingReg.username,
+        full_name: fullName,
+        role: pendingReg.role || 'kullanıcı',
+        is_active: true
+      };
+      
+      console.log('📝 Users tablosuna eklenecek veri:', userInsertData);
+      
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .insert([userInsertData])
+        .select();
+      
+      if (userError) {
+        console.error('❌ Users tablosuna ekleme hatası:', userError);
+        throw userError;
+      }
+      
+      console.log('✅ Users tablosuna başarıyla eklendi:', userData);
+      
+      // Pending registration'ı sil
+      const { error: deleteError } = await supabase
+        .from('pending_registrations')
+        .delete()
+        .eq('id', pendingRegId);
+      
+      if (deleteError) {
+        console.warn('⚠️ Pending registration silme hatası:', deleteError);
+      } else {
+        console.log('✅ Pending registration silindi');
+      }
+      
+      return { success: true, data: userData[0] };
+    }
+    
+    // Kullanıcı mevcut değilse, yeni kullanıcı oluştur
+    console.log('🆕 Yeni kullanıcı oluşturuluyor...');
     
     // Admin API ile kullanıcı oluştur
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -148,27 +223,41 @@ export const approveRegistration = async (pendingRegId) => {
       email_confirm: true,
       user_metadata: {
         username: pendingReg.username,
-        full_name: pendingReg.full_name,
+        full_name: fullName,
         role: pendingReg.role || 'kullanıcı'
       }
     });
     
-    if (authError) throw authError;
+    if (authError) {
+      console.error('❌ Auth kullanıcı oluşturma hatası:', authError);
+      throw authError;
+    }
+    
+    console.log('✅ Auth kullanıcı oluşturuldu:', authData.user.id);
     
     // Users tablosuna ekle
+    const userInsertData = {
+      id: authData.user.id,
+      email: email,
+      username: pendingReg.username,
+      full_name: fullName,
+      role: pendingReg.role || 'kullanıcı',
+      is_active: true
+    };
+    
+    console.log('📝 Users tablosuna eklenecek veri:', userInsertData);
+    
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .insert([{
-        id: authData.user.id,
-        email: email,
-        username: pendingReg.username,
-        full_name: pendingReg.full_name,
-        role: pendingReg.role || 'kullanıcı',
-        is_active: true
-      }])
+      .insert([userInsertData])
       .select();
     
-    if (userError) throw userError;
+    if (userError) {
+      console.error('❌ Users tablosuna ekleme hatası:', userError);
+      throw userError;
+    }
+    
+    console.log('✅ Users tablosuna başarıyla eklendi:', userData);
     
     // Pending registration'ı sil
     const { error: deleteError } = await supabase
@@ -177,12 +266,14 @@ export const approveRegistration = async (pendingRegId) => {
       .eq('id', pendingRegId);
     
     if (deleteError) {
-      console.warn('Pending registration silme hatası:', deleteError);
+      console.warn('⚠️ Pending registration silme hatası:', deleteError);
+    } else {
+      console.log('✅ Pending registration silindi');
     }
     
     return { success: true, data: userData[0] };
   } catch (error) {
-    console.error('Approve registration error:', error);
+    console.error('❌ Approve registration error:', error);
     return { success: false, error: error.message };
   }
 };

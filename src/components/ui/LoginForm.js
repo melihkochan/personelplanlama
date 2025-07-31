@@ -55,12 +55,12 @@ const LoginForm = () => {
     try {
       // Kayıt isteği admin onayına gönderilecek
       const registrationData = {
-        full_name: fullName,
+        fullName: fullName, // Database'de fullName olarak kaydediliyor
         username: username, // @gratis.com eklemiyoruz
         password,
         status: 'pending', // Admin onayı bekliyor
         role: 'kullanıcı', // Varsayılan rol
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString() // Database'de created_at olarak kaydediliyor
       };
 
       const result = await createPendingRegistration(registrationData);

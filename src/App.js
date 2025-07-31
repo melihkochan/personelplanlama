@@ -21,7 +21,7 @@ import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, supabase } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, supabase } from './services/supabase';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -44,6 +44,7 @@ function MainApp() {
   const [currentShiftData, setCurrentShiftData] = useState([]);
   const [userRole, setUserRole] = useState('user');
   const [userDetails, setUserDetails] = useState(null);
+  const [userRoleLoading, setUserRoleLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dataStatus, setDataStatus] = useState({
@@ -99,27 +100,31 @@ function MainApp() {
 
   // Kullanıcı rolünü al
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (user) {
+    const fetchUserRoleAndDetails = async () => {
+      if (isAuthenticated && user) {
         try {
           const role = await getUserRole(user.id);
           setUserRole(role);
 
-          // Kullanıcı detaylarını da çek
           const userDetailsResult = await getUserDetails(user.id, user.email);
           if (userDetailsResult.success && userDetailsResult.data) {
             setUserDetails(userDetailsResult.data);
           }
         } catch (error) {
-          console.error('❌ User role error:', error);
-          // Hata durumunda admin ver (test için)
-          setUserRole('admin');
+          console.error('❌ User role or details fetch error:', error);
+          setUserRole('user');
+        } finally {
+          setUserRoleLoading(false);
         }
+      } else if (!isAuthenticated && !loading) {
+        setUserRole('user');
+        setUserDetails(null);
+        setUserRoleLoading(false);
       }
     };
 
-    fetchUserRole();
-  }, [user]);
+    fetchUserRoleAndDetails();
+  }, [user, isAuthenticated, loading]);
 
   // Notification gösterme fonksiyonu
   const showNotification = (message, type = 'info') => {
@@ -132,17 +137,14 @@ function MainApp() {
     const loadUnreadCount = async () => {
       if (user) {
         try {
-
           const result = await getUnreadNotificationCount(user.id);
           if (result.success) {
             const newCount = result.count;
             const oldCount = unreadNotificationCount;
-
-
             setUnreadNotificationCount(newCount);
           }
         } catch (error) {
-
+          // Hata durumunda sessizce devam et
         }
       }
     };
@@ -153,6 +155,25 @@ function MainApp() {
     const interval = setInterval(loadUnreadCount, 3000);
     return () => clearInterval(interval);
   }, [user]);
+
+  // Bekleyen onaylar için bildirim kontrolü (admin/yönetici kullanıcılar için)
+  useEffect(() => {
+    const checkPendingApprovals = async () => {
+      if (user && (userRole === 'admin' || userRole === 'yönetici')) {
+        try {
+          // Bekleyen onaylar için bildirim oluştur
+          await createPendingApprovalNotification();
+        } catch (error) {
+          // Hata durumunda sessizce devam et
+        }
+      }
+    };
+
+    // Sadece kullanıcı rolü yüklendikten sonra kontrol et
+    if (!userRoleLoading && userRole) {
+      checkPendingApprovals();
+    }
+  }, [user, userRole, userRoleLoading]);
 
   // Bildirim sayısı değişikliğini izle
   useEffect(() => {
@@ -293,18 +314,16 @@ function MainApp() {
 
   // Veri yenileme fonksiyonu
   const refreshData = async () => {
-    console.log('🔄 refreshData başladı');
     await loadData();
     await loadDailyNotes();
     await loadCurrentShiftData(); // Güncel vardiya verilerini de yenile
-    console.log('✅ refreshData tamamlandı');
+    
     showNotification('Veriler yenilendi!', 'success');
   };
 
   // Güncel vardiya verilerini yükle
   const loadCurrentShiftData = async () => {
     try {
-      console.log('🔍 Güncel vardiya verileri yükleniyor...');
       
       // En güncel dönemi bul
       const { data: periods, error: periodsError } = await supabase
@@ -314,7 +333,6 @@ function MainApp() {
         .limit(1);
       
       if (periodsError) {
-        console.error('❌ Güncel dönem bulunamadı:', periodsError);
         return;
       }
       
@@ -363,7 +381,6 @@ function MainApp() {
           });
           
           setCurrentShiftData(enrichedShifts);
-          console.log('✅ Güncel vardiya verileri yüklendi:', enrichedShifts.length, 'kayıt');
         } else {
           setCurrentShiftData([]);
         }
@@ -1600,7 +1617,26 @@ function MainApp() {
             {/* Admin Panel */}
             {activeTab === 'admin' && (
               <>
-                {(userRole === 'admin' || userRole === 'yönetici') ? (
+                {loading ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">Oturum bilgileri yükleniyor...</p>
+                    </div>
+                  </div>
+                ) : !isAuthenticated ? (
+                  <UnauthorizedAccess
+                    userRole={userRole}
+                    onNavigateHome={() => handleTabChange('home')}
+                  />
+                ) : userRoleLoading ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">Kullanıcı yetkileri kontrol ediliyor...</p>
+                    </div>
+                  </div>
+                ) : (userRole === 'admin' || userRole === 'yönetici') ? (
                   <div className="space-y-6">
                     <AdminPanel userRole={userRole} currentUser={user} />
                   </div>

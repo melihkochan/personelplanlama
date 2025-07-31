@@ -81,41 +81,34 @@ export const checkPendingRegistration = async (username) => {
 
 export const createPendingRegistration = async (registrationData) => {
   try {
-    console.log('📝 createPendingRegistration çağrıldı, data:', registrationData);
-    
     const { data, error } = await supabase
       .from('pending_registrations')
       .insert([registrationData])
       .select();
     
     if (error) {
-      console.error('❌ Create pending registration error:', error);
       throw error;
     }
     
-    console.log('✅ Pending registration oluşturuldu:', data[0]);
+    // Yeni kayıt eklendikten sonra admin/yönetici kullanıcılar için bildirim oluştur
+    await createPendingApprovalNotification();
+    
     return { success: true, data: data[0] };
   } catch (error) {
-    console.error('❌ Create pending registration error:', error);
     return { success: false, error: error.message };
   }
 };
 
 export const getPendingRegistrations = async () => {
   try {
-    console.log('🔍 getPendingRegistrations çağrıldı');
     const { data, error } = await supabase
       .from('pending_registrations')
       .select('*')
       .order('created_at', { ascending: false });
     
-    console.log('📊 Supabase response:', { data, error });
-    
     if (error) throw error;
-    console.log('✅ getPendingRegistrations başarılı, data:', data);
     return { success: true, data: data || [] };
   } catch (error) {
-    console.error('❌ Get pending registrations error:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -134,10 +127,8 @@ export const getPendingRegistrationsCount = async () => {
   }
 };
 
-export const approveRegistration = async (pendingRegId) => {
+export const approveRegistration = async (pendingRegId, currentUser = null) => {
   try {
-    console.log('🔍 approveRegistration başladı, pendingRegId:', pendingRegId);
-    
     // Önce pending registration'ı al
     const { data: pendingReg, error: getError } = await supabase
       .from('pending_registrations')
@@ -146,25 +137,19 @@ export const approveRegistration = async (pendingRegId) => {
       .single();
     
     if (getError) {
-      console.error('❌ Pending registration getirme hatası:', getError);
       throw getError;
     }
     
-    console.log('📊 Pending registration verisi:', pendingReg);
-    
     // Email'i username + @gratis.com olarak oluştur
     const email = `${pendingReg.username}@gratis.com`;
-    console.log('📧 Oluşturulan email:', email);
     
     // full_name veya fullName kontrolü
     const fullName = pendingReg.full_name || pendingReg.fullName;
-    console.log('👤 Full name değeri:', fullName);
     
     // Önce mevcut kullanıcıyı kontrol et
     const { data: existingUser, error: getUserError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (getUserError) {
-      console.error('❌ Kullanıcı listesi alma hatası:', getUserError);
       throw getUserError;
     }
     
@@ -172,8 +157,6 @@ export const approveRegistration = async (pendingRegId) => {
     const userExists = existingUser.users.find(user => user.email === email);
     
     if (userExists) {
-      console.log('⚠️ Kullanıcı zaten mevcut, sadece users tablosuna ekleme yapılacak');
-      
       // Users tablosuna ekle (auth kullanıcısı zaten var)
       const userInsertData = {
         id: userExists.id,
@@ -184,19 +167,14 @@ export const approveRegistration = async (pendingRegId) => {
         is_active: true
       };
       
-      console.log('📝 Users tablosuna eklenecek veri:', userInsertData);
-      
       const { data: userData, error: userError } = await supabase
         .from('users')
         .insert([userInsertData])
         .select();
       
       if (userError) {
-        console.error('❌ Users tablosuna ekleme hatası:', userError);
         throw userError;
       }
-      
-      console.log('✅ Users tablosuna başarıyla eklendi:', userData);
       
       // Pending registration'ı sil
       const { error: deleteError } = await supabase
@@ -205,16 +183,15 @@ export const approveRegistration = async (pendingRegId) => {
         .eq('id', pendingRegId);
       
       if (deleteError) {
-        console.warn('⚠️ Pending registration silme hatası:', deleteError);
-      } else {
-        console.log('✅ Pending registration silindi');
+        // Silme hatası olsa bile devam et
       }
+      
+      
       
       return { success: true, data: userData[0] };
     }
     
     // Kullanıcı mevcut değilse, yeni kullanıcı oluştur
-    console.log('🆕 Yeni kullanıcı oluşturuluyor...');
     
     // Admin API ile kullanıcı oluştur
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -229,11 +206,8 @@ export const approveRegistration = async (pendingRegId) => {
     });
     
     if (authError) {
-      console.error('❌ Auth kullanıcı oluşturma hatası:', authError);
       throw authError;
     }
-    
-    console.log('✅ Auth kullanıcı oluşturuldu:', authData.user.id);
     
     // Users tablosuna ekle
     const userInsertData = {
@@ -245,19 +219,14 @@ export const approveRegistration = async (pendingRegId) => {
       is_active: true
     };
     
-    console.log('📝 Users tablosuna eklenecek veri:', userInsertData);
-    
     const { data: userData, error: userError } = await supabase
       .from('users')
       .insert([userInsertData])
       .select();
     
     if (userError) {
-      console.error('❌ Users tablosuna ekleme hatası:', userError);
       throw userError;
     }
-    
-    console.log('✅ Users tablosuna başarıyla eklendi:', userData);
     
     // Pending registration'ı sil
     const { error: deleteError } = await supabase
@@ -266,29 +235,48 @@ export const approveRegistration = async (pendingRegId) => {
       .eq('id', pendingRegId);
     
     if (deleteError) {
-      console.warn('⚠️ Pending registration silme hatası:', deleteError);
-    } else {
-      console.log('✅ Pending registration silindi');
+      // Silme hatası olsa bile devam et
     }
+    
+
+    
+    // Bekleyen onay bildirimlerini güncelle
+    await createPendingApprovalNotification();
     
     return { success: true, data: userData[0] };
   } catch (error) {
-    console.error('❌ Approve registration error:', error);
     return { success: false, error: error.message };
   }
 };
 
-export const rejectRegistration = async (pendingRegId) => {
+export const rejectRegistration = async (pendingRegId, currentUser = null) => {
   try {
+    // Önce pending registration'ı al (audit log için)
+    const { data: pendingReg, error: getError } = await supabase
+      .from('pending_registrations')
+      .select('*')
+      .eq('id', pendingRegId)
+      .single();
+    
+    if (getError) {
+      throw getError;
+    }
+    
+    // Pending registration'ı sil
     const { error } = await supabase
       .from('pending_registrations')
       .delete()
       .eq('id', pendingRegId);
     
     if (error) throw error;
+    
+
+    
+    // Bekleyen onay bildirimlerini güncelle
+    await createPendingApprovalNotification();
+    
     return { success: true };
   } catch (error) {
-    console.error('Reject registration error:', error);
     return { success: false, error: error.message };
   }
 };
@@ -399,7 +387,6 @@ export const deletePersonnel = async (id) => {
       .eq('employee_code', employeeCode);
     
     if (performanceError) {
-      console.warn('Performance data deletion warning:', performanceError);
       // Performance data silme hatası kritik değil, devam et
     }
     
@@ -410,7 +397,6 @@ export const deletePersonnel = async (id) => {
       .eq('employee_code', employeeCode);
     
     if (notesError) {
-      console.warn('Daily notes deletion warning:', notesError);
       // Daily notes silme hatası kritik değil, devam et
     }
     
@@ -421,7 +407,6 @@ export const deletePersonnel = async (id) => {
       .eq('employee_code', employeeCode);
     
     if (schedulesError) {
-      console.warn('Weekly schedules deletion warning:', schedulesError);
       // Weekly schedules silme hatası kritik değil, devam et
     }
     
@@ -2391,42 +2376,34 @@ export const deletePeriodAndShifts = async (periodId) => {
 // Audit Log functions - İşlem geçmişi fonksiyonları
 export const logAuditEvent = async (eventData) => {
   try {
-    console.log('🔍 Audit log kaydediliyor:', {
+    const auditData = {
+      user_id: eventData.userId,
+      user_email: eventData.userEmail,
+      user_name: eventData.userName,
       action: eventData.action,
-      tableName: eventData.tableName,
-      details: eventData.details
-    });
+      table_name: eventData.tableName,
+      record_id: eventData.recordId,
+      old_values: eventData.oldValues,
+      new_values: eventData.newValues,
+      ip_address: eventData.ipAddress,
+      user_agent: eventData.userAgent,
+      details: eventData.details,
+      created_at: new Date().toISOString()
+    };
     
     const { data, error } = await supabase
       .from('audit_logs')
-      .insert([{
-        user_id: eventData.userId,
-        user_email: eventData.userEmail,
-        user_name: eventData.userName,
-        action: eventData.action,
-        table_name: eventData.tableName,
-        record_id: eventData.recordId,
-        old_values: eventData.oldValues,
-        new_values: eventData.newValues,
-        ip_address: eventData.ipAddress,
-        user_agent: eventData.userAgent,
-        details: eventData.details,
-        created_at: new Date().toISOString()
-      }])
+      .insert([auditData])
       .select();
     
     if (error) {
-      console.error('❌ Audit log kaydetme hatası:', error);
       throw error;
     }
-    
-    console.log('✅ Audit log başarıyla kaydedildi:', data?.[0]?.id);
     
     // Bildirim oluştur - sadece önemli işlemler için
     try {
       // Giriş/çıkış bildirimlerini gösterme
       if (eventData.action === 'LOGIN' || eventData.action === 'LOGOUT') {
-        console.log('ℹ️ Giriş/çıkış bildirimi oluşturulmadı');
         return { success: true, data: data?.[0] };
       }
       
@@ -2448,7 +2425,6 @@ export const logAuditEvent = async (eventData) => {
       await createNotification(notificationData);
       
       // Toast bildirimi tetikle
-      console.log('🔔 Toast bildirimi tetikleniyor...');
       const toastEvent = new CustomEvent('new-notification', {
         detail: {
           title: notificationTitle,
@@ -2459,14 +2435,13 @@ export const logAuditEvent = async (eventData) => {
       });
       
       window.dispatchEvent(toastEvent);
-      console.log('✅ Bildirim başarıyla oluşturuldu ve toast tetiklendi');
     } catch (notificationError) {
       console.error('❌ Bildirim oluşturma hatası:', notificationError);
+      // Bildirim hatası olsa bile audit log kaydedildi, devam et
     }
     
     return { success: true, data: data?.[0] };
   } catch (error) {
-    console.error('❌ Audit log kaydetme hatası:', error);
     return { success: false, error: error.message };
   }
 };
@@ -2480,7 +2455,9 @@ const getNotificationTitle = (action, tableName) => {
     'BULK_CREATE': 'Toplu Ekleme',
     'BULK_DELETE': 'Toplu Silme',
     'LOGIN': 'Giriş',
-    'LOGOUT': 'Çıkış'
+    'LOGOUT': 'Çıkış',
+    'APPROVE_REGISTRATION': 'Kayıt Onayı',
+    'REJECT_REGISTRATION': 'Kayıt Reddi'
   };
   
   const tableMap = {
@@ -2491,7 +2468,8 @@ const getNotificationTitle = (action, tableName) => {
     'daily_notes': 'Günlük Not',
     'weekly_schedules': 'Vardiya',
     'performance_data': 'Performans Verisi',
-    'auth': 'Kimlik Doğrulama'
+    'auth': 'Kimlik Doğrulama',
+    'pending_registrations': 'Bekleyen Kayıt'
   };
   
   const actionText = actionMap[action] || action;
@@ -2509,7 +2487,9 @@ const getNotificationMessage = (action, tableName, details) => {
     'BULK_CREATE': 'toplu kayıt eklendi',
     'BULK_DELETE': 'toplu kayıt silindi',
     'LOGIN': 'sisteme giriş yapıldı',
-    'LOGOUT': 'sistemden çıkış yapıldı'
+    'LOGOUT': 'sistemden çıkış yapıldı',
+    'APPROVE_REGISTRATION': 'kullanıcı kaydı onaylandı',
+    'REJECT_REGISTRATION': 'kullanıcı kaydı reddedildi'
   };
   
   const tableMap = {
@@ -2520,7 +2500,8 @@ const getNotificationMessage = (action, tableName, details) => {
     'daily_notes': 'günlük not',
     'weekly_schedules': 'vardiya',
     'performance_data': 'performans verisi',
-    'auth': 'kimlik doğrulama'
+    'auth': 'kimlik doğrulama',
+    'pending_registrations': 'bekleyen kayıt'
   };
   
   const actionText = actionMap[action] || action.toLowerCase();
@@ -2531,8 +2512,6 @@ const getNotificationMessage = (action, tableName, details) => {
 
 export const getAuditLogs = async (filters = {}) => {
   try {
-    console.log('🔍 Audit loglar getiriliyor, filtreler:', filters);
-    
     let query = supabase
       .from('audit_logs')
       .select('*')
@@ -2571,14 +2550,11 @@ export const getAuditLogs = async (filters = {}) => {
     const { data, error } = await query;
     
     if (error) {
-      console.error('❌ Audit log getirme hatası:', error);
       throw error;
     }
     
-    console.log('✅ Audit loglar başarıyla getirildi:', data?.length || 0, 'kayıt');
     return { success: true, data: data || [] };
   } catch (error) {
-    console.error('❌ Audit log getirme hatası:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -3138,8 +3114,6 @@ export const deleteStoreWithAudit = async (id, currentUser) => {
 // Test fonksiyonu - audit log ekleme testi
 export const testAuditLog = async (currentUser) => {
   try {
-    console.log('🧪 Test audit log ekleniyor...');
-    
     const testData = {
       userId: currentUser?.id,
       userEmail: currentUser?.email,
@@ -3157,22 +3131,17 @@ export const testAuditLog = async (currentUser) => {
     const result = await logAuditEvent(testData);
     
     if (result.success) {
-      console.log('✅ Test audit log başarıyla eklendi!');
       return { success: true, message: 'Test audit log başarıyla eklendi' };
     } else {
-      console.error('❌ Test audit log eklenemedi:', result.error);
       return { success: false, error: result.error };
     }
   } catch (error) {
-    console.error('❌ Test audit log hatası:', error);
     return { success: false, error: error.message };
   }
 };
 
 export const bulkSavePerformanceDataWithAudit = async (performanceDataArray, currentUser, sheetNames = []) => {
   try {
-    console.log('🔍 Bulk performance data audit ile kaydediliyor:', performanceDataArray.length, 'kayıt');
-    
     const result = await bulkSavePerformanceData(performanceDataArray, sheetNames);
     
     if (result.success) {
@@ -3210,7 +3179,6 @@ export const createNotification = async (notificationData) => {
     if (error) throw error;
     return { success: true, data: data[0] };
   } catch (error) {
-    console.error('Bildirim oluşturma hatası:', error);
     return { success: false, error: error.message };
   }
 };
@@ -3353,11 +3321,71 @@ export const deleteAllNotifications = async (userId) => {
   }
 };
 
+// Bekleyen onaylar için bildirim oluştur
+export const createPendingApprovalNotification = async () => {
+  try {
+    // Admin ve yönetici kullanıcıları bul
+    const { data: adminUsers, error: adminError } = await supabase
+      .from('users')
+      .select('id, email, full_name, role')
+      .in('role', ['admin', 'yönetici'])
+      .eq('is_active', true);
+    
+    if (adminError) throw adminError;
+    
+    // Bekleyen onay sayısını al
+    const pendingCount = await getPendingRegistrationsCount();
+    
+    if (pendingCount.success && pendingCount.count > 0) {
+      // Her admin/yönetici için bildirim oluştur
+      const notifications = adminUsers.map(user => ({
+        user_id: user.id,
+        user_email: user.email,
+        user_name: user.full_name,
+        title: 'Bekleyen Kullanıcı Onayı',
+        message: `${pendingCount.count} adet kullanıcı kaydı onayınızda bekliyor. Admin panelinden inceleyebilirsiniz.`,
+        type: 'audit', // 'pending_approval' yerine 'audit' kullan
+        action_type: 'PENDING_APPROVAL',
+        table_name: 'pending_registrations',
+        record_id: null,
+        is_read: false,
+        created_at: new Date().toISOString()
+      }));
+      
+      // Bildirimleri toplu olarak ekle
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notifications)
+        .select();
+      
+      if (error) throw error;
+      return { success: true, data: data };
+    }
+    
+    return { success: true, data: [] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Bekleyen onay bildirimlerini temizle
+export const clearPendingApprovalNotifications = async () => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('action_type', 'PENDING_APPROVAL'); // type yerine action_type kullan
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 // Chat için gerçek kullanıcıları getir
 export const getChatUsers = async (currentUserId) => {
   try {
-    console.log('🔍 getChatUsers çağrıldı, currentUserId:', currentUserId);
-    
     // Users tablosundan gerçek kullanıcıları al
     const { data: users, error } = await supabase
       .from('users')
@@ -3365,10 +3393,7 @@ export const getChatUsers = async (currentUserId) => {
       .neq('id', currentUserId)
       .order('full_name');
 
-    console.log('📋 Veritabanından gelen kullanıcılar:', users);
-
     if (error) {
-      console.error('❌ Users yüklenirken hata:', error);
       return { success: false, error };
     }
 
@@ -3749,6 +3774,12 @@ export const updateStoreCoordinatesFromExcel = async (excelData) => {
     return { success: false, error: error.message };
   }
 };
+
+// Debug function to test current user structure
+
+
+
+
 
 
 

@@ -168,7 +168,14 @@ const AdminPanel = ({ userRole, currentUser }) => {
     try {
       const result = await getAllUsers();
       if (result.success) {
-        setUsers(result.data);
+        // Role göre sıralama: admin -> yönetici -> kullanıcı
+        const sortedUsers = result.data.sort((a, b) => {
+          const roleOrder = { 'admin': 1, 'yönetici': 2, 'kullanıcı': 3 };
+          const roleA = roleOrder[a.role] || 4;
+          const roleB = roleOrder[b.role] || 4;
+          return roleA - roleB;
+        });
+        setUsers(sortedUsers);
       } else {
         console.error('❌ Kullanıcılar yüklenemedi:', result.error);
       }
@@ -212,7 +219,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
 
   const handleApproveRegistration = async (pendingRegId) => {
     try {
-      const result = await approveRegistration(pendingRegId);
+      const result = await approveRegistration(pendingRegId, currentUser);
       if (result.success) {
         alert('✅ Kullanıcı başarıyla onaylandı!');
         loadPendingRegistrations();
@@ -232,7 +239,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
     }
     
     try {
-      const result = await rejectRegistration(pendingRegId);
+      const result = await rejectRegistration(pendingRegId, currentUser);
       if (result.success) {
         alert('✅ Kayıt isteği reddedildi!');
         loadPendingRegistrations();
@@ -244,6 +251,8 @@ const AdminPanel = ({ userRole, currentUser }) => {
       alert('❌ Reddetme hatası: ' + error.message);
     }
   };
+
+
 
   // Türkçe karakterleri İngilizce karakterlere çeviren fonksiyon
   const normalizeForEmail = (str) => {
@@ -413,7 +422,6 @@ Devam etmek istediğinizden emin misiniz?`;
     setDeletingPerformanceData(true);
 
     try {
-      console.log('🗑️ Tüm performans verileri siliniyor...');
       const result = await deleteAllPerformanceDataWithAudit(currentUser);
       
       if (result.success) {
@@ -458,7 +466,6 @@ Devam etmek istediğinizden emin misiniz?`;
     setDeletingShiftData(true);
 
     try {
-      console.log('🗑️ Tüm personel kontrol verileri siliniyor...');
       const result = await clearAllShiftDataWithAudit(currentUser);
       
       if (result.success) {
@@ -852,8 +859,6 @@ Devam etmek istediğinizden emin misiniz?`;
     
     const loadAvailableFilters = async () => {
       try {
-        console.log('🔍 Filtre verileri yükleniyor...');
-        
         // Mevcut audit loglardan kullanıcıları, action'ları ve tabloları çıkar
         const { data: allLogs, error } = await supabase
           .from('audit_logs')
@@ -861,32 +866,24 @@ Devam etmek istediğinizden emin misiniz?`;
           .order('created_at', { ascending: false });
         
         if (error) {
-          console.error('❌ Audit log verileri getirilemedi:', error);
           return;
         }
-        
-        console.log('🔍 Bulunan audit loglar:', allLogs?.length || 0);
         
         if (allLogs && allLogs.length > 0) {
           // Benzersiz kullanıcıları çıkar
           const uniqueUsers = [...new Set(allLogs.map(log => `${log.user_name} (${log.user_email})`))];
-          console.log('🔍 Benzersiz kullanıcılar:', uniqueUsers);
           setAvailableUsers(uniqueUsers);
           
           // Benzersiz action'ları çıkar
           const uniqueActions = [...new Set(allLogs.map(log => log.action))];
-          console.log('🔍 Benzersiz action\'lar:', uniqueActions);
           setAvailableActions(uniqueActions);
           
           // Benzersiz tabloları çıkar
           const uniqueTables = [...new Set(allLogs.map(log => log.table_name))];
-          console.log('🔍 Benzersiz tablolar:', uniqueTables);
           setAvailableTables(uniqueTables);
-        } else {
-          console.log('🔍 Audit log verisi bulunamadı');
         }
       } catch (error) {
-        console.error('❌ Filtre verileri yüklenemedi:', error);
+        // Hata durumunda sessizce devam et
       }
     };
 
@@ -1437,11 +1434,12 @@ Devam etmek istediğinizden emin misiniz?`;
               <MenuButton
                 id="pending_registrations"
                 icon={UserPlus}
-                label="Bekleyen Kayıtlar"
+                label="Bekleyen Onaylar"
                 active={activeSection === 'pending_registrations'}
                 onClick={setActiveSection}
                 count={pendingCount}
               />
+
             </div>
 
             {/* Main Content */}
@@ -1497,6 +1495,7 @@ Devam etmek istediğinizden emin misiniz?`;
               {activeSection === 'pending_registrations' && (
                 <PendingRegistrationsSection />
               )}
+              
             </div>
           </div>
         </div>

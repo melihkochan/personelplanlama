@@ -407,7 +407,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
 
       {/* Add Store Modal */}
       {showAddStoreModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-2xl p-8 max-w-2xl w-full m-4 max-h-screen overflow-y-auto">
             <h3 className="text-2xl font-bold mb-6 text-gray-900">Yeni Mağaza Ekle</h3>
             
@@ -537,7 +537,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
 
       {/* Edit Store Modal */}
       {editingStore && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-2xl p-8 max-w-2xl w-full m-4 max-h-screen overflow-y-auto">
             <h3 className="text-2xl font-bold mb-6 text-gray-900">Mağaza Düzenle</h3>
             

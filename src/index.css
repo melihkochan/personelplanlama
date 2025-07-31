@@ -39,3 +39,35 @@ code {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: #9ca3af;
 } 
+
+/* Custom tooltip styles */
+.custom-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.custom-tooltip .leaflet-tooltip-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Teardrop pin styles */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Distance label styles */
+.distance-label {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.distance-label .leaflet-div-icon-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+} 

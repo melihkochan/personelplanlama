@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText, RefreshCw, UserPlus, MessageCircle } from 'lucide-react';
-import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, getAuditLogs, getAuditLogStats, supabase } from '../../services/supabase';
+import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText, RefreshCw, UserPlus, MessageCircle, UserCheck } from 'lucide-react';
+import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, getAuditLogs, getAuditLogStats, getPendingRegistrations, getPendingRegistrationsCount, approveRegistration, rejectRegistration, supabase } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
 const AdminPanel = ({ userRole, currentUser }) => {
@@ -44,6 +44,11 @@ const AdminPanel = ({ userRole, currentUser }) => {
     limit: 50
   });
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+
+  // Pending Registrations state'leri
+  const [pendingRegistrations, setPendingRegistrations] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [loadingPendingRegistrations, setLoadingPendingRegistrations] = useState(false);
 
 
   // Mevcut kullanıcının email'ini al
@@ -109,7 +114,17 @@ const AdminPanel = ({ userRole, currentUser }) => {
   // Verileri yükle
   useEffect(() => {
     loadUsers();
+    loadPendingRegistrations();
+    loadPendingCount();
   }, []);
+
+  // Pending registrations section'ına geçildiğinde verileri yenile
+  useEffect(() => {
+    if (activeSection === 'pending_registrations') {
+      loadPendingRegistrations();
+      loadPendingCount();
+    }
+  }, [activeSection]);
 
   // Real-time users güncelleme
   useEffect(() => {
@@ -161,6 +176,72 @@ const AdminPanel = ({ userRole, currentUser }) => {
       console.error('❌ Kullanıcı yükleme hatası:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Pending registrations fonksiyonları
+  const loadPendingRegistrations = async () => {
+    setLoadingPendingRegistrations(true);
+    try {
+      const result = await getPendingRegistrations();
+      
+      if (result.success) {
+        setPendingRegistrations(result.data || []);
+      } else {
+        console.error('❌ Pending registrations yüklenemedi:', result.error);
+        setPendingRegistrations([]);
+      }
+    } catch (error) {
+      console.error('❌ Pending registrations yükleme hatası:', error);
+      setPendingRegistrations([]);
+    } finally {
+      setLoadingPendingRegistrations(false);
+    }
+  };
+
+  const loadPendingCount = async () => {
+    try {
+      const result = await getPendingRegistrationsCount();
+      if (result.success) {
+        setPendingCount(result.count);
+      }
+    } catch (error) {
+      console.error('Pending count yükleme hatası:', error);
+    }
+  };
+
+  const handleApproveRegistration = async (pendingRegId) => {
+    try {
+      const result = await approveRegistration(pendingRegId);
+      if (result.success) {
+        alert('✅ Kullanıcı başarıyla onaylandı!');
+        loadPendingRegistrations();
+        loadPendingCount();
+        loadUsers(); // Kullanıcı listesini yenile
+      } else {
+        alert('❌ Onaylama hatası: ' + result.error);
+      }
+    } catch (error) {
+      alert('❌ Onaylama hatası: ' + error.message);
+    }
+  };
+
+  const handleRejectRegistration = async (pendingRegId) => {
+    if (!confirm('❓ Bu kayıt isteğini reddetmek istediğinizden emin misiniz?')) {
+      return;
+    }
+    
+    try {
+      const result = await rejectRegistration(pendingRegId);
+      if (result.success) {
+        alert('✅ Kayıt isteği reddedildi!');
+        loadPendingRegistrations();
+        loadPendingCount();
+      } else {
+        alert('❌ Reddetme hatası: ' + result.error);
+      }
+    } catch (error) {
+      alert('❌ Reddetme hatası: ' + error.message);
     }
   };
 
@@ -396,7 +477,7 @@ Devam etmek istediğinizden emin misiniz?`;
     }
   };
 
-  const MenuButton = ({ id, icon: Icon, label, active, onClick }) => (
+  const MenuButton = ({ id, icon: Icon, label, active, onClick, count }) => (
     <button
       onClick={() => onClick(id)}
       className={`
@@ -409,6 +490,17 @@ Devam etmek istediğinizden emin misiniz?`;
     >
       <Icon className="w-4 h-4" />
       <span className="font-medium">{label}</span>
+      {count > 0 && (
+        <span className={`
+          ml-auto px-2 py-1 rounded-full text-xs font-bold
+          ${active 
+            ? 'bg-white text-blue-600' 
+            : 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md'
+          }
+        `}>
+          {count}
+        </span>
+      )}
     </button>
   );
 
@@ -1148,7 +1240,108 @@ Devam etmek istediğinizden emin misiniz?`;
     );
   };
 
+  const PendingRegistrationsSection = () => {
+    const formatDate = (dateString) => {
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+          return 'Tarih bilgisi yok';
+        }
+        
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          return 'Bugün';
+        } else if (diffDays === 2) {
+          return 'Dün';
+        } else if (diffDays <= 7) {
+          return `${diffDays - 1} gün önce`;
+        } else {
+          return date.toLocaleDateString('tr-TR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      } catch (error) {
+        return 'Tarih bilgisi yok';
+      }
+    };
+    
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                <UserPlus className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Bekleyen Kullanıcı İstekleri</h3>
+                <p className="text-sm text-gray-600">Onay bekleyen kayıt istekleri</p>
+              </div>
+            </div>
+          </div>
 
+          {loadingPendingRegistrations ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          ) : pendingRegistrations.length === 0 ? (
+            <div className="text-center py-8">
+              <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500">Bekleyen kayıt isteği bulunmuyor</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingRegistrations.map((registration) => (
+                <div key={registration.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{registration.fullName}</h4>
+                          <p className="text-sm text-gray-600">@{registration.username}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span>Rol: {registration.role}</span>
+                        <span>•</span>
+                        <span>Tarih: {formatDate(registration.created_at)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleApproveRegistration(registration.id)}
+                        className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-1"
+                      >
+                        <Check className="w-4 h-4" />
+                        Onayla
+                      </button>
+                      <button
+                        onClick={() => handleRejectRegistration(registration.id)}
+                        className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1"
+                      >
+                        <X className="w-4 h-4" />
+                        Reddet
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
@@ -1241,6 +1434,14 @@ Devam etmek istediğinizden emin misiniz?`;
                 active={activeSection === 'audit_logs'}
                 onClick={setActiveSection}
               />
+              <MenuButton
+                id="pending_registrations"
+                icon={UserPlus}
+                label="Bekleyen Kayıtlar"
+                active={activeSection === 'pending_registrations'}
+                onClick={setActiveSection}
+                count={pendingCount}
+              />
             </div>
 
             {/* Main Content */}
@@ -1293,6 +1494,9 @@ Devam etmek istediğinizden emin misiniz?`;
               {activeSection === 'settings' && <SettingsSection />}
               {activeSection === 'database' && <DatabaseSection />}
               {activeSection === 'audit_logs' && <AuditLogsSection />}
+              {activeSection === 'pending_registrations' && (
+                <PendingRegistrationsSection />
+              )}
             </div>
           </div>
         </div>

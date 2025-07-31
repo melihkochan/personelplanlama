@@ -27,15 +27,192 @@ export const supabaseAdmin = supabaseAdminInstance || (supabaseAdminInstance = c
 // Auth functions
 export const signIn = async (email, password) => {
   try {
+    // Önce normal giriş dene
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
     
-    if (error) throw error;
+    if (error) {
+      // Giriş başarısızsa, pending registration kontrolü yap
+      const isUsername = !email.includes('@');
+      if (isUsername) {
+        const pendingCheck = await checkPendingRegistration(email);
+        if (pendingCheck.success && pendingCheck.hasPendingRegistration) {
+          return { 
+            success: false, 
+            error: 'İsteğiniz admin onayında bekliyor. Onaylandıktan sonra giriş yapabilirsiniz.',
+            hasPendingRegistration: true 
+          };
+        }
+      }
+      throw error;
+    }
+    
     return { success: true, data };
   } catch (error) {
     console.error('Sign in error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Pending registration functions
+export const checkPendingRegistration = async (username) => {
+  try {
+    const { data, error } = await supabase
+      .from('pending_registrations')
+      .select('*')
+      .eq('username', username)
+      .single();
+    
+    if (error && error.code === 'PGRST116') {
+      // No pending registration found
+      return { success: true, hasPendingRegistration: false };
+    }
+    
+    if (error) throw error;
+    
+    return { success: true, hasPendingRegistration: true, data };
+  } catch (error) {
+    console.error('Check pending registration error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const createPendingRegistration = async (registrationData) => {
+  try {
+    const { data, error } = await supabase
+      .from('pending_registrations')
+      .insert([registrationData])
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Create pending registration error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPendingRegistrations = async () => {
+  try {
+    console.log('🔍 getPendingRegistrations çağrıldı');
+    const { data, error } = await supabase
+      .from('pending_registrations')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    console.log('📊 Supabase response:', { data, error });
+    
+    if (error) throw error;
+    console.log('✅ getPendingRegistrations başarılı, data:', data);
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('❌ Get pending registrations error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const getPendingRegistrationsCount = async () => {
+  try {
+    const { count, error } = await supabase
+      .from('pending_registrations')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) throw error;
+    return { success: true, count: count || 0 };
+  } catch (error) {
+    console.error('Get pending registrations count error:', error);
+    return { success: false, error: error.message, count: 0 };
+  }
+};
+
+export const approveRegistration = async (pendingRegId) => {
+  try {
+    // Önce pending registration'ı al
+    const { data: pendingReg, error: getError } = await supabase
+      .from('pending_registrations')
+      .select('*')
+      .eq('id', pendingRegId)
+      .single();
+    
+    if (getError) throw getError;
+    
+    // Email'i username + @gratis.com olarak oluştur
+    const email = `${pendingReg.username}@gratis.com`;
+    
+    // Admin API ile kullanıcı oluştur
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      password: pendingReg.password,
+      email_confirm: true,
+      user_metadata: {
+        username: pendingReg.username,
+        full_name: pendingReg.full_name,
+        role: pendingReg.role || 'kullanıcı'
+      }
+    });
+    
+    if (authError) throw authError;
+    
+    // Users tablosuna ekle
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .insert([{
+        id: authData.user.id,
+        email: email,
+        username: pendingReg.username,
+        full_name: pendingReg.full_name,
+        role: pendingReg.role || 'kullanıcı',
+        is_active: true
+      }])
+      .select();
+    
+    if (userError) throw userError;
+    
+    // Pending registration'ı sil
+    const { error: deleteError } = await supabase
+      .from('pending_registrations')
+      .delete()
+      .eq('id', pendingRegId);
+    
+    if (deleteError) {
+      console.warn('Pending registration silme hatası:', deleteError);
+    }
+    
+    return { success: true, data: userData[0] };
+  } catch (error) {
+    console.error('Approve registration error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const rejectRegistration = async (pendingRegId) => {
+  try {
+    const { error } = await supabase
+      .from('pending_registrations')
+      .delete()
+      .eq('id', pendingRegId);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Reject registration error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deletePendingRegistration = async (pendingRegId) => {
+  try {
+    const { error } = await supabase
+      .from('pending_registrations')
+      .delete()
+      .eq('id', pendingRegId);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Delete pending registration error:', error);
     return { success: false, error: error.message };
   }
 };

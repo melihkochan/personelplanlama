@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { supabase, logAuditEvent, updateUserOnlineStatus } from '../services/supabase';
+import { supabase, logAuditEvent, updateUserOnlineStatus, checkPendingRegistration } from '../services/supabase';
 
 const AuthContext = createContext();
 
@@ -190,9 +190,22 @@ export const AuthProvider = ({ children }) => {
       setIsLoggingIn(true);
       
       let email = usernameOrEmail;
+      let isUsername = false;
       
       // Eğer @ işareti yoksa kullanıcı adı olarak kabul et
       if (!usernameOrEmail.includes('@')) {
+        isUsername = true;
+        
+        // Önce pending registration kontrolü yap
+        const pendingCheck = await checkPendingRegistration(usernameOrEmail);
+        if (pendingCheck.success && pendingCheck.hasPendingRegistration) {
+          return { 
+            success: false, 
+            error: '🎯 İsteğiniz admin onayında bekliyor. Onaylandıktan sonra giriş yapabilirsiniz.',
+            hasPendingRegistration: true 
+          };
+        }
+        
         // Users tablosundan username ile email'i bul
         const { data: userData, error: userError } = await supabase
           .from('users')

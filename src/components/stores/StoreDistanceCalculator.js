@@ -357,7 +357,7 @@ const StoreDistanceCalculator = () => {
   const drawRealisticRoute = (store1, store2) => {
     if (!map) return;
 
-    console.log('Mock rota çiziliyor');
+    console.log('Kuş bakışı düz çizgi çiziliyor');
 
     // Önceki rotayı temizle
     if (routePolyline) {
@@ -365,16 +365,19 @@ const StoreDistanceCalculator = () => {
     }
 
     try {
-      // Mock rota için ara noktalar oluştur
-      const points = generateRealisticRoute(store1, store2);
+      // Sadece başlangıç ve bitiş noktaları - düz çizgi
+      const points = [
+        [store1.latitude, store1.longitude],
+        [store2.latitude, store2.longitude]
+      ];
       
-      console.log('Oluşturulan mock rota noktaları:', points);
+      console.log('Kuş bakışı çizgi noktaları:', points);
       
       const polyline = window.L.polyline(points, {
         color: '#3B82F6', // Mavi renk
-        weight: 8,
-        opacity: 0.9,
-        dashArray: '8, 12'
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '10, 10'
       });
 
       polyline.addTo(map);
@@ -383,46 +386,8 @@ const StoreDistanceCalculator = () => {
       // Haritayı rotaya odakla
       map.fitBounds(polyline.getBounds());
     } catch (error) {
-      console.error('Mock rota çizme hatası:', error);
+      console.error('Kuş bakışı çizgi çizme hatası:', error);
     }
-  };
-
-  // Gerçekçi rota noktaları oluşturan fonksiyon
-  const generateRealisticRoute = (store1, store2) => {
-    const points = [];
-    
-    // Başlangıç noktası
-    points.push([store1.latitude, store1.longitude]);
-    
-    // Ara noktalar oluştur (gerçekçi rota simülasyonu)
-    const straightDistance = window.currentStraightDistance || 10;
-    const numPoints = Math.max(5, Math.floor(straightDistance / 5)); // Her 5km'de bir nokta
-    
-    for (let i = 1; i < numPoints; i++) {
-      const ratio = i / numPoints;
-      
-      // Kuş bakışı çizgi üzerinde ara nokta
-      const lat = store1.latitude + (store2.latitude - store1.latitude) * ratio;
-      const lng = store1.longitude + (store2.longitude - store1.longitude) * ratio;
-      
-      // Daha gerçekçi sapma ekle (yollar düz gitmez, kıvrımlı)
-      const deviationLat = 0.02 * Math.sin(ratio * Math.PI * 3) * (Math.random() - 0.5);
-      const deviationLng = 0.02 * Math.cos(ratio * Math.PI * 2) * (Math.random() - 0.5);
-      
-      // Ekstra ara noktalar ekle (daha kıvrımlı rota)
-      if (i < numPoints - 1) {
-        const extraLat = lat + deviationLat * 0.5;
-        const extraLng = lng + deviationLng * 0.5;
-        points.push([extraLat, extraLng]);
-      }
-      
-      points.push([lat + deviationLat, lng + deviationLng]);
-    }
-    
-    // Bitiş noktası
-    points.push([store2.latitude, store2.longitude]);
-    
-    return points;
   };
 
   const clearSelection = () => {

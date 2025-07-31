@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen } from 'lucide-react';
 
 import PersonelList from './components/personnel/PersonelList';
 import VehicleList from './components/vehicles/VehicleList';
@@ -19,6 +19,7 @@ import SimpleNotification from './components/notifications/SimpleNotification';
 import UnauthorizedAccess from './components/ui/UnauthorizedAccess';
 import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
+import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, supabase } from './services/supabase';
 import './App.css';
@@ -64,6 +65,7 @@ function MainApp() {
   const [notificationMessage, setNotificationMessage] = useState('');
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [showRulesModal, setShowRulesModal] = useState(false);
 
 
   // Bildirim sayısına göre renk belirleme fonksiyonu
@@ -626,14 +628,23 @@ function MainApp() {
         <div className="w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col">
           {/* Sidebar Header */}
           <div className="p-4 border-b border-gray-200/50">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Sparkles className="w-5 h-5 text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">Personel Takip</h1>
+                  <p className="text-xs text-gray-500">Modern İş Yönetimi</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">Personel Takip</h1>
-                <p className="text-xs text-gray-500">Modern İş Yönetimi</p>
-              </div>
+              <button
+                onClick={() => setShowRulesModal(true)}
+                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                title="Sistem Kuralları"
+              >
+                <Shield className="w-5 h-5 text-blue-600" />
+              </button>
             </div>
           </div>
 
@@ -675,6 +686,8 @@ function MainApp() {
                 </span>
               )}
             </button>
+
+
 
             {/* Personel Yönetimi Grubu */}
             <div className="space-y-1">
@@ -915,6 +928,13 @@ function MainApp() {
               </div>
               <div className="flex items-center space-x-2">
                 <button
+                  onClick={() => setShowRulesModal(true)}
+                  className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                  title="Sistem Kuralları"
+                >
+                  <Shield className="w-5 h-5 text-blue-600" />
+                </button>
+                <button
                   onClick={() => setShowNotificationPanel(true)}
                   className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
                 >
@@ -1093,6 +1113,8 @@ function MainApp() {
                       Personel Araç Dağılımı
                     </button>
                   </div>
+
+
 
                   {/* Sistem Yönetimi Grubu */}
                   <div className="space-y-2">
@@ -1600,6 +1622,8 @@ function MainApp() {
             />
               </div>
             )}
+
+
           </main>
         </div>
       </div>
@@ -1630,6 +1654,29 @@ function MainApp() {
 
       {/* Oturum Zaman Aşımı Modalı */}
       <SessionTimeoutModal />
+
+      {/* Kurallar Modalı */}
+      {showRulesModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <Shield className="w-6 h-6 text-blue-600" />
+                <h2 className="text-xl font-bold text-gray-900">Sistem Kuralları</h2>
+              </div>
+              <button
+                onClick={() => setShowRulesModal(false)}
+                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+              <RulesApp currentUser={user} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

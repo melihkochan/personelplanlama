@@ -362,9 +362,10 @@ const TeamPersonnel = () => {
     <div style={{ 
       padding: '8px', 
       minHeight: '100vh',
-      height: '100vh',
       backgroundColor: 'white',
-      position: 'relative'
+      position: 'relative',
+      margin: 0,
+      background: 'white'
     }}>
       {/* Header */}
       <Card 
@@ -407,26 +408,27 @@ const TeamPersonnel = () => {
       </Card>
 
       {/* İstatistikler */}
-      <Row gutter={8} style={{ marginBottom: '8px' }}>
+      <Row gutter={12} style={{ marginBottom: '12px' }}>
         <Col span={4}>
-          <Card size="small">
+          <Card size="default" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <Statistic
-              title={<span style={{ fontSize: '11px' }}>Toplam Ekip Personeli</span>}
+              title={<span style={{ fontSize: '13px', fontWeight: '500' }}>Toplam Ekip Personeli</span>}
               value={teamPersonnel.length}
-              prefix={<UserOutlined style={{ fontSize: '12px' }} />}
-              valueStyle={{ fontSize: '14px' }}
+              prefix={<UserOutlined style={{ fontSize: '16px', color: '#1890ff' }} />}
+              valueStyle={{ fontSize: '20px', fontWeight: 'bold', color: '#1890ff' }}
             />
           </Card>
         </Col>
         {ekipOptions.map(ekip => (
           <Col span={5} key={ekip}>
-            <Card size="small">
+            <Card size="default" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
               <Statistic
-                title={<span style={{ fontSize: '11px' }}>{ekip}</span>}
+                title={<span style={{ fontSize: '13px', fontWeight: '500' }}>{ekip}</span>}
                 value={teamPersonnel.filter(p => p.ekip_bilgisi === ekip).length}
-                prefix={<TeamOutlined style={{ fontSize: '12px' }} />}
+                prefix={<TeamOutlined style={{ fontSize: '16px' }} />}
                 valueStyle={{ 
-                  fontSize: '14px',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
                   color: getTeamColor(ekip) === 'green' ? '#52c41a' : 
                          getTeamColor(ekip) === 'blue' ? '#1890ff' : 
                          getTeamColor(ekip) === 'orange' ? '#fa8c16' : '#8c8c8c' 

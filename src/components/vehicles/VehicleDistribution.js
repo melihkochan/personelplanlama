@@ -7,47 +7,145 @@ const VehicleDistribution = () => {
   const [personnelData, setPersonnelData] = useState([]);
   const [vehicleData, setVehicleData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(null); // Seçili ay
   const [selectedDay, setSelectedDay] = useState(null);
+  const [availableDates, setAvailableDates] = useState([]);
+  const [selectedDates, setSelectedDates] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  // Mevcut ayları ve yılları hesapla
-  const availableMonthsAndYears = useMemo(() => {
-    if (!performanceData.length) return { months: [], years: [] };
-    
-    const monthYearSet = new Set();
-    performanceData.forEach(record => {
-      const recordDate = new Date(record.date);
-      const month = recordDate.getMonth();
-      const year = recordDate.getFullYear();
-      monthYearSet.add(`${year}-${month}`);
+  // Seçili ay değiştiğinde tarihleri filtrele
+  useEffect(() => {
+    console.log('🔄 Ay değişti, selectedMonth:', selectedMonth, 'availableDates:', availableDates.length);
+    if (availableDates.length > 0) {
+      if (selectedMonth) {
+        // Belirli bir ay seçilmişse, o ayın tarihlerini seç
+        const monthDates = getDatesForMonth(availableDates, selectedMonth);
+        const monthDateIds = monthDates.map(item => item.id);
+        console.log('📅 Seçilen ay tarihleri:', monthDateIds.length);
+        setSelectedDates(monthDateIds);
+      } else {
+        // "Tüm Aylar" seçilmişse, tüm tarihleri seç
+        const allDateIds = availableDates.map(item => item.id);
+        console.log('📅 Tüm tarihler seçildi:', allDateIds.length);
+        setSelectedDates(allDateIds);
+      }
+    }
+  }, [selectedMonth, availableDates]);
+
+  // Helper fonksiyonlar
+  const getAvailableMonths = (dates) => {
+    console.log('🔍 getAvailableMonths çağrıldı, dates length:', dates.length);
+    const months = new Set();
+    dates.forEach((item, index) => {
+      console.log(`📅 Item ${index}:`, item);
+      if (item.date) {
+        console.log('📅 Date string:', item.date);
+        
+        // YYYY-MM-DD formatını kontrol et
+        if (item.date.includes('-')) {
+          const [year, month, day] = item.date.split('-');
+          console.log('📅 Parsed (YYYY-MM-DD):', { year, month, day });
+          if (month && year) {
+            const monthKey = `${year}-${month.padStart(2, '0')}`;
+            months.add(monthKey);
+            console.log('📅 Ay eklendi:', monthKey);
+          } else {
+            console.log('⚠️ Geçersiz tarih formatı:', item.date);
+          }
+        } else if (item.date.includes('.')) {
+          // DD.MM.YYYY formatını kontrol et
+          const [day, month, year] = item.date.split('.');
+          console.log('📅 Parsed (DD.MM.YYYY):', { day, month, year });
+          if (month && year) {
+            const monthKey = `${year}-${month.padStart(2, '0')}`;
+            months.add(monthKey);
+            console.log('📅 Ay eklendi:', monthKey);
+          } else {
+            console.log('⚠️ Geçersiz tarih formatı:', item.date);
+          }
+        } else {
+          console.log('⚠️ Bilinmeyen tarih formatı:', item.date);
+        }
+      } else {
+        console.log('⚠️ Date property yok:', item);
+      }
     });
-    
-    const months = [];
-    const years = [];
+    const result = Array.from(months).sort();
+    console.log('📅 Bulunan aylar:', result);
+    return result;
+  };
+
+  const getMonthDisplayName = (monthKey) => {
+    const [year, month] = monthKey.split('-');
     const monthNames = [
       'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
     ];
-    
-    monthYearSet.forEach(monthYear => {
-      const [year, month] = monthYear.split('-').map(Number);
-      months.push({ value: month, label: monthNames[month], year });
-      years.push(year);
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  const getDatesForMonth = (dates, monthKey) => {
+    return dates.filter(item => {
+      if (item.date) {
+        let itemMonthKey;
+        
+        // YYYY-MM-DD formatını kontrol et
+        if (item.date.includes('-')) {
+          const [year, month, day] = item.date.split('-');
+          if (month && year) {
+            itemMonthKey = `${year}-${month.padStart(2, '0')}`;
+          }
+        } else if (item.date.includes('.')) {
+          // DD.MM.YYYY formatını kontrol et
+          const [day, month, year] = item.date.split('.');
+          if (month && year) {
+            itemMonthKey = `${year}-${month.padStart(2, '0')}`;
+          }
+        }
+        
+        return itemMonthKey === monthKey;
+      }
+      return false;
     });
+  };
+
+  const getLatestMonth = (dates) => {
+    if (dates.length === 0) return null;
     
-    // Ayları yıla göre sırala
-    months.sort((a, b) => {
-      if (a.year !== b.year) return b.year - a.year;
-      return b.value - a.value;
-    });
+    const parseDate = (dateStr) => {
+      if (!dateStr) return null;
+      
+      // YYYY-MM-DD formatını kontrol et
+      if (dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        if (!day || !month || !year) return null;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else if (dateStr.includes('.')) {
+        // DD.MM.YYYY formatını kontrol et
+        const [day, month, year] = dateStr.split('.');
+        if (!day || !month || !year) return null;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      }
+      
+      return null;
+    };
     
-    // Yılları sırala
-    years.sort((a, b) => b - a);
+    const validDates = dates
+      .filter(item => item.date)
+      .map(item => ({ ...item, parsedDate: parseDate(item.date) }))
+      .filter(item => item.parsedDate !== null)
+      .sort((a, b) => b.parsedDate - a.parsedDate);
     
-    return { months, years: [...new Set(years)] };
-  }, [performanceData]);
+    if (validDates.length === 0) return null;
+    
+    const latestDate = validDates[0];
+    const month = (latestDate.parsedDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = latestDate.parsedDate.getFullYear();
+    
+    return `${year}-${month}`;
+  };
+
+
 
   // Pozisyon sıralama değeri - Sevkiyat Elemanları önce, sonra Şoförler
   const getPositionOrder = (position) => {
@@ -132,14 +230,13 @@ const VehicleDistribution = () => {
     }
     
     const filteredData = performanceData.filter(record => {
-      const recordDate = new Date(record.date);
-      const recordMonth = recordDate.getMonth();
-      const recordYear = recordDate.getFullYear();
+      const key = `${record.date}_${record.shift}`;
       if (selectedDay) {
+        const recordDate = new Date(record.date);
         const selectedDate = new Date(selectedDay);
         return recordDate.toDateString() === selectedDate.toDateString();
       } else {
-        return recordMonth === selectedMonth && recordYear === selectedYear;
+        return selectedDates.includes(key);
       }
     });
     
@@ -269,7 +366,7 @@ const VehicleDistribution = () => {
     }
     
     return result;
-  }, [performanceData, personnelData, selectedMonth, selectedYear, selectedDay, vehicleData, sortConfig]);
+  }, [performanceData, personnelData, selectedDates, selectedDay, vehicleData, sortConfig]);
 
   // Sıralama ikonu fonksiyonu
   const getSortIcon = (column) => {
@@ -368,7 +465,57 @@ const VehicleDistribution = () => {
         ]);
         
         if (performanceResult.success) {
-          setPerformanceData(performanceResult.data || []);
+          const data = performanceResult.data || [];
+          setPerformanceData(data);
+          
+          // Available dates hazırla
+          const availableDatesArray = [];
+          const dateShiftMap = new Map();
+          
+          console.log('🔍 Performance data yükleniyor:', data.length, 'kayıt');
+          
+          data.forEach(record => {
+            console.log('📅 Record date:', record.date, 'shift:', record.shift);
+            const key = `${record.date}_${record.shift}`;
+            if (!dateShiftMap.has(key)) {
+              dateShiftMap.set(key, true);
+              availableDatesArray.push({
+                id: key,
+                date: record.date,
+                shift: record.shift
+              });
+            }
+          });
+          
+          console.log('📅 Available dates hazırlandı:', availableDatesArray.length, 'tarih');
+          
+          // Available dates'i sırala
+          availableDatesArray.sort((a, b) => {
+            const parseDate = (dateStr) => {
+              if (!dateStr) return new Date(0);
+              
+              // YYYY-MM-DD formatını kontrol et
+              if (dateStr.includes('-')) {
+                const [year, month, day] = dateStr.split('-');
+                if (!day || !month || !year) return new Date(0);
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              } else if (dateStr.includes('.')) {
+                // DD.MM.YYYY formatını kontrol et
+                const [day, month, year] = dateStr.split('.');
+                if (!day || !month || !year) return new Date(0);
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              }
+              
+              return new Date(0);
+            };
+            return parseDate(b.date) - parseDate(a.date);
+          });
+          
+          // Available dates hazırlandı
+          setAvailableDates(availableDatesArray);
+
+                     // Varsayılan olarak "Tüm Aylar" seçili gelsin
+           setSelectedMonth(null);
         }
         if (personnelResult.success) {
           setPersonnelData(personnelResult.data || []);
@@ -385,14 +532,7 @@ const VehicleDistribution = () => {
     loadData();
   }, []);
 
-  // İlk yüklemede mevcut verilerden ilk ay/yılı seç
-  useEffect(() => {
-    if (availableMonthsAndYears.months.length > 0 && !selectedMonth && !selectedYear) {
-      const firstMonth = availableMonthsAndYears.months[0];
-      setSelectedMonth(firstMonth.value);
-      setSelectedYear(firstMonth.year);
-    }
-  }, [availableMonthsAndYears, selectedMonth, selectedYear]);
+
 
   if (loading) {
     return (
@@ -453,49 +593,56 @@ const VehicleDistribution = () => {
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-700">Veri Tarihi:</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-900">
-                {availableMonthsAndYears.months.find(m => m.value === selectedMonth)?.label} {selectedYear}
-              </span>
+            <div className="flex items-center gap-3">
+              <label className="text-xs font-medium text-gray-700 min-w-[60px]">Ay</label>
+              <div className="flex-1 relative max-w-[200px]">
+                <select
+                  value={selectedMonth || ''}
+                  onChange={(e) => {
+                    console.log('🔍 Ay seçimi değişti:', e.target.value);
+                    setSelectedMonth(e.target.value || null);
+                  }}
+                  className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:border-gray-400 transition-colors appearance-none cursor-pointer"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '1em 1em',
+                    paddingRight: '1.5rem'
+                  }}
+                >
+                  <option value="">📅 Tüm Aylar</option>
+                  {(() => {
+                    const availableMonths = getAvailableMonths(availableDates);
+                    console.log('📅 Dropdown için aylar:', availableMonths);
+                    return availableMonths.map(monthKey => {
+                      console.log('📅 Ay seçeneği:', monthKey);
+                      return (
+                        <option key={monthKey} value={monthKey}>
+                          📆 {getMonthDisplayName(monthKey)}
+                        </option>
+                      );
+                    });
+                  })()}
+                </select>
+              </div>
             </div>
           </div>
           
-          {/* Filtreler */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Ay Seçin</label>
-              <select 
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
-              >
-                {availableMonthsAndYears.months.map(month => (
-                  <option key={`${month.year}-${month.value}`} value={month.value}>
-                    {month.label} {month.year}
-                  </option>
-                ))}
-              </select>
+          {selectedMonth && (
+            <div className="mt-2 text-xs text-gray-600">
+              <span>Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {getDatesForMonth(availableDates, selectedMonth).length} tarih</span>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Yıl</label>
-              <select 
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
-              >
-                {availableMonthsAndYears.years.map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Gün (Opsiyonel)</label>
-              <input 
-                type="date"
-                onChange={(e) => setSelectedDay(e.target.value ? new Date(e.target.value) : null)}
-                className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
-              />
-            </div>
+          )}
+          
+          {/* Gün Seçimi (Opsiyonel) */}
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Gün (Opsiyonel)</label>
+            <input 
+              type="date"
+              onChange={(e) => setSelectedDay(e.target.value ? new Date(e.target.value) : null)}
+              className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+            />
           </div>
         </div>
 

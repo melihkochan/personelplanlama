@@ -5,13 +5,14 @@ import { getPerformanceData, getStoreLocationsByCodes, getAllPersonnel } from '.
 const StoreDistribution = () => {
   const [performanceData, setPerformanceData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(6); // Temmuz 2025
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const [selectedMonth, setSelectedMonth] = useState(null); // Seçili ay
   const [personnelStats, setPersonnelStats] = useState({});
   const [storeLocations, setStoreLocations] = useState({});
   const [uniqueLocations, setUniqueLocations] = useState([]);
   const [personnelData, setPersonnelData] = useState({});
   const [allPersonnelCount, setAllPersonnelCount] = useState(0);
+  const [availableDates, setAvailableDates] = useState([]);
+  const [selectedDates, setSelectedDates] = useState([]);
   const [sortConfig, setSortConfig] = useState({
     column: 'default',
     direction: 'asc'
@@ -20,12 +21,142 @@ const StoreDistribution = () => {
   // Veri yükleme
   useEffect(() => {
     loadPerformanceData();
-  }, [selectedMonth, selectedYear]); // selectedMonth ve selectedYear değiştiğinde tekrar yükle
+  }, []); // Sadece component mount olduğunda yükle
+
+  // Seçili ay değiştiğinde tarihleri filtrele
+  useEffect(() => {
+    if (availableDates.length > 0) {
+      if (selectedMonth) {
+        // Belirli bir ay seçilmişse, o ayın tarihlerini seç
+        const monthDates = getDatesForMonth(availableDates, selectedMonth);
+        const monthDateIds = monthDates.map(item => item.id);
+        setSelectedDates(monthDateIds);
+      } else {
+        // "Tüm Aylar" seçilmişse, tüm tarihleri seç
+        const allDateIds = availableDates.map(item => item.id);
+        setSelectedDates(allDateIds);
+      }
+    }
+  }, [selectedMonth, availableDates]);
+
+  // Seçili tarihler değiştiğinde veriyi filtrele ve mağaza konumlarını yükle
+  useEffect(() => {
+    if (performanceData.length > 0 && selectedDates.length > 0) {
+      // Seçilen tarihlere göre filtrele
+      const filteredData = performanceData.filter(record => {
+        const key = `${record.date}_${record.shift}`;
+        return selectedDates.includes(key);
+      });
+      
+      // Mağaza konumlarını çek ve hesaplamaları yap
+      if (filteredData.length > 0) {
+        loadStoreLocations(filteredData);
+      } else {
+        setPersonnelStats({});
+        setStoreLocations({});
+        setUniqueLocations([]);
+      }
+    }
+  }, [selectedDates, performanceData]);
+
+  // Helper fonksiyonlar
+  const getAvailableMonths = (dates) => {
+    const months = new Set();
+    dates.forEach(item => {
+      if (item.date) {
+        // YYYY-MM-DD formatını kontrol et
+        if (item.date.includes('-')) {
+          const [year, month, day] = item.date.split('-');
+          if (month && year) {
+            const monthKey = `${year}-${month.padStart(2, '0')}`;
+            months.add(monthKey);
+          }
+        } else if (item.date.includes('.')) {
+          // DD.MM.YYYY formatını kontrol et
+          const [day, month, year] = item.date.split('.');
+          if (month && year) {
+            const monthKey = `${year}-${month.padStart(2, '0')}`;
+            months.add(monthKey);
+          }
+        }
+      }
+    });
+    return Array.from(months).sort();
+  };
+
+  const getMonthDisplayName = (monthKey) => {
+    const [year, month] = monthKey.split('-');
+    const monthNames = [
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+    ];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  const getDatesForMonth = (dates, monthKey) => {
+    return dates.filter(item => {
+      if (item.date) {
+        let itemMonthKey;
+        
+        // YYYY-MM-DD formatını kontrol et
+        if (item.date.includes('-')) {
+          const [year, month, day] = item.date.split('-');
+          if (month && year) {
+            itemMonthKey = `${year}-${month.padStart(2, '0')}`;
+          }
+        } else if (item.date.includes('.')) {
+          // DD.MM.YYYY formatını kontrol et
+          const [day, month, year] = item.date.split('.');
+          if (month && year) {
+            itemMonthKey = `${year}-${month.padStart(2, '0')}`;
+          }
+        }
+        
+        return itemMonthKey === monthKey;
+      }
+      return false;
+    });
+  };
+
+  const getLatestMonth = (dates) => {
+    if (dates.length === 0) return null;
+    
+    const parseDate = (dateStr) => {
+      if (!dateStr) return null;
+      
+      // YYYY-MM-DD formatını kontrol et
+      if (dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        if (!day || !month || !year) return null;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else if (dateStr.includes('.')) {
+        // DD.MM.YYYY formatını kontrol et
+        const [day, month, year] = dateStr.split('.');
+        if (!day || !month || !year) return null;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      }
+      
+      return null;
+    };
+    
+    const validDates = dates
+      .filter(item => item.date)
+      .map(item => ({ ...item, parsedDate: parseDate(item.date) }))
+      .filter(item => item.parsedDate !== null)
+      .sort((a, b) => b.parsedDate - a.parsedDate);
+    
+    if (validDates.length === 0) return null;
+    
+    const latestDate = validDates[0];
+    const month = (latestDate.parsedDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = latestDate.parsedDate.getFullYear();
+    
+    return `${year}-${month}`;
+  };
 
   const loadPerformanceData = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Veri yükleniyor... Seçili ay/yıl:', selectedMonth, selectedYear);
       
       const [result, personnelResult] = await Promise.all([
         getPerformanceData(),
@@ -34,21 +165,53 @@ const StoreDistribution = () => {
       
       if (result.success) {
         const data = result.data || [];
-        console.log('📊 Tüm performans verisi:', data.length, 'kayıt');
         
-        // Seçilen ay ve yıla göre filtrele
-        const filteredData = data.filter(record => {
-          const recordDate = new Date(record.date);
-          const isSelectedMonth = recordDate.getMonth() === selectedMonth;
-          const isSelectedYear = recordDate.getFullYear() === selectedYear;
-          
-          return isSelectedMonth && isSelectedYear;
+        // Available dates hazırla
+        const availableDatesArray = [];
+        const dateShiftMap = new Map();
+        
+        data.forEach(record => {
+          const key = `${record.date}_${record.shift}`;
+          if (!dateShiftMap.has(key)) {
+            dateShiftMap.set(key, true);
+            availableDatesArray.push({
+              id: key,
+              date: record.date,
+              shift: record.shift
+            });
+          }
         });
+        
+                 // Available dates'i sırala
+         availableDatesArray.sort((a, b) => {
+           const parseDate = (dateStr) => {
+             if (!dateStr) return new Date(0);
+             
+             // YYYY-MM-DD formatını kontrol et
+             if (dateStr.includes('-')) {
+               const [year, month, day] = dateStr.split('-');
+               if (!day || !month || !year) return new Date(0);
+               return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+             } else if (dateStr.includes('.')) {
+               // DD.MM.YYYY formatını kontrol et
+               const [day, month, year] = dateStr.split('.');
+               if (!day || !month || !year) return new Date(0);
+               return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+             }
+             
+             return new Date(0);
+           };
+           return parseDate(b.date) - parseDate(a.date);
+         });
+        
+        // Available dates hazırlandı
+        setAvailableDates(availableDatesArray);
 
-        console.log('🔍 Filtrelenmiş veri:', filteredData.length, 'kayıt');
+                 // Varsayılan olarak "Tüm Aylar" seçili gelsin
+         setSelectedMonth(null);
         
         // State'leri güncelle
-        setPerformanceData(filteredData);
+        setPerformanceData(data);
         
         // Personel verilerini hazırla
         if (personnelResult.success) {
@@ -58,27 +221,14 @@ const StoreDistribution = () => {
           });
           setPersonnelData(personnelMap);
           setAllPersonnelCount(personnelResult.data.length);
-          console.log('👥 Personel verisi yüklendi:', Object.keys(personnelMap).length, 'kişi');
-        }
-        
-        // Mağaza konumlarını çek ve hesaplamaları yap
-        if (filteredData.length > 0) {
-          await loadStoreLocations(filteredData);
-        } else {
-          console.log('⚠️ Filtrelenmiş veri yok');
-          setPersonnelStats({});
-          setStoreLocations({});
-          setUniqueLocations([]);
         }
       } else {
-        console.log('❌ Performans verisi yüklenemedi');
         setPerformanceData([]);
         setPersonnelStats({});
         setStoreLocations({});
         setUniqueLocations([]);
       }
     } catch (error) {
-      console.error('❌ Mağaza dağılımı verisi yüklenirken hata:', error);
       setPerformanceData([]);
       setPersonnelStats({});
       setStoreLocations({});
@@ -94,17 +244,12 @@ const StoreDistribution = () => {
       const allStoreCodes = new Set();
       data.forEach(record => {
         if (record.store_codes) {
-          console.log('📝 Raw store_codes:', record.store_codes);
           const codes = record.store_codes.split(',').map(s => s.trim()).filter(s => s);
-          console.log('🔍 Parsed codes:', codes);
           codes.forEach(code => allStoreCodes.add(code));
         }
       });
 
-      console.log('🔍 Bulunan store_codes:', Array.from(allStoreCodes));
-
       if (allStoreCodes.size === 0) {
-        console.log('⚠️ Hiç store_codes bulunamadı');
         setStoreLocations({});
         setUniqueLocations([]);
         return;
@@ -112,29 +257,20 @@ const StoreDistribution = () => {
 
       // Mağaza konumlarını çek
       const storeCodesArray = Array.from(allStoreCodes);
-      console.log('📤 API\'ye gönderilen store_codes:', storeCodesArray);
       
       const locationsResult = await getStoreLocationsByCodes(storeCodesArray);
-      
-      console.log('📍 Mağaza konumları sonucu:', locationsResult);
       
       if (locationsResult.success) {
         const locationMap = {};
         const uniqueLocs = new Set();
         
-        console.log('📊 Gelen veri:', locationsResult.data);
-        
         locationsResult.data.forEach(store => {
-          console.log(`🗺️ Store: ${store.store_code} -> Location: ${store.location}`);
           locationMap[store.store_code] = store.location;
           // "Gündüz" mağazalarını dahil etme
           if (store.location && store.location !== 'Gündüz') {
             uniqueLocs.add(store.location);
           }
         });
-        
-        console.log('🗺️ Konum haritası:', locationMap);
-        console.log('📍 Benzersiz konumlar:', Array.from(uniqueLocs));
         
         // State'leri güncelle ve hesaplamaları yap
         setStoreLocations(locationMap);
@@ -145,43 +281,28 @@ const StoreDistribution = () => {
           calculatePersonnelStoreVisits(data, locationMap);
         }, 200);
       } else {
-        console.log('❌ Mağaza konumları yüklenemedi:', locationsResult.error);
         setStoreLocations({});
         setUniqueLocations([]);
       }
     } catch (error) {
-      console.error('❌ Mağaza konumları yüklenirken hata:', error);
       setStoreLocations({});
       setUniqueLocations([]);
     }
   };
 
   const calculatePersonnelStoreVisits = (data, locationMap = null) => {
-    console.log('🧮 Personel ziyaret hesaplaması başlıyor...');
-    
     // Eğer locationMap parametresi verilmişse onu kullan, yoksa state'ten al
     const currentLocationMap = locationMap || storeLocations;
-    
-    console.log('🗺️ Kullanılan storeLocations:', currentLocationMap);
-    console.log('📊 İşlenecek veri sayısı:', data.length);
     
     const personnelVisits = {};
 
     // Her personel için mağaza ziyaretlerini hesapla
-    data.forEach((record, index) => {
+    data.forEach((record) => {
       const { employee_code, employee_name, date, store_codes } = record;
-      
-      if (index < 5) { // İlk 5 kaydı detaylı logla
-        console.log(`📝 Kayıt ${index + 1}:`, { employee_code, employee_name, date, store_codes });
-      }
       
       if (store_codes) {
         // Aynı gün aynı mağazaya birden fazla giriş varsa tek say
         const uniqueStores = [...new Set(store_codes.split(',').map(s => s.trim()).filter(s => s))];
-        
-        if (index < 5) {
-          console.log(`🔍 ${employee_name} için unique stores:`, uniqueStores);
-        }
         
         if (!personnelVisits[employee_code]) {
           personnelVisits[employee_code] = {
@@ -196,10 +317,6 @@ const StoreDistribution = () => {
         uniqueStores.forEach(storeCode => {
           const storeKey = storeCode.trim();
           const location = currentLocationMap[storeKey];
-          
-          if (index < 5) {
-            console.log(`🔍 Store: ${storeKey}, Location: ${location}`);
-          }
           
           // Sadece geçerli konumları ve "Gündüz" olmayanları hesapla
           if (location && location !== 'Gündüz') {
@@ -221,13 +338,7 @@ const StoreDistribution = () => {
               personnelVisits[employee_code].locationVisits[location]++;
               
               personnelVisits[employee_code].visitsByDate[dateKey] = true;
-              
-              if (index < 5) {
-                console.log(`✅ ${employee_name} -> ${location} ziyareti eklendi`);
-              }
             }
-          } else if (index < 5) {
-            console.log(`❌ ${storeKey} için geçerli location bulunamadı`);
           }
         });
       }
@@ -237,13 +348,6 @@ const StoreDistribution = () => {
     Object.keys(personnelVisits).forEach(personnel => {
       delete personnelVisits[personnel].visitsByDate;
     });
-
-    console.log('👥 Personel istatistikleri:', personnelVisits);
-    console.log('📊 Toplam personel sayısı:', Object.keys(personnelVisits).length);
-    
-    // Toplam ziyaret sayısını kontrol et
-    const totalVisits = Object.values(personnelVisits).reduce((sum, stats) => sum + stats.totalVisits, 0);
-    console.log('📈 Toplam ziyaret sayısı:', totalVisits);
     
     setPersonnelStats(personnelVisits);
   };
@@ -384,29 +488,7 @@ const StoreDistribution = () => {
     }
   };
 
-  const getMonthName = (month) => {
-    const months = [
-      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-    ];
-    return months[month];
-  };
 
-  const handleMonthChange = (direction) => {
-    let newMonth = selectedMonth + direction;
-    let newYear = selectedYear;
-
-    if (newMonth > 11) {
-      newMonth = 0;
-      newYear++;
-    } else if (newMonth < 0) {
-      newMonth = 11;
-      newYear--;
-    }
-
-    setSelectedMonth(newMonth);
-    setSelectedYear(newYear);
-  };
 
   const getLocationColor = (locationName) => {
     // Her konum için farklı renk kombinasyonları
@@ -514,26 +596,40 @@ const StoreDistribution = () => {
             <span className="text-sm font-medium text-gray-700">Veri Tarihi:</span>
           </div>
           
-          <div className="flex items-center gap-2">
-            <span className="text-base font-semibold text-gray-900">
-              Temmuz 2025
-            </span>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 min-w-[80px]">Ay</label>
+            <div className="flex-1 relative max-w-[200px]">
+              <select
+                value={selectedMonth || ''}
+                onChange={(e) => setSelectedMonth(e.target.value || null)}
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:border-gray-400 transition-colors appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.75rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.5em 1.5em',
+                  paddingRight: '2.5rem'
+                }}
+              >
+                <option value="">📅 Tüm Aylar</option>
+                {getAvailableMonths(availableDates).map(monthKey => (
+                  <option key={monthKey} value={monthKey}>
+                    📆 {getMonthDisplayName(monthKey)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
+        
+        {selectedMonth && (
+          <div className="mt-3 text-sm text-gray-600">
+            <span>Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {getDatesForMonth(availableDates, selectedMonth).length} tarih</span>
+          </div>
+        )}
       </div>
 
-      {/* Debug Bilgisi */}
-      {uniqueLocations.length === 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span className="text-sm font-medium text-yellow-800">Debug Bilgisi</span>
-          </div>
-          <p className="text-xs text-yellow-700 mt-1">
-            Mağaza konumları bulunamadı. Lütfen console'u kontrol edin.
-          </p>
-        </div>
-      )}
+      
 
       {/* Ana Tablo */}
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">

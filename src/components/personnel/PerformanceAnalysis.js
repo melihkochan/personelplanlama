@@ -14,7 +14,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const [uploadError, setUploadError] = useState('');
   const [selectedDates, setSelectedDates] = useState([]);
   const [availableDates, setAvailableDates] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(null); // Seçili ay
   const [shiftFilter, setShiftFilter] = useState('all');
+  const [availableShifts, setAvailableShifts] = useState([]); // Mevcut vardiyalar
   const [sortBy, setSortBy] = useState('boxes'); // Default olarak Kasa seçili
   const [sortDirection, setSortDirection] = useState('desc');
   const [personnelDatabase, setPersonnelDatabase] = useState([]);
@@ -322,18 +324,102 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               // Available dates hazırlandı
         setAvailableDates(availableDatesArray);
         
-        // Selected dates'i sadece ilk kez yüklendiğinde tümünü seç, sonra kullanıcının seçimini koru
+        // Mevcut vardiyaları analiz et
+        const shifts = new Set();
+        availableDatesArray.forEach(item => {
+          shifts.add(item.shift);
+        });
+        setAvailableShifts(Array.from(shifts));
+        
+        // Varsayılan olarak son ayı seç
+        const latestMonth = getLatestMonth(availableDatesArray);
+        if (latestMonth) {
+          setSelectedMonth(latestMonth);
+        }
+        
+        // Selected dates'i güncelle - sadece yeni eklenen tarihleri seç
         const allCombinationIds = availableDatesArray.map(item => item.id);
         
-        // Sadece selectedDates boşsa tümünü seç
+        // Mevcut seçili tarihleri kontrol et
         setSelectedDates(prevSelected => {
+          // Eğer hiç seçili tarih yoksa, son ayın verilerini seç
           if (prevSelected.length === 0) {
-            return allCombinationIds;
-          } else {
-            // Mevcut seçimleri filtreleme (artık mevcut olmayan tarihleri temizle)
-            const validSelections = prevSelected.filter(id => allCombinationIds.includes(id));
-            return validSelections.length > 0 ? validSelections : allCombinationIds;
+            // Son ayın verilerini bul
+            const getLastMonthDates = () => {
+              if (availableDatesArray.length === 0) return allCombinationIds;
+              
+              // Tarihleri parse et ve en son ayı bul
+              const parseDate = (dateStr) => {
+                const [day, month, year] = dateStr.split('.');
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              };
+              
+              // Tarihleri sırala ve en son ayı bul
+              const sortedDates = availableDatesArray
+                .map(item => ({ ...item, parsedDate: parseDate(item.date) }))
+                .sort((a, b) => b.parsedDate - a.parsedDate);
+              
+              if (sortedDates.length === 0) return allCombinationIds;
+              
+              // En son tarihin ayını al
+              const lastDate = sortedDates[0];
+              const lastMonth = lastDate.parsedDate.getMonth();
+              const lastYear = lastDate.parsedDate.getFullYear();
+              
+              // Son ayın tüm tarihlerini filtrele
+              const lastMonthDates = availableDatesArray.filter(item => {
+                const itemDate = parseDate(item.date);
+                return itemDate.getMonth() === lastMonth && itemDate.getFullYear() === lastYear;
+              });
+              
+              return lastMonthDates.map(item => item.id);
+            };
+            
+            const lastMonthIds = getLastMonthDates();
+            return lastMonthIds.length > 0 ? lastMonthIds : allCombinationIds;
           }
+          
+          // Mevcut seçimleri filtrele (artık mevcut olmayan tarihleri temizle)
+          const validSelections = prevSelected.filter(id => allCombinationIds.includes(id));
+          
+          // Eğer geçerli seçim yoksa, son ayın verilerini seç
+          if (validSelections.length === 0) {
+            // Son ayın verilerini bul
+            const getLastMonthDates = () => {
+              if (availableDatesArray.length === 0) return allCombinationIds;
+              
+              // Tarihleri parse et ve en son ayı bul
+              const parseDate = (dateStr) => {
+                const [day, month, year] = dateStr.split('.');
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              };
+              
+              // Tarihleri sırala ve en son ayı bul
+              const sortedDates = availableDatesArray
+                .map(item => ({ ...item, parsedDate: parseDate(item.date) }))
+                .sort((a, b) => b.parsedDate - a.parsedDate);
+              
+              if (sortedDates.length === 0) return allCombinationIds;
+              
+              // En son tarihin ayını al
+              const lastDate = sortedDates[0];
+              const lastMonth = lastDate.parsedDate.getMonth();
+              const lastYear = lastDate.parsedDate.getFullYear();
+              
+              // Son ayın tüm tarihlerini filtrele
+              const lastMonthDates = availableDatesArray.filter(item => {
+                const itemDate = parseDate(item.date);
+                return itemDate.getMonth() === lastMonth && itemDate.getFullYear() === lastYear;
+              });
+              
+              return lastMonthDates.map(item => item.id);
+            };
+            
+            const lastMonthIds = getLastMonthDates();
+            return lastMonthIds.length > 0 ? lastMonthIds : allCombinationIds;
+          }
+          
+          return validSelections;
         });
         
         // Basit format hazırlandı
@@ -432,29 +518,59 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   // Vardiya filtreleme - sadece shiftFilter değiştiğinde çalışsın
   useEffect(() => {
-          // Vardiya filtreleme
+    // Vardiya filtreleme
     if (availableDates.length > 0) {
       let filteredDateIds = [];
       
+      // Seçili ayın tarihlerini al
+      const datesToFilter = selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates;
+      
       if (shiftFilter === 'all') {
-        filteredDateIds = availableDates.map(item => item.id);
+        // Tüm vardiyalar seçiliyse, seçili ayın tüm tarihlerini al
+        filteredDateIds = datesToFilter.map(item => item.id);
       } else if (shiftFilter === 'day') {
-        filteredDateIds = availableDates.filter(item => item.shift === 'GÜNDÜZ').map(item => item.id);
+        // Sadece gündüz vardiyası seçiliyse, sadece gündüz vardiyası olan tarihleri al
+        filteredDateIds = datesToFilter.filter(item => item.shift === 'GÜNDÜZ').map(item => item.id);
       } else if (shiftFilter === 'night') {
-        filteredDateIds = availableDates.filter(item => item.shift === 'GECE').map(item => item.id);
+        // Sadece gece vardiyası seçiliyse, sadece gece vardiyası olan tarihleri al
+        filteredDateIds = datesToFilter.filter(item => item.shift === 'GECE').map(item => item.id);
       }
       
       setSelectedDates(filteredDateIds);
     }
-  }, [shiftFilter]); // availableDates bağımlılığını kaldırdım
+  }, [shiftFilter, selectedMonth, availableDates]); // selectedMonth ve availableDates bağımlılıklarını ekledim
   
-  // AvailableDates yüklendiğinde selectedDates'i set et - basit versiyon
+
+
+  // Seçili ay değiştiğinde tarihleri filtrele
   useEffect(() => {
     if (availableDates.length > 0) {
-      const allIds = availableDates.map(item => item.id);
-      setSelectedDates(allIds);
+      if (selectedMonth) {
+        // Belirli bir ay seçilmişse, o ayın tarihlerini seç
+        const monthDates = getDatesForMonth(availableDates, selectedMonth);
+        const monthDateIds = monthDates.map(item => item.id);
+        setSelectedDates(monthDateIds);
+        
+        // Ay değiştiğinde vardiya filtresini "Tüm Vardiyalar"a sıfırla
+        // Eğer seçili ayda sadece bir vardiya varsa, o vardiyayı otomatik seç
+        const hasDayShift = monthDates.some(item => item.shift === 'GÜNDÜZ');
+        const hasNightShift = monthDates.some(item => item.shift === 'GECE');
+        
+        if (hasDayShift && !hasNightShift) {
+          setShiftFilter('day');
+        } else if (!hasDayShift && hasNightShift) {
+          setShiftFilter('night');
+        } else {
+          setShiftFilter('all');
+        }
+      } else {
+        // "Tüm Aylar" seçilmişse, tüm tarihleri seç
+        const allDateIds = availableDates.map(item => item.id);
+        setSelectedDates(allDateIds);
+        setShiftFilter('all');
+      }
     }
-  }, [availableDates]); // availableDates her değiştiğinde çalışsın
+  }, [selectedMonth, availableDates]);
 
   // Performans verilerini veritabanına kaydet
   const savePerformanceDataToDatabase = async (analysisResults) => {
@@ -2073,6 +2189,54 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     );
   };
 
+  // Ay filtreleme yardımcı fonksiyonları
+  const getAvailableMonths = (dates) => {
+    const months = new Set();
+    
+    dates.forEach(item => {
+      const [day, month, year] = item.date.split('.');
+      const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+      months.add(monthKey);
+    });
+    
+    return Array.from(months).sort().reverse(); // En son ay önce gelsin
+  };
+
+  const getMonthDisplayName = (monthKey) => {
+    const [year, month] = monthKey.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    return date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' });
+  };
+
+  const getDatesForMonth = (dates, monthKey) => {
+    return dates.filter(item => {
+      const [day, month, year] = item.date.split('.');
+      const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      const itemMonthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+      return itemMonthKey === monthKey;
+    });
+  };
+
+  const getLatestMonth = (dates) => {
+    if (dates.length === 0) return null;
+    
+    const parseDate = (dateStr) => {
+      const [day, month, year] = dateStr.split('.');
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    };
+    
+    const sortedDates = dates
+      .map(item => ({ ...item, parsedDate: parseDate(item.date) }))
+      .sort((a, b) => b.parsedDate - a.parsedDate);
+    
+    const lastDate = sortedDates[0];
+    const lastMonth = lastDate.parsedDate.getMonth();
+    const lastYear = lastDate.parsedDate.getFullYear();
+    
+    return `${lastYear}-${String(lastMonth + 1).padStart(2, '0')}`;
+  };
+
   return (
     <div className="w-full px-2 py-2">
       <div className="mb-2">
@@ -2255,34 +2419,77 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
             {/* Filtreler */}
             <div className="space-y-3">
               {/* Vardiya Filtresi - Gece ve Gündüz */}
-              {!weeklyView && (
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[100px]">Vardiya Seçimi</label>
-                  <div className="flex gap-2">
-                    {[
-                      { key: 'all', label: 'Tüm Vardiyalar', color: 'bg-blue-500' },
-                      { key: 'day', label: '🌅 Gündüz', color: 'bg-yellow-500' },
-                      { key: 'night', label: '🌙 Gece', color: 'bg-blue-500' }
-                    ].map(({ key, label, color }) => (
-                  <button
-                        key={key}
-                        onClick={() => setShiftFilter(key)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          shiftFilter === key ? `${color} text-white` : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {label}
-                  </button>
-                    ))}
+              {!weeklyView && (() => {
+                // Seçili ayın tarihlerini al
+                const datesToFilter = selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates;
+                
+                // Hangi vardiyaların mevcut olduğunu kontrol et
+                const hasDayShift = datesToFilter.some(item => item.shift === 'GÜNDÜZ');
+                const hasNightShift = datesToFilter.some(item => item.shift === 'GECE');
+                const hasAnyShift = datesToFilter.length > 0;
+                
+                return (
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm font-medium text-gray-700 min-w-[100px]">Vardiya Seçimi</label>
+                    <div className="flex gap-2">
+                      {[
+                        { key: 'all', label: 'Tüm Vardiyalar', color: 'bg-blue-500', disabled: !hasAnyShift },
+                        { key: 'day', label: '🌅 Gündüz', color: 'bg-yellow-500', disabled: !hasDayShift },
+                        { key: 'night', label: '🌙 Gece', color: 'bg-blue-500', disabled: !hasNightShift }
+                      ].map(({ key, label, color, disabled }) => (
+                        <button
+                          key={key}
+                          onClick={() => !disabled && setShiftFilter(key)}
+                          disabled={disabled}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            disabled 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                              : shiftFilter === key 
+                                ? `${color} text-white` 
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          title={disabled ? `Bu ayda ${key === 'day' ? 'gündüz' : key === 'night' ? 'gece' : 'vardiya'} bulunmuyor` : ''}
+                        >
+                          {label}
+                          {disabled && <span className="ml-1 text-xs">(Yok)</span>}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                );
+              })()}
+
+              {/* Ay Seçimi */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-700 min-w-[80px]">Ay</label>
+                <div className="flex-1 relative max-w-[200px]">
+                  <select
+                    value={selectedMonth || ''}
+                    onChange={(e) => setSelectedMonth(e.target.value || null)}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:border-gray-400 transition-colors appearance-none cursor-pointer"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                      backgroundPosition: 'right 0.75rem center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundSize: '1.5em 1.5em',
+                      paddingRight: '2.5rem'
+                    }}
+                  >
+                    <option value="">📅 Tüm Aylar</option>
+                    {getAvailableMonths(availableDates).map(monthKey => (
+                      <option key={monthKey} value={monthKey}>
+                        📆 {getMonthDisplayName(monthKey)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
+              </div>
 
               {/* Tarih Seçimi */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-700">
-                    Tarih Seçimi ({availableDates.length} gün)
+                    Tarih Seçimi ({selectedMonth ? getDatesForMonth(availableDates, selectedMonth).length : availableDates.length} gün)
                   </label>
                 </div>
 
@@ -2292,13 +2499,31 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     <div className="flex gap-2 mb-2">
                   <button
                         onClick={() => {
-                          const weeks = groupDatesByWeeks(availableDates);
+                          const weeks = groupDatesByWeeks(selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates);
                           setSelectedWeeks(weeks.map(w => w.id));
-                          setSelectedDates(availableDates.map(item => item.id));
+                          setSelectedDates((selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).map(item => item.id));
                         }}
                         className="px-2 py-0.5 bg-green-500 text-white rounded text-xs hover:bg-green-600"
                       >
                         Tüm Haftalar
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Seçili ayın verilerini seç
+                      const monthDates = selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates;
+                      const selectedIds = monthDates.map(item => item.id);
+                      setSelectedDates(selectedIds);
+                      
+                      // Seçili ayın bulunduğu haftaları seç
+                      const weeks = groupDatesByWeeks(selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates);
+                      const selectedWeeks = weeks.filter(week => 
+                        week.dates.some(date => selectedIds.includes(date.id))
+                      ).map(w => w.id);
+                      setSelectedWeeks(selectedWeeks);
+                    }}
+                    className="px-2 py-0.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                  >
+                    Seçili Ay
                   </button>
                       <button
                         onClick={() => {
@@ -2312,7 +2537,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     </div>
                     
                     <div className="max-h-48 overflow-y-auto space-y-2">
-                      {groupDatesByWeeks(availableDates).map((week) => (
+                      {groupDatesByWeeks(selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).map((week) => (
                         <div key={week.id} className="border border-gray-200 rounded-lg p-3 bg-white">
                           <label className="flex items-center gap-3 cursor-pointer">
                             <input
@@ -2376,11 +2601,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               <div>
                 <div className="flex gap-2 mb-2">
                   <button
-                        onClick={() => setSelectedDates(availableDates.map(item => item.id))}
+                        onClick={() => setSelectedDates((selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).map(item => item.id))}
                     className="px-2 py-0.5 bg-green-500 text-white rounded text-xs hover:bg-green-600"
                   >
                     Tümünü Seç
                   </button>
+
                   <button
                     onClick={() => setSelectedDates([])}
                     className="px-2 py-0.5 bg-red-500 text-white rounded text-xs hover:bg-red-600"
@@ -2390,7 +2616,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 </div>
                     <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {availableDates.map((dateItem) => (
+                    {(selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).map((dateItem) => (
                           <div key={dateItem.id} className="relative">
                         <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
                               selectedDates.includes(dateItem.id) ? 
@@ -2435,7 +2661,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-blue-600">📅</span>
-                    <span className="text-gray-700">Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {availableDates.length} tarih</span>
+                    <span className="text-gray-700">Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {selectedMonth ? getDatesForMonth(availableDates, selectedMonth).length : availableDates.length} tarih</span>
                 </div>
                   <div className="flex items-center gap-2">
                     <span className="text-purple-600">🔄</span>
@@ -2446,11 +2672,35 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     <span className="text-gray-700">Görünüm: <span className="font-medium text-green-600">{weeklyView ? 'Haftalık' : 'Günlük'}</span></span>
                   </div>
                 </div>
+                
+                {/* Vardiya Durumu Bilgisi */}
+                {(() => {
+                  const datesToFilter = selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates;
+                  const hasDayShift = datesToFilter.some(item => item.shift === 'GÜNDÜZ');
+                  const hasNightShift = datesToFilter.some(item => item.shift === 'GECE');
+                  
+                  return (
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="text-orange-600">🌅🌙</span>
+                        <span>Mevcut Vardiyalar: 
+                          <span className="font-medium text-orange-600 ml-1">
+                            {hasDayShift ? '🌅 Gündüz' : ''}
+                            {hasDayShift && hasNightShift ? ' + ' : ''}
+                            {hasNightShift ? '🌙 Gece' : ''}
+                            {!hasDayShift && !hasNightShift ? 'Yok' : ''}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                
                 {weeklyView && (
                   <div className="mt-2 pt-2 border-t border-blue-200">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="text-orange-600">🗓️</span>
-                      <span>Seçilen Haftalar: <span className="font-medium text-orange-600">{selectedWeeks.length}</span> / {groupDatesByWeeks(availableDates).length} hafta</span>
+                      <span>Seçilen Haftalar: <span className="font-medium text-orange-600">{selectedWeeks.length}</span> / {groupDatesByWeeks(selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).length} hafta</span>
                     </div>
                   </div>
                 )}

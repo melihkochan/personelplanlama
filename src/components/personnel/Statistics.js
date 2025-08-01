@@ -34,8 +34,6 @@ const Statistics = () => {
         getAllPersonnel()
       ]);
       
-      console.log('📊 Performance verisi:', performance);
-      console.log('📊 Personnel verisi:', personnel);
       
       // Performance verisi kontrolü
       let enrichedPerformanceData = [];
@@ -45,17 +43,16 @@ const Statistics = () => {
         // Performans analizi sayfasındaki gibi gerçek veriyi işle
         enrichedPerformanceData = processRealData(performance.data);
       } else {
-        console.log('⚠️ Performance verisi bulunamadı, örnek veriler oluşturuluyor...');
         enrichedPerformanceData = generateSampleData();
       }
       
       // Personnel verisi kontrolü
       let personnelDataArray = [];
       if (personnel && personnel.success && personnel.data && personnel.data.length > 0) {
-        console.log('✅ Personnel verisi başarıyla yüklendi:', personnel.data.length, 'kayıt');
+       
         personnelDataArray = personnel.data;
       } else {
-        console.log('⚠️ Personnel verisi bulunamadı');
+      
         personnelDataArray = [];
       }
       
@@ -80,7 +77,6 @@ const Statistics = () => {
   const processRealData = (rawData) => {
     if (!rawData || !rawData.length) return [];
     
-    console.log('📊 Ham veri yapısı:', rawData[0]);
     
     // Performans analizi sayfasındaki gibi gruplandır
     const groupedRecords = {};
@@ -162,7 +158,6 @@ const Statistics = () => {
       };
     });
     
-    console.log('📊 İşlenmiş veri yapısı:', processedData[0]);
     return processedData;
   };
 

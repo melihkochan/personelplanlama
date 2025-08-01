@@ -1,149 +1,298 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Users, Calendar, AlertCircle } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getTeamShifts } from '../../services/supabase';
 
 const TeamShifts = () => {
-  const [teams, setTeams] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [shiftData, setShiftData] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedYear, setSelectedYear] = useState(2025);
+  const [loading, setLoading] = useState(false);
 
+  // Load data from database when month/year changes
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
+    loadShiftData();
+  }, [selectedMonth, selectedYear]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const loadShiftData = async () => {
+    setLoading(true);
+    try {
+      let data;
+      if (selectedMonth === 'all') {
+        data = await getTeamShifts(selectedYear, null);
+      } else {
+        data = await getTeamShifts(selectedYear, selectedMonth);
+      }
+      
+      if (data && data.length > 0) {
+        const convertedData = data.map(item => ({
+          id: item.date,
+          date: new Date(item.date),
+          dayName: item.day_name,
+          nightShift: item.night_shift || '',
+          morningShift: item.morning_shift || '',
+          eveningShift: item.evening_shift || '',
+          leaveShift: item.leave_shift || ''
+        }));
+        setShiftData(convertedData);
+      } else {
+        if (selectedMonth === 'all') {
+          const allMonthsData = [];
+          for (let month = 0; month < 12; month++) {
+            const monthData = generateMonthData(selectedYear, month);
+            allMonthsData.push(...monthData);
+          }
+          setShiftData(allMonthsData);
+        } else {
+          const initialData = generateMonthData(selectedYear, selectedMonth);
+          setShiftData(initialData);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading shift data:', error);
+      if (selectedMonth === 'all') {
+        const allMonthsData = [];
+        for (let month = 0; month < 12; month++) {
+          const monthData = generateMonthData(selectedYear, month);
+          allMonthsData.push(...monthData);
+        }
+        setShiftData(allMonthsData);
+      } else {
+        const initialData = generateMonthData(selectedYear, selectedMonth);
+        setShiftData(initialData);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate calendar data for the selected month
+  const generateMonthData = (year, month) => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthData = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+      
+      monthData.push({
+        id: `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+        date: date,
+        dayName: dayNames[date.getDay()],
+        nightShift: '',
+        morningShift: '',
+        eveningShift: '',
+        leaveShift: ''
+      });
+    }
+
+    return monthData;
+  };
+
+  const getShiftColor = (teamName) => {
+    if (!teamName) return 'bg-gray-100 text-gray-800';
+    
+    switch (teamName) {
+      case '1.Ekip': return 'bg-green-100 text-green-800';
+      case '2.Ekip': return 'bg-blue-100 text-blue-800';
+      case '3.Ekip': return 'bg-gray-100 text-gray-800';
+      case '4.Ekip': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getLeaveShiftColor = (leaveShift) => {
+    if (!leaveShift) return 'bg-gray-100 text-gray-800';
+    
+    // Apply team-specific colors for leave shifts
+    switch (leaveShift) {
+      case '1.Ekip': return 'bg-green-100 text-green-800';
+      case '2.Ekip': return 'bg-blue-100 text-blue-800';
+      case '3.Ekip': return 'bg-gray-100 text-gray-800';
+      case '4.Ekip': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-red-100 text-red-800';
+    }
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full px-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 text-white">
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Ekip Vardiyaları</h1>
-            <p className="text-blue-100 mt-1">Ekip vardiya planlaması ve takibi</p>
+            <h1 className="text-xl font-bold">Ekip Vardiyaları</h1>
+            <p className="text-blue-100 text-sm mt-1">2025 Yılı Ekip Vardiya Planlaması</p>
           </div>
-          <div className="bg-white/20 rounded-lg p-3">
-            <Clock className="w-8 h-8" />
-          </div>
-        </div>
-      </div>
-
-      {/* Development Notice */}
-      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-        <div className="flex items-center">
-          <AlertCircle className="w-5 h-5 text-orange-600 mr-3" />
-          <div>
-            <h3 className="font-semibold text-orange-800">Geliştirme Aşamasında</h3>
-            <p className="text-orange-700 text-sm mt-1">
-              Bu sayfa şu anda geliştirme aşamasındadır. Yakında ekip vardiya planlaması 
-              ve takip özellikleri eklenecektir.
-            </p>
+          <div className="bg-white/20 rounded-lg p-2">
+            <Clock className="w-6 h-6" />
           </div>
         </div>
       </div>
 
-      {/* Placeholder Content */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Team Overview Card */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Ekip Genel Bakış</h3>
-            <Users className="w-5 h-5 text-blue-600" />
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Toplam Ekip:</span>
-              <span className="font-semibold">0</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Aktif Vardiya:</span>
-              <span className="font-semibold text-green-600">0</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Bekleyen:</span>
-              <span className="font-semibold text-orange-600">0</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Shift Schedule Card */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Vardiya Programı</h3>
-            <Calendar className="w-5 h-5 text-purple-600" />
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Sabah Vardiyası:</span>
-              <span className="font-semibold">06:00 - 14:00</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Öğle Vardiyası:</span>
-              <span className="font-semibold">14:00 - 22:00</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Gece Vardiyası:</span>
-              <span className="font-semibold">22:00 - 06:00</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions Card */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Hızlı İşlemler</h3>
-            <Clock className="w-5 h-5 text-green-600" />
-          </div>
-          <div className="space-y-2">
-            <button className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-2 text-sm font-medium transition-colors">
-              Yeni Ekip Oluştur
+      {/* Controls */}
+      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          {/* Month/Year Navigation */}
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => {
+                if (selectedMonth === 'all') {
+                  setSelectedMonth(11);
+                } else if (selectedMonth === 0) {
+                  setSelectedMonth(11);
+                } else {
+                  setSelectedMonth(selectedMonth - 1);
+                }
+              }}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <button className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg p-2 text-sm font-medium transition-colors">
-              Vardiya Planla
-            </button>
-            <button className="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg p-2 text-sm font-medium transition-colors">
-              Rapor Oluştur
+            
+            <div className="flex items-center space-x-2">
+              <select 
+                value={selectedMonth}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === 'all') {
+                    setSelectedMonth('all');
+                  } else {
+                    setSelectedMonth(parseInt(value));
+                  }
+                }}
+                className="border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="all">Tüm Aylar</option>
+                <option value={0}>Ocak</option>
+                <option value={1}>Şubat</option>
+                <option value={2}>Mart</option>
+                <option value={3}>Nisan</option>
+                <option value={4}>Mayıs</option>
+                <option value={5}>Haziran</option>
+                <option value={6}>Temmuz</option>
+                <option value={7}>Ağustos</option>
+                <option value={8}>Eylül</option>
+                <option value={9}>Ekim</option>
+                <option value={10}>Kasım</option>
+                <option value={11}>Aralık</option>
+              </select>
+              
+              <select 
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value={2025}>2025</option>
+              </select>
+            </div>
+            
+            <button 
+              onClick={() => {
+                if (selectedMonth === 'all') {
+                  setSelectedMonth(0);
+                } else if (selectedMonth === 11) {
+                  setSelectedMonth(0);
+                } else {
+                  setSelectedMonth(selectedMonth + 1);
+                }
+              }}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Coming Soon Features */}
-      <div className="bg-gray-50 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Yakında Gelecek Özellikler</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-gray-700">Ekip oluşturma ve yönetimi</span>
+
+
+      {/* Shift Data Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span className="text-gray-600 text-sm">Veriler yükleniyor...</span>
+            </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <span className="text-gray-700">Vardiya planlama ve düzenleme</span>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tarih
+                  </th>
+                  <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Gün
+                  </th>
+                  <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    24:00-08:00
+                  </th>
+                  <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    08:00-16:00
+                  </th>
+                  <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    16:00-24:00
+                  </th>
+                  <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    İzinli Vardiya
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {shiftData.map((shift) => (
+                  <tr key={shift.id} className="hover:bg-gray-50">
+                                                              <td className="px-2 py-1 whitespace-nowrap text-xs font-medium text-gray-900">
+                       <div>
+                         <div>{shift.date.toLocaleDateString('tr-TR')}</div>
+                         <div className="text-gray-500 text-xs">{shift.date.toLocaleDateString('tr-TR', { month: 'long' })}</div>
+                       </div>
+                     </td>
+                    <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">
+                      {shift.dayName}
+                    </td>
+                    <td className="px-2 py-1 whitespace-nowrap">
+                      {shift.nightShift ? (
+                        <span className={`inline-flex px-1 py-0.5 text-xs font-semibold rounded-full ${getShiftColor(shift.nightShift)}`}>
+                          {shift.nightShift}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1 whitespace-nowrap">
+                      {shift.morningShift ? (
+                        <span className={`inline-flex px-1 py-0.5 text-xs font-semibold rounded-full ${getShiftColor(shift.morningShift)}`}>
+                          {shift.morningShift}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1 whitespace-nowrap">
+                      {shift.eveningShift ? (
+                        <span className={`inline-flex px-1 py-0.5 text-xs font-semibold rounded-full ${getShiftColor(shift.eveningShift)}`}>
+                          {shift.eveningShift}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1 whitespace-nowrap">
+                      {shift.leaveShift ? (
+                        <span className={`inline-flex px-1 py-0.5 text-xs font-semibold rounded-full ${getLeaveShiftColor(shift.leaveShift)}`}>
+                          {shift.leaveShift}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-gray-700">Gerçek zamanlı vardiya takibi</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-            <span className="text-gray-700">Ekip performans raporları</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-            <span className="text-gray-700">Vardiya değişim talepleri</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-            <span className="text-gray-700">Otomatik vardiya optimizasyonu</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

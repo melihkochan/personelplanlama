@@ -931,7 +931,7 @@ function MainApp() {
               >
                 <Clock className="w-4 h-4 mr-2" />
                 Ekip Vardiyaları
-                <span className="ml-auto text-xs text-orange-500 font-medium">(geliştirme de)</span>
+              
               </button>
 
               <button
@@ -1301,7 +1301,7 @@ function MainApp() {
                     >
                       <Clock className="w-5 h-5 mr-3" />
                       Ekip Vardiyaları
-                      <span className="ml-auto text-xs text-orange-500 font-medium">(geliştirme de)</span>
+                      
                     </button>
 
                     <button

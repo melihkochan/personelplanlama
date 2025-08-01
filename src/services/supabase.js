@@ -3833,6 +3833,171 @@ export const updateStoreCoordinatesFromExcel = async (excelData) => {
 
 // Debug function to test current user structure
 
+// Team Shifts Functions
+export const getTeamShifts = async (year, month) => {
+  try {
+    let query = supabase
+      .from('team_shifts')
+      .select('*')
+      .order('date');
+
+    if (month !== null) {
+      // Specific month
+      const startOfMonth = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      let endOfMonth;
+      
+      if (month === 11) { // December (month is 0-indexed, so 11 is Dec)
+        endOfMonth = `${year + 1}-01-01`; // First day of next year
+      } else {
+        endOfMonth = `${year}-${String(month + 2).padStart(2, '0')}-01`; // First day of next month
+      }
+      
+      query = query
+        .gte('date', startOfMonth)
+        .lt('date', endOfMonth);
+    } else {
+      // All months for the year
+      query = query
+        .gte('date', `${year}-01-01`)
+        .lt('date', `${year + 1}-01-01`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching team shifts:', error);
+    return [];
+  }
+};
+
+export const getTeamShiftsByDate = async (date) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_shifts')
+      .select('*')
+      .eq('date', date)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching team shift by date:', error);
+    return null;
+  }
+};
+
+export const updateTeamShift = async (date, shiftData) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_shifts')
+      .upsert({
+        date,
+        day_name: shiftData.dayName,
+        night_shift: shiftData.nightShift,
+        morning_shift: shiftData.morningShift,
+        evening_shift: shiftData.eveningShift,
+        leave_shift: shiftData.leaveShift,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error updating team shift:', error);
+    throw error;
+  }
+};
+
+export const bulkInsertTeamShifts = async (shiftsData) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_shifts')
+      .upsert(shiftsData, { onConflict: 'date' });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error bulk inserting team shifts:', error);
+    throw error;
+  }
+};
+
+export const getTeamShiftsByTeam = async (teamName, year) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_shifts')
+      .select('*')
+      .or(`night_shift.eq.${teamName},morning_shift.eq.${teamName},evening_shift.eq.${teamName}`)
+      .gte('date', `${year}-01-01`)
+      .lt('date', `${year + 1}-01-01`)
+      .order('date');
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching team shifts by team:', error);
+    return [];
+  }
+};
+
+export const getLeaveDays = async (year) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_shifts')
+      .select('*')
+      .not('leave_shift', 'is', null)
+      .gte('date', `${year}-01-01`)
+      .lt('date', `${year + 1}-01-01`)
+      .order('date');
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching leave days:', error);
+    return [];
+  }
+};
+
+export const getMonthlyStats = async (year) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_shifts')
+      .select('*')
+      .gte('date', `${year}-01-01`)
+      .lt('date', `${year + 1}-01-01`);
+
+    if (error) throw error;
+    
+    // Process data to get monthly stats
+    const monthlyStats = {};
+    data.forEach(shift => {
+      const month = new Date(shift.date).getMonth();
+      if (!monthlyStats[month]) {
+        monthlyStats[month] = {
+          total_days: 0,
+          night_shifts: 0,
+          morning_shifts: 0,
+          evening_shifts: 0,
+          leave_days: 0
+        };
+      }
+      
+      monthlyStats[month].total_days++;
+      if (shift.night_shift) monthlyStats[month].night_shifts++;
+      if (shift.morning_shift) monthlyStats[month].morning_shifts++;
+      if (shift.evening_shift) monthlyStats[month].evening_shifts++;
+      if (shift.leave_shift) monthlyStats[month].leave_days++;
+    });
+    
+    return monthlyStats;
+  } catch (error) {
+    console.error('Error fetching monthly stats:', error);
+    return {};
+  }
+};
+
 
 
 

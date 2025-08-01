@@ -3877,14 +3877,13 @@ export const getTeamShiftsByDate = async (date) => {
     const { data, error } = await supabase
       .from('team_shifts')
       .select('*')
-      .eq('date', date)
-      .single();
+      .eq('date', date);
 
     if (error) throw error;
-    return data;
+    return { success: true, data: data || [] };
   } catch (error) {
     console.error('Error fetching team shift by date:', error);
-    return null;
+    return { success: false, error: error.message, data: [] };
   }
 };
 
@@ -4097,6 +4096,141 @@ export const getPersonnelFromPersonnelTable = async () => {
   } catch (error) {
     console.error('Get personnel from personnel table error:', error);
     return { success: false, error: error.message };
+  }
+};
+
+// Timesheet functions
+export const saveTimesheetData = async (timesheetData) => {
+  try {
+    const { data, error } = await supabase
+      .from('timesheet_data')
+      .upsert([timesheetData], { 
+        onConflict: 'date,personnel_id',
+        ignoreDuplicates: false 
+      })
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Save timesheet data error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getTimesheetData = async (date) => {
+  try {
+    const { data, error } = await supabase
+      .from('timesheet_data')
+      .select('*')
+      .eq('date', date)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Get timesheet data error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const updateTimesheetData = async (id, updates) => {
+  try {
+    const { data, error } = await supabase
+      .from('timesheet_data')
+      .update(updates)
+      .eq('id', id)
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Update timesheet data error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteTimesheetData = async (id) => {
+  try {
+    const { error } = await supabase
+      .from('timesheet_data')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Delete timesheet data error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAnadoluPersonnelShifts = async (date) => {
+  try {
+    // En güncel dönemi bul
+    const { data: periods, error: periodsError } = await supabase
+      .from('weekly_periods')
+      .select('*')
+      .order('start_date', { ascending: false })
+      .limit(1);
+    
+    if (periodsError) {
+      console.error('❌ Güncel dönem bulunamadı:', periodsError);
+      return { success: false, error: periodsError.message, data: [] };
+    }
+    
+    if (!periods || periods.length === 0) {
+      console.log('⚠️ Hiç dönem bulunamadı');
+      return { success: false, error: 'Hiç dönem bulunamadı', data: [] };
+    }
+    
+    const latestPeriod = periods[0];
+    
+    // Bu dönemdeki Anadolu personellerinin vardiya verilerini getir
+    const { data: shifts, error: shiftsError } = await supabase
+      .from('weekly_schedules')
+      .select('*')
+      .eq('period_id', latestPeriod.id);
+    
+    if (shiftsError) {
+      console.error('❌ Anadolu vardiya verileri getirilemedi:', shiftsError);
+      return { success: false, error: shiftsError.message, data: [] };
+    }
+    
+    // Anadolu personellerini getir (personnel tablosundan)
+    const { data: anadoluPersonnel, error: personnelError } = await supabase
+      .from('personnel')
+      .select('employee_code, full_name, position')
+      .or('position.eq.SEVKİYAT ELEMANI,position.eq.ŞOFÖR');
+    
+    if (personnelError) {
+      console.error('❌ Anadolu personel verileri getirilemedi:', personnelError);
+      return { success: false, error: personnelError.message, data: [] };
+    }
+    
+    // Personel bilgilerini birleştir
+    const personnelMap = {};
+    anadoluPersonnel.forEach(p => {
+      personnelMap[p.employee_code] = p;
+    });
+    
+    const enrichedShifts = shifts
+      .filter(shift => personnelMap[shift.employee_code]) // Sadece Anadolu personellerini al
+      .map(shift => {
+        const person = personnelMap[shift.employee_code];
+        return {
+          ...shift,
+          full_name: person?.full_name || 'Bilinmeyen',
+          position: person?.position || 'Belirtilmemiş'
+        };
+      });
+    
+    console.log('✅ Anadolu vardiya verileri yüklendi:', enrichedShifts.length, 'kayıt');
+    
+    return { success: true, data: enrichedShifts };
+  } catch (error) {
+    console.error('❌ Anadolu vardiya verileri yükleme hatası:', error);
+    return { success: false, error: error.message, data: [] };
   }
 };
 

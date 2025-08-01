@@ -11,6 +11,7 @@ import PerformanceAnalysis from './components/personnel/PerformanceAnalysis';
 import PersonelVardiyaKontrol from './components/personnel/PersonelVardiyaKontrol';
 import StoreDistribution from './components/personnel/StoreDistribution';
 import VehicleDistribution from './components/vehicles/VehicleDistribution';
+import Statistics from './components/personnel/Statistics';
 import AdminPanel from './components/admin/AdminPanel';
 import LoginForm from './components/ui/LoginForm';
 import NotificationPanel from './components/notifications/NotificationPanel';
@@ -605,7 +606,8 @@ function MainApp() {
     { id: 'personnel', label: 'Personel Listesi', icon: Users },
     { id: 'vardiya-kontrol', label: 'Personel Kontrol', icon: Clock },
     { id: 'performance', label: 'Performans Analizi', icon: BarChart3 },
-    { id: 'planning', label: 'Vardiya Planlama', icon: Calendar }
+    { id: 'planning', label: 'Vardiya Planlama', icon: Calendar },
+    { id: 'statistics', label: 'İstatistikler', icon: BarChart3 }
   ];
 
   return (
@@ -682,6 +684,21 @@ function MainApp() {
             >
               <Home className="w-4 h-4 mr-2" />
               Ana Sayfa
+            </button>
+
+            {/* İstatistikler */}
+            <button
+              onClick={() => handleTabChange('statistics')}
+              className={`
+                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                ${activeTab === 'statistics'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                }
+              `}
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              İstatistikler
             </button>
 
             {/* Chat */}
@@ -868,7 +885,6 @@ function MainApp() {
                 <Calendar className="w-4 h-4 mr-2" />
                 Vardiya Planlama
               </button>
-
 
             </div>
           </nav>
@@ -1201,6 +1217,22 @@ function MainApp() {
                       Vardiya Planlama
                     </button>
 
+                    <button
+                      onClick={() => {
+                        handleTabChange('statistics');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'statistics'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <BarChart3 className="w-5 h-5 mr-3" />
+                      İstatistikler
+                    </button>
 
                   </div>
 
@@ -1580,7 +1612,10 @@ function MainApp() {
               />
             )}
 
-
+            {/* İstatistikler */}
+            {activeTab === 'statistics' && (
+              <Statistics />
+            )}
 
             {/* Performans Analizi */}
             {activeTab === 'performance' && (

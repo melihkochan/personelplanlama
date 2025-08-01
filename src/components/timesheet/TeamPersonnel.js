@@ -1,277 +1,640 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Filter, User, Phone, Mail, MapPin, Calendar, Clock, Shield, Star, Award, TrendingUp } from 'lucide-react';
+import {
+  Table,
+  Button,
+  Input,
+  Select,
+  Modal,
+  Form,
+  Card,
+  Row,
+  Col,
+  Statistic,
+  Space,
+  Tag,
+  Divider,
+  Typography,
+  message
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UserOutlined,
+  TeamOutlined
+} from '@ant-design/icons';
+import { getTeamPersonnel, addTeamPersonnel, updateTeamPersonnel, deleteTeamPersonnel, getPersonnelFromPersonnelTable } from '../../services/supabase';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 const TeamPersonnel = () => {
-  const [personnel, setPersonnel] = useState([]);
+  const [teamPersonnel, setTeamPersonnel] = useState([]);
+  const [anadoluPersonnel, setAnadoluPersonnel] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState('all');
+  const [showModal, setShowModal] = useState(false);
+  const [editingPersonnel, setEditingPersonnel] = useState(null);
+  const [form] = Form.useForm();
 
-  // Mock data for development
-  const mockPersonnel = [
-    {
-      id: 1,
-      name: 'Ahmet Yılmaz',
-      team: '1.Ekip',
-      position: 'Sürücü',
-      phone: '+90 532 123 4567',
-      email: 'ahmet.yilmaz@company.com',
-      startDate: '2023-01-15',
-      experience: '5 yıl',
-      status: 'Aktif',
-      performance: 'Yüksek'
-    },
-    {
-      id: 2,
-      name: 'Mehmet Demir',
-      team: '2.Ekip',
-      position: 'Yükleyici',
-      phone: '+90 533 234 5678',
-      email: 'mehmet.demir@company.com',
-      startDate: '2022-08-20',
-      experience: '3 yıl',
-      status: 'Aktif',
-      performance: 'Orta'
-    },
-    {
-      id: 3,
-      name: 'Fatma Kaya',
-      team: '3.Ekip',
-      position: 'Sürücü',
-      phone: '+90 534 345 6789',
-      email: 'fatma.kaya@company.com',
-      startDate: '2024-03-10',
-      experience: '1 yıl',
-      status: 'Aktif',
-      performance: 'Yüksek'
-    },
-    {
-      id: 4,
-      name: 'Ali Özkan',
-      team: '4.Ekip',
-      position: 'Yükleyici',
-      phone: '+90 535 456 7890',
-      email: 'ali.ozkan@company.com',
-      startDate: '2021-11-05',
-      experience: '7 yıl',
-      status: 'Aktif',
-      performance: 'Yüksek'
-    }
+  // Konum seçenekleri ve sıralama öncelikleri
+  const konumOptions = [
+    'Vardiya Amiri',
+    'Ekip Lideri',
+    'Sistem Operatörü',
+    'Sistem Operatör Yrd.',
+    'Sevkiyat Sorumlusu',
+    'Sevkiyat Veri Giriş Elemanı',
+    'Makine Operatörü',
+    'Sevkiyat Elemanı',
+    'Sevkiyat Elemanı ( Load Audit)'
   ];
 
+  const konumPriority = {
+    'Vardiya Amiri': 1,
+    'Ekip Lideri': 2,
+    'Sistem Operatörü': 3,
+    'Sistem Operatör Yrd.': 4,
+    'Sevkiyat Sorumlusu': 5,
+    'Sevkiyat Veri Giriş Elemanı': 6,
+    'Makine Operatörü': 7,
+    'Sevkiyat Elemanı': 8,
+    'Sevkiyat Elemanı ( Load Audit)': 9
+  };
+
+  const ekipOptions = ['1.Ekip', '2.Ekip', '3.Ekip', '4.Ekip'];
+
   useEffect(() => {
-    setPersonnel(mockPersonnel);
+    loadData();
   }, []);
 
-  const filteredPersonnel = personnel.filter(person => {
-    const matchesSearch = person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         person.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         person.team.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTeam = selectedTeam === 'all' || person.team === selectedTeam;
-    return matchesSearch && matchesTeam;
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [teamResult, anadoluResult] = await Promise.all([
+        getTeamPersonnel(),
+        getPersonnelFromPersonnelTable()
+      ]);
+
+      if (teamResult.success) {
+        setTeamPersonnel(teamResult.data);
+      }
+      if (anadoluResult.success) {
+        setAnadoluPersonnel(anadoluResult.data);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      message.error('Veriler yüklenirken hata oluştu');
+    }
+    setLoading(false);
+  };
+
+  // Özel sıralama fonksiyonu
+  const sortPersonnel = (personnel) => {
+    return personnel.sort((a, b) => {
+      // Önce konum önceliğine göre sırala
+      const priorityA = konumPriority[a.konum] || 999;
+      const priorityB = konumPriority[b.konum] || 999;
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      // Aynı konumda ise sicil_no'ya göre sırala
+      const sicilComparison = parseInt(a.sicil_no) - parseInt(b.sicil_no);
+      return sicilComparison;
+    });
+  };
+
+  // Ekip bazında gruplandırılmış personel
+  const groupedPersonnel = ekipOptions.reduce((acc, ekip) => {
+    const teamMembers = teamPersonnel.filter(p => p.ekip_bilgisi === ekip);
+    acc[ekip] = sortPersonnel(teamMembers);
+    return acc;
+  }, {});
+
+  // Anadolu personellerini sırala
+  const sortedAnadoluPersonnel = anadoluPersonnel.sort((a, b) => {
+    // Önce pozisyona göre sırala
+    const positionPriority = {
+      'SEVKİYAT ELEMANI': 1,
+      'ŞOFÖR': 2
+    };
+    
+    const priorityA = positionPriority[a.position] || 999;
+    const priorityB = positionPriority[b.position] || 999;
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    // Aynı pozisyonda ise sicil numarasına göre sırala
+    const sicilComparison = parseInt(a.employee_code) - parseInt(b.employee_code);
+    return sicilComparison;
   });
 
   const getTeamColor = (team) => {
     switch (team) {
-      case '1.Ekip': return 'bg-green-100 text-green-800';
-      case '2.Ekip': return 'bg-blue-100 text-blue-800';
-      case '3.Ekip': return 'bg-gray-100 text-gray-800';
-      case '4.Ekip': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case '1.Ekip': return 'green';
+      case '2.Ekip': return 'blue';
+      case '3.Ekip': return 'default';
+      case '4.Ekip': return 'orange';
+      default: return 'default';
     }
   };
 
-  const getPerformanceColor = (performance) => {
-    switch (performance) {
-      case 'Yüksek': return 'bg-green-100 text-green-800';
-      case 'Orta': return 'bg-yellow-100 text-yellow-800';
-      case 'Düşük': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const handleAddPersonnel = async (values) => {
+    setLoading(true);
+    try {
+      const result = await addTeamPersonnel(values);
+      if (result.success) {
+        message.success('Personel başarıyla eklendi');
+        setShowModal(false);
+        form.resetFields();
+        loadData();
+      } else {
+        // Supabase hata kodlarını kontrol et ve özel mesajlar göster
+        if (result.error && result.error.includes('duplicate key')) {
+          message.error('Bu sicil numarası veya isim zaten mevcut! Lütfen farklı bir sicil numarası veya isim kullanın.');
+        } else if (result.error && result.error.includes('unique constraint')) {
+          message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
+        } else if (result.error && result.error.includes('violates')) {
+          message.error('Bu personel zaten mevcut! Lütfen farklı bir sicil numarası veya isim kullanın.');
+        } else {
+          message.error('Personel eklenirken hata oluştu: ' + result.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding personnel:', error);
+      // Genel hata durumunda da özel mesaj göster
+      if (error.message && error.message.includes('duplicate')) {
+        message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
+      } else {
+        message.error('Personel eklenirken hata oluştu');
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleUpdatePersonnel = async (values) => {
+    if (!editingPersonnel) return;
+
+    setLoading(true);
+    try {
+      const result = await updateTeamPersonnel(editingPersonnel.id, values);
+      if (result.success) {
+        message.success('Personel başarıyla güncellendi');
+        setEditingPersonnel(null);
+        setShowModal(false);
+        form.resetFields();
+        loadData();
+      } else {
+        // Supabase hata kodlarını kontrol et ve özel mesajlar göster
+        if (result.error && result.error.includes('duplicate key')) {
+          message.error('Bu sicil numarası veya isim zaten mevcut! Lütfen farklı bir sicil numarası veya isim kullanın.');
+        } else if (result.error && result.error.includes('unique constraint')) {
+          message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
+        } else if (result.error && result.error.includes('violates')) {
+          message.error('Bu personel zaten mevcut! Lütfen farklı bir sicil numarası veya isim kullanın.');
+        } else {
+          message.error('Personel güncellenirken hata oluştu: ' + result.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating personnel:', error);
+      // Genel hata durumunda da özel mesaj göster
+      if (error.message && error.message.includes('duplicate')) {
+        message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
+      } else {
+        message.error('Personel güncellenirken hata oluştu');
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleDeletePersonnel = async (id) => {
+    try {
+      const result = await deleteTeamPersonnel(id);
+      if (result.success) {
+        message.success('Personel başarıyla silindi');
+        loadData();
+      } else {
+        message.error('Personel silinirken hata oluştu: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error deleting personnel:', error);
+      message.error('Personel silinirken hata oluştu');
     }
   };
+
+  const startEdit = (person) => {
+    setEditingPersonnel(person);
+    form.setFieldsValue({
+      sicil_no: person.sicil_no,
+      adi_soyadi: person.adi_soyadi,
+      konum: person.konum,
+      ekip_bilgisi: person.ekip_bilgisi
+    });
+    setShowModal(true);
+  };
+
+  const handleModalCancel = () => {
+    setShowModal(false);
+    setEditingPersonnel(null);
+    form.resetFields();
+  };
+
+  const handleModalOk = () => {
+    form.validateFields()
+      .then(values => {
+        // Ek validasyonlar
+        if (!values.sicil_no || values.sicil_no.length !== 6 || !/^\d{6}$/.test(values.sicil_no)) {
+          message.error('Sicil no 6 haneli sayı olmalıdır!');
+          return;
+        }
+        
+        if (!values.adi_soyadi || !/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/.test(values.adi_soyadi)) {
+          message.error('Adı soyadı sadece harf içerebilir!');
+          return;
+        }
+        
+        if (!values.konum) {
+          message.error('Konum seçin!');
+          return;
+        }
+        
+        if (!values.ekip_bilgisi) {
+          message.error('Ekip seçin!');
+          return;
+        }
+        
+        if (editingPersonnel) {
+          handleUpdatePersonnel(values);
+        } else {
+          handleAddPersonnel(values);
+        }
+      })
+      .catch(errorInfo => {
+        console.log('Validation failed:', errorInfo);
+        message.error('Lütfen tüm alanları doğru şekilde doldurun!');
+      });
+  };
+
+  // Ekip tablosu için sütunlar
+  const teamColumns = [
+    {
+      title: 'Sicil No',
+      dataIndex: 'sicil_no',
+      key: 'sicil_no',
+      width: 70,
+      render: (text) => <Text style={{ fontSize: '11px' }} strong>{text}</Text>
+    },
+    {
+      title: 'Adı Soyadı',
+      dataIndex: 'adi_soyadi',
+      key: 'adi_soyadi',
+      width: 120,
+      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
+    },
+    {
+      title: 'Pozisyon',
+      dataIndex: 'konum',
+      key: 'konum',
+      width: 140,
+      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
+    },
+    {
+      title: 'İşlemler',
+      key: 'actions',
+      width: 60,
+      render: (_, record) => (
+        <Space size="small">
+          <Button 
+            type="text" 
+            icon={<EditOutlined />} 
+            onClick={() => startEdit(record)}
+            size="small"
+            style={{ fontSize: '10px' }}
+          />
+          <Button 
+            type="text" 
+            danger 
+            icon={<DeleteOutlined />} 
+            onClick={() => handleDeletePersonnel(record.id)}
+            size="small"
+            style={{ fontSize: '10px' }}
+          />
+        </Space>
+      )
+    }
+  ];
+
+  // Anadolu personel tablosu için sütunlar
+  const anadoluColumns = [
+    {
+      title: 'Sicil No',
+      dataIndex: 'employee_code',
+      key: 'employee_code',
+      width: 70,
+      render: (text) => <Text style={{ fontSize: '11px' }} strong>{text}</Text>
+    },
+    {
+      title: 'Adı Soyadı',
+      dataIndex: 'full_name',
+      key: 'full_name',
+      width: 150,
+      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
+    },
+    {
+      title: 'Pozisyon',
+      dataIndex: 'position',
+      key: 'position',
+      width: 120,
+      render: (text) => <Tag color="blue" style={{ fontSize: '10px' }}>{text}</Tag>
+    }
+  ];
 
   return (
-    <div className="space-y-6 w-full px-6">
+    <div style={{ padding: '8px' }}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg p-4 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Ekip Personel Bilgileri</h1>
-            <p className="text-purple-100 text-sm mt-1">Ekip Personel Yönetimi ve Takibi</p>
-          </div>
-          <div className="bg-white/20 rounded-lg p-2">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* Search */}
-          <div className="flex items-center space-x-2 flex-1 min-w-0">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Personel ara..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center space-x-2">
-            <select
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+      <Card 
+        style={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          marginBottom: '8px'
+        }}
+        bodyStyle={{ padding: '12px' }}
+      >
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Title level={4} style={{ color: 'white', margin: 0, fontSize: '16px' }}>
+              Ekip Personel Bilgileri
+            </Title>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+              Ekip Personel Yönetimi ve Takibi
+            </Text>
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => setShowModal(true)}
+              style={{ 
+                background: 'rgba(255,255,255,0.25)', 
+                border: '1px solid rgba(255,255,255,0.4)', 
+                fontSize: '13px',
+                fontWeight: '500',
+                padding: '8px 16px',
+                height: 'auto',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}
+              size="middle"
             >
-              <option value="all">Tüm Ekipler</option>
-              <option value="1.Ekip">1. Ekip</option>
-              <option value="2.Ekip">2. Ekip</option>
-              <option value="3.Ekip">3. Ekip</option>
-              <option value="4.Ekip">4. Ekip</option>
-            </select>
-          </div>
-        </div>
-      </div>
+              Personel Ekle
+            </Button>
+          </Col>
+        </Row>
+      </Card>
 
-      {/* Development Notice */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="flex items-center space-x-2">
-          <Shield className="w-5 h-5 text-yellow-600" />
-          <div>
-            <h3 className="text-sm font-medium text-yellow-800">Geliştirme Aşamasında</h3>
-            <p className="text-xs text-yellow-700 mt-1">
-              Bu sayfa şu anda geliştirme aşamasındadır. Personel bilgileri yönetimi yakında eklenecektir.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Personnel Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredPersonnel.map((person) => (
-          <div key={person.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">{person.name}</h3>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTeamColor(person.team)}`}>
-                    {person.team}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center space-x-1">
-                {person.performance === 'Yüksek' && <Star className="w-4 h-4 text-yellow-500" />}
-                {person.experience.includes('5') && <Award className="w-4 h-4 text-blue-500" />}
-              </div>
-            </div>
-
-            {/* Details */}
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2 text-xs text-gray-600">
-                <Shield className="w-3 h-3" />
-                <span>{person.position}</span>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-xs text-gray-600">
-                <Phone className="w-3 h-3" />
-                <span>{person.phone}</span>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-xs text-gray-600">
-                <Mail className="w-3 h-3" />
-                <span className="truncate">{person.email}</span>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-xs text-gray-600">
-                <Calendar className="w-3 h-3" />
-                <span>Başlangıç: {new Date(person.startDate).toLocaleDateString('tr-TR')}</span>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-xs text-gray-600">
-                <Clock className="w-3 h-3" />
-                <span>Deneyim: {person.experience}</span>
-              </div>
-            </div>
-
-            {/* Performance */}
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Performans:</span>
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPerformanceColor(person.performance)}`}>
-                  {person.performance}
-                </span>
-              </div>
-            </div>
-          </div>
+      {/* İstatistikler */}
+      <Row gutter={8} style={{ marginBottom: '8px' }}>
+        <Col span={4}>
+          <Card size="small">
+            <Statistic
+              title={<span style={{ fontSize: '11px' }}>Toplam Ekip Personeli</span>}
+              value={teamPersonnel.length}
+              prefix={<UserOutlined style={{ fontSize: '12px' }} />}
+              valueStyle={{ fontSize: '14px' }}
+            />
+          </Card>
+        </Col>
+        {ekipOptions.map(ekip => (
+          <Col span={5} key={ekip}>
+            <Card size="small">
+              <Statistic
+                title={<span style={{ fontSize: '11px' }}>{ekip}</span>}
+                value={teamPersonnel.filter(p => p.ekip_bilgisi === ekip).length}
+                prefix={<TeamOutlined style={{ fontSize: '12px' }} />}
+                valueStyle={{ 
+                  fontSize: '14px',
+                  color: getTeamColor(ekip) === 'green' ? '#52c41a' : 
+                         getTeamColor(ekip) === 'blue' ? '#1890ff' : 
+                         getTeamColor(ekip) === 'orange' ? '#fa8c16' : '#8c8c8c' 
+                }}
+              />
+            </Card>
+          </Col>
         ))}
-      </div>
+      </Row>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Toplam Personel</p>
-              <p className="text-2xl font-bold text-gray-900">{personnel.length}</p>
-            </div>
-          </div>
-        </div>
+      
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
+                           {/* Ana İçerik - Sol: Ekipler, Sağ: Anadolu */}
+        <Row gutter={8}>
+          {/* Sol taraf - Ekipler */}
+          <Col span={12}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {ekipOptions.map(ekip => (
+                <Card 
+                  key={ekip}
+                  title={
+                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                      {ekip} ({groupedPersonnel[ekip]?.length || 0} kişi)
+                    </span>
+                  }
+                  size="small"
+                  headStyle={{
+                    backgroundColor: getTeamColor(ekip) === 'green' ? '#f6ffed' : 
+                                 getTeamColor(ekip) === 'blue' ? '#e6f7ff' : 
+                                 getTeamColor(ekip) === 'orange' ? '#fff7e6' : '#fafafa',
+                    borderColor: getTeamColor(ekip) === 'green' ? '#b7eb8f' : 
+                                getTeamColor(ekip) === 'blue' ? '#91d5ff' : 
+                                getTeamColor(ekip) === 'orange' ? '#ffd591' : '#d9d9d9',
+                    padding: '8px 12px'
+                  }}
+                  bodyStyle={{ padding: '8px' }}
+                >
+                  <Table
+                    columns={teamColumns}
+                    dataSource={groupedPersonnel[ekip] || []}
+                    rowKey="id"
+                    pagination={false}
+                    size="small"
+                    style={{ fontSize: '11px' }}
+                    scroll={{ y: 150 }}
+                  />
+                </Card>
+              ))}
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Yüksek Performans</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {personnel.filter(p => p.performance === 'Yüksek').length}
-              </p>
-            </div>
-          </div>
-        </div>
+          </Col>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Award className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Deneyimli</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {personnel.filter(p => p.experience.includes('5') || p.experience.includes('7')).length}
-              </p>
-            </div>
-          </div>
-        </div>
+          {/* Sağ taraf - Anadolu Personelleri */}
+          <Col span={12}>
+            <Card 
+              title={
+                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                  Anadolu Personelleri ({sortedAnadoluPersonnel.length} kişi)
+                </span>
+              }
+              size="small"
+              headStyle={{
+                backgroundColor: '#f9f0ff',
+                borderColor: '#d3adf7',
+                padding: '8px 12px'
+              }}
+              bodyStyle={{ padding: '8px' }}
+            >
+              <Table
+                columns={anadoluColumns}
+                dataSource={sortedAnadoluPersonnel}
+                rowKey="id"
+                pagination={false}
+                size="small"
+                style={{ fontSize: '11px' }}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Star className="w-5 h-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Aktif</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {personnel.filter(p => p.status === 'Aktif').length}
-              </p>
-            </div>
+      {/* Modal */}
+      <Modal
+        title={
+          <div style={{ 
+            fontSize: '16px', 
+            fontWeight: '600', 
+            color: '#1f2937',
+            textAlign: 'center',
+            padding: '8px 0'
+          }}>
+            {editingPersonnel ? 'Personel Düzenle' : 'Yeni Personel Ekle'}
           </div>
-        </div>
-      </div>
+        }
+        open={showModal}
+        onOk={handleModalOk}
+        onCancel={handleModalCancel}
+        confirmLoading={loading}
+        width={450}
+        style={{ top: 50 }}
+        bodyStyle={{ padding: '24px' }}
+        okText="Kaydet"
+        cancelText="İptal"
+        okButtonProps={{
+          style: {
+            background: '#1890ff',
+            borderColor: '#1890ff',
+            fontSize: '14px',
+            fontWeight: '500',
+            padding: '8px 20px',
+            height: 'auto'
+          }
+        }}
+        cancelButtonProps={{
+          style: {
+            fontSize: '14px',
+            fontWeight: '500',
+            padding: '8px 20px',
+            height: 'auto'
+          }
+        }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          size="middle"
+          style={{ marginTop: '8px' }}
+        >
+                                                                                       <Form.Item
+               name="sicil_no"
+               label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Sicil No</span>}
+               rules={[
+                 { required: true, message: 'Sicil no gerekli!' },
+                 { 
+                   pattern: /^\d{6}$/, 
+                   message: 'Sicil no 6 haneli sayı olmalıdır!' 
+                 }
+               ]}
+             >
+               <Input 
+                 placeholder="6 haneli sicil numarası" 
+                 style={{ fontSize: '14px', padding: '8px 12px' }}
+                 size="middle"
+                 maxLength={6}
+                 onKeyPress={(e) => {
+                   if (!/[0-9]/.test(e.key)) {
+                     e.preventDefault();
+                   }
+                 }}
+                 onChange={(e) => {
+                   let value = e.target.value.replace(/[^0-9]/g, '');
+                   if (value.length > 6) {
+                     value = value.slice(0, 6);
+                   }
+                   form.setFieldsValue({ sicil_no: value });
+                 }}
+               />
+             </Form.Item>
+
+                                                                                       <Form.Item
+               name="adi_soyadi"
+               label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Adı Soyadı</span>}
+               rules={[
+                 { required: true, message: 'Adı soyadı gerekli!' },
+                 { 
+                   pattern: /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, 
+                   message: 'Adı soyadı sadece harf içerebilir!' 
+                 }
+               ]}
+             >
+               <Input 
+                 placeholder="Adı soyadı" 
+                 style={{ fontSize: '14px', padding: '8px 12px' }}
+                 size="middle"
+                 onKeyPress={(e) => {
+                   if (!/[a-zA-ZğüşıöçĞÜŞİÖÇ\s]/.test(e.key)) {
+                     e.preventDefault();
+                   }
+                 }}
+                 onChange={(e) => {
+                   const value = e.target.value.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, '');
+                   form.setFieldsValue({ adi_soyadi: value });
+                 }}
+               />
+             </Form.Item>
+
+          <Form.Item
+            name="konum"
+            label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Konum</span>}
+            rules={[{ required: true, message: 'Konum seçin!' }]}
+          >
+            <Select 
+              placeholder="Konum seçin" 
+              style={{ fontSize: '14px' }}
+              size="middle"
+              showSearch
+              filterOption={(input, option) =>
+                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+            >
+              {konumOptions.map(konum => (
+                <Option key={konum} value={konum}>{konum}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="ekip_bilgisi"
+            label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Ekip</span>}
+            rules={[{ required: true, message: 'Ekip seçin!' }]}
+          >
+            <Select 
+              placeholder="Ekip seçin" 
+              style={{ fontSize: '14px' }}
+              size="middle"
+            >
+              {ekipOptions.map(ekip => (
+                <Option key={ekip} value={ekip}>{ekip}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

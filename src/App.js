@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen } from 'lucide-react';
+import 'antd/dist/reset.css';
 
 import PersonelList from './components/personnel/PersonelList';
 import VehicleList from './components/vehicles/VehicleList';
@@ -936,20 +937,6 @@ function MainApp() {
               </button>
 
               <button
-                onClick={() => handleTabChange('timesheet-tracking')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
-                  ${activeTab === 'timesheet-tracking'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
-                  }
-                `}
-              >
-                <Package className="w-4 h-4 mr-2" />
-                Puantaj Takip
-              </button>
-
-              <button
                 onClick={() => handleTabChange('team-personnel')}
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
@@ -961,10 +948,20 @@ function MainApp() {
               >
                 <Users className="w-4 h-4 mr-2" />
                 Ekip Personel Bilgileri
-                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
-                  Geliştirme
-                </span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('timesheet-tracking')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'timesheet-tracking'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Puantaj Takip
               </button>
 
             </div>
@@ -1329,23 +1326,6 @@ function MainApp() {
 
                     <button
                       onClick={() => {
-                        handleTabChange('timesheet-tracking');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'timesheet-tracking'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <Package className="w-5 h-5 mr-3" />
-                      Puantaj Takip
-                    </button>
-
-                    <button
-                      onClick={() => {
                         handleTabChange('team-personnel');
                         setMobileMenuOpen(false);
                       }}
@@ -1359,10 +1339,23 @@ function MainApp() {
                     >
                       <Users className="w-5 h-5 mr-3" />
                       Ekip Personel Bilgileri
-                      <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
-                        Geliştirme
-                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('timesheet-tracking');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'timesheet-tracking'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Package className="w-5 h-5 mr-3" />
+                      Puantaj Takip
                     </button>
 
                   </div>

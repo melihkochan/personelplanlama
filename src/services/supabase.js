@@ -3998,6 +3998,108 @@ export const getMonthlyStats = async (year) => {
   }
 };
 
+// Team Personnel functions
+export const getTeamPersonnel = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('team_personnel')
+      .select('*')
+      .order('ekip_bilgisi', { ascending: true })
+      .order('adi_soyadi', { ascending: true });
+    
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Get team personnel error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const addTeamPersonnel = async (personnel) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_personnel')
+      .insert([personnel])
+      .select();
+    
+    if (error) throw error;
+    
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Add team personnel error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateTeamPersonnel = async (id, updates) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_personnel')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select();
+    
+    if (error) throw error;
+    
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error('Update team personnel error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteTeamPersonnel = async (id) => {
+  try {
+    const { error } = await supabase
+      .from('team_personnel')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Delete team personnel error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getTeamPersonnelByTeam = async (teamName) => {
+  try {
+    const { data, error } = await supabase
+      .from('team_personnel')
+      .select('*')
+      .eq('ekip_bilgisi', teamName)
+      .order('adi_soyadi', { ascending: true });
+    
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Get team personnel by team error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPersonnelFromPersonnelTable = async () => {
+  try {
+    // Önce tüm personnel verilerini çekelim ve kontrol edelim
+    const { data, error } = await supabase
+      .from('personnel')
+      .select('*')
+      .order('full_name', { ascending: true });
+    
+    if (error) throw error;
+    
+    // Tüm verileri döndür (region filtresi olmadan)
+    return { success: true, data };
+  } catch (error) {
+    console.error('Get personnel from personnel table error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 
 
 

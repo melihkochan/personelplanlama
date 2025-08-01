@@ -21,7 +21,15 @@ import {
   DeleteOutlined,
   UserOutlined,
   TeamOutlined,
-  FullscreenOutlined
+  FullscreenOutlined,
+  CrownOutlined,
+  SettingOutlined,
+  ToolOutlined,
+  CarOutlined,
+  UserSwitchOutlined,
+  SafetyOutlined,
+  BuildOutlined,
+  AuditOutlined
 } from '@ant-design/icons';
 import { getTeamPersonnel, addTeamPersonnel, updateTeamPersonnel, deleteTeamPersonnel, getPersonnelFromPersonnelTable } from '../../services/supabase';
 
@@ -145,6 +153,22 @@ const TeamPersonnel = () => {
       case '3.Ekip': return 'default';
       case '4.Ekip': return 'orange';
       default: return 'default';
+    }
+  };
+
+  // Pozisyon simgeleri
+  const getPositionIcon = (position) => {
+    switch (position) {
+      case 'Vardiya Amiri': return <CrownOutlined style={{ fontSize: '10px', color: '#fa8c16' }} />;
+      case 'Ekip Lideri': return <UserSwitchOutlined style={{ fontSize: '10px', color: '#52c41a' }} />;
+      case 'Sistem Operatörü': return <SettingOutlined style={{ fontSize: '10px', color: '#1890ff' }} />;
+      case 'Sistem Operatör Yrd.': return <SettingOutlined style={{ fontSize: '10px', color: '#722ed1' }} />;
+      case 'Sevkiyat Sorumlusu': return <SafetyOutlined style={{ fontSize: '10px', color: '#eb2f96' }} />;
+      case 'Sevkiyat Veri Giriş Elemanı': return <BuildOutlined style={{ fontSize: '10px', color: '#13c2c2' }} />;
+      case 'Makine Operatörü': return <ToolOutlined style={{ fontSize: '10px', color: '#fa541c' }} />;
+      case 'Sevkiyat Elemanı': return <CarOutlined style={{ fontSize: '10px', color: '#2f54eb' }} />;
+      case 'Sevkiyat Elemanı ( Load Audit)': return <AuditOutlined style={{ fontSize: '10px', color: '#a0d911' }} />;
+      default: return <UserOutlined style={{ fontSize: '10px', color: '#8c8c8c' }} />;
     }
   };
 
@@ -284,79 +308,86 @@ const TeamPersonnel = () => {
       });
   };
 
-  // Ekip tablosu için sütunlar
-  const teamColumns = [
-    {
-      title: 'Sicil No',
-      dataIndex: 'sicil_no',
-      key: 'sicil_no',
-      width: 70,
-      render: (text) => <Text style={{ fontSize: '11px' }} strong>{text}</Text>
-    },
-    {
-      title: 'Adı Soyadı',
-      dataIndex: 'adi_soyadi',
-      key: 'adi_soyadi',
-      width: 120,
-      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
-    },
-    {
-      title: 'Pozisyon',
-      dataIndex: 'konum',
-      key: 'konum',
-      width: 140,
-      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
-    },
-    {
-      title: 'İşlemler',
-      key: 'actions',
-      width: 60,
-      render: (_, record) => (
-        <Space size="small">
-          <Button 
-            type="text" 
-            icon={<EditOutlined />} 
-            onClick={() => startEdit(record)}
-            size="small"
-            style={{ fontSize: '10px' }}
-          />
-          <Button 
-            type="text" 
-            danger 
-            icon={<DeleteOutlined />} 
-            onClick={() => handleDeletePersonnel(record.id)}
-            size="small"
-            style={{ fontSize: '10px' }}
-          />
-        </Space>
-      )
-    }
-  ];
+     // Ekip tablosu için sütunlar
+   const teamColumns = [
+     {
+       title: 'Sicil No',
+       dataIndex: 'sicil_no',
+       key: 'sicil_no',
+       width: 65,
+       render: (text) => <Text style={{ fontSize: '10px' }} strong>{text}</Text>
+     },
+     {
+       title: 'Adı Soyadı',
+       dataIndex: 'adi_soyadi',
+       key: 'adi_soyadi',
+       width: 110,
+       render: (text) => <Text style={{ fontSize: '10px' }}>{text}</Text>
+     },
+           {
+        title: 'Pozisyon',
+        dataIndex: 'konum',
+        key: 'konum',
+        width: 130,
+        render: (text) => <Text style={{ fontSize: '10px' }}>{text}</Text>
+      },
+     {
+       title: 'İşlemler',
+       key: 'actions',
+       width: 50,
+       render: (_, record) => (
+         <Space size="small">
+           <Button 
+             type="text" 
+             icon={<EditOutlined />} 
+             onClick={() => startEdit(record)}
+             size="small"
+             style={{ fontSize: '9px' }}
+           />
+           <Button 
+             type="text" 
+             danger 
+             icon={<DeleteOutlined />} 
+             onClick={() => handleDeletePersonnel(record.id)}
+             size="small"
+             style={{ fontSize: '9px' }}
+           />
+         </Space>
+       )
+     }
+   ];
 
-  // Anadolu personel tablosu için sütunlar
-  const anadoluColumns = [
-    {
-      title: 'Sicil No',
-      dataIndex: 'employee_code',
-      key: 'employee_code',
-      width: 70,
-      render: (text) => <Text style={{ fontSize: '11px' }} strong>{text}</Text>
-    },
-    {
-      title: 'Adı Soyadı',
-      dataIndex: 'full_name',
-      key: 'full_name',
-      width: 150,
-      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
-    },
-    {
-      title: 'Pozisyon',
-      dataIndex: 'position',
-      key: 'position',
-      width: 120,
-      render: (text) => <Tag color="blue" style={{ fontSize: '10px' }}>{text}</Tag>
-    }
-  ];
+     // Anadolu personel tablosu için sütunlar
+   const anadoluColumns = [
+     {
+       title: 'Sicil No',
+       dataIndex: 'employee_code',
+       key: 'employee_code',
+       width: 65,
+       render: (text) => <Text style={{ fontSize: '10px' }} strong>{text}</Text>
+     },
+     {
+       title: 'Adı Soyadı',
+       dataIndex: 'full_name',
+       key: 'full_name',
+       width: 140,
+       render: (text) => <Text style={{ fontSize: '10px' }}>{text}</Text>
+     },
+           {
+        title: 'Pozisyon',
+        dataIndex: 'position',
+        key: 'position',
+        width: 110,
+        render: (text) => (
+          <Tag 
+            color={text === 'SEVKİYAT ELEMANI' ? 'blue' : 'green'} 
+            style={{ fontSize: '9px' }}
+          >
+            {text}
+          </Tag>
+        )
+      }
+   ];
 
   return (
     <div style={{ 
@@ -365,7 +396,9 @@ const TeamPersonnel = () => {
       backgroundColor: 'white',
       position: 'relative',
       margin: 0,
-      background: 'white'
+      background: 'white',
+      height: '100vh',
+      overflow: 'auto'
     }}>
       {/* Header */}
       <Card 
@@ -407,37 +440,50 @@ const TeamPersonnel = () => {
         </Row>
       </Card>
 
-      {/* İstatistikler */}
-      <Row gutter={12} style={{ marginBottom: '12px' }}>
-        <Col span={4}>
-          <Card size="default" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <Statistic
-              title={<span style={{ fontSize: '13px', fontWeight: '500' }}>Toplam Ekip Personeli</span>}
-              value={teamPersonnel.length}
-              prefix={<UserOutlined style={{ fontSize: '16px', color: '#1890ff' }} />}
-              valueStyle={{ fontSize: '20px', fontWeight: 'bold', color: '#1890ff' }}
-            />
-          </Card>
-        </Col>
-        {ekipOptions.map(ekip => (
-          <Col span={5} key={ekip}>
-            <Card size="default" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-              <Statistic
-                title={<span style={{ fontSize: '13px', fontWeight: '500' }}>{ekip}</span>}
-                value={teamPersonnel.filter(p => p.ekip_bilgisi === ekip).length}
-                prefix={<TeamOutlined style={{ fontSize: '16px' }} />}
-                valueStyle={{ 
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  color: getTeamColor(ekip) === 'green' ? '#52c41a' : 
-                         getTeamColor(ekip) === 'blue' ? '#1890ff' : 
-                         getTeamColor(ekip) === 'orange' ? '#fa8c16' : '#8c8c8c' 
-                }}
-              />
-            </Card>
-          </Col>
-        ))}
-      </Row>
+             {/* İstatistikler */}
+       <Row gutter={8} style={{ marginBottom: '8px' }}>
+         <Col span={4}>
+           <Card size="small" style={{ 
+             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+             background: 'linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)',
+             border: '1px solid #91d5ff'
+           }}>
+             <Statistic
+               title={<span style={{ fontSize: '11px', fontWeight: '600', color: '#1890ff' }}>Toplam Ekip Personeli</span>}
+               value={teamPersonnel.length}
+               prefix={<UserOutlined style={{ fontSize: '14px', color: '#1890ff' }} />}
+               valueStyle={{ fontSize: '18px', fontWeight: 'bold', color: '#1890ff' }}
+             />
+           </Card>
+         </Col>
+         {ekipOptions.map(ekip => (
+           <Col span={5} key={ekip}>
+             <Card size="small" style={{ 
+               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+               background: getTeamColor(ekip) === 'green' ? 'linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)' :
+                          getTeamColor(ekip) === 'blue' ? 'linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)' :
+                          getTeamColor(ekip) === 'orange' ? 'linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%)' :
+                          'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)',
+               border: getTeamColor(ekip) === 'green' ? '1px solid #b7eb8f' :
+                       getTeamColor(ekip) === 'blue' ? '1px solid #91d5ff' :
+                       getTeamColor(ekip) === 'orange' ? '1px solid #ffd591' : '1px solid #d9d9d9'
+             }}>
+               <Statistic
+                 title={<span style={{ fontSize: '11px', fontWeight: '600' }}>{ekip}</span>}
+                 value={teamPersonnel.filter(p => p.ekip_bilgisi === ekip).length}
+                 prefix={<TeamOutlined style={{ fontSize: '14px' }} />}
+                 valueStyle={{ 
+                   fontSize: '18px',
+                   fontWeight: 'bold',
+                   color: getTeamColor(ekip) === 'green' ? '#52c41a' : 
+                          getTeamColor(ekip) === 'blue' ? '#1890ff' : 
+                          getTeamColor(ekip) === 'orange' ? '#fa8c16' : '#8c8c8c' 
+                 }}
+               />
+             </Card>
+           </Col>
+         ))}
+       </Row>
 
       {/* Ana İçerik - Sol: Ekipler, Sağ: Anadolu */}
       <Row gutter={8}>
@@ -447,25 +493,25 @@ const TeamPersonnel = () => {
             {ekipOptions.map(ekip => (
               <Card 
                 key={ekip}
-                title={
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                      {ekip} ({groupedPersonnel[ekip]?.length || 0} kişi)
-                    </span>
-                    <Button
-                      type="text"
-                      icon={<FullscreenOutlined />}
-                      onClick={() => handleTeamExpand(ekip)}
-                      size="small"
-                      style={{ 
-                        fontSize: '10px',
-                        color: getTeamColor(ekip) === 'green' ? '#52c41a' : 
-                               getTeamColor(ekip) === 'blue' ? '#1890ff' : 
-                               getTeamColor(ekip) === 'orange' ? '#fa8c16' : '#8c8c8c'
-                      }}
-                    />
-                  </div>
-                }
+                                 title={
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                     <span style={{ fontSize: '11px', fontWeight: 'bold' }}>
+                       {ekip} ({groupedPersonnel[ekip]?.length || 0} kişi)
+                     </span>
+                     <Button
+                       type="text"
+                       icon={<FullscreenOutlined />}
+                       onClick={() => handleTeamExpand(ekip)}
+                       size="small"
+                       style={{ 
+                         fontSize: '9px',
+                         color: getTeamColor(ekip) === 'green' ? '#52c41a' : 
+                                getTeamColor(ekip) === 'blue' ? '#1890ff' : 
+                                getTeamColor(ekip) === 'orange' ? '#fa8c16' : '#8c8c8c'
+                       }}
+                     />
+                   </div>
+                 }
                 size="small"
                 headStyle={{
                   backgroundColor: getTeamColor(ekip) === 'green' ? '#f6ffed' : 
@@ -478,14 +524,14 @@ const TeamPersonnel = () => {
                 }}
                 bodyStyle={{ padding: '8px' }}
               >
-                <Table
-                  columns={teamColumns}
-                  dataSource={groupedPersonnel[ekip] || []}
-                  rowKey="id"
-                  pagination={false}
-                  size="small"
-                  style={{ fontSize: '11px' }}
-                />
+                                 <Table
+                   columns={teamColumns}
+                   dataSource={groupedPersonnel[ekip] || []}
+                   rowKey="id"
+                   pagination={false}
+                   size="small"
+                   style={{ fontSize: '10px' }}
+                 />
               </Card>
             ))}
           </div>
@@ -494,11 +540,11 @@ const TeamPersonnel = () => {
         {/* Sağ taraf - Anadolu Personelleri */}
         <Col span={12}>
           <Card 
-            title={
-              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                Anadolu Personelleri ({anadoluStats.total} kişi - Sevkiyat Elemanı: {anadoluStats.sevkiyatElemani}, Şoför: {anadoluStats.sofor})
-              </span>
-            }
+                         title={
+               <span style={{ fontSize: '11px', fontWeight: 'bold' }}>
+                 Anadolu Personelleri ({anadoluStats.total} kişi - Sevkiyat Elemanı: {anadoluStats.sevkiyatElemani}, Şoför: {anadoluStats.sofor})
+               </span>
+             }
             size="small"
             headStyle={{
               backgroundColor: '#f9f0ff',
@@ -507,14 +553,14 @@ const TeamPersonnel = () => {
             }}
             bodyStyle={{ padding: '8px' }}
           >
-            <Table
-              columns={anadoluColumns}
-              dataSource={sortedAnadoluPersonnel}
-              rowKey="id"
-              pagination={false}
-              size="small"
-              style={{ fontSize: '11px' }}
-            />
+                         <Table
+               columns={anadoluColumns}
+               dataSource={sortedAnadoluPersonnel}
+               rowKey="id"
+               pagination={false}
+               size="small"
+               style={{ fontSize: '10px' }}
+             />
           </Card>
         </Col>
       </Row>
@@ -662,46 +708,103 @@ const TeamPersonnel = () => {
         </Form>
       </Modal>
 
-      {/* Genişletilmiş Ekip Modal */}
-      <Modal
-        title={
-          <div style={{ 
-            fontSize: '16px', 
-            fontWeight: '600', 
-            color: getTeamColor(expandedTeam) === 'green' ? '#52c41a' : 
-                   getTeamColor(expandedTeam) === 'blue' ? '#1890ff' : 
-                   getTeamColor(expandedTeam) === 'orange' ? '#fa8c16' : '#1f2937',
-            textAlign: 'center',
-            padding: '6px 0'
-          }}>
-            {expandedTeam} - Detaylı Personel Listesi
-          </div>
-        }
-        open={!!expandedTeam}
-        onCancel={() => setExpandedTeam(null)}
-        footer={null}
-        width={800}
-        style={{ top: 20 }}
-        bodyStyle={{ padding: '16px', height: '80vh' }}
-      >
-        {expandedTeam && (
-          <div style={{ height: '100%' }}>
-            <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-              <Text style={{ fontSize: '14px', color: '#666' }}>
-                {expandedTeam} - Toplam {groupedPersonnel[expandedTeam]?.length || 0} Personel
-              </Text>
-            </div>
-            <Table
-              columns={teamColumns}
-              dataSource={groupedPersonnel[expandedTeam] || []}
-              rowKey="id"
-              pagination={false}
-              size="small"
-              style={{ fontSize: '11px' }}
-            />
-          </div>
-        )}
-      </Modal>
+             {/* Genişletilmiş Ekip Modal */}
+       <Modal
+         title={
+           <div style={{ 
+             fontSize: '16px', 
+             fontWeight: '600', 
+             color: getTeamColor(expandedTeam) === 'green' ? '#52c41a' : 
+                    getTeamColor(expandedTeam) === 'blue' ? '#1890ff' : 
+                    getTeamColor(expandedTeam) === 'orange' ? '#fa8c16' : '#1f2937',
+             textAlign: 'center',
+             padding: '6px 0'
+           }}>
+             {expandedTeam} - Detaylı Personel Listesi
+           </div>
+         }
+                   open={!!expandedTeam}
+          onCancel={() => setExpandedTeam(null)}
+          footer={null}
+          width={800}
+          style={{ top: 20 }}
+          bodyStyle={{ padding: '16px', height: '85vh' }}
+       >
+         {expandedTeam && (
+                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+               <div style={{ marginBottom: '8px', textAlign: 'center' }}>
+                 <Text style={{ fontSize: '14px', color: '#666' }}>
+                   {expandedTeam} - Toplam {groupedPersonnel[expandedTeam]?.length || 0} Personel
+                 </Text>
+               </div>
+               
+               {/* Pozisyon Özet Tablosu */}
+               <Card 
+                 size="small" 
+                 style={{ 
+                   marginBottom: '8px',
+                   background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+                   border: '1px solid #dee2e6'
+                 }}
+                 bodyStyle={{ padding: '8px' }}
+               >
+                                 <div style={{ 
+                   display: 'grid', 
+                   gridTemplateColumns: 'repeat(4, 1fr)',
+                   gap: '6px'
+                 }}>
+                  {konumOptions.map(konum => {
+                    const count = groupedPersonnel[expandedTeam]?.filter(p => p.konum === konum).length || 0;
+                    if (count === 0) return null;
+                    
+                    return (
+                      <div key={konum} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '4px 6px',
+                        background: 'white',
+                        borderRadius: '4px',
+                        border: '1px solid #e9ecef',
+                        fontSize: '9px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          {getPositionIcon(konum)}
+                          <span style={{ 
+                            fontWeight: '500',
+                            color: '#495057'
+                          }}>
+                            {konum}
+                          </span>
+                        </div>
+                        <span style={{ 
+                          fontWeight: 'bold',
+                          color: getTeamColor(expandedTeam) === 'green' ? '#52c41a' : 
+                                 getTeamColor(expandedTeam) === 'blue' ? '#1890ff' : 
+                                 getTeamColor(expandedTeam) === 'orange' ? '#fa8c16' : '#8c8c8c',
+                          fontSize: '10px'
+                        }}>
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+             
+                            <div style={{ flex: 1, overflow: 'auto' }}>
+                 <Table
+                   columns={teamColumns}
+                   dataSource={groupedPersonnel[expandedTeam] || []}
+                   rowKey="id"
+                   pagination={false}
+                   size="small"
+                   style={{ fontSize: '10px' }}
+                 />
+               </div>
+           </div>
+         )}
+       </Modal>
     </div>
   );
 };

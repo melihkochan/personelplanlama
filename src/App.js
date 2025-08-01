@@ -68,6 +68,11 @@ function MainApp() {
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [dailyReport, setDailyReport] = useState({
+    casesDistributedToday: 0,
+    palletsDistributedToday: 0,
+    lastUpdated: null
+  });
 
 
   // Bildirim sayısına göre renk belirleme fonksiyonu
@@ -77,6 +82,36 @@ function MainApp() {
     if (count <= 7) return 'bg-yellow-500';
     if (count <= 15) return 'bg-orange-500';
     return 'bg-red-500';
+  };
+
+    // Günün raporu oluşturma fonksiyonu
+  const generateDailyReport = async () => {
+    try {
+      // Bugün dağıtılan kasa ve palet sayılarını al
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Performance_data tablosundan bugünkü verileri al
+      const { data: performanceData, error: performanceError } = await supabase
+        .from('performance_data')
+        .select('*')
+        .gte('date', today)
+        .lte('date', today);
+      
+      if (performanceError) throw performanceError;
+
+      // Bugün dağıtılan kasa ve palet sayılarını hesapla
+      const casesDistributedToday = performanceData?.reduce((total, item) => total + (item.boxes || 0), 0) || 0;
+      const palletsDistributedToday = performanceData?.reduce((total, item) => total + (item.pallets || 0), 0) || 0;
+
+      setDailyReport({
+        casesDistributedToday,
+        palletsDistributedToday,
+        lastUpdated: new Date()
+      });
+
+    } catch (error) {
+      console.error('Günlük rapor oluşturulurken hata:', error);
+    }
   };
 
   // Tab değiştiğinde URL'yi güncelle
@@ -302,8 +337,17 @@ function MainApp() {
       loadData();
       loadDailyNotes(); // Daily notes'u da yükle
       loadCurrentShiftData(); // Güncel vardiya verilerini yükle
+      generateDailyReport(); // Günün raporunu oluştur
     }
   }, [isAuthenticated, user]);
+
+      // Günün raporu periyodik güncelleme (her 5 dakikada bir)
+    useEffect(() => {
+      if (isAuthenticated && user) {
+        const interval = setInterval(generateDailyReport, 300000); // 5 dakika
+        return () => clearInterval(interval);
+      }
+    }, [isAuthenticated, user]);
 
   // Periyodik olarak güncel vardiya verilerini yenile (her 2 dakikada bir)
   useEffect(() => {
@@ -318,6 +362,7 @@ function MainApp() {
     await loadData();
     await loadDailyNotes();
     await loadCurrentShiftData(); // Güncel vardiya verilerini de yenile
+    await generateDailyReport(); // Günün raporunu da güncelle
     
     showNotification('Veriler yenilendi!', 'success');
   };
@@ -1328,242 +1373,302 @@ function MainApp() {
           <main className="flex-1 overflow-auto p-8">
             {/* Ana Sayfa Dashboard */}
             {activeTab === 'home' && (
-              <div className="space-y-6">
-                {/* Hoş Geldiniz */}
-                <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-2xl p-6 text-white">
-                  <h1 className="text-xl font-bold mb-2">
-                    Hoş Geldin {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
-                  </h1>
-                  <p className="text-blue-100 mb-4 text-sm">Personel Takip Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span>Sistem Aktif</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <span>Veriler Hazır</span>
-                    </div>
+              <div className="space-y-8">
+                {/* Modern Hero Section */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-3xl p-8 text-white shadow-2xl">
+                  {/* Animated Background Elements */}
+                  <div className="absolute inset-0 overflow-hidden">
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl animate-bounce"></div>
+                    <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-blue-400/30 rounded-full blur-xl animate-spin"></div>
                   </div>
-
-
-                </div>
-
-                {/* İstatistik Kartları */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <Users className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-lg font-bold text-gray-900">{dataStatus.personnel.count}</h3>
-                          <p className="text-xs text-gray-600">Toplam Personel</p>
+                  
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h1 className="text-3xl font-bold mb-2 animate-fade-in">
+                          Hoş Geldin {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
+                        </h1>
+                        <p className="text-blue-100 text-lg mb-4">Personel Takip Sistemi Dashboard'una hoş geldiniz</p>
+                        <div className="flex items-center gap-6 text-sm">
+                          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span>Sistem Aktif</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                            <span>Veriler Hazır</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                            <Clock className="w-4 h-4" />
+                            <span>{new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className={`w-3 h-3 rounded-full ${dataStatus.personnel.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div className="hidden lg:block">
+                        <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                          <Sparkles className="w-12 h-12 text-white" />
+                        </div>
+                      </div>
                     </div>
-                    {!dataStatus.personnel.hasExisting && (
-                      <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                        Veri yok - Excel yükleyin
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-green-500 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                          <Car className="w-5 h-5 text-green-600" />
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-lg font-bold text-gray-900">{dataStatus.vehicles.count}</h3>
-                          <p className="text-xs text-gray-600">Toplam Araç</p>
-                        </div>
-                      </div>
-                      <div className={`w-3 h-3 rounded-full ${dataStatus.vehicles.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    </div>
-                    {!dataStatus.vehicles.hasExisting && (
-                      <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                        Veri yok - Excel yükleyin
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-purple-500 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <Store className="w-5 h-5 text-purple-600" />
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-lg font-bold text-gray-900">{dataStatus.stores.count}</h3>
-                          <p className="text-xs text-gray-600">Toplam Mağaza</p>
-                        </div>
-                      </div>
-                      <div className={`w-3 h-3 rounded-full ${dataStatus.stores.hasExisting ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    </div>
-                    {!dataStatus.stores.hasExisting && (
-                      <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                        Veri yok - Excel yükleyin
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-orange-500 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-orange-600" />
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-lg font-bold text-gray-900">{generatedPlan ? 1 : 0}</h3>
-                          <p className="text-xs text-gray-600">Aktif Planlar</p>
-                        </div>
-                      </div>
-                      <div className={`w-3 h-3 rounded-full ${generatedPlan ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    </div>
-                    {!generatedPlan && (
-                      <div className="mt-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                        Plan oluşturun
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                {/* Takvim Görünümü */}
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">📅 Aylık Takip Takvimi</h3>
 
-                  {/* Takvim Kontrolleri */}
-                  <div className="flex items-center justify-between mb-4">
-                    <button
-                      onClick={() => {
-                        const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-                        const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-                        handleMonthChange(newMonth, newYear);
-                      }}
-                      className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-                    >
-                      <ChevronDown className="w-4 h-4 transform rotate-90" />
-                    </button>
 
-                    <h4 className="text-base font-semibold text-gray-900">
-                      {getMonthName(selectedMonth)} {selectedYear}
-                    </h4>
+                {/* Günün Raporu & Quick Actions */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Günün Raporu */}
+                  <div className="bg-white rounded-2xl shadow-xl p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                      Günün Raporu
+                      <button 
+                        onClick={generateDailyReport}
+                        className="ml-auto p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                        title="Raporu yenile"
+                      >
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                      </button>
+                    </h3>
+                    <div className="space-y-4">
+                      {/* Bugün Dağıtılan Kasa Sayısı */}
+                      <div className="bg-blue-50 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900">Bugün Dağıtılan Kasa</h4>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-blue-600">{dailyReport.casesDistributedToday}</div>
+                          <div className="text-xs text-gray-600">Kasa</div>
+                        </div>
+                      </div>
 
-                    <button
-                      onClick={() => {
-                        const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
-                        const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
-                        handleMonthChange(newMonth, newYear);
-                      }}
-                      className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-                    >
-                      <ChevronDown className="w-4 h-4 transform -rotate-90" />
-                    </button>
+                      {/* Bugün Dağıtılan Palet Sayısı */}
+                      <div className="bg-green-50 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900">Bugün Dağıtılan Palet</h4>
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-green-600">{dailyReport.palletsDistributedToday}</div>
+                          <div className="text-xs text-gray-600">Palet</div>
+                        </div>
+                      </div>
+
+                      {/* Son Güncelleme */}
+                      <div className="text-center pt-2">
+                        <p className="text-xs text-gray-500">
+                          {dailyReport.lastUpdated ? 
+                            `Son güncelleme: ${dailyReport.lastUpdated.toLocaleTimeString('tr-TR')}` : 
+                            'Veriler yükleniyor...'
+                          }
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Takvim Grid */}
-                  <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    {/* Gün başlıkları */}
-                    <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
-                      {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
-                        <div key={day} className="p-2 text-center text-xs font-medium text-gray-600">
-                          {day}
+                  {/* Quick Actions */}
+                  <div className="bg-white rounded-2xl shadow-xl p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-blue-600" />
+                      Hızlı İşlemler
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleTabChange('personnel')}
+                        className="group bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <Users className="w-6 h-6 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-medium text-gray-900">Personel</p>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleTabChange('stores')}
+                        className="group bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <Store className="w-6 h-6 text-green-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-medium text-gray-900">Mağaza Listesi</p>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleTabChange('vardiya-kontrol')}
+                        className="group bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <Shield className="w-6 h-6 text-purple-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-medium text-gray-900">Personel Kontrol</p>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleTabChange('store-distribution')}
+                        className="group bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <MapPin className="w-6 h-6 text-orange-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-medium text-gray-900">Personel Konum Dağılımı</p>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleTabChange('statistics')}
+                        className="group bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <BarChart3 className="w-6 h-6 text-indigo-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-medium text-gray-900">İstatistikler</p>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleTabChange('vehicle-distribution')}
+                        className="group bg-gradient-to-br from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <Truck className="w-6 h-6 text-teal-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-medium text-gray-900">Personel Araç Dağılımı</p>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Activity & Calendar */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Recent Activity */}
+                  <div className="bg-white rounded-2xl shadow-xl p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-green-600" />
+                      Son Aktiviteler
+                    </h3>
+                    <div className="space-y-4">
+                      {dataStatus.dailyNotes.slice(0, 5).map((note, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                          <div className={`w-3 h-3 rounded-full ${
+                            note.status === 'raporlu' ? 'bg-red-500' :
+                            note.status === 'dinlenme' ? 'bg-green-500' :
+                            note.status === 'izinli' ? 'bg-purple-500' :
+                            note.status === 'hastalık' ? 'bg-orange-500' : 'bg-blue-500'
+                          }`}></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{note.full_name}</p>
+                            <p className="text-xs text-gray-500">{note.status} • {new Date(note.date).toLocaleDateString('tr-TR')}</p>
+                          </div>
                         </div>
                       ))}
+                      {dataStatus.dailyNotes.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                          <p>Henüz aktivite bulunmuyor</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Modern Calendar */}
+                  <div className="bg-white rounded-2xl shadow-xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        Aylık Takip
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+                            const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+                            handleMonthChange(newMonth, newYear);
+                          }}
+                          className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                        >
+                          <ChevronDown className="w-4 h-4 transform rotate-90" />
+                        </button>
+                        <span className="text-sm font-medium text-gray-700 min-w-[100px] text-center">
+                          {getMonthName(selectedMonth)} {selectedYear}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
+                            const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+                            handleMonthChange(newMonth, newYear);
+                          }}
+                          className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                        >
+                          <ChevronDown className="w-4 h-4 transform -rotate-90" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Takvim günleri */}
-                    <div className={`grid grid-cols-7 ${calendarAnimation === 'left' ? 'animate-slide-left' : calendarAnimation === 'right' ? 'animate-slide-right' : ''}`}>
-                      {getCalendarDays().map((day, index) => (
-                        <div
-                          key={index}
-                          className={`
-                                            p-2 border-r border-b border-gray-100 min-h-[100px] relative
-                                            ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
-                                            ${day.isToday ? 'bg-blue-50 border-blue-200' : ''}
-                                            ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
-                                          `}
-                        >
-                          <div className={`
-                            text-xs font-medium mb-1
-                            ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
-                            ${day.isToday ? 'text-blue-600' : ''}
-                          `}>
-                            {day.day}
+                    {/* Calendar Grid */}
+                    <div className="bg-gray-50 rounded-xl overflow-hidden">
+                      {/* Day Headers */}
+                      <div className="grid grid-cols-7 bg-gray-100">
+                        {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
+                          <div key={day} className="p-2 text-center text-xs font-medium text-gray-600">
+                            {day}
                           </div>
+                        ))}
+                      </div>
 
-                          {/* Günlük notlar */}
-                          {(() => {
-                            const dayNotes = dataStatus.dailyNotes.filter(note => {
-                              const noteDate = new Date(note.date);
-                              return noteDate.getDate() === day.day &&
-                                noteDate.getMonth() === day.month &&
-                                noteDate.getFullYear() === day.year;
-                            });
+                      {/* Calendar Days */}
+                      <div className={`grid grid-cols-7 ${calendarAnimation === 'left' ? 'animate-slide-left' : calendarAnimation === 'right' ? 'animate-slide-right' : ''}`}>
+                        {getCalendarDays().map((day, index) => (
+                          <div
+                            key={index}
+                            className={`
+                              p-2 border-r border-b border-gray-100 min-h-[80px] relative
+                              ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
+                              ${day.isToday ? 'bg-blue-50 border-blue-200' : ''}
+                              ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
+                            `}
+                          >
+                            <div className={`
+                              text-xs font-medium mb-1
+                              ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                              ${day.isToday ? 'text-blue-600 font-bold' : ''}
+                            `}>
+                              {day.day}
+                            </div>
 
-                            if (dayNotes.length > 0) {
-                              return (
-                                <div className="mt-1 space-y-1">
-                                  <div className="flex items-center gap-1">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                    <div className="text-xs font-semibold text-gray-700">
-                                      {dayNotes.length} kayıt
+                            {/* Daily Notes */}
+                            {(() => {
+                              const dayNotes = dataStatus.dailyNotes.filter(note => {
+                                const noteDate = new Date(note.date);
+                                return noteDate.getDate() === day.day &&
+                                  noteDate.getMonth() === day.month &&
+                                  noteDate.getFullYear() === day.year;
+                              });
+
+                              if (dayNotes.length > 0) {
+                                return (
+                                  <div className="mt-1">
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                      <div className="text-xs font-semibold text-gray-700">
+                                        {dayNotes.length}
+                                      </div>
                                     </div>
-                                  </div>
-                                  {/* Kayıt detayları */}
-                                  <div className="text-xs text-gray-800 max-h-20 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
-                                    {dayNotes.slice(0, 2).map((note, index) => {
-                                      // Duruma göre renk belirle
-                                      let borderColor = 'border-blue-400';
-                                      let bgColor = 'bg-blue-50';
-                                      let statusColor = 'text-blue-600';
+                                    <div className="space-y-1">
+                                      {dayNotes.slice(0, 2).map((note, index) => {
+                                        let statusColor = 'bg-blue-100 text-blue-700';
+                                        if (note.status === 'raporlu') statusColor = 'bg-red-100 text-red-700';
+                                        else if (note.status === 'dinlenme') statusColor = 'bg-green-100 text-green-700';
+                                        else if (note.status === 'izinli') statusColor = 'bg-purple-100 text-purple-700';
+                                        else if (note.status === 'hastalık') statusColor = 'bg-orange-100 text-orange-700';
 
-                                      if (note.status === 'raporlu') {
-                                        borderColor = 'border-red-400';
-                                        bgColor = 'bg-red-50';
-                                        statusColor = 'text-red-600';
-                                      } else if (note.status === 'dinlenme') {
-                                        borderColor = 'border-green-400';
-                                        bgColor = 'bg-green-50';
-                                        statusColor = 'text-green-600';
-                                      } else if (note.status === 'izinli') {
-                                        borderColor = 'border-purple-400';
-                                        bgColor = 'bg-purple-50';
-                                        statusColor = 'text-purple-600';
-                                      } else if (note.status === 'hastalık') {
-                                        borderColor = 'border-orange-400';
-                                        bgColor = 'bg-orange-50';
-                                        statusColor = 'text-orange-600';
-                                      }
-
-                                      return (
-                                        <div key={index} className={`${bgColor} rounded-lg p-1 border-l-2 ${borderColor}`}>
-                                          <div className="font-medium text-gray-900 text-xs">
+                                        return (
+                                          <div key={index} className={`text-xs px-1 py-0.5 rounded ${statusColor} truncate`}>
                                             {note.full_name}
                                           </div>
-                                          <div className={`text-xs font-medium mt-1 ${statusColor}`}>
-                                            {note.status}
-                                          </div>
+                                        );
+                                      })}
+                                      {dayNotes.length > 2 && (
+                                        <div className="text-xs text-gray-500 bg-gray-100 rounded px-1 py-0.5 text-center">
+                                          +{dayNotes.length - 2}
                                         </div>
-                                      );
-                                    })}
-                                    {dayNotes.length > 2 && (
-                                      <div className="text-xs text-gray-500 font-medium bg-gray-100 rounded-lg p-1 text-center">
-                                        +{dayNotes.length - 2} daha
-                                      </div>
-                                    )}
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      ))}
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>

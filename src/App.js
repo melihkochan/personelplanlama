@@ -6,12 +6,14 @@ import PersonelList from './components/personnel/PersonelList';
 import VehicleList from './components/vehicles/VehicleList';
 import StoreList from './components/stores/StoreList';
 import StoreDistanceCalculator from './components/stores/StoreDistanceCalculator';
-import VardiyaPlanlama from './components/personnel/VardiyaPlanlama';
+import VardiyaPlanlama from './components/timesheet/VardiyaPlanlama';
 import PerformanceAnalysis from './components/personnel/PerformanceAnalysis';
 import PersonelVardiyaKontrol from './components/personnel/PersonelVardiyaKontrol';
-import StoreDistribution from './components/personnel/StoreDistribution';
+import StoreDistribution from './components/stores/StoreDistribution';
 import VehicleDistribution from './components/vehicles/VehicleDistribution';
-import Statistics from './components/personnel/Statistics';
+import Statistics from './components/statistics/Statistics';
+import TeamShifts from './components/timesheet/TeamShifts';
+import TimesheetTracking from './components/timesheet/TimesheetTracking';
 import AdminPanel from './components/admin/AdminPanel';
 import LoginForm from './components/ui/LoginForm';
 import NotificationPanel from './components/notifications/NotificationPanel';
@@ -909,6 +911,45 @@ function MainApp() {
 
             </div>
 
+            {/* TUZLA SEVKİYAT PUANTAJ TAKİP Grubu */}
+            <div className="space-y-1">
+              <div className="flex items-center px-3 py-1">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">TUZLA SEVKİYAT PUANTAJ TAKİP</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+
+              <button
+                onClick={() => handleTabChange('team-shifts')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'team-shifts'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Ekip Vardiyaları
+                <span className="ml-auto text-xs text-orange-500 font-medium">(geliştirme de)</span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('timesheet-tracking')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'timesheet-tracking'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Puantaj Takip
+              </button>
+
+            </div>
+
             {/* Vardiya Planlama Grubu */}
             <div className="space-y-1">
               <div className="flex items-center px-3 py-1">
@@ -1235,6 +1276,51 @@ function MainApp() {
                       <Store className="w-5 h-5 mr-3" />
                       Mağaza Listesi
                     </button>
+                  </div>
+
+                  {/* TUZLA SEVKİYAT PUANTAJ TAKİP Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">TUZLA SEVKİYAT PUANTAJ TAKİP</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('team-shifts');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'team-shifts'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Clock className="w-5 h-5 mr-3" />
+                      Ekip Vardiyaları
+                      <span className="ml-auto text-xs text-orange-500 font-medium">(geliştirme de)</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('timesheet-tracking');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'timesheet-tracking'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Package className="w-5 h-5 mr-3" />
+                      Puantaj Takip
+                    </button>
+
                   </div>
 
                   {/* Vardiya Planlama Grubu */}
@@ -1752,6 +1838,16 @@ function MainApp() {
             {/* Araç Dağılımı */}
             {activeTab === 'vehicle-distribution' && (
               <VehicleDistribution />
+            )}
+
+            {/* Ekip Vardiyaları */}
+            {activeTab === 'team-shifts' && (
+              <TeamShifts />
+            )}
+
+            {/* Puantaj Takip */}
+            {activeTab === 'timesheet-tracking' && (
+              <TimesheetTracking />
             )}
 
             {/* Admin Panel */}

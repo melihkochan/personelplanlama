@@ -12,7 +12,6 @@ import {
   Statistic,
   Space,
   Tag,
-  Divider,
   Typography,
   message
 } from 'antd';
@@ -21,7 +20,8 @@ import {
   EditOutlined,
   DeleteOutlined,
   UserOutlined,
-  TeamOutlined
+  TeamOutlined,
+  FullscreenOutlined
 } from '@ant-design/icons';
 import { getTeamPersonnel, addTeamPersonnel, updateTeamPersonnel, deleteTeamPersonnel, getPersonnelFromPersonnelTable } from '../../services/supabase';
 
@@ -34,6 +34,7 @@ const TeamPersonnel = () => {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingPersonnel, setEditingPersonnel] = useState(null);
+  const [expandedTeam, setExpandedTeam] = useState(null);
   const [form] = Form.useForm();
 
   // Konum seçenekleri ve sıralama öncelikleri
@@ -130,6 +131,13 @@ const TeamPersonnel = () => {
     return sicilComparison;
   });
 
+  // Anadolu personelleri istatistikleri
+  const anadoluStats = {
+    total: sortedAnadoluPersonnel.length,
+    sevkiyatElemani: sortedAnadoluPersonnel.filter(p => p.position === 'SEVKİYAT ELEMANI').length,
+    sofor: sortedAnadoluPersonnel.filter(p => p.position === 'ŞOFÖR').length
+  };
+
   const getTeamColor = (team) => {
     switch (team) {
       case '1.Ekip': return 'green';
@@ -150,7 +158,6 @@ const TeamPersonnel = () => {
         form.resetFields();
         loadData();
       } else {
-        // Supabase hata kodlarını kontrol et ve özel mesajlar göster
         if (result.error && result.error.includes('duplicate key')) {
           message.error('Bu sicil numarası veya isim zaten mevcut! Lütfen farklı bir sicil numarası veya isim kullanın.');
         } else if (result.error && result.error.includes('unique constraint')) {
@@ -163,7 +170,6 @@ const TeamPersonnel = () => {
       }
     } catch (error) {
       console.error('Error adding personnel:', error);
-      // Genel hata durumunda da özel mesaj göster
       if (error.message && error.message.includes('duplicate')) {
         message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
       } else {
@@ -186,7 +192,6 @@ const TeamPersonnel = () => {
         form.resetFields();
         loadData();
       } else {
-        // Supabase hata kodlarını kontrol et ve özel mesajlar göster
         if (result.error && result.error.includes('duplicate key')) {
           message.error('Bu sicil numarası veya isim zaten mevcut! Lütfen farklı bir sicil numarası veya isim kullanın.');
         } else if (result.error && result.error.includes('unique constraint')) {
@@ -199,7 +204,6 @@ const TeamPersonnel = () => {
       }
     } catch (error) {
       console.error('Error updating personnel:', error);
-      // Genel hata durumunda da özel mesaj göster
       if (error.message && error.message.includes('duplicate')) {
         message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
       } else {
@@ -241,10 +245,13 @@ const TeamPersonnel = () => {
     form.resetFields();
   };
 
+  const handleTeamExpand = (team) => {
+    setExpandedTeam(expandedTeam === team ? null : team);
+  };
+
   const handleModalOk = () => {
     form.validateFields()
       .then(values => {
-        // Ek validasyonlar
         if (!values.sicil_no || values.sicil_no.length !== 6 || !/^\d{6}$/.test(values.sicil_no)) {
           message.error('Sicil no 6 haneli sayı olmalıdır!');
           return;
@@ -352,7 +359,13 @@ const TeamPersonnel = () => {
   ];
 
   return (
-    <div style={{ padding: '8px' }}>
+    <div style={{ 
+      padding: '8px', 
+      minHeight: '100vh',
+      height: '100vh',
+      backgroundColor: 'white',
+      position: 'relative'
+    }}>
       {/* Header */}
       <Card 
         style={{ 
@@ -424,74 +437,85 @@ const TeamPersonnel = () => {
         ))}
       </Row>
 
-      
-
-                           {/* Ana İçerik - Sol: Ekipler, Sağ: Anadolu */}
-        <Row gutter={8}>
-          {/* Sol taraf - Ekipler */}
-          <Col span={12}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {ekipOptions.map(ekip => (
-                <Card 
-                  key={ekip}
-                  title={
+      {/* Ana İçerik - Sol: Ekipler, Sağ: Anadolu */}
+      <Row gutter={8}>
+        {/* Sol taraf - Ekipler */}
+        <Col span={12}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {ekipOptions.map(ekip => (
+              <Card 
+                key={ekip}
+                title={
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
                       {ekip} ({groupedPersonnel[ekip]?.length || 0} kişi)
                     </span>
-                  }
-                  size="small"
-                  headStyle={{
-                    backgroundColor: getTeamColor(ekip) === 'green' ? '#f6ffed' : 
-                                 getTeamColor(ekip) === 'blue' ? '#e6f7ff' : 
-                                 getTeamColor(ekip) === 'orange' ? '#fff7e6' : '#fafafa',
-                    borderColor: getTeamColor(ekip) === 'green' ? '#b7eb8f' : 
-                                getTeamColor(ekip) === 'blue' ? '#91d5ff' : 
-                                getTeamColor(ekip) === 'orange' ? '#ffd591' : '#d9d9d9',
-                    padding: '8px 12px'
-                  }}
-                  bodyStyle={{ padding: '8px' }}
-                >
-                  <Table
-                    columns={teamColumns}
-                    dataSource={groupedPersonnel[ekip] || []}
-                    rowKey="id"
-                    pagination={false}
-                    size="small"
-                    style={{ fontSize: '11px' }}
-                    scroll={{ y: 150 }}
-                  />
-                </Card>
-              ))}
-            </div>
-          </Col>
-
-          {/* Sağ taraf - Anadolu Personelleri */}
-          <Col span={12}>
-            <Card 
-              title={
-                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                  Anadolu Personelleri ({sortedAnadoluPersonnel.length} kişi)
-                </span>
-              }
-              size="small"
-              headStyle={{
-                backgroundColor: '#f9f0ff',
-                borderColor: '#d3adf7',
-                padding: '8px 12px'
-              }}
-              bodyStyle={{ padding: '8px' }}
-            >
-              <Table
-                columns={anadoluColumns}
-                dataSource={sortedAnadoluPersonnel}
-                rowKey="id"
-                pagination={false}
+                    <Button
+                      type="text"
+                      icon={<FullscreenOutlined />}
+                      onClick={() => handleTeamExpand(ekip)}
+                      size="small"
+                      style={{ 
+                        fontSize: '10px',
+                        color: getTeamColor(ekip) === 'green' ? '#52c41a' : 
+                               getTeamColor(ekip) === 'blue' ? '#1890ff' : 
+                               getTeamColor(ekip) === 'orange' ? '#fa8c16' : '#8c8c8c'
+                      }}
+                    />
+                  </div>
+                }
                 size="small"
-                style={{ fontSize: '11px' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+                headStyle={{
+                  backgroundColor: getTeamColor(ekip) === 'green' ? '#f6ffed' : 
+                               getTeamColor(ekip) === 'blue' ? '#e6f7ff' : 
+                               getTeamColor(ekip) === 'orange' ? '#fff7e6' : '#fafafa',
+                  borderColor: getTeamColor(ekip) === 'green' ? '#b7eb8f' : 
+                              getTeamColor(ekip) === 'blue' ? '#91d5ff' : 
+                              getTeamColor(ekip) === 'orange' ? '#ffd591' : '#d9d9d9',
+                  padding: '8px 12px'
+                }}
+                bodyStyle={{ padding: '8px' }}
+              >
+                <Table
+                  columns={teamColumns}
+                  dataSource={groupedPersonnel[ekip] || []}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  style={{ fontSize: '11px' }}
+                />
+              </Card>
+            ))}
+          </div>
+        </Col>
+
+        {/* Sağ taraf - Anadolu Personelleri */}
+        <Col span={12}>
+          <Card 
+            title={
+              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                Anadolu Personelleri ({anadoluStats.total} kişi - Sevkiyat Elemanı: {anadoluStats.sevkiyatElemani}, Şoför: {anadoluStats.sofor})
+              </span>
+            }
+            size="small"
+            headStyle={{
+              backgroundColor: '#f9f0ff',
+              borderColor: '#d3adf7',
+              padding: '8px 12px'
+            }}
+            bodyStyle={{ padding: '8px' }}
+          >
+            <Table
+              columns={anadoluColumns}
+              dataSource={sortedAnadoluPersonnel}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              style={{ fontSize: '11px' }}
+            />
+          </Card>
+        </Col>
+      </Row>
 
       {/* Modal */}
       <Modal
@@ -540,63 +564,63 @@ const TeamPersonnel = () => {
           size="middle"
           style={{ marginTop: '8px' }}
         >
-                                                                                       <Form.Item
-               name="sicil_no"
-               label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Sicil No</span>}
-               rules={[
-                 { required: true, message: 'Sicil no gerekli!' },
-                 { 
-                   pattern: /^\d{6}$/, 
-                   message: 'Sicil no 6 haneli sayı olmalıdır!' 
-                 }
-               ]}
-             >
-               <Input 
-                 placeholder="6 haneli sicil numarası" 
-                 style={{ fontSize: '14px', padding: '8px 12px' }}
-                 size="middle"
-                 maxLength={6}
-                 onKeyPress={(e) => {
-                   if (!/[0-9]/.test(e.key)) {
-                     e.preventDefault();
-                   }
-                 }}
-                 onChange={(e) => {
-                   let value = e.target.value.replace(/[^0-9]/g, '');
-                   if (value.length > 6) {
-                     value = value.slice(0, 6);
-                   }
-                   form.setFieldsValue({ sicil_no: value });
-                 }}
-               />
-             </Form.Item>
+          <Form.Item
+            name="sicil_no"
+            label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Sicil No</span>}
+            rules={[
+              { required: true, message: 'Sicil no gerekli!' },
+              { 
+                pattern: /^\d{6}$/, 
+                message: 'Sicil no 6 haneli sayı olmalıdır!' 
+              }
+            ]}
+          >
+            <Input 
+              placeholder="6 haneli sicil numarası" 
+              style={{ fontSize: '14px', padding: '8px 12px' }}
+              size="middle"
+              maxLength={6}
+              onKeyPress={(e) => {
+                if (!/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                let value = e.target.value.replace(/[^0-9]/g, '');
+                if (value.length > 6) {
+                  value = value.slice(0, 6);
+                }
+                form.setFieldsValue({ sicil_no: value });
+              }}
+            />
+          </Form.Item>
 
-                                                                                       <Form.Item
-               name="adi_soyadi"
-               label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Adı Soyadı</span>}
-               rules={[
-                 { required: true, message: 'Adı soyadı gerekli!' },
-                 { 
-                   pattern: /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, 
-                   message: 'Adı soyadı sadece harf içerebilir!' 
-                 }
-               ]}
-             >
-               <Input 
-                 placeholder="Adı soyadı" 
-                 style={{ fontSize: '14px', padding: '8px 12px' }}
-                 size="middle"
-                 onKeyPress={(e) => {
-                   if (!/[a-zA-ZğüşıöçĞÜŞİÖÇ\s]/.test(e.key)) {
-                     e.preventDefault();
-                   }
-                 }}
-                 onChange={(e) => {
-                   const value = e.target.value.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, '');
-                   form.setFieldsValue({ adi_soyadi: value });
-                 }}
-               />
-             </Form.Item>
+          <Form.Item
+            name="adi_soyadi"
+            label={<span style={{ fontSize: '14px', fontWeight: '500' }}>Adı Soyadı</span>}
+            rules={[
+              { required: true, message: 'Adı soyadı gerekli!' },
+              { 
+                pattern: /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, 
+                message: 'Adı soyadı sadece harf içerebilir!' 
+              }
+            ]}
+          >
+            <Input 
+              placeholder="Adı soyadı" 
+              style={{ fontSize: '14px', padding: '8px 12px' }}
+              size="middle"
+              onKeyPress={(e) => {
+                if (!/[a-zA-ZğüşıöçĞÜŞİÖÇ\s]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, '');
+                form.setFieldsValue({ adi_soyadi: value });
+              }}
+            />
+          </Form.Item>
 
           <Form.Item
             name="konum"
@@ -634,6 +658,47 @@ const TeamPersonnel = () => {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Genişletilmiş Ekip Modal */}
+      <Modal
+        title={
+          <div style={{ 
+            fontSize: '16px', 
+            fontWeight: '600', 
+            color: getTeamColor(expandedTeam) === 'green' ? '#52c41a' : 
+                   getTeamColor(expandedTeam) === 'blue' ? '#1890ff' : 
+                   getTeamColor(expandedTeam) === 'orange' ? '#fa8c16' : '#1f2937',
+            textAlign: 'center',
+            padding: '6px 0'
+          }}>
+            {expandedTeam} - Detaylı Personel Listesi
+          </div>
+        }
+        open={!!expandedTeam}
+        onCancel={() => setExpandedTeam(null)}
+        footer={null}
+        width={800}
+        style={{ top: 20 }}
+        bodyStyle={{ padding: '16px', height: '80vh' }}
+      >
+        {expandedTeam && (
+          <div style={{ height: '100%' }}>
+            <div style={{ marginBottom: '12px', textAlign: 'center' }}>
+              <Text style={{ fontSize: '14px', color: '#666' }}>
+                {expandedTeam} - Toplam {groupedPersonnel[expandedTeam]?.length || 0} Personel
+              </Text>
+            </div>
+            <Table
+              columns={teamColumns}
+              dataSource={groupedPersonnel[expandedTeam] || []}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              style={{ fontSize: '11px' }}
+            />
+          </div>
+        )}
       </Modal>
     </div>
   );

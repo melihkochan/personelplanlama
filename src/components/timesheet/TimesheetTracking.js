@@ -10,8 +10,7 @@ import {
   message,
   TimePicker,
   Space,
-  Divider,
-  Modal
+  Divider
 } from 'antd';
 import {
   SaveOutlined,
@@ -39,8 +38,7 @@ const TimesheetTracking = () => {
   const [approvedPersonnel, setApprovedPersonnel] = useState(new Set());
   const [showOvertimeInputs, setShowOvertimeInputs] = useState(new Set());
   const [showOvertimeForPerson, setShowOvertimeForPerson] = useState(new Set());
-  const [overtimeModalVisible, setOvertimeModalVisible] = useState(false);
-  const [selectedPersonnelForOvertime, setSelectedPersonnelForOvertime] = useState(null);
+  const [bulkApprovalActive, setBulkApprovalActive] = useState(false);
 
   const ekipOptions = ['1.Ekip', '2.Ekip', '3.Ekip', '4.Ekip'];
 
@@ -55,6 +53,8 @@ const TimesheetTracking = () => {
 
   const loadData = async () => {
     setLoading(true);
+    // Tarih değiştiğinde bulk approval durumunu sıfırla
+    setBulkApprovalActive(false);
     try {
       const [teamResult, anadoluResult, timesheetResult, shiftsResult, anadoluShiftsResult] = await Promise.all([
         getTeamPersonnel(),
@@ -358,6 +358,33 @@ const TimesheetTracking = () => {
   };
 
   const handleTimeInput = (personId, field, value) => {
+    // Boş değer kontrolü
+    if (!value || value.trim() === '') {
+      setTimesheetData(prev => ({
+        ...prev,
+        [personId]: {
+          ...prev[personId],
+          [field]: ''
+        }
+      }));
+      return;
+    }
+
+    // 2 haneli sayı girildiğinde (örn: 22) otomatik : ekle (22:)
+    if (value.length === 2 && /^\d{2}$/.test(value)) {
+      const hours = parseInt(value);
+      if (hours >= 0 && hours <= 23) {
+        setTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: `${value}:`
+          }
+        }));
+        return;
+      }
+    }
+    
     // 4 haneli sayı girildiğinde (örn: 2200) otomatik formatla (22:00)
     if (value.length === 4 && /^\d{4}$/.test(value)) {
       const hours = value.substring(0, 2);
@@ -380,6 +407,34 @@ const TimesheetTracking = () => {
         }
       }
     }
+
+    // HH:mm formatında girilen değer (örn: 22:00, 22:0, 22:)
+    if (/^\d{1,2}:\d{0,2}$/.test(value)) {
+      // Eğer dakika yoksa veya eksikse, geçici olarak string olarak sakla
+      if (value.endsWith(':') || value.split(':')[1]?.length < 2) {
+        setTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: value
+          }
+        }));
+        return;
+      }
+      
+      // Tam format varsa (HH:mm) dayjs objesi oluştur
+      const time = dayjs(value, 'HH:mm');
+      if (time.isValid()) {
+        setTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: time
+          }
+        }));
+        return;
+      }
+    }
     
     // Geçerli bir saat formatı değilse, sadece string olarak sakla
     setTimesheetData(prev => ({
@@ -392,6 +447,33 @@ const TimesheetTracking = () => {
   };
 
   const handleAnadoluTimeInput = (personId, field, value) => {
+    // Boş değer kontrolü
+    if (!value || value.trim() === '') {
+      setAnadoluTimesheetData(prev => ({
+        ...prev,
+        [personId]: {
+          ...prev[personId],
+          [field]: ''
+        }
+      }));
+      return;
+    }
+
+    // 2 haneli sayı girildiğinde (örn: 22) otomatik : ekle (22:)
+    if (value.length === 2 && /^\d{2}$/.test(value)) {
+      const hours = parseInt(value);
+      if (hours >= 0 && hours <= 23) {
+        setAnadoluTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: `${value}:`
+          }
+        }));
+        return;
+      }
+    }
+    
     // 4 haneli sayı girildiğinde (örn: 2200) otomatik formatla (22:00)
     if (value.length === 4 && /^\d{4}$/.test(value)) {
       const hours = value.substring(0, 2);
@@ -412,6 +494,34 @@ const TimesheetTracking = () => {
           }));
           return;
         }
+      }
+    }
+
+    // HH:mm formatında girilen değer (örn: 22:00, 22:0, 22:)
+    if (/^\d{1,2}:\d{0,2}$/.test(value)) {
+      // Eğer dakika yoksa veya eksikse, geçici olarak string olarak sakla
+      if (value.endsWith(':') || value.split(':')[1]?.length < 2) {
+        setAnadoluTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: value
+          }
+        }));
+        return;
+      }
+      
+      // Tam format varsa (HH:mm) dayjs objesi oluştur
+      const time = dayjs(value, 'HH:mm');
+      if (time.isValid()) {
+        setAnadoluTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: time
+          }
+        }));
+        return;
       }
     }
     
@@ -450,6 +560,32 @@ const TimesheetTracking = () => {
     try {
       const date = selectedDate.format('YYYY-MM-DD');
       const savePromises = [];
+
+      // Tüm personelleri kontrol et (izinli olanlar hariç)
+      const allPersonnel = [...teamPersonnel, ...anadoluPersonnel];
+      const personnelToApprove = allPersonnel.filter(person => {
+        // Ekip personeli için izinli ekip kontrolü
+        if (person.ekip_bilgisi) {
+          const isLeaveTeam = teamShifts[person.ekip_bilgisi] && teamShifts[person.ekip_bilgisi].leave_shift;
+          return !isLeaveTeam;
+        }
+        // Anadolu personeli için izin kontrolü
+        if (person.full_name) {
+          const shiftType = anadoluShifts[person.id];
+          return !(shiftType === 'raporlu' || shiftType === 'yillik_izin');
+        }
+        return true;
+      });
+
+      // Onaylanmamış personelleri bul
+      const unapprovedPersonnel = personnelToApprove.filter(person => !approvedPersonnel.has(person.id));
+      
+      if (unapprovedPersonnel.length > 0) {
+        const unapprovedNames = unapprovedPersonnel.map(p => p.adi_soyadi || p.full_name).join(', ');
+        message.error(`Kaydetmek için tüm personellerin onaylanması gerekiyor. Onaylanmamış personeller: ${unapprovedNames}`);
+        setLoading(false);
+        return;
+      }
 
       // Sadece onaylanmış ekip personeli verilerini kaydet
       Object.keys(timesheetData).forEach(personId => {
@@ -529,12 +665,36 @@ const TimesheetTracking = () => {
     }
 
     const teamName = person.ekip_bilgisi;
+    const isCurrentlyApproved = approvedPersonnel.has(personId);
     console.log('Onay butonuna tıklandı - Personel:', person.adi_soyadi, 'Ekip:', teamName);
     
-    // Onay durumunu güncelle
-    setApprovedPersonnel(prev => new Set([...prev, personId]));
+    // Onay durumunu güncelle (toggle)
+    setApprovedPersonnel(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyApproved) {
+        // Onayı kaldır
+        newSet.delete(personId);
+      } else {
+        // Onayla
+        newSet.add(personId);
+      }
+      
+      // Eğer tüm personeller onaylandıysa bulk approval'ı aktif et
+      const allPersonnel = [...teamPersonnel, ...anadoluPersonnel];
+      if (newSet.size === allPersonnel.length) {
+        setBulkApprovalActive(true);
+      } else {
+        setBulkApprovalActive(false);
+      }
+      
+      return newSet;
+    });
     
-    message.success(`${person.adi_soyadi} onaylandı`);
+    if (isCurrentlyApproved) {
+      message.success(`${person.adi_soyadi} onayı kaldırıldı`);
+    } else {
+      message.success(`${person.adi_soyadi} onaylandı`);
+    }
   };
 
   const handleAnadoluApprove = (personId) => {
@@ -545,35 +705,62 @@ const TimesheetTracking = () => {
       return;
     }
     
-    // Onay durumunu güncelle
-    setApprovedPersonnel(prev => new Set([...prev, personId]));
+    const isCurrentlyApproved = approvedPersonnel.has(personId);
+    
+    // Onay durumunu güncelle (toggle)
+    setApprovedPersonnel(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyApproved) {
+        // Onayı kaldır
+        newSet.delete(personId);
+      } else {
+        // Onayla
+        newSet.add(personId);
+      }
+      
+      // Eğer tüm personeller onaylandıysa bulk approval'ı aktif et
+      const allPersonnel = [...teamPersonnel, ...anadoluPersonnel];
+      if (newSet.size === allPersonnel.length) {
+        setBulkApprovalActive(true);
+      } else {
+        setBulkApprovalActive(false);
+      }
+      
+      return newSet;
+    });
     
     const position = person?.position || 'Personel';
-    message.success(`${position} onaylandı`);
+    if (isCurrentlyApproved) {
+      message.success(`${position} onayı kaldırıldı`);
+    } else {
+      message.success(`${position} onaylandı`);
+    }
   };
 
-  const handleBulkApprove = () => {
-    // Tüm personelleri onayla
-    const allPersonnelIds = new Set();
-    
-    // Ekip personellerini ekle
-    teamPersonnel.forEach(person => {
-      allPersonnelIds.add(person.id);
-    });
-    
-    // Anadolu personellerini ekle
-    anadoluPersonnel.forEach(person => {
-      allPersonnelIds.add(person.id);
-    });
-    
-    setApprovedPersonnel(allPersonnelIds);
-    message.success('Tüm personeller onaylandı!');
-  };
-
-  const handleBulkUnapprove = () => {
-    // Tüm onayları kaldır
-    setApprovedPersonnel(new Set());
-    message.success('Tüm onaylar kaldırıldı!');
+  const handleBulkToggle = () => {
+    if (bulkApprovalActive) {
+      // Onayları kaldır
+      setApprovedPersonnel(new Set());
+      setBulkApprovalActive(false);
+      message.success('Tüm onaylar kaldırıldı!');
+    } else {
+      // Tüm personelleri onayla
+      const allPersonnelIds = new Set();
+      
+      // Ekip personellerini ekle
+      teamPersonnel.forEach(person => {
+        allPersonnelIds.add(person.id);
+      });
+      
+      // Anadolu personellerini ekle
+      anadoluPersonnel.forEach(person => {
+        allPersonnelIds.add(person.id);
+      });
+      
+      setApprovedPersonnel(allPersonnelIds);
+      setBulkApprovalActive(true);
+      message.success('Tüm personeller onaylandı!');
+    }
   };
 
   const handleTeamBulkApprove = (teamName) => {
@@ -606,6 +793,106 @@ const TimesheetTracking = () => {
       return newSet;
     });
     message.success(`${teamName} ekipleri onayları kaldırıldı!`);
+  };
+
+  // Anadolu personelleri için toplu onay fonksiyonları
+  const handleAnadoluBulkApprove = () => {
+    // Tüm Anadolu personellerini onayla
+    const anadoluPersonnelIds = new Set();
+    
+    anadoluPersonnel.forEach(person => {
+      anadoluPersonnelIds.add(person.id);
+    });
+    
+    setApprovedPersonnel(prev => {
+      const newSet = new Set([...prev, ...anadoluPersonnelIds]);
+      return newSet;
+    });
+    message.success('Tüm Anadolu personelleri onaylandı!');
+  };
+
+  const handleAnadoluBulkUnapprove = () => {
+    // Tüm Anadolu personellerinin onaylarını kaldır
+    const anadoluPersonnelIds = new Set();
+    
+    anadoluPersonnel.forEach(person => {
+      anadoluPersonnelIds.add(person.id);
+    });
+    
+    setApprovedPersonnel(prev => {
+      const newSet = new Set(prev);
+      anadoluPersonnelIds.forEach(id => newSet.delete(id));
+      return newSet;
+    });
+    message.success('Tüm Anadolu personelleri onayları kaldırıldı!');
+  };
+
+  // İptal fonksiyonları
+  const handleCancelOvertime = (personId) => {
+    // Mesai bilgisi gir alanlarını gizle
+    setShowOvertimeForPerson(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(personId);
+      return newSet;
+    });
+    
+    // Eğer veri girilmişse temizle
+    setTimesheetData(prev => {
+      const newData = { ...prev };
+      if (newData[personId]) {
+        delete newData[personId].giris;
+        delete newData[personId].cikis;
+        if (Object.keys(newData[personId]).length === 0) {
+          delete newData[personId];
+        }
+      }
+      return newData;
+    });
+    
+    message.info('Mesai bilgisi iptal edildi');
+  };
+
+  const handleCancelAnadoluOvertime = (personId) => {
+    // Anadolu mesai bilgisi alanlarını gizle
+    setShowOvertimeForPerson(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(personId);
+      return newSet;
+    });
+    
+    // Eğer veri girilmişse temizle
+    setAnadoluTimesheetData(prev => {
+      const newData = { ...prev };
+      if (newData[personId]) {
+        delete newData[personId].giris;
+        delete newData[personId].cikis;
+        if (Object.keys(newData[personId]).length === 0) {
+          delete newData[personId];
+        }
+      }
+      return newData;
+    });
+    
+    message.info('Mesai bilgisi iptal edildi');
+  };
+
+  // Veri kontrolü fonksiyonları
+  const hasTimeData = (personId, isAnadolu = false) => {
+    const data = isAnadolu ? anadoluTimesheetData[personId] : timesheetData[personId];
+    if (!data) return false;
+    
+    const giris = data.giris;
+    const cikis = data.cikis;
+    
+    // String olarak kontrol et
+    if (typeof giris === 'string' && giris.trim() !== '') return true;
+    if (typeof cikis === 'string' && cikis.trim() !== '') return true;
+    
+    // dayjs objesi olarak kontrol et
+    if (giris && typeof giris.format === 'function' && giris.isValid()) return true;
+    if (cikis && typeof cikis.format === 'function' && cikis.isValid()) return true;
+    
+    return false;
   };
 
   // Ekip tablosu için sütunlar
@@ -668,8 +955,7 @@ const TimesheetTracking = () => {
                      borderRadius: '4px'
                    }}
                    onClick={() => {
-                     setSelectedPersonnelForOvertime(record);
-                     setOvertimeModalVisible(true);
+                     setShowOvertimeForPerson(prev => new Set([...prev, record.id]));
                    }}
                  >
                    Mesai Bilgisi Gir
@@ -708,6 +994,7 @@ const TimesheetTracking = () => {
               onChange={(e) => handleTimeInput(record.id, 'giris', e.target.value)}
               placeholder="--:--"
               maxLength={4}
+              disabled={approvedPersonnel.has(record.id)}
             />
           );
         }
@@ -765,6 +1052,7 @@ const TimesheetTracking = () => {
                onChange={(e) => handleTimeInput(record.id, 'cikis', e.target.value)}
                placeholder="--:--"
                maxLength={4}
+               disabled={approvedPersonnel.has(record.id)}
              />
            );
          }
@@ -794,18 +1082,54 @@ const TimesheetTracking = () => {
              return null;
            }
            
+           // İzinli ekiplerde ve mesai bilgisi açıksa, veri kontrolü yap
+           if (isLeaveTeam && showOvertime) {
+             const hasData = hasTimeData(record.id, false);
+             
+             if (!hasData) {
+               // Veri yoksa iptal butonu göster
+               return (
+                 <Button
+                   type="default"
+                   danger
+                   size="small"
+                   style={{ 
+                     width: '30px', 
+                     height: '20px', 
+                     fontSize: '8px',
+                     padding: '0',
+                     minWidth: '30px'
+                   }}
+                   onClick={() => {
+                     console.log('İptal butonuna tıklandı! Personel ID:', record.id);
+                     handleCancelOvertime(record.id);
+                   }}
+                 >
+                   ✗
+                 </Button>
+               );
+             }
+           }
+           
            return isApproved ? (
-             <div style={{
-               backgroundColor: '#52c41a',
-               color: 'white',
-               padding: '2px 6px',
-               borderRadius: '3px',
-               fontSize: '8px',
-               textAlign: 'center',
-               fontWeight: 'bold'
-             }}>
-               ✓ Onaylandı
-             </div>
+             <Button
+               type="default"
+               danger
+               size="small"
+               style={{ 
+                 width: '30px', 
+                 height: '20px', 
+                 fontSize: '8px',
+                 padding: '0',
+                 minWidth: '30px'
+               }}
+               onClick={() => {
+                 console.log('Onay kaldır butonuna tıklandı! Personel ID:', record.id);
+                 handleApprove(record.id);
+               }}
+             >
+               ✗
+             </Button>
            ) : (
              <Button
                type="primary"
@@ -922,6 +1246,7 @@ const TimesheetTracking = () => {
               onChange={(e) => handleAnadoluTimeInput(record.id, 'giris', e.target.value)}
               placeholder="--:--"
               maxLength={4}
+              disabled={approvedPersonnel.has(record.id)}
             />
           );
         }
@@ -981,6 +1306,7 @@ const TimesheetTracking = () => {
               onChange={(e) => handleAnadoluTimeInput(record.id, 'cikis', e.target.value)}
               placeholder="--:--"
               maxLength={4}
+              disabled={approvedPersonnel.has(record.id)}
             />
           );
         }
@@ -994,7 +1320,7 @@ const TimesheetTracking = () => {
           const shiftType = anadoluShifts[record.id];
           const showOvertimeForAnadolu = showOvertimeForPerson.has(record.id);
           
-          // Eğer personel izinli ise ve mesai bilgisi girilmemişse onay butonu gösterilmez
+          // Eğer personel izinli ise ve mesai bilgisi girilmemişse + butonu göster
           if ((shiftType === 'raporlu' || shiftType === 'yillik_izin') && !showOvertimeForAnadolu) {
             return (
               <Button
@@ -1008,8 +1334,7 @@ const TimesheetTracking = () => {
                   minWidth: '30px'
                 }}
                 onClick={() => {
-                  setSelectedPersonnelForOvertime(record);
-                  setOvertimeModalVisible(true);
+                  setShowOvertimeForPerson(prev => new Set([...prev, record.id]));
                 }}
               >
                 +
@@ -1017,18 +1342,54 @@ const TimesheetTracking = () => {
             );
           }
           
+          // Eğer personel izinli ise ve mesai bilgisi açıksa, veri kontrolü yap
+          if ((shiftType === 'raporlu' || shiftType === 'yillik_izin') && showOvertimeForAnadolu) {
+            const hasData = hasTimeData(record.id, true);
+            
+            if (!hasData) {
+              // Veri yoksa iptal butonu göster
+              return (
+                <Button
+                  type="default"
+                  danger
+                  size="small"
+                  style={{ 
+                    width: '30px', 
+                    height: '20px', 
+                    fontSize: '8px',
+                    padding: '0',
+                    minWidth: '30px'
+                  }}
+                  onClick={() => {
+                    console.log('Anadolu İptal butonuna tıklandı! Personel ID:', record.id);
+                    handleCancelAnadoluOvertime(record.id);
+                  }}
+                >
+                  ✗
+                </Button>
+              );
+            }
+          }
+          
           return isApproved ? (
-            <div style={{
-              backgroundColor: '#52c41a',
-              color: 'white',
-              padding: '2px 6px',
-              borderRadius: '3px',
-              fontSize: '8px',
-              textAlign: 'center',
-              fontWeight: 'bold'
-            }}>
-              ✓ Onaylandı
-            </div>
+            <Button
+              type="default"
+              danger
+              size="small"
+              style={{ 
+                width: '30px', 
+                height: '20px', 
+                fontSize: '8px',
+                padding: '0',
+                minWidth: '30px'
+              }}
+              onClick={() => {
+                console.log('Anadolu Onay kaldır butonuna tıklandı! Personel ID:', record.id);
+                handleAnadoluApprove(record.id);
+              }}
+            >
+              ✗
+            </Button>
           ) : (
             <Button
               type="primary"
@@ -1242,9 +1603,46 @@ const TimesheetTracking = () => {
                 fontWeight: 'bold',
                 fontSize: '14px',
                 marginBottom: '8px',
-                borderRadius: '4px'
+                borderRadius: '4px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}>
-                Anadolu Personelleri
+                <div>Anadolu Personelleri</div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <Button
+                    type="primary"
+                    size="small"
+                    style={{ 
+                      backgroundColor: 'rgba(255,255,255,0.2)', 
+                      borderColor: 'rgba(255,255,255,0.3)',
+                      color: 'white', 
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      height: '20px',
+                      border: '1px solid rgba(255,255,255,0.3)'
+                    }}
+                    onClick={handleAnadoluBulkApprove}
+                  >
+                    Onayla
+                  </Button>
+                  <Button
+                    type="default"
+                    size="small"
+                    style={{ 
+                      backgroundColor: 'rgba(255,255,255,0.2)', 
+                      borderColor: 'rgba(255,255,255,0.3)',
+                      color: 'white', 
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      height: '20px',
+                      border: '1px solid rgba(255,255,255,0.3)'
+                    }}
+                    onClick={handleAnadoluBulkUnapprove}
+                  >
+                    Kaldır
+                  </Button>
+                </div>
               </div>
               
                             <Table
@@ -1325,20 +1723,13 @@ const TimesheetTracking = () => {
           gap: '10px'
         }}>
           <Button
-            type="default"
+            type={bulkApprovalActive ? "default" : "primary"}
+            danger={bulkApprovalActive}
             icon={<CheckOutlined />}
-            onClick={handleBulkApprove}
+            onClick={handleBulkToggle}
             size="large"
           >
-            Toplu Onay
-          </Button>
-          <Button
-            type="default"
-            danger
-            onClick={handleBulkUnapprove}
-            size="large"
-          >
-            Onay Kaldır
+            {bulkApprovalActive ? 'Onay Kaldır' : 'Toplu Onay'}
           </Button>
           <Button
             type="primary"
@@ -1499,97 +1890,7 @@ const TimesheetTracking = () => {
           .odd-row { background-color: white; }
         `}</style>
 
-        {/* Mesai Bilgisi Modal */}
-        <Modal
-          title={`Mesai Bilgisi - ${selectedPersonnelForOvertime?.adi_soyadi || selectedPersonnelForOvertime?.full_name || 'Personel'}`}
-          open={overtimeModalVisible}
-          onOk={() => {
-            setOvertimeModalVisible(false);
-            setSelectedPersonnelForOvertime(null);
-            if (selectedPersonnelForOvertime) {
-              setShowOvertimeForPerson(prev => new Set([...prev, selectedPersonnelForOvertime.id]));
-            }
-          }}
-          onCancel={() => {
-            setOvertimeModalVisible(false);
-            setSelectedPersonnelForOvertime(null);
-          }}
-          okText="Tamam"
-          cancelText="İptal"
-          width={400}
-        >
-          <div style={{ padding: '20px 0' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <Text strong>Giriş Saati:</Text>
-              <TimePicker
-                format="HH:mm"
-                placeholder="Giriş saati seçin"
-                style={{ width: '100%', marginTop: '8px' }}
-                onChange={(time) => {
-                  if (selectedPersonnelForOvertime) {
-                    const personId = selectedPersonnelForOvertime.id;
-                    // Ekip personeli mi Anadolu personeli mi kontrol et
-                    const isAnadoluPersonnel = selectedPersonnelForOvertime.full_name;
-                    if (isAnadoluPersonnel) {
-                      setAnadoluTimesheetData(prev => ({
-                        ...prev,
-                        [personId]: {
-                          ...prev[personId],
-                          giris: time
-                        }
-                      }));
-                    } else {
-                      setTimesheetData(prev => ({
-                        ...prev,
-                        [personId]: {
-                          ...prev[personId],
-                          giris: time
-                        }
-                      }));
-                    }
-                  }
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-              <Text strong>Çıkış Saati:</Text>
-              <TimePicker
-                format="HH:mm"
-                placeholder="Çıkış saati seçin"
-                style={{ width: '100%', marginTop: '8px' }}
-                onChange={(time) => {
-                  if (selectedPersonnelForOvertime) {
-                    const personId = selectedPersonnelForOvertime.id;
-                    // Ekip personeli mi Anadolu personeli mi kontrol et
-                    const isAnadoluPersonnel = selectedPersonnelForOvertime.full_name;
-                    if (isAnadoluPersonnel) {
-                      setAnadoluTimesheetData(prev => ({
-                        ...prev,
-                        [personId]: {
-                          ...prev[personId],
-                          cikis: time
-                        }
-                      }));
-                    } else {
-                      setTimesheetData(prev => ({
-                        ...prev,
-                        [personId]: {
-                          ...prev[personId],
-                          cikis: time
-                        }
-                      }));
-                    }
-                  }
-                }}
-              />
-            </div>
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <Text type="secondary">
-                Saatleri seçtikten sonra "Tamam" butonuna tıklayın.
-              </Text>
-            </div>
-          </div>
-        </Modal>
+
       </div>
     );
   };

@@ -75,4 +75,158 @@ code {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+/* Print Styles */
+@media print {
+  /* Tüm sayfayı sıfırla */
+  * {
+    box-sizing: border-box !important;
+  }
+  
+  body { 
+    margin: 0 !important; 
+    padding: 0 !important;
+    background: white !important;
+  }
+  
+  /* Tüm butonları gizle */
+  .ant-btn, button { 
+    display: none !important; 
+  }
+  
+  /* Sadece sidebar'ı gizle */
+  .sidebar-container { 
+    display: none !important; 
+  }
+  
+  /* Layout container'larını sıfırla */
+  .ant-layout, .ant-layout-content, .ant-layout-main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: auto !important;
+  }
+  
+  /* Sadece timesheet container'ını göster */
+  .timesheet-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    position: static !important;
+  }
+  
+  /* Tabloları optimize et */
+  .ant-table {
+    font-size: 10px !important;
+    page-break-inside: avoid !important;
+  }
+  
+  .ant-table-thead > tr > th {
+    font-size: 10px !important;
+    padding: 4px !important;
+    background: #f5f5f5 !important;
+  }
+  
+  .ant-table-tbody > tr > td {
+    font-size: 10px !important;
+    padding: 4px !important;
+  }
+  
+  /* TimePicker'ları gizle, sadece placeholder göster */
+  .ant-picker, .ant-picker-input {
+    display: none !important;
+  }
+  
+  /* TimePicker yerine placeholder göster */
+  .ant-picker-input::before {
+    content: "--:--" !important;
+    display: inline-block !important;
+    width: 100% !important;
+    height: 20px !important;
+    border: 1px solid #d9d9d9 !important;
+    padding: 4px !important;
+    background: white !important;
+  }
+  
+  /* Diğer tüm elementleri gizle */
+  .ant-layout-sider, .ant-layout-header, .ant-layout-footer,
+  .ant-menu, .ant-menu-item, .ant-menu-submenu,
+  .ant-layout-aside, .ant-layout-sidebar {
+    display: none !important;
+  }
+  
+  /* App.js içindeki layout elementlerini gizle */
+  .App, .app-container, .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  
+  /* Sadece timesheet sayfasını göster */
+  .timesheet-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    position: static !important;
+    min-height: auto !important;
+  }
+  
+  /* Diğer tüm sayfaları gizle */
+  .team-personnel-container, .admin-panel, .dashboard,
+  .personnel-list, .store-list, .vehicle-list,
+  .performance-analysis, .shift-planning, .store-distribution,
+  .vehicle-distribution, .chat-system, .notification-panel,
+  .rules-app, .store-map, .store-distance-calculator,
+  .background-boxes, .login-form, .session-timeout-modal,
+  .unauthorized-access, .file-upload {
+    display: none !important;
+  }
+  
+  /* Root elementleri sıfırla */
+  #root, .root {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  
+  /* Ek olarak tüm flex container'ları ve layout elementlerini gizle */
+  div[class*="flex"], div[class*="grid"], div[class*="container"],
+  div[class*="wrapper"], div[class*="layout"], div[class*="main"],
+  div[class*="content"], div[class*="sidebar"], div[class*="nav"],
+  div[class*="header"], div[class*="footer"], div[class*="menu"] {
+    display: none !important;
+  }
+  
+  /* Sadece timesheet container'ının içindeki elementleri göster */
+  .timesheet-container * {
+    display: revert !important;
+  }
+  
+  /* Sadece sidebar ve navigation elementlerini gizle */
+  .sidebar-container, 
+  div[class*="w-80"], 
+  div[class*="bg-white/95"], 
+  div[class*="backdrop-blur-md"],
+  div[class*="relative z-10 flex h-screen"] {
+    display: none !important;
+  }
+  
+  /* Timesheet container'ını tam ekran yap */
+  .timesheet-container {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+  }
 } 

@@ -660,7 +660,7 @@ function MainApp() {
   ];
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-slate-100 overflow-hidden">
+    <div className="app-container h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-slate-100 overflow-hidden">
       {/* Logout Animation Overlay */}
       {isLoggingOut && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -693,7 +693,7 @@ function MainApp() {
       {/* Main Layout */}
       <div className="relative z-10 flex h-screen">
         {/* Sidebar */}
-        <div className="w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col">
+        <div className="sidebar-container w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col">
           {/* Sidebar Header */}
           <div className="p-4 border-b border-gray-200/50">
             <div className="flex items-center justify-between">
@@ -1497,7 +1497,7 @@ function MainApp() {
           )}
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-8">
+          <main className="main-content flex-1 overflow-auto p-8">
             {/* Ana Sayfa Dashboard */}
             {activeTab === 'home' && (
               <div className="space-y-8">
@@ -2002,11 +2002,13 @@ function MainApp() {
 // Ana App component'i - AuthProvider ile wrap edilmiş
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <MainApp />
-      </AuthProvider>
-    </Router>
+    <div className="App">
+      <Router>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </Router>
+    </div>
   );
 }
 

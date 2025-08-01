@@ -1,325 +1,587 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Clock, Users, Calendar, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+  Table,
+  Button,
+  Input,
+  Card,
+  Row,
+  Col,
+  Typography,
+  message,
+  TimePicker,
+  Space,
+  Divider
+} from 'antd';
+import {
+  SaveOutlined,
+  PrinterOutlined,
+  UserOutlined,
+  TeamOutlined,
+  ClockCircleOutlined
+} from '@ant-design/icons';
+import { getTeamPersonnel, getPersonnelFromPersonnelTable } from '../../services/supabase';
+import dayjs from 'dayjs';
+
+const { Title, Text } = Typography;
 
 const TimesheetTracking = () => {
-  const [timesheets, setTimesheets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [teamPersonnel, setTeamPersonnel] = useState([]);
+  const [anadoluPersonnel, setAnadoluPersonnel] = useState([]);
+  const [timesheetData, setTimesheetData] = useState({});
+  const [anadoluTimesheetData, setAnadoluTimesheetData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+
+  const ekipOptions = ['1.Ekip', '2.Ekip', '3.Ekip', '4.Ekip'];
 
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setLoading(false);
-      // Mock data
-      setTimesheets([
-        {
-          id: 1,
-          employeeName: 'Ahmet Yılmaz',
-          employeeId: 'EMP001',
-          date: '2024-01-15',
-          startTime: '08:00',
-          endTime: '17:00',
-          totalHours: 9,
-          status: 'completed',
-          department: 'Sevkiyat',
-          notes: 'Normal vardiya'
-        },
-        {
-          id: 2,
-          employeeName: 'Fatma Demir',
-          employeeId: 'EMP002',
-          date: '2024-01-15',
-          startTime: '14:00',
-          endTime: '22:00',
-          totalHours: 8,
-          status: 'in-progress',
-          department: 'Sevkiyat',
-          notes: 'Öğle vardiyası'
-        },
-        {
-          id: 3,
-          employeeName: 'Mehmet Kaya',
-          employeeId: 'EMP003',
-          date: '2024-01-15',
-          startTime: '22:00',
-          endTime: '06:00',
-          totalHours: 8,
-          status: 'pending',
-          department: 'Sevkiyat',
-          notes: 'Gece vardiyası'
-        }
-      ]);
-    }, 1000);
+    loadData();
   }, []);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'in-progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [teamResult, anadoluResult] = await Promise.all([
+        getTeamPersonnel(),
+        getPersonnelFromPersonnelTable()
+      ]);
+      
+      if (teamResult.success) {
+        setTeamPersonnel(teamResult.data);
+        // Başlangıç timesheet verilerini oluştur
+        const initialData = {};
+        teamResult.data.forEach(person => {
+          initialData[person.id] = {
+            giris: null,
+            cikis: null
+          };
+        });
+        setTimesheetData(initialData);
+      }
+      
+      if (anadoluResult.success) {
+        setAnadoluPersonnel(anadoluResult.data);
+        // Anadolu personelleri için başlangıç verilerini oluştur
+        const initialAnadoluData = {};
+        anadoluResult.data.forEach(person => {
+          initialAnadoluData[person.id] = {
+            giris: null,
+            cikis: null
+          };
+        });
+        setAnadoluTimesheetData(initialAnadoluData);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      message.error('Veriler yüklenirken hata oluştu');
+    }
+    setLoading(false);
+  };
+
+  // Ekip bazında gruplandırılmış personel
+  const groupedPersonnel = ekipOptions.reduce((acc, ekip) => {
+    const teamMembers = teamPersonnel.filter(p => p.ekip_bilgisi === ekip);
+    acc[ekip] = teamMembers.sort((a, b) => {
+      // Önce konum önceliğine göre sırala
+      const konumPriority = {
+        'Vardiya Amiri': 1,
+        'Ekip Lideri': 2,
+        'Sistem Operatörü': 3,
+        'Sistem Operatör Yrd.': 4,
+        'Sevkiyat Sorumlusu': 5,
+        'Sevkiyat Veri Giriş Elemanı': 6,
+        'Makine Operatörü': 7,
+        'Sevkiyat Elemanı': 8,
+        'Sevkiyat Elemanı ( Load Audit)': 9
+      };
+      
+      const priorityA = konumPriority[a.konum] || 999;
+      const priorityB = konumPriority[b.konum] || 999;
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // Aynı konumda ise sicil_no'ya göre sırala
+      return parseInt(a.sicil_no) - parseInt(b.sicil_no);
+    });
+    return acc;
+  }, {});
+
+  const getTeamColor = (team) => {
+    switch (team) {
+      case '1.Ekip': return '#52c41a';
+      case '2.Ekip': return '#1890ff';
+      case '3.Ekip': return '#8c8c8c';
+      case '4.Ekip': return '#fa8c16';
+      default: return '#8c8c8c';
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'in-progress':
-        return <Clock className="w-4 h-4" />;
-      case 'pending':
-        return <AlertTriangle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
-    }
+  const handleTimeChange = (personId, field, time) => {
+    setTimesheetData(prev => ({
+      ...prev,
+      [personId]: {
+        ...prev[personId],
+        [field]: time
+      }
+    }));
   };
 
-  const filteredTimesheets = timesheets.filter(timesheet => {
-    if (filterStatus !== 'all' && timesheet.status !== filterStatus) {
-      return false;
+  const handleAnadoluTimeChange = (personId, field, time) => {
+    setAnadoluTimesheetData(prev => ({
+      ...prev,
+      [personId]: {
+        ...prev[personId],
+        [field]: time
+      }
+    }));
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // Burada veritabanına kaydetme işlemi yapılacak
+      message.success('Puantaj verileri başarıyla kaydedildi');
+    } catch (error) {
+      console.error('Error saving timesheet:', error);
+      message.error('Veriler kaydedilirken hata oluştu');
     }
-    return true;
-  });
+    setLoading(false);
+  };
 
-  const totalHours = filteredTimesheets.reduce((sum, timesheet) => sum + timesheet.totalHours, 0);
-  const completedCount = filteredTimesheets.filter(t => t.status === 'completed').length;
-  const inProgressCount = filteredTimesheets.filter(t => t.status === 'in-progress').length;
-  const pendingCount = filteredTimesheets.filter(t => t.status === 'pending').length;
+  const handlePrint = () => {
+    window.print();
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  // Ekip tablosu için sütunlar
+  const teamColumns = [
+    {
+      title: 'Sicil No',
+      dataIndex: 'sicil_no',
+      key: 'sicil_no',
+      width: 80,
+      render: (text) => <Text style={{ fontSize: '11px', fontWeight: 'bold' }}>{text}</Text>
+    },
+    {
+      title: 'Adı Soyadı',
+      dataIndex: 'adi_soyadi',
+      key: 'adi_soyadi',
+      width: 150,
+      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
+    },
+    {
+      title: 'Fiili Görev',
+      dataIndex: 'konum',
+      key: 'konum',
+      width: 180,
+      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
+    },
+    {
+      title: 'Giriş',
+      key: 'giris',
+      width: 90,
+      render: (_, record) => (
+        <TimePicker
+          format="HH:mm"
+          size="small"
+          style={{ width: '70px', fontSize: '11px' }}
+          value={timesheetData[record.id]?.giris}
+          onChange={(time) => handleTimeChange(record.id, 'giris', time)}
+          placeholder="--:--"
+        />
+      )
+    },
+    {
+      title: 'Çıkış',
+      key: 'cikis',
+      width: 90,
+      render: (_, record) => (
+        <TimePicker
+          format="HH:mm"
+          size="small"
+          style={{ width: '70px', fontSize: '11px' }}
+          value={timesheetData[record.id]?.cikis}
+          onChange={(time) => handleTimeChange(record.id, 'cikis', time)}
+          placeholder="--:--"
+        />
+      )
+    }
+  ];
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Puantaj Takip</h1>
-            <p className="text-purple-100 mt-1">Personel vardiya ve çalışma saatleri takibi</p>
-          </div>
-          <div className="bg-white/20 rounded-lg p-3">
-            <Package className="w-8 h-8" />
-          </div>
+  // Anadolu personel tablosu için sütunlar
+  const anadoluColumns = [
+    {
+      title: 'Sicil No',
+      dataIndex: 'employee_code',
+      key: 'employee_code',
+      width: 80,
+      render: (text) => <Text style={{ fontSize: '11px', fontWeight: 'bold' }}>{text}</Text>
+    },
+    {
+      title: 'Adı Soyadı',
+      dataIndex: 'full_name',
+      key: 'full_name',
+      width: 150,
+      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
+    },
+    {
+      title: 'Fiili Görev',
+      dataIndex: 'position',
+      key: 'position',
+      width: 180,
+      render: (text) => <Text style={{ fontSize: '11px' }}>{text}</Text>
+    },
+    {
+      title: 'Giriş',
+      key: 'giris',
+      width: 90,
+      render: (_, record) => (
+        <TimePicker
+          format="HH:mm"
+          size="small"
+          style={{ width: '70px', fontSize: '11px' }}
+          value={anadoluTimesheetData[record.id]?.giris}
+          onChange={(time) => handleAnadoluTimeChange(record.id, 'giris', time)}
+          placeholder="--:--"
+        />
+      )
+    },
+    {
+      title: 'Çıkış',
+      key: 'cikis',
+      width: 90,
+      render: (_, record) => (
+        <TimePicker
+          format="HH:mm"
+          size="small"
+          style={{ width: '70px', fontSize: '11px' }}
+          value={anadoluTimesheetData[record.id]?.cikis}
+          onChange={(time) => handleAnadoluTimeChange(record.id, 'cikis', time)}
+          placeholder="--:--"
+        />
+      )
+    }
+  ];
+
+     return (
+     <div className="timesheet-container" style={{ 
+       padding: '16px', 
+       backgroundColor: 'white',
+       minHeight: '100vh',
+       width: '100%'
+     }}>
+      {/* Ana İçerik */}
+      <div style={{
+        width: '100%',
+        maxWidth: '100%',
+        backgroundColor: 'white',
+        padding: '20px',
+        position: 'relative'
+      }}>
+        {/* Başlık */}
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: '20px',
+          borderBottom: '2px solid #000',
+          paddingBottom: '10px'
+        }}>
+          <Title level={3} style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+            TUZLA SEVKİYAT PUANTAJI
+          </Title>
+          <Text style={{ fontSize: '14px', fontWeight: '500' }}>
+            {selectedDate.format('DD.MM.YYYY')}
+          </Text>
         </div>
-      </div>
 
-      {/* Filters and Controls */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tarih</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Durum</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="all">Tümü</option>
-                <option value="completed">Tamamlanan</option>
-                <option value="in-progress">Devam Eden</option>
-                <option value="pending">Bekleyen</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Yeni Puantaj
-            </button>
-            <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Rapor İndir
-            </button>
-          </div>
-        </div>
-      </div>
+                 {/* Sol Taraf - Ekipler */}
+         <div style={{ display: 'flex', gap: '30px', width: '100%' }}>
+           <div style={{ flex: 1, minWidth: 0 }}>
+             {ekipOptions.map(ekip => (
+               <div key={ekip} style={{ marginBottom: '20px' }}>
+                 <div style={{
+                   backgroundColor: getTeamColor(ekip),
+                   color: 'white',
+                   padding: '8px 12px',
+                   fontWeight: 'bold',
+                   fontSize: '14px',
+                   marginBottom: '8px',
+                   borderRadius: '4px'
+                 }}>
+                   {ekip}
+                 </div>
+                 
+                                   <Table
+                    columns={teamColumns}
+                    dataSource={groupedPersonnel[ekip] || []}
+                    rowKey="id"
+                    pagination={false}
+                    size="small"
+                    style={{ fontSize: '11px' }}
+                    bordered
+                    rowClassName={(record, index) => 
+                      index % 2 === 0 ? 'even-row' : 'odd-row'
+                    }
+                  />
+               </div>
+             ))}
+           </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Toplam Saat</p>
-              <p className="text-2xl font-bold text-gray-900">{totalHours}h</p>
-            </div>
-            <div className="bg-blue-100 rounded-lg p-3">
-              <Clock className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Tamamlanan</p>
-              <p className="text-2xl font-bold text-green-600">{completedCount}</p>
-            </div>
-            <div className="bg-green-100 rounded-lg p-3">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Devam Eden</p>
-              <p className="text-2xl font-bold text-blue-600">{inProgressCount}</p>
-            </div>
-            <div className="bg-blue-100 rounded-lg p-3">
-              <Clock className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Bekleyen</p>
-              <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
-            </div>
-            <div className="bg-yellow-100 rounded-lg p-3">
-              <AlertTriangle className="w-6 h-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Timesheet List */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">Puantaj Listesi</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Personel
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tarih
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Başlangıç
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Bitiş
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Toplam Saat
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Durum
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  İşlemler
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTimesheets.map((timesheet) => (
-                <tr key={timesheet.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{timesheet.employeeName}</div>
-                      <div className="text-sm text-gray-500">{timesheet.employeeId}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(timesheet.date).toLocaleDateString('tr-TR')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {timesheet.startTime}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {timesheet.endTime}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {timesheet.totalHours}h
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(timesheet.status)}`}>
-                      {getStatusIcon(timesheet.status)}
-                      <span className="ml-1">
-                        {timesheet.status === 'completed' && 'Tamamlandı'}
-                        {timesheet.status === 'in-progress' && 'Devam Ediyor'}
-                        {timesheet.status === 'pending' && 'Bekliyor'}
-                      </span>
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">Düzenle</button>
-                      <button className="text-red-600 hover:text-red-900">Sil</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-gray-50 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Hızlı İşlemler</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg p-4 text-left transition-colors">
-            <div className="flex items-center">
-              <div className="bg-blue-100 rounded-lg p-2 mr-3">
-                <Users className="w-5 h-5 text-blue-600" />
+                       {/* Sağ Taraf - Anadolu Personelleri */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                backgroundColor: '#722ed1',
+                color: 'white',
+                padding: '8px 12px',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                marginBottom: '8px',
+                borderRadius: '4px'
+              }}>
+                Anadolu Personelleri
               </div>
-              <div>
-                <p className="font-medium text-gray-900">Toplu Puantaj</p>
-                <p className="text-sm text-gray-500">Birden fazla personel için puantaj oluştur</p>
-              </div>
+              
+                            <Table
+                 columns={anadoluColumns}
+                 dataSource={anadoluPersonnel.sort((a, b) => {
+                   // Önce pozisyona göre sırala
+                   const positionPriority = {
+                     'SEVKİYAT ELEMANI': 1,
+                     'ŞOFÖR': 2
+                   };
+                   
+                   const priorityA = positionPriority[a.position] || 999;
+                   const priorityB = positionPriority[b.position] || 999;
+                   if (priorityA !== priorityB) {
+                     return priorityA - priorityB;
+                   }
+                   
+                   // Aynı pozisyonda ise sicil numarasına göre sırala
+                   return parseInt(a.employee_code) - parseInt(b.employee_code);
+                 })}
+                 rowKey="id"
+                 pagination={false}
+                 size="small"
+                 style={{ fontSize: '11px' }}
+                 bordered
+                 rowClassName={(record, index) => 
+                   index % 2 === 0 ? 'even-row' : 'odd-row'
+                 }
+               />
+               
+                               {/* Alt Bilgiler - Anadolu Tablosunun Hemen Altında */}
+                <div style={{ 
+                  marginTop: '25px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '12px',
+                  padding: '15px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '8px',
+                  border: '1px solid #e9ecef',
+                  marginBottom: '20px'
+                }}>
+                 <div>
+                   <Text strong style={{ fontSize: '12px' }}>Kısaltma Açıklamaları:</Text>
+                   <div style={{ marginTop: '6px' }}>
+                     <Text>H.B - Habersiz</Text><br />
+                     <Text>Y.İ - Yıllık İzin</Text><br />
+                     <Text>Ü.İ - Ücretsiz İzin</Text><br />
+                     <Text>R - Raporlu</Text>
+                   </div>
+                 </div>
+                 
+                 <div style={{ textAlign: 'right' }}>
+                   <div style={{ marginBottom: '6px' }}>
+                     <Text strong style={{ fontSize: '12px' }}>Toplam Personel:</Text> {teamPersonnel.length + anadoluPersonnel.length}
+                   </div>
+                   <div style={{ marginBottom: '4px' }}>
+                     <Text strong>Ekip Personeli:</Text> {teamPersonnel.length}
+                   </div>
+                   <div style={{ marginBottom: '4px' }}>
+                     <Text strong>Anadolu Personeli:</Text> {anadoluPersonnel.length}
+                   </div>
+                   <div>
+                     <Text strong>Tarih:</Text> {selectedDate.format('DD.MM.YYYY')}
+                   </div>
+                 </div>
+               </div>
             </div>
-          </button>
-
-          <button className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg p-4 text-left transition-colors">
-            <div className="flex items-center">
-              <div className="bg-green-100 rounded-lg p-2 mr-3">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">Performans Raporu</p>
-                <p className="text-sm text-gray-500">Personel performans analizi</p>
-              </div>
-            </div>
-          </button>
-
-          <button className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg p-4 text-left transition-colors">
-            <div className="flex items-center">
-              <div className="bg-purple-100 rounded-lg p-2 mr-3">
-                <Calendar className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">Vardiya Planı</p>
-                <p className="text-sm text-gray-500">Gelecek vardiya planlaması</p>
-              </div>
-            </div>
-          </button>
-        </div>
+          </div>
       </div>
+
+      {/* Kontrol Butonları */}
+      <div style={{ 
+        position: 'fixed', 
+        bottom: '20px', 
+        right: '20px',
+        display: 'flex',
+        gap: '10px'
+      }}>
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          onClick={handleSave}
+          loading={loading}
+          size="large"
+        >
+          Kaydet
+        </Button>
+        <Button
+          icon={<PrinterOutlined />}
+          onClick={handlePrint}
+          size="large"
+        >
+          Yazdır
+        </Button>
+      </div>
+
+                                                       {/* Print CSS */}
+        <style jsx>{`
+          @media print {
+            /* Tüm sayfayı sıfırla */
+            * {
+              box-sizing: border-box !important;
+            }
+            
+            body { 
+              margin: 0 !important; 
+              padding: 0 !important;
+              background: white !important;
+            }
+            
+            /* Tüm butonları gizle */
+            .ant-btn, button { 
+              display: none !important; 
+            }
+            
+                          /* Sadece sidebar'ı gizle */
+              .sidebar-container { 
+                display: none !important; 
+              }
+            
+            /* Layout container'larını sıfırla */
+            .ant-layout, .ant-layout-content, .ant-layout-main {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              max-width: none !important;
+              min-height: auto !important;
+            }
+            
+            /* App.js içindeki layout elementlerini gizle */
+            .App, .app-container, .main-content {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              max-width: none !important;
+            }
+            
+            /* Sadece timesheet container'ını göster */
+            .timesheet-container {
+              display: block !important;
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 20px !important;
+              background: white !important;
+              position: static !important;
+              min-height: auto !important;
+            }
+            
+            /* Diğer tüm sayfaları gizle */
+            .team-personnel-container, .admin-panel, .dashboard,
+            .personnel-list, .store-list, .vehicle-list,
+            .performance-analysis, .shift-planning, .store-distribution,
+            .vehicle-distribution, .chat-system, .notification-panel,
+            .rules-app, .store-map, .store-distance-calculator,
+            .background-boxes, .login-form, .session-timeout-modal,
+            .unauthorized-access, .file-upload {
+              display: none !important;
+            }
+            
+            /* Root elementleri sıfırla */
+            #root, .root {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              max-width: none !important;
+            }
+            
+            /* Tabloları optimize et */
+            .ant-table {
+              font-size: 10px !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .ant-table-thead > tr > th {
+              font-size: 10px !important;
+              padding: 4px !important;
+              background: #f5f5f5 !important;
+            }
+            
+            .ant-table-tbody > tr > td {
+              font-size: 10px !important;
+              padding: 4px !important;
+            }
+            
+            /* TimePicker'ları gizle, sadece placeholder göster */
+            .ant-picker, .ant-picker-input {
+              display: none !important;
+            }
+            
+            /* TimePicker yerine placeholder göster */
+            .ant-picker-input::before {
+              content: "--:--" !important;
+              display: inline-block !important;
+              width: 100% !important;
+              height: 20px !important;
+              border: 1px solid #d9d9d9 !important;
+              padding: 4px !important;
+              background: white !important;
+            }
+            
+                          /* Diğer tüm elementleri gizle */
+              .ant-layout-sider, .ant-layout-header, .ant-layout-footer,
+              .ant-menu, .ant-menu-item, .ant-menu-submenu,
+              .ant-layout-aside, .ant-layout-sidebar {
+                display: none !important;
+              }
+              
+              /* Ek olarak tüm flex container'ları ve layout elementlerini gizle */
+              div[class*="flex"], div[class*="grid"], div[class*="container"],
+              div[class*="wrapper"], div[class*="layout"], div[class*="main"],
+              div[class*="content"], div[class*="sidebar"], div[class*="nav"],
+              div[class*="header"], div[class*="footer"], div[class*="menu"] {
+                display: none !important;
+              }
+              
+              /* Sadece timesheet container'ının içindeki elementleri göster */
+              .timesheet-container * {
+                display: revert !important;
+              }
+              
+              /* Sadece sidebar ve navigation elementlerini gizle */
+              .sidebar-container, 
+              div[class*="w-80"], 
+              div[class*="bg-white/95"], 
+              div[class*="backdrop-blur-md"],
+              div[class*="relative z-10 flex h-screen"] {
+                display: none !important;
+              }
+              
+              /* Timesheet container'ını tam ekran yap */
+              .timesheet-container {
+                position: static !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 20px !important;
+                background: white !important;
+              }
+            }
+          
+          .even-row { background-color: #fafafa; }
+          .odd-row { background-color: white; }
+        `}</style>
     </div>
   );
 };

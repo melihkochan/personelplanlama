@@ -14,6 +14,7 @@ import VehicleDistribution from './components/vehicles/VehicleDistribution';
 import Statistics from './components/statistics/Statistics';
 import TeamShifts from './components/timesheet/TeamShifts';
 import TimesheetTracking from './components/timesheet/TimesheetTracking';
+import TeamPersonnel from './components/timesheet/TeamPersonnel';
 import AdminPanel from './components/admin/AdminPanel';
 import LoginForm from './components/ui/LoginForm';
 import NotificationPanel from './components/notifications/NotificationPanel';
@@ -948,6 +949,24 @@ function MainApp() {
                 Puantaj Takip
               </button>
 
+              <button
+                onClick={() => handleTabChange('team-personnel')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'team-personnel'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Ekip Personel Bilgileri
+                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
+                  Geliştirme
+                </span>
+              </button>
+
             </div>
 
             {/* Vardiya Planlama Grubu */}
@@ -970,6 +989,10 @@ function MainApp() {
               >
                 <Calendar className="w-4 h-4 mr-2" />
                 Vardiya Planlama
+                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
+                  Geliştirme
+                </span>
               </button>
 
             </div>
@@ -1321,6 +1344,27 @@ function MainApp() {
                       Puantaj Takip
                     </button>
 
+                    <button
+                      onClick={() => {
+                        handleTabChange('team-personnel');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'team-personnel'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Users className="w-5 h-5 mr-3" />
+                      Ekip Personel Bilgileri
+                      <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
+                        Geliştirme
+                      </span>
+                    </button>
+
                   </div>
 
                   {/* Vardiya Planlama Grubu */}
@@ -1346,6 +1390,10 @@ function MainApp() {
                     >
                       <Calendar className="w-5 h-5 mr-3" />
                       Vardiya Planlama
+                      <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
+                        Geliştirme
+                      </span>
                     </button>
 
                     <button
@@ -1848,6 +1896,11 @@ function MainApp() {
             {/* Puantaj Takip */}
             {activeTab === 'timesheet-tracking' && (
               <TimesheetTracking />
+            )}
+
+            {/* Ekip Personel Bilgileri */}
+            {activeTab === 'team-personnel' && (
+              <TeamPersonnel />
             )}
 
             {/* Admin Panel */}

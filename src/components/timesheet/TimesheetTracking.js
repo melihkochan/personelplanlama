@@ -10,14 +10,24 @@ import {
   message,
   TimePicker,
   Space,
-  Divider
+  Divider,
+  Modal
 } from 'antd';
 import {
   SaveOutlined,
   PrinterOutlined,
   UserOutlined,
   TeamOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  FullscreenOutlined,
+  CrownOutlined,
+  SettingOutlined,
+  ToolOutlined,
+  CarOutlined,
+  UserSwitchOutlined,
+  SafetyOutlined,
+  BuildOutlined,
+  AuditOutlined
 } from '@ant-design/icons';
 import { getTeamPersonnel, getPersonnelFromPersonnelTable } from '../../services/supabase';
 import dayjs from 'dayjs';
@@ -31,6 +41,7 @@ const TimesheetTracking = () => {
   const [anadoluTimesheetData, setAnadoluTimesheetData] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [expandedTeam, setExpandedTeam] = useState(null);
 
   const ekipOptions = ['1.Ekip', '2.Ekip', '3.Ekip', '4.Ekip'];
 
@@ -151,6 +162,35 @@ const TimesheetTracking = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleTeamExpand = (team) => {
+    setExpandedTeam(expandedTeam === team ? null : team);
+  };
+
+  const getPositionIcon = (position) => {
+    switch (position) {
+      case 'Vardiya Amiri':
+        return <CrownOutlined style={{ fontSize: '10px', color: '#fa8c16' }} />;
+      case 'Ekip Lideri':
+        return <UserSwitchOutlined style={{ fontSize: '10px', color: '#1890ff' }} />;
+      case 'Sistem Operatörü':
+        return <SettingOutlined style={{ fontSize: '10px', color: '#722ed1' }} />;
+      case 'Sistem Operatör Yrd.':
+        return <SettingOutlined style={{ fontSize: '10px', color: '#722ed1' }} />;
+      case 'Sevkiyat Sorumlusu':
+        return <SafetyOutlined style={{ fontSize: '10px', color: '#52c41a' }} />;
+      case 'Sevkiyat Veri Giriş Elemanı':
+        return <BuildOutlined style={{ fontSize: '10px', color: '#13c2c2' }} />;
+      case 'Makine Operatörü':
+        return <ToolOutlined style={{ fontSize: '10px', color: '#fa541c' }} />;
+      case 'Sevkiyat Elemanı':
+        return <CarOutlined style={{ fontSize: '10px', color: '#1890ff' }} />;
+      case 'Sevkiyat Elemanı ( Load Audit)':
+        return <AuditOutlined style={{ fontSize: '10px', color: '#eb2f96' }} />;
+      default:
+        return <UserOutlined style={{ fontSize: '10px', color: '#8c8c8c' }} />;
+    }
   };
 
   // Ekip tablosu için sütunlar
@@ -305,9 +345,25 @@ const TimesheetTracking = () => {
                    fontWeight: 'bold',
                    fontSize: '14px',
                    marginBottom: '8px',
-                   borderRadius: '4px'
+                   borderRadius: '4px',
+                   display: 'flex',
+                   justifyContent: 'space-between',
+                   alignItems: 'center'
                  }}>
-                   {ekip}
+                   <span>{ekip}</span>
+                   <Button
+                     type="text"
+                     icon={<FullscreenOutlined />}
+                     onClick={() => handleTeamExpand(ekip)}
+                     size="small"
+                     style={{ 
+                       color: 'white', 
+                       fontSize: '10px',
+                       padding: '0',
+                       height: 'auto',
+                       minWidth: 'auto'
+                     }}
+                   />
                  </div>
                  
                                    <Table
@@ -407,35 +463,131 @@ const TimesheetTracking = () => {
                </div>
             </div>
           </div>
-      </div>
+             </div>
 
-      {/* Kontrol Butonları */}
-      <div style={{ 
-        position: 'fixed', 
-        bottom: '20px', 
-        right: '20px',
-        display: 'flex',
-        gap: '10px'
-      }}>
-        <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          onClick={handleSave}
-          loading={loading}
-          size="large"
-        >
-          Kaydet
-        </Button>
-        <Button
-          icon={<PrinterOutlined />}
-          onClick={handlePrint}
-          size="large"
-        >
-          Yazdır
-        </Button>
-      </div>
+       {/* Kontrol Butonları */}
+       <div style={{ 
+         position: 'fixed', 
+         bottom: '20px', 
+         right: '20px',
+         display: 'flex',
+         gap: '10px'
+       }}>
+         <Button
+           type="primary"
+           icon={<SaveOutlined />}
+           onClick={handleSave}
+           loading={loading}
+           size="large"
+         >
+           Kaydet
+         </Button>
+         <Button
+           icon={<PrinterOutlined />}
+           onClick={handlePrint}
+           size="large"
+         >
+           Yazdır
+         </Button>
+       </div>
 
-                                                       {/* Print CSS */}
+       {/* Genişletilmiş Ekip Modal */}
+       <Modal
+         title={
+           <div style={{ 
+             fontSize: '16px', 
+             fontWeight: '600', 
+             color: getTeamColor(expandedTeam) === '#52c41a' ? '#52c41a' : 
+                    getTeamColor(expandedTeam) === '#1890ff' ? '#1890ff' : 
+                    getTeamColor(expandedTeam) === '#fa8c16' ? '#fa8c16' : '#8c8c8c',
+             textAlign: 'center',
+             padding: '6px 0'
+           }}>
+             {expandedTeam} - Detaylı Personel Listesi
+           </div>
+         }
+         open={!!expandedTeam}
+         onCancel={() => setExpandedTeam(null)}
+         footer={null}
+         width={800}
+         style={{ top: 20 }}
+         bodyStyle={{ padding: '16px', height: '85vh' }}
+       >
+         {expandedTeam && (
+           <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+             <div style={{ marginBottom: '8px', textAlign: 'center' }}>
+               <Text style={{ fontSize: '14px', color: '#666' }}>
+                 {expandedTeam} - Toplam {groupedPersonnel[expandedTeam]?.length || 0} Personel
+               </Text>
+             </div>
+             
+             {/* Pozisyon Özet Tablosu */}
+             <Card 
+               size="small" 
+               style={{ 
+                 marginBottom: '8px',
+                 background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+                 border: '1px solid #dee2e6'
+               }}
+               bodyStyle={{ padding: '8px' }}
+             >
+               <div style={{ 
+                 display: 'grid', 
+                 gridTemplateColumns: 'repeat(4, 1fr)',
+                 gap: '6px'
+               }}>
+                 {['Vardiya Amiri', 'Ekip Lideri', 'Sistem Operatörü', 'Sistem Operatör Yrd.', 'Sevkiyat Sorumlusu', 'Sevkiyat Veri Giriş Elemanı', 'Makine Operatörü', 'Sevkiyat Elemanı', 'Sevkiyat Elemanı ( Load Audit)'].map(konum => {
+                   const count = groupedPersonnel[expandedTeam]?.filter(p => p.konum === konum).length || 0;
+                   if (count === 0) return null;
+                   
+                   return (
+                     <div key={konum} style={{
+                       display: 'flex',
+                       justifyContent: 'space-between',
+                       alignItems: 'center',
+                       padding: '4px 6px',
+                       background: 'white',
+                       borderRadius: '4px',
+                       border: '1px solid #e9ecef',
+                       fontSize: '9px'
+                     }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                         {getPositionIcon(konum)}
+                         <span style={{ 
+                           fontWeight: '500',
+                           color: '#495057'
+                         }}>
+                           {konum}
+                         </span>
+                       </div>
+                       <span style={{ 
+                         fontWeight: 'bold',
+                         color: getTeamColor(expandedTeam),
+                         fontSize: '10px'
+                       }}>
+                         {count}
+                       </span>
+                     </div>
+                   );
+                 })}
+               </div>
+             </Card>
+             
+             <div style={{ flex: 1, overflow: 'auto' }}>
+               <Table
+                 columns={teamColumns}
+                 dataSource={groupedPersonnel[expandedTeam] || []}
+                 rowKey="id"
+                 pagination={false}
+                 size="small"
+                 style={{ fontSize: '10px' }}
+               />
+             </div>
+           </div>
+         )}
+       </Modal>
+
+                                                        {/* Print CSS */}
         <style jsx>{`
           @media print {
             /* Tüm sayfayı sıfırla */

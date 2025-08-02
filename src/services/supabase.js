@@ -4102,16 +4102,49 @@ export const getPersonnelFromPersonnelTable = async () => {
 // Timesheet functions
 export const saveTimesheetData = async (timesheetData) => {
   try {
-    const { data, error } = await supabase
-      .from('timesheet_data')
-      .upsert([timesheetData], { 
-        onConflict: 'date,personnel_id',
-        ignoreDuplicates: false 
-      })
-      .select();
+    console.log('Kaydedilecek veri:', timesheetData);
     
-    if (error) throw error;
-    return { success: true, data: data[0] };
+    // Önce aynı tarih ve personel için mevcut kayıt var mı kontrol et
+    const { data: existingData, error: checkError } = await supabase
+      .from('timesheet_data')
+      .select('id')
+      .eq('date', timesheetData.date)
+      .eq('personnel_id', timesheetData.personnel_id)
+      .single();
+    
+    let result;
+    
+    if (existingData) {
+      // Mevcut kaydı güncelle
+      const { data, error } = await supabase
+        .from('timesheet_data')
+        .update(timesheetData)
+        .eq('id', existingData.id)
+        .select();
+      
+      if (error) {
+        console.error('Supabase güncelleme hatası:', error);
+        throw error;
+      }
+      
+      result = data[0];
+    } else {
+      // Yeni kayıt ekle
+      const { data, error } = await supabase
+        .from('timesheet_data')
+        .insert([timesheetData])
+        .select();
+      
+      if (error) {
+        console.error('Supabase ekleme hatası:', error);
+        throw error;
+      }
+      
+      result = data[0];
+    }
+    
+    console.log('Başarılı kayıt sonucu:', result);
+    return { success: true, data: result };
   } catch (error) {
     console.error('Save timesheet data error:', error);
     return { success: false, error: error.message };
@@ -4162,6 +4195,68 @@ export const deleteTimesheetData = async (id) => {
   } catch (error) {
     console.error('Delete timesheet data error:', error);
     return { success: false, error: error.message };
+  }
+};
+
+export const getTeamPersonnelShifts = async (date) => {
+  try {
+    // En güncel dönemi bul
+    const { data: periods, error: periodsError } = await supabase
+      .from('weekly_periods')
+      .select('*')
+      .order('start_date', { ascending: false })
+      .limit(1);
+    
+    if (periodsError) {
+      console.error('❌ Güncel dönem bulunamadı:', periodsError);
+      return { success: false, error: periodsError.message, data: [] };
+    }
+    
+    if (!periods || periods.length === 0) {
+      console.log('⚠️ Hiç dönem bulunamadı');
+      return { success: false, error: 'Hiç dönem bulunamadı', data: [] };
+    }
+    
+    const latestPeriod = periods[0];
+    
+    // Bu dönemdeki ekip personellerinin vardiya verilerini getir
+    const { data: shifts, error: shiftsError } = await supabase
+      .from('weekly_schedules')
+      .select('*')
+      .eq('period_id', latestPeriod.id);
+    
+    if (shiftsError) {
+      console.error('❌ Ekip vardiya verileri getirilemedi:', shiftsError);
+      return { success: false, error: shiftsError.message, data: [] };
+    }
+    
+    // Ekip personellerini getir (team_personnel tablosundan)
+    const { data: teamPersonnel, error: personnelError } = await supabase
+      .from('team_personnel')
+      .select('*');
+    
+    if (personnelError) {
+      console.error('❌ Ekip personelleri getirilemedi:', personnelError);
+      return { success: false, error: personnelError.message, data: [] };
+    }
+    
+    // Ekip personellerinin vardiya verilerini eşleştir
+    const teamShiftsMap = {};
+    shifts.forEach(shift => {
+      const person = teamPersonnel.find(p => p.employee_code === shift.employee_code);
+      if (person) {
+        teamShiftsMap[person.id] = shift.shift_type;
+        console.log(`Ekip personel ${person.adi_soyadi} (${person.id}) - employee_code: ${shift.employee_code} - shift_type: ${shift.shift_type}`);
+      } else {
+        console.log(`Ekip personel bulunamadı - employee_code: ${shift.employee_code}`);
+      }
+    });
+    
+    console.log('Ekip vardiya tipleri:', teamShiftsMap);
+    return { success: true, data: teamShiftsMap };
+  } catch (error) {
+    console.error('❌ Ekip personel vardiya verileri getirilemedi:', error);
+    return { success: false, error: error.message, data: {} };
   }
 };
 
@@ -4233,10 +4328,3 @@ export const getAnadoluPersonnelShifts = async (date) => {
     return { success: false, error: error.message, data: [] };
   }
 };
-
-
-
-
-
-
-

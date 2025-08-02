@@ -18,7 +18,7 @@ import {
   RightOutlined,
   CheckOutlined
 } from '@ant-design/icons';
-import { getTeamPersonnel, getPersonnelFromPersonnelTable, getTimesheetData, saveTimesheetData, updateTimesheetData, getTeamShiftsByDate, getAnadoluPersonnelShifts } from '../../services/supabase';
+import { getTeamPersonnel, getPersonnelFromPersonnelTable, getTimesheetData, saveTimesheetData, updateTimesheetData, getTeamShiftsByDate, getAnadoluPersonnelShifts, getTeamPersonnelShifts } from '../../services/supabase';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 
@@ -35,10 +35,12 @@ const TimesheetTracking = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [teamShifts, setTeamShifts] = useState({});
   const [anadoluShifts, setAnadoluShifts] = useState({});
+  const [teamPersonnelShifts, setTeamPersonnelShifts] = useState({});
   const [approvedPersonnel, setApprovedPersonnel] = useState(new Set());
   const [showOvertimeInputs, setShowOvertimeInputs] = useState(new Set());
   const [showOvertimeForPerson, setShowOvertimeForPerson] = useState(new Set());
   const [bulkApprovalActive, setBulkApprovalActive] = useState(false);
+  const [isDataSaved, setIsDataSaved] = useState(false);
 
   const ekipOptions = ['1.Ekip', '2.Ekip', '3.Ekip', '4.Ekip'];
 
@@ -46,41 +48,42 @@ const TimesheetTracking = () => {
     loadData();
   }, [selectedDate]);
 
-  // timesheetData değiştiğinde debug için
-  useEffect(() => {
-    console.log('timesheetData güncellendi:', timesheetData);
-  }, [timesheetData]);
+
 
   const loadData = async () => {
     setLoading(true);
     // Tarih değiştiğinde bulk approval durumunu sıfırla
     setBulkApprovalActive(false);
+    // Tarih değiştiğinde kaydetme durumunu sıfırla
+    setIsDataSaved(false);
     try {
-      const [teamResult, anadoluResult, timesheetResult, shiftsResult, anadoluShiftsResult] = await Promise.all([
+      const [teamResult, anadoluResult, timesheetResult, shiftsResult, anadoluShiftsResult, teamPersonnelShiftsResult] = await Promise.all([
         getTeamPersonnel(),
         getPersonnelFromPersonnelTable(),
         getTimesheetData(selectedDate.format('YYYY-MM-DD')),
         getTeamShiftsByDate(selectedDate.format('YYYY-MM-DD')),
-        getAnadoluPersonnelShifts(selectedDate.format('YYYY-MM-DD'))
+        getAnadoluPersonnelShifts(selectedDate.format('YYYY-MM-DD')),
+        getTeamPersonnelShifts(selectedDate.format('YYYY-MM-DD'))
       ]);
       
       // Ekip personellerini yükle
       if (teamResult.success) {
         setTeamPersonnel(teamResult.data);
+      } else {
+        console.error('Team personel yüklenemedi:', teamResult.error);
       }
       
       // Anadolu personellerini yükle
       if (anadoluResult.success) {
-        console.log('Anadolu personel verileri yüklendi:', anadoluResult.data.length, 'kayıt');
-        console.log('Anadolu personel örnekleri:', anadoluResult.data.slice(0, 3));
         setAnadoluPersonnel(anadoluResult.data);
+      } else {
+        console.error('Anadolu personel yüklenemedi:', anadoluResult.error);
       }
 
       // Vardiya verilerini yükle ve işle
       let shiftsMap = {};
       if (shiftsResult.success && shiftsResult.data && shiftsResult.data.length > 0) {
         const shiftData = shiftsResult.data[0];
-        console.log('Yüklenen vardiya verisi:', shiftData);
         
         // team_shifts tablosunun yapısına göre ekipleri map et
         if (shiftData.night_shift) {
@@ -118,32 +121,27 @@ const TimesheetTracking = () => {
             leave_shift: true
           };
         }
-        
-        console.log('Oluşturulan vardiya map:', shiftsMap);
-      } else {
-        console.log('Bu tarih için vardiya verisi bulunamadı:', selectedDate.format('YYYY-MM-DD'));
       }
       setTeamShifts(shiftsMap);
 
       // Anadolu vardiya verilerini işle
       let anadoluShiftsMap = {};
-      console.log('Anadolu vardiya sonucu:', anadoluShiftsResult);
       if (anadoluShiftsResult.success && anadoluShiftsResult.data.length > 0) {
-        console.log('Anadolu vardiya verileri:', anadoluShiftsResult.data);
         anadoluShiftsResult.data.forEach(shift => {
           const person = anadoluResult.data.find(p => p.employee_code === shift.employee_code);
           if (person) {
             anadoluShiftsMap[person.id] = shift.shift_type;
-            console.log(`Anadolu personel ${person.full_name} (${person.id}) - employee_code: ${shift.employee_code} - shift_type: ${shift.shift_type}`);
-          } else {
-            console.log(`Anadolu personel bulunamadı - employee_code: ${shift.employee_code}`);
           }
         });
-        console.log('Anadolu vardiya tipleri:', anadoluShiftsMap);
-      } else {
-        console.log('Anadolu vardiya verisi bulunamadı veya boş');
       }
       setAnadoluShifts(anadoluShiftsMap);
+
+      // Ekip personelleri için özel durumları işle
+      let teamPersonnelShiftsMap = {};
+      if (teamPersonnelShiftsResult.success && Object.keys(teamPersonnelShiftsResult.data).length > 0) {
+        teamPersonnelShiftsMap = teamPersonnelShiftsResult.data;
+      }
+      setTeamPersonnelShifts(teamPersonnelShiftsMap);
 
       // Veritabanından timesheet verilerini yükle
       const timesheetMap = {};
@@ -152,17 +150,43 @@ const TimesheetTracking = () => {
       if (timesheetResult.success && timesheetResult.data.length > 0) {
         timesheetResult.data.forEach(record => {
           if (record.personnel_type === 'team') {
-            // Ekip personeli
-            timesheetMap[record.personnel_id] = {
-              giris: record.giris ? dayjs(record.giris) : null,
-              cikis: record.cikis ? dayjs(record.cikis) : null
-            };
+            // Ekip personeli - özel durumlar için string kontrolü
+            if (record.giris === 'R' || record.giris === 'Y.İ' || record.giris === 'Ü.İ' || record.giris === 'H.B') {
+              // Özel durumlar için string olarak sakla
+              timesheetMap[record.personnel_id] = {
+                giris: record.giris,
+                cikis: record.cikis
+              };
+            } else {
+              // Normal saat verileri için dayjs objesi
+              timesheetMap[record.personnel_id] = {
+                giris: record.giris ? dayjs(record.giris) : null,
+                cikis: record.cikis ? dayjs(record.cikis) : null
+              };
+            }
+            // Eğer onaylanmışsa approved listesine ekle
+            if (record.approved) {
+              setApprovedPersonnel(prev => new Set([...prev, record.personnel_id]));
+            }
           } else if (record.personnel_type === 'anadolu') {
-            // Anadolu personeli
-            anadoluTimesheetMap[record.personnel_id] = {
-              giris: record.giris ? dayjs(record.giris) : null,
-              cikis: record.cikis ? dayjs(record.cikis) : null
-            };
+            // Anadolu personeli - özel durumlar için string kontrolü
+            if (record.giris === 'R' || record.giris === 'Y.İ' || record.giris === 'Ü.İ' || record.giris === 'H.B') {
+              // Özel durumlar için string olarak sakla
+              anadoluTimesheetMap[record.personnel_id] = {
+                giris: record.giris,
+                cikis: record.cikis
+              };
+            } else {
+              // Normal saat verileri için dayjs objesi
+              anadoluTimesheetMap[record.personnel_id] = {
+                giris: record.giris ? dayjs(record.giris) : null,
+                cikis: record.cikis ? dayjs(record.cikis) : null
+              };
+            }
+            // Eğer onaylanmışsa approved listesine ekle
+            if (record.approved) {
+              setApprovedPersonnel(prev => new Set([...prev, record.personnel_id]));
+            }
           }
         });
       }
@@ -170,150 +194,138 @@ const TimesheetTracking = () => {
       // Ekip personelleri için otomatik saat doldurma
       const teamAutoFillData = {};
       if (teamResult.success) {
-        console.log('Ekip personelleri yükleniyor:', teamResult.data.length);
         teamResult.data.forEach(person => {
           const teamName = person.ekip_bilgisi;
           const teamShiftData = shiftsMap[teamName];
-          
-          console.log(`Personel ${person.adi_soyadi} (${person.id}) - Ekip: ${teamName}`);
-          console.log(`Vardiya verisi:`, teamShiftData);
+          const personnelShiftType = teamPersonnelShiftsMap[person.id];
           
           let giris = null, cikis = null;
           
-          if (teamShiftData) {
+          // Önce personel bazlı özel durumları kontrol et
+          if (personnelShiftType) {
+            switch (personnelShiftType) {
+              case 'raporlu':
+                giris = 'R';
+                cikis = 'R';
+                break;
+              case 'yillik_izin':
+                giris = 'Y.İ';
+                cikis = 'Y.İ';
+                break;
+              case 'ucretsiz_izin':
+                giris = 'Ü.İ';
+                cikis = 'Ü.İ';
+                break;
+              case 'habersiz':
+                giris = 'H.B';
+                cikis = 'H.B';
+                break;
+              default:
+                // Normal vardiya saatleri için devam et
+                break;
+            }
+          }
+          
+          // Eğer özel durum yoksa normal vardiya saatlerini kullan
+          if (!giris && !cikis && teamShiftData) {
             if (teamShiftData.shift_24_08) {
               giris = dayjs('00:00', 'HH:mm');
               cikis = dayjs('08:00', 'HH:mm');
-              console.log(`24-08 vardiyası: ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
             } else if (teamShiftData.shift_08_16) {
               giris = dayjs('08:00', 'HH:mm');
               cikis = dayjs('16:00', 'HH:mm');
-              console.log(`08-16 vardiyası: ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
             } else if (teamShiftData.shift_16_24) {
               giris = dayjs('16:00', 'HH:mm');
               cikis = dayjs('00:00', 'HH:mm'); // 16-24 vardiyası için 00:00 (ertesi gün)
-              console.log(`16-24 vardiyası: ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
             } else if (teamShiftData.leave_shift) {
               // İzinli vardiya için boş bırak
               giris = null;
               cikis = null;
-              console.log(`İzinli vardiya: boş bırakıldı`);
+            }
+          } else if (!giris && !cikis) {
+            // Vardiya verisi yoksa varsayılan saatler
+            giris = dayjs('08:00', 'HH:mm');
+            cikis = dayjs('17:00', 'HH:mm');
+          }
+          
+          // Veritabanından gelen veri varsa onu kullan, yoksa otomatik doldurulan veriyi kullan
+          const existingData = timesheetMap[person.id];
+          if (existingData) {
+            teamAutoFillData[person.id] = existingData;
+          } else {
+            teamAutoFillData[person.id] = { giris, cikis };
+          }
+        });
+      }
+      
+      setTimesheetData(teamAutoFillData);
+
+      // Anadolu personelleri için otomatik saat doldurma
+      const anadoluAutoFillData = {};
+      if (anadoluResult.success) {
+        anadoluResult.data.forEach(person => {
+          const shiftType = anadoluShiftsMap[person.id];
+          
+          let giris = null, cikis = null;
+          
+          // Vardiya tipine göre saatleri belirle
+          if (shiftType) {
+            switch (shiftType) {
+              case 'gece':
+                giris = dayjs('22:00', 'HH:mm');
+                cikis = dayjs('06:00', 'HH:mm');
+                break;
+              case 'gunduz':
+                giris = dayjs('08:00', 'HH:mm');
+                cikis = dayjs('16:00', 'HH:mm');
+                break;
+              case 'raporlu':
+                giris = 'R';
+                cikis = 'R';
+                break;
+              case 'yillik_izin':
+                giris = 'Y.İ';
+                cikis = 'Y.İ';
+                break;
+              default:
+                // Varsayılan saatler
+                giris = dayjs('08:00', 'HH:mm');
+                cikis = dayjs('17:00', 'HH:mm');
             }
           } else {
             // Vardiya verisi yoksa varsayılan saatler
             giris = dayjs('08:00', 'HH:mm');
             cikis = dayjs('17:00', 'HH:mm');
-            console.log(`Vardiya verisi yok, varsayılan: ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
-          }
-          
-          // Veritabanından gelen veri varsa onu kullan, yoksa otomatik doldurulan veriyi kullan
-          const existingData = timesheetMap[person.id];
-          console.log(`Mevcut veri:`, existingData);
-          
-          const finalGiris = existingData?.giris || giris;
-          const finalCikis = existingData?.cikis || cikis;
-          
-          teamAutoFillData[person.id] = {
-            giris: finalGiris,
-            cikis: finalCikis
-          };
-          
-          console.log(`Final saatler: ${finalGiris ? finalGiris.format('HH:mm') : 'null'} - ${finalCikis ? finalCikis.format('HH:mm') : 'null'}`);
-          console.log(`Final giris objesi:`, finalGiris);
-          console.log(`Final cikis objesi:`, finalCikis);
-        });
-      }
-
-      // Anadolu personelleri için otomatik saat doldurma
-      const anadoluAutoFillData = {};
-      if (anadoluResult.success) {
-        console.log('Anadolu personelleri yükleniyor:', anadoluResult.data.length);
-        console.log('Anadolu vardiya map:', anadoluShiftsMap);
-        anadoluResult.data.forEach(person => {
-          const shiftType = anadoluShiftsMap[person.id];
-          console.log(`Anadolu personel ${person.full_name} (${person.id}) - employee_code: ${person.employee_code} - Vardiya tipi: ${shiftType}`);
-          
-          let giris = null, cikis = null;
-          
-          if (shiftType) {
-            switch (shiftType) {
-              case 'gece':
-                giris = dayjs('22:00', 'HH:mm');
-                cikis = dayjs('06:00', 'HH:mm'); // Gece vardiyası için 06:00 (ertesi gün)
-                console.log(`Gece vardiyası: ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
-                break;
-              case 'gunduz':
-                giris = dayjs('08:00', 'HH:mm');
-                cikis = dayjs('16:00', 'HH:mm');
-                console.log(`Gündüz vardiyası: ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
-                break;
-              case 'raporlu':
-              case 'yillik_izin':
-                giris = null;
-                cikis = null;
-                console.log(`${shiftType}: boş bırakıldı`);
-                break;
-              default:
-                // Pozisyona göre varsayılan saatler
-                if (person.position === 'SEVKİYAT ELEMANI') {
-                  giris = dayjs('08:00', 'HH:mm');
-                  cikis = dayjs('17:00', 'HH:mm');
-                } else if (person.position === 'ŞOFÖR') {
-                  giris = dayjs('07:00', 'HH:mm');
-                  cikis = dayjs('16:00', 'HH:mm');
-                } else {
-                  giris = dayjs('08:00', 'HH:mm');
-                  cikis = dayjs('17:00', 'HH:mm');
-                }
-                console.log(`Varsayılan saatler (${person.position}): ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
-                break;
-            }
-          } else {
-            // Vardiya verisi yoksa pozisyona göre varsayılan saatler
-            if (person.position === 'SEVKİYAT ELEMANI') {
-              giris = dayjs('08:00', 'HH:mm');
-              cikis = dayjs('17:00', 'HH:mm');
-            } else if (person.position === 'ŞOFÖR') {
-              giris = dayjs('07:00', 'HH:mm');
-              cikis = dayjs('16:00', 'HH:mm');
-            } else {
-              giris = dayjs('08:00', 'HH:mm');
-              cikis = dayjs('17:00', 'HH:mm');
-            }
-            console.log(`Vardiya verisi yok, varsayılan (${person.position}): ${giris.format('HH:mm')} - ${cikis.format('HH:mm')}`);
           }
           
           // Veritabanından gelen veri varsa onu kullan, yoksa otomatik doldurulan veriyi kullan
           const existingData = anadoluTimesheetMap[person.id];
-          console.log(`Anadolu mevcut veri:`, existingData);
-          
-          const finalGiris = existingData?.giris || giris;
-          const finalCikis = existingData?.cikis || cikis;
-          
-          anadoluAutoFillData[person.id] = {
-            giris: finalGiris,
-            cikis: finalCikis
-          };
-          
-          console.log(`Anadolu final saatler: ${finalGiris ? finalGiris.format('HH:mm') : 'null'} - ${finalCikis ? finalCikis.format('HH:mm') : 'null'}`);
-          console.log(`Anadolu final giris objesi:`, finalGiris);
-          console.log(`Anadolu final cikis objesi:`, finalCikis);
+          if (existingData) {
+            anadoluAutoFillData[person.id] = existingData;
+          } else {
+            anadoluAutoFillData[person.id] = { giris, cikis };
+          }
         });
       }
-
-      // State'leri güncelle
-      console.log('State güncelleniyor...');
-      console.log('Ekip otomatik doldurulan saatler:', teamAutoFillData);
-      console.log('Anadolu otomatik doldurulan saatler:', anadoluAutoFillData);
       
-      setTimesheetData(teamAutoFillData);
       setAnadoluTimesheetData(anadoluAutoFillData);
       
-      console.log('State güncelleme tamamlandı');
+      // Team personeli için otomatik onay ekle
+      const teamApprovedSet = new Set();
+      Object.keys(teamAutoFillData).forEach(personId => {
+        teamApprovedSet.add(personId);
+      });
+      
+      // Mevcut onaylı personeli koru ve team personeli ekle
+      const newApprovedSet = new Set([...Array.from(approvedPersonnel), ...teamApprovedSet]);
+      setApprovedPersonnel(newApprovedSet);
+      
+      // Kaydedilen veri kontrolü - eğer veritabanından veri geldiyse bu tarih kaydedilmiş demektir
+      const hasSavedData = timesheetResult.success && timesheetResult.data.length > 0;
+      setIsDataSaved(hasSavedData);
       
     } catch (error) {
-      console.error('Error loading data:', error);
-      message.error('Veriler yüklenirken hata oluştu');
+      console.error('loadData error:', error);
     }
     setLoading(false);
   };
@@ -393,50 +405,18 @@ const TimesheetTracking = () => {
       // Saat ve dakika kontrolü
       if (parseInt(hours) >= 0 && parseInt(hours) <= 23 && 
           parseInt(minutes) >= 0 && parseInt(minutes) <= 59) {
-        const time = dayjs(`${hours}:${minutes}`, 'HH:mm');
-        
-        if (time.isValid()) {
-          setTimesheetData(prev => ({
-            ...prev,
-            [personId]: {
-              ...prev[personId],
-              [field]: time
-            }
-          }));
-          return;
-        }
+        setTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: `${hours}:${minutes}`
+          }
+        }));
+        return;
       }
     }
 
-    // HH:mm formatında girilen değer (örn: 22:00, 22:0, 22:)
-    if (/^\d{1,2}:\d{0,2}$/.test(value)) {
-      // Eğer dakika yoksa veya eksikse, geçici olarak string olarak sakla
-      if (value.endsWith(':') || value.split(':')[1]?.length < 2) {
-        setTimesheetData(prev => ({
-          ...prev,
-          [personId]: {
-            ...prev[personId],
-            [field]: value
-          }
-        }));
-        return;
-      }
-      
-      // Tam format varsa (HH:mm) dayjs objesi oluştur
-      const time = dayjs(value, 'HH:mm');
-      if (time.isValid()) {
-        setTimesheetData(prev => ({
-          ...prev,
-          [personId]: {
-            ...prev[personId],
-            [field]: time
-          }
-        }));
-        return;
-      }
-    }
-    
-    // Geçerli bir saat formatı değilse, sadece string olarak sakla
+    // Her durumda string olarak sakla
     setTimesheetData(prev => ({
       ...prev,
       [personId]: {
@@ -482,50 +462,18 @@ const TimesheetTracking = () => {
       // Saat ve dakika kontrolü
       if (parseInt(hours) >= 0 && parseInt(hours) <= 23 && 
           parseInt(minutes) >= 0 && parseInt(minutes) <= 59) {
-        const time = dayjs(`${hours}:${minutes}`, 'HH:mm');
-        
-        if (time.isValid()) {
-          setAnadoluTimesheetData(prev => ({
-            ...prev,
-            [personId]: {
-              ...prev[personId],
-              [field]: time
-            }
-          }));
-          return;
-        }
+        setAnadoluTimesheetData(prev => ({
+          ...prev,
+          [personId]: {
+            ...prev[personId],
+            [field]: `${hours}:${minutes}`
+          }
+        }));
+        return;
       }
     }
 
-    // HH:mm formatında girilen değer (örn: 22:00, 22:0, 22:)
-    if (/^\d{1,2}:\d{0,2}$/.test(value)) {
-      // Eğer dakika yoksa veya eksikse, geçici olarak string olarak sakla
-      if (value.endsWith(':') || value.split(':')[1]?.length < 2) {
-        setAnadoluTimesheetData(prev => ({
-          ...prev,
-          [personId]: {
-            ...prev[personId],
-            [field]: value
-          }
-        }));
-        return;
-      }
-      
-      // Tam format varsa (HH:mm) dayjs objesi oluştur
-      const time = dayjs(value, 'HH:mm');
-      if (time.isValid()) {
-        setAnadoluTimesheetData(prev => ({
-          ...prev,
-          [personId]: {
-            ...prev[personId],
-            [field]: time
-          }
-        }));
-        return;
-      }
-    }
-    
-    // Geçerli bir saat formatı değilse, sadece string olarak sakla
+    // Her durumda string olarak sakla
     setAnadoluTimesheetData(prev => ({
       ...prev,
       [personId]: {
@@ -561,25 +509,11 @@ const TimesheetTracking = () => {
       const date = selectedDate.format('YYYY-MM-DD');
       const savePromises = [];
 
-      // Tüm personelleri kontrol et (izinli olanlar hariç)
+      // Tüm personelleri (ekip + anadolu) birleştir
       const allPersonnel = [...teamPersonnel, ...anadoluPersonnel];
-      const personnelToApprove = allPersonnel.filter(person => {
-        // Ekip personeli için izinli ekip kontrolü
-        if (person.ekip_bilgisi) {
-          const isLeaveTeam = teamShifts[person.ekip_bilgisi] && teamShifts[person.ekip_bilgisi].leave_shift;
-          return !isLeaveTeam;
-        }
-        // Anadolu personeli için izin kontrolü
-        if (person.full_name) {
-          const shiftType = anadoluShifts[person.id];
-          return !(shiftType === 'raporlu' || shiftType === 'yillik_izin');
-        }
-        return true;
-      });
 
       // Onaylanmamış personelleri bul
-      const unapprovedPersonnel = personnelToApprove.filter(person => !approvedPersonnel.has(person.id));
-      
+      const unapprovedPersonnel = allPersonnel.filter(person => !approvedPersonnel.has(person.id));
       if (unapprovedPersonnel.length > 0) {
         const unapprovedNames = unapprovedPersonnel.map(p => p.adi_soyadi || p.full_name).join(', ');
         message.error(`Kaydetmek için tüm personellerin onaylanması gerekiyor. Onaylanmamış personeller: ${unapprovedNames}`);
@@ -587,49 +521,63 @@ const TimesheetTracking = () => {
         return;
       }
 
-      // Sadece onaylanmış ekip personeli verilerini kaydet
-      Object.keys(timesheetData).forEach(personId => {
-        const data = timesheetData[personId];
-        const isApproved = approvedPersonnel.has(personId);
-        
-        if (isApproved && (data.giris || data.cikis)) {
-          savePromises.push(
-            saveTimesheetData({
-              date: date,
-              personnel_id: personId,
-              personnel_type: 'team',
-              giris: data.giris ? data.giris.format('HH:mm:ss') : null,
-              cikis: data.cikis ? data.cikis.format('HH:mm:ss') : null,
-              approved: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-          );
+      // Her personel için vardiya ve saat bilgisiyle kayıt oluştur
+      allPersonnel.forEach(person => {
+        const isApproved = approvedPersonnel.has(person.id);
+        // Saat verisi ekipte mi anadoluda mı diye bakmadan al
+        const data = timesheetData[person.id] || anadoluTimesheetData[person.id];
+        // Vardiya tipi ekip mi anadolu mu diye bakmadan al
+        const shiftType = teamPersonnelShifts[person.id] || anadoluShifts[person.id] || '';
+        let shiftInfo = '';
+        switch (shiftType) {
+          case 'raporlu':
+            shiftInfo = 'R';
+            break;
+          case 'yillik_izin':
+            shiftInfo = 'Y.İ';
+            break;
+          case 'ucretsiz_izin':
+            shiftInfo = 'Ü.İ';
+            break;
+          case 'habersiz':
+            shiftInfo = 'H.B';
+            break;
+          case 'gece':
+            shiftInfo = '22:00-06:00';
+            break;
+          case 'gunduz':
+            shiftInfo = '08:00-16:00';
+            break;
+          default:
+            shiftInfo = shiftType;
         }
-      });
-
-      // Sadece onaylanmış Anadolu personeli verilerini kaydet (izinli olanlar hariç)
-      Object.keys(anadoluTimesheetData).forEach(personId => {
-        const data = anadoluTimesheetData[personId];
-        const isApproved = approvedPersonnel.has(personId);
-        const shiftType = anadoluShifts[personId];
-        
-        // İzinli olanları kaydetme
-        if (shiftType === 'raporlu' || shiftType === 'yillik_izin') {
-          return;
-        }
-        
-        if (isApproved && (data.giris || data.cikis)) {
+        // Eğer ekipten geliyorsa ekip_bilgisi ve konum, anadoludan geliyorsa boş bırak
+        const employee_code = person.sicil_no || person.employee_code || '';
+        const employee_name = person.adi_soyadi || person.full_name || '';
+        const team_name = person.ekip_bilgisi || '';
+        const position = person.konum || person.position || '';
+        // Kaydet
+        if (isApproved) {
+          const saveData = {
+            date: date,
+            personnel_id: person.id,
+            employee_code,
+            employee_name,
+            team_name,
+            position,
+            shift_info: shiftInfo,
+            giris: (data && typeof data.giris === 'string') ? data.giris : (data && data.giris ? data.giris.format('HH:mm:ss') : null),
+            cikis: (data && typeof data.cikis === 'string') ? data.cikis : (data && data.cikis ? data.cikis.format('HH:mm:ss') : null),
+            approved: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
           savePromises.push(
-            saveTimesheetData({
-              date: date,
-              personnel_id: personId,
-              personnel_type: 'anadolu',
-              giris: data.giris ? data.giris.format('HH:mm:ss') : null,
-              cikis: data.cikis ? data.cikis.format('HH:mm:ss') : null,
-              approved: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+            saveTimesheetData(saveData).then(result => {
+              if (!result.success) {
+                console.error('KAYIT HATASI:', result.error);
+              }
+              return result;
             })
           );
         }
@@ -637,7 +585,9 @@ const TimesheetTracking = () => {
 
       if (savePromises.length > 0) {
         await Promise.all(savePromises);
-        message.success(`${savePromises.length} adet onaylanmış puantaj verisi başarıyla kaydedildi`);
+        message.success(`${savePromises.length} adet onaylanmış puantaj verisi başarıyla kaydedildi.`);
+        // Kaydetme işleminden sonra isDataSaved state'ini güncelle
+        setIsDataSaved(true);
       } else {
         message.info('Kaydedilecek onaylanmış veri bulunamadı');
       }
@@ -666,7 +616,6 @@ const TimesheetTracking = () => {
 
     const teamName = person.ekip_bilgisi;
     const isCurrentlyApproved = approvedPersonnel.has(personId);
-    console.log('Onay butonuna tıklandı - Personel:', person.adi_soyadi, 'Ekip:', teamName);
     
     // Onay durumunu güncelle (toggle)
     setApprovedPersonnel(prev => {
@@ -729,11 +678,11 @@ const TimesheetTracking = () => {
       return newSet;
     });
     
-    const position = person?.position || 'Personel';
+    const fullName = person?.full_name || person?.name || 'Personel';
     if (isCurrentlyApproved) {
-      message.success(`${position} onayı kaldırıldı`);
+      message.success(`${fullName} onayı kaldırıldı`);
     } else {
-      message.success(`${position} onaylandı`);
+      message.success(`${fullName} onaylandı`);
     }
   };
 
@@ -884,7 +833,11 @@ const TimesheetTracking = () => {
     const giris = data.giris;
     const cikis = data.cikis;
     
-    // String olarak kontrol et
+    // Özel durumlar için kontrol (R, Y.İ, Ü.İ, H.B)
+    if (typeof giris === 'string' && (giris === 'R' || giris === 'Y.İ' || giris === 'Ü.İ' || giris === 'H.B')) return true;
+    if (typeof cikis === 'string' && (cikis === 'R' || cikis === 'Y.İ' || cikis === 'Ü.İ' || cikis === 'H.B')) return true;
+    
+    // Normal string kontrolü
     if (typeof giris === 'string' && giris.trim() !== '') return true;
     if (typeof cikis === 'string' && cikis.trim() !== '') return true;
     
@@ -952,11 +905,16 @@ const TimesheetTracking = () => {
                      width: '230px', 
                      fontSize: '10px',
                      height: '24px',
-                     borderRadius: '4px'
+                     borderRadius: '4px',
+                     opacity: isDataSaved ? 0.5 : 1,
+                     cursor: isDataSaved ? 'not-allowed' : 'pointer'
                    }}
                    onClick={() => {
-                     setShowOvertimeForPerson(prev => new Set([...prev, record.id]));
+                     if (!isDataSaved) {
+                       setShowOvertimeForPerson(prev => new Set([...prev, record.id]));
+                     }
                    }}
+                   disabled={isDataSaved}
                  >
                    Mesai Bilgisi Gir
                  </Button>
@@ -967,34 +925,43 @@ const TimesheetTracking = () => {
           return (
             <Input
               size="small"
-              style={{ width: '70px', fontSize: '11px', color: '#000000' }}
+              style={{ width: '70px', fontSize: '11px' }}
               value={(() => {
                 const girisData = timesheetData[record.id]?.giris;
-                console.log(`Giriş render - Personel ${record.adi_soyadi} (${record.id}):`, girisData);
                 
                 if (!girisData) {
-                  console.log('Giriş verisi yok');
                   return '';
                 }
                 
                 if (typeof girisData === 'string') {
-                  console.log('Giriş string:', girisData);
                   return girisData;
                 }
                 
                 if (girisData && typeof girisData.format === 'function' && girisData.isValid()) {
-                  const formatted = girisData.format('HH:mm');
-                  console.log('Giriş formatlanmış:', formatted);
-                  return formatted;
+                  return girisData.format('HH:mm');
                 }
                 
-                console.log('Giriş geçersiz format');
                 return '';
               })()}
-              onChange={(e) => handleTimeInput(record.id, 'giris', e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Özel durumlar için (R, Y.İ, Ü.İ, H.B)
+                if (value === 'R' || value === 'Y.İ' || value === 'Ü.İ' || value === 'H.B') {
+                  setTimesheetData(prev => ({
+                    ...prev,
+                    [record.id]: {
+                      ...prev[record.id],
+                      giris: value,
+                      cikis: value
+                    }
+                  }));
+                } else {
+                  // Normal saat girişi için
+                  handleTimeInput(record.id, 'giris', value);
+                }
+              }}
               placeholder="--:--"
-              maxLength={4}
-              disabled={approvedPersonnel.has(record.id)}
+              disabled={approvedPersonnel.has(record.id) || isDataSaved}
             />
           );
         }
@@ -1025,34 +992,43 @@ const TimesheetTracking = () => {
            return (
              <Input
                size="small"
-               style={{ width: '70px', fontSize: '11px', color: '#000000' }}
+               style={{ width: '70px', fontSize: '11px' }}
                value={(() => {
                  const cikisData = timesheetData[record.id]?.cikis;
-                 console.log(`Çıkış render - Personel ${record.adi_soyadi} (${record.id}):`, cikisData);
                  
                  if (!cikisData) {
-                   console.log('Çıkış verisi yok');
                    return '';
                  }
                  
                  if (typeof cikisData === 'string') {
-                   console.log('Çıkış string:', cikisData);
                    return cikisData;
                  }
                  
                  if (cikisData && typeof cikisData.format === 'function' && cikisData.isValid()) {
-                   const formatted = cikisData.format('HH:mm');
-                   console.log('Çıkış formatlanmış:', formatted);
-                   return formatted;
+                   return cikisData.format('HH:mm');
                  }
                  
-                 console.log('Çıkış geçersiz format');
                  return '';
                })()}
-               onChange={(e) => handleTimeInput(record.id, 'cikis', e.target.value)}
+               onChange={(e) => {
+                 const value = e.target.value;
+                 // Özel durumlar için (R, Y.İ, Ü.İ, H.B)
+                 if (value === 'R' || value === 'Y.İ' || value === 'Ü.İ' || value === 'H.B') {
+                   setTimesheetData(prev => ({
+                     ...prev,
+                     [record.id]: {
+                       ...prev[record.id],
+                       giris: value,
+                       cikis: value
+                     }
+                   }));
+                 } else {
+                   // Normal saat girişi için
+                   handleTimeInput(record.id, 'cikis', value);
+                 }
+               }}
                placeholder="--:--"
-               maxLength={4}
-               disabled={approvedPersonnel.has(record.id)}
+               disabled={approvedPersonnel.has(record.id) || isDataSaved}
              />
            );
          }
@@ -1088,7 +1064,7 @@ const TimesheetTracking = () => {
              
              if (!hasData) {
                // Veri yoksa iptal butonu göster
-               return (
+    return (
                  <Button
                    type="default"
                    danger
@@ -1127,6 +1103,7 @@ const TimesheetTracking = () => {
                  console.log('Onay kaldır butonuna tıklandı! Personel ID:', record.id);
                  handleApprove(record.id);
                }}
+               disabled={isDataSaved}
              >
                ✗
              </Button>
@@ -1146,6 +1123,7 @@ const TimesheetTracking = () => {
                  console.log('Onay butonuna tıklandı! Personel ID:', record.id);
                  handleApprove(record.id);
                }}
+               disabled={isDataSaved}
              />
            );
          }
@@ -1200,53 +1178,67 @@ const TimesheetTracking = () => {
           const showOvertimeForAnadolu = showOvertimeForPerson.has(record.id);
           
           if ((shiftType === 'raporlu' || shiftType === 'yillik_izin') && !showOvertimeForAnadolu) {
-            return (
+  return (
               <div style={{
-                backgroundColor: '#faad14',
+                backgroundColor: (approvedPersonnel.has(record.id) || isDataSaved) ? '#52c41a' : '#faad14',
                 color: 'white',
                 padding: '2px 6px',
                 borderRadius: '3px',
                 fontSize: '10px',
                 textAlign: 'center',
                 fontWeight: 'bold',
-                width: '70px'
+                width: '70px',
+                border: (approvedPersonnel.has(record.id) || isDataSaved) ? '2px solid #389e0d' : 'none',
+                boxShadow: (approvedPersonnel.has(record.id) || isDataSaved) ? '0 2px 4px rgba(82, 196, 26, 0.3)' : 'none',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                cursor: 'default'
               }}>
                 {shiftType === 'raporlu' ? 'R' : 'Y.İ'}
-              </div>
+          </div>
             );
           }
           
           return (
             <Input
               size="small"
-              style={{ width: '70px', fontSize: '11px', color: '#000000' }}
+              style={{ width: '70px', fontSize: '11px' }}
               value={(() => {
                 const girisData = anadoluTimesheetData[record.id]?.giris;
-                console.log(`Anadolu Giriş render - Personel ${record.full_name} (${record.id}):`, girisData);
                 
                 if (!girisData) {
-                  console.log('Anadolu Giriş verisi yok');
                   return '';
                 }
                 
                 if (typeof girisData === 'string') {
-                  console.log('Anadolu Giriş string:', girisData);
                   return girisData;
                 }
                 
                 if (girisData && typeof girisData.format === 'function' && girisData.isValid()) {
-                  const formatted = girisData.format('HH:mm');
-                  console.log('Anadolu Giriş formatlanmış:', formatted);
-                  return formatted;
+                  return girisData.format('HH:mm');
                 }
                 
-                console.log('Anadolu Giriş geçersiz format');
                 return '';
               })()}
-              onChange={(e) => handleAnadoluTimeInput(record.id, 'giris', e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Özel durumlar için (R, Y.İ, Ü.İ, H.B)
+                if (value === 'R' || value === 'Y.İ' || value === 'Ü.İ' || value === 'H.B') {
+                  setAnadoluTimesheetData(prev => ({
+                    ...prev,
+                    [record.id]: {
+                      ...prev[record.id],
+                      giris: value,
+                      cikis: value
+                    }
+                  }));
+                } else {
+                  // Normal saat girişi için
+                  handleAnadoluTimeInput(record.id, 'giris', value);
+                }
+              }}
               placeholder="--:--"
-              maxLength={4}
-              disabled={approvedPersonnel.has(record.id)}
+              disabled={approvedPersonnel.has(record.id) || isDataSaved}
             />
           );
         }
@@ -1262,51 +1254,65 @@ const TimesheetTracking = () => {
           if ((shiftType === 'raporlu' || shiftType === 'yillik_izin') && !showOvertimeForAnadolu) {
             return (
               <div style={{
-                backgroundColor: '#faad14',
+                backgroundColor: (approvedPersonnel.has(record.id) || isDataSaved) ? '#52c41a' : '#faad14',
                 color: 'white',
                 padding: '2px 6px',
                 borderRadius: '3px',
                 fontSize: '10px',
                 textAlign: 'center',
                 fontWeight: 'bold',
-                width: '70px'
+                width: '70px',
+                border: (approvedPersonnel.has(record.id) || isDataSaved) ? '2px solid #389e0d' : 'none',
+                boxShadow: (approvedPersonnel.has(record.id) || isDataSaved) ? '0 2px 4px rgba(82, 196, 26, 0.3)' : 'none',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                cursor: 'default'
               }}>
                 {shiftType === 'raporlu' ? 'R' : 'Y.İ'}
-              </div>
+            </div>
             );
           }
           
           return (
             <Input
               size="small"
-              style={{ width: '70px', fontSize: '11px', color: '#000000' }}
+              style={{ width: '70px', fontSize: '11px' }}
               value={(() => {
                 const cikisData = anadoluTimesheetData[record.id]?.cikis;
-                console.log(`Anadolu Çıkış render - Personel ${record.full_name} (${record.id}):`, cikisData);
                 
                 if (!cikisData) {
-                  console.log('Anadolu Çıkış verisi yok');
                   return '';
                 }
                 
                 if (typeof cikisData === 'string') {
-                  console.log('Anadolu Çıkış string:', cikisData);
                   return cikisData;
                 }
                 
                 if (cikisData && typeof cikisData.format === 'function' && cikisData.isValid()) {
-                  const formatted = cikisData.format('HH:mm');
-                  console.log('Anadolu Çıkış formatlanmış:', formatted);
-                  return formatted;
+                  return cikisData.format('HH:mm');
                 }
                 
-                console.log('Anadolu Çıkış geçersiz format');
                 return '';
               })()}
-              onChange={(e) => handleAnadoluTimeInput(record.id, 'cikis', e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Özel durumlar için (R, Y.İ, Ü.İ, H.B)
+                if (value === 'R' || value === 'Y.İ' || value === 'Ü.İ' || value === 'H.B') {
+                  setAnadoluTimesheetData(prev => ({
+                    ...prev,
+                    [record.id]: {
+                      ...prev[record.id],
+                      giris: value,
+                      cikis: value
+                    }
+                  }));
+                } else {
+                  // Normal saat girişi için
+                  handleAnadoluTimeInput(record.id, 'cikis', value);
+                }
+              }}
               placeholder="--:--"
-              maxLength={4}
-              disabled={approvedPersonnel.has(record.id)}
+              disabled={approvedPersonnel.has(record.id) || isDataSaved}
             />
           );
         }
@@ -1331,11 +1337,16 @@ const TimesheetTracking = () => {
                   height: '20px', 
                   fontSize: '8px',
                   padding: '0',
-                  minWidth: '30px'
+                  minWidth: '30px',
+                  opacity: isDataSaved ? 0.5 : 1,
+                  cursor: isDataSaved ? 'not-allowed' : 'pointer'
                 }}
                 onClick={() => {
-                  setShowOvertimeForPerson(prev => new Set([...prev, record.id]));
+                  if (!isDataSaved) {
+                    setShowOvertimeForPerson(prev => new Set([...prev, record.id]));
+                  }
                 }}
+                disabled={isDataSaved}
               >
                 +
               </Button>
@@ -1387,6 +1398,7 @@ const TimesheetTracking = () => {
                 console.log('Anadolu Onay kaldır butonuna tıklandı! Personel ID:', record.id);
                 handleAnadoluApprove(record.id);
               }}
+              disabled={isDataSaved}
             >
               ✗
             </Button>
@@ -1406,6 +1418,7 @@ const TimesheetTracking = () => {
                 console.log('Anadolu Onay butonuna tıklandı! Personel ID:', record.id);
                 handleAnadoluApprove(record.id);
               }}
+              disabled={isDataSaved}
             />
           );
         }
@@ -1437,6 +1450,27 @@ const TimesheetTracking = () => {
            <Title level={3} style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
              TUZLA SEVKİYAT PUANTAJI
            </Title>
+           
+           {/* Kaydedilen Veri Uyarısı */}
+           {isDataSaved && (
+             <div style={{
+               backgroundColor: '#f6ffed',
+               border: '1px solid #b7eb8f',
+               borderRadius: '6px',
+               padding: '8px 16px',
+               margin: '10px 0',
+               display: 'flex',
+               alignItems: 'center',
+               justifyContent: 'center',
+               gap: '8px'
+             }}>
+               <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+               <Text style={{ color: '#52c41a', fontWeight: '600', fontSize: '14px' }}>
+                 Bu tarih için puantaj verileri kaydedilmiş. Veriler düzenlenemez.
+               </Text>
+             </div>
+           )}
+           
            <div style={{ 
              display: 'flex', 
              alignItems: 'center', 
@@ -1461,9 +1495,9 @@ const TimesheetTracking = () => {
                size="small"
                style={{ fontSize: '16px' }}
              />
-           </div>
+            </div>
            
-          </div>
+      </div>
 
           {/* Sol Taraf - Ekipler */}
           <div style={{ display: 'flex', gap: '30px', width: '100%' }}>
@@ -1489,52 +1523,56 @@ const TimesheetTracking = () => {
                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                          <span>{ekip}</span>
                          {/* Ekip Bazlı Onay Butonları */}
-                         <div style={{ display: 'flex', gap: '4px' }}>
-                           <Button
-                             type="text"
-                             size="small"
-                             style={{ 
-                               color: 'white', 
-                               fontSize: '10px',
-                               padding: '2px 6px',
-                               height: '20px',
-                               border: '1px solid rgba(255,255,255,0.3)'
-                             }}
-                             onClick={() => handleTeamBulkApprove(ekip)}
-                           >
-                             Onayla
-                           </Button>
-                           <Button
-                             type="text"
-                             size="small"
-                             danger
-                             style={{ 
-                               color: 'white', 
-                               fontSize: '10px',
-                               padding: '2px 6px',
-                               height: '20px',
-                               border: '1px solid rgba(255,255,255,0.3)'
-                             }}
-                             onClick={() => handleTeamBulkUnapprove(ekip)}
-                           >
-                             Kaldır
-                           </Button>
-                         </div>
-                       </div>
+                         {!isDataSaved && (
+                           <div style={{ display: 'flex', gap: '4px' }}>
+                             <Button
+                               type="text"
+                               size="small"
+                               style={{ 
+                                 color: 'white', 
+                                 fontSize: '10px',
+                                 padding: '2px 6px',
+                                 height: '20px',
+                                 border: '1px solid rgba(255,255,255,0.3)'
+                               }}
+                               onClick={() => handleTeamBulkApprove(ekip)}
+                             >
+                               Onayla
+                             </Button>
+                             <Button
+                               type="text"
+                               size="small"
+                               danger
+                               style={{ 
+                                 color: 'white', 
+                                 fontSize: '10px',
+                                 padding: '2px 6px',
+                                 height: '20px',
+                                 border: '1px solid rgba(255,255,255,0.3)'
+                               }}
+                               onClick={() => handleTeamBulkUnapprove(ekip)}
+                             >
+                               Kaldır
+                             </Button>
+                           </div>
+                         )}
+            </div>
                        {/* Vardiya Bilgisi */}
                        {teamShifts[ekip] && (
                          <div style={{ display: 'flex', gap: '4px' }}>
                            {teamShifts[ekip].leave_shift && (
                              <div style={{
-                               backgroundColor: '#faad14',
+                               backgroundColor: '#52c41a',
                                color: 'white',
                                padding: '2px 6px',
                                borderRadius: '3px',
                                fontSize: '10px',
-                               fontWeight: '500'
+                               fontWeight: '500',
+                               border: '2px solid #389e0d',
+                               boxShadow: '0 2px 4px rgba(82, 196, 26, 0.3)'
                              }}>
                                İZİN
-                             </div>
+          </div>
                            )}
                            {teamShifts[ekip].shift_24_08 && (
                              <div style={{
@@ -1546,7 +1584,7 @@ const TimesheetTracking = () => {
                                fontWeight: '500'
                              }}>
                                24:00-08:00
-                             </div>
+        </div>
                            )}
                            {teamShifts[ekip].shift_08_16 && (
                              <div style={{
@@ -1558,7 +1596,7 @@ const TimesheetTracking = () => {
                                fontWeight: '500'
                              }}>
                                08:00-16:00
-                             </div>
+            </div>
                            )}
                            {teamShifts[ekip].shift_16_24 && (
                              <div style={{
@@ -1570,12 +1608,12 @@ const TimesheetTracking = () => {
                                fontWeight: '500'
                              }}>
                                16:00-24:00
-                             </div>
+            </div>
                            )}
-                         </div>
+          </div>
                        )}
-                     </div>
-                     
+        </div>
+
                                            <Table
                         columns={teamColumns}
                         dataSource={groupedPersonnel[ekip] || []}
@@ -1589,10 +1627,10 @@ const TimesheetTracking = () => {
                         }
                         
                       />
-                   </div>
+            </div>
                  );
                })}
-             </div>
+            </div>
 
                        {/* Sağ Taraf - Anadolu Personelleri */}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -1609,42 +1647,44 @@ const TimesheetTracking = () => {
                 alignItems: 'center'
               }}>
                 <div>Anadolu Personelleri</div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <Button
-                    type="primary"
-                    size="small"
-                    style={{ 
-                      backgroundColor: 'rgba(255,255,255,0.2)', 
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      color: 'white', 
-                      fontSize: '10px',
-                      padding: '2px 6px',
-                      height: '20px',
-                      border: '1px solid rgba(255,255,255,0.3)'
-                    }}
-                    onClick={handleAnadoluBulkApprove}
-                  >
-                    Onayla
-                  </Button>
-                  <Button
-                    type="default"
-                    size="small"
-                    style={{ 
-                      backgroundColor: 'rgba(255,255,255,0.2)', 
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      color: 'white', 
-                      fontSize: '10px',
-                      padding: '2px 6px',
-                      height: '20px',
-                      border: '1px solid rgba(255,255,255,0.3)'
-                    }}
-                    onClick={handleAnadoluBulkUnapprove}
-                  >
-                    Kaldır
-                  </Button>
-                </div>
-              </div>
-              
+                {!isDataSaved && (
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <Button
+                      type="primary"
+                      size="small"
+                      style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        borderColor: 'rgba(255,255,255,0.3)',
+                        color: 'white', 
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        height: '20px',
+                        border: '1px solid rgba(255,255,255,0.3)'
+                      }}
+                      onClick={handleAnadoluBulkApprove}
+                    >
+                      Onayla
+                    </Button>
+                    <Button
+                      type="default"
+                      size="small"
+                      style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        borderColor: 'rgba(255,255,255,0.3)',
+                        color: 'white', 
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        height: '20px',
+                        border: '1px solid rgba(255,255,255,0.3)'
+                      }}
+                      onClick={handleAnadoluBulkUnapprove}
+                    >
+                      Kaldır
+                    </Button>
+                  </div>
+                )}
+        </div>
+
                             <Table
                  columns={anadoluColumns}
                  dataSource={anadoluPersonnel.sort((a, b) => {
@@ -1685,34 +1725,34 @@ const TimesheetTracking = () => {
                   border: '1px solid #e9ecef',
                   marginBottom: '20px'
                 }}>
-                 <div>
+            <div>
                    <Text strong style={{ fontSize: '12px' }}>Kısaltma Açıklamaları:</Text>
                    <div style={{ marginTop: '6px' }}>
                      <Text>H.B - Habersiz</Text><br />
                      <Text>Y.İ - Yıllık İzin</Text><br />
                      <Text>Ü.İ - Ücretsiz İzin</Text><br />
                      <Text>R - Raporlu</Text>
-                   </div>
-                 </div>
+            </div>
+            </div>
                  
                  <div style={{ textAlign: 'right' }}>
                    <div style={{ marginBottom: '6px' }}>
                      <Text strong style={{ fontSize: '12px' }}>Toplam Personel:</Text> {teamPersonnel.length + anadoluPersonnel.length}
-                   </div>
+          </div>
                    <div style={{ marginBottom: '4px' }}>
                      <Text strong>Ekip Personeli:</Text> {teamPersonnel.length}
-                   </div>
+        </div>
                    <div style={{ marginBottom: '4px' }}>
                      <Text strong>Anadolu Personeli:</Text> {anadoluPersonnel.length}
-                   </div>
-                   <div>
+      </div>
+                    <div>
                      <Text strong>Tarih:</Text> {selectedDate.format('DD.MM.YYYY')}
-                   </div>
-                 </div>
-               </div>
-            </div>
-          </div>
-             </div>
+                    </div>
+                    </div>
+        </div>
+      </div>
+              </div>
+              </div>
 
                {/* Kontrol Butonları */}
         <div style={{ 
@@ -1722,25 +1762,46 @@ const TimesheetTracking = () => {
           display: 'flex',
           gap: '10px'
         }}>
-          <Button
-            type={bulkApprovalActive ? "default" : "primary"}
-            danger={bulkApprovalActive}
-            icon={<CheckOutlined />}
-            onClick={handleBulkToggle}
-            size="large"
-          >
-            {bulkApprovalActive ? 'Onay Kaldır' : 'Toplu Onay'}
-          </Button>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={handleSave}
-            loading={loading}
-            size="large"
-          >
-            Kaydet
-          </Button>
-        </div>
+          {!isDataSaved && (
+            <Button
+              type={bulkApprovalActive ? "default" : "primary"}
+              danger={bulkApprovalActive}
+              icon={<CheckOutlined />}
+              onClick={handleBulkToggle}
+              size="large"
+            >
+              {bulkApprovalActive ? 'Onay Kaldır' : 'Toplu Onay'}
+            </Button>
+          )}
+          {!isDataSaved ? (
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              loading={loading}
+              size="large"
+            >
+              Kaydet
+            </Button>
+          ) : (
+            <div style={{
+              backgroundColor: '#52c41a',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: '2px solid #389e0d',
+              boxShadow: '0 2px 4px rgba(82, 196, 26, 0.3)'
+            }}>
+              <CheckOutlined />
+              Veriler Kaydedildi
+            </div>
+          )}
+              </div>
 
                                                         {/* Print CSS */}
         <style jsx>{`
@@ -1891,8 +1952,8 @@ const TimesheetTracking = () => {
         `}</style>
 
 
-      </div>
-    );
-  };
+    </div>
+  );
+};
 
 export default TimesheetTracking; 

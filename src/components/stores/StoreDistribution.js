@@ -639,27 +639,24 @@ const StoreDistribution = () => {
       </div>
 
       {/* Personel Filtreleme */}
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <label className="text-sm font-medium text-blue-700 flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            👥 Personel Filtreleme
-          </label>
+      <div className="bg-white rounded-lg shadow border border-gray-200 p-3">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-medium text-blue-700">👥 Personel Filtreleme</label>
           <button
             onClick={() => setShowPersonnelFilter(!showPersonnelFilter)}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
           >
             {showPersonnelFilter ? 'Gizle' : 'Göster'}
           </button>
         </div>
         
         {showPersonnelFilter && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 placeholder="Personel adı ile ara..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 onChange={(e) => {
                   const searchTerm = e.target.value.toLowerCase();
                   // Arama fonksiyonu burada implement edilebilir
@@ -667,15 +664,15 @@ const StoreDistribution = () => {
               />
               <button
                 onClick={() => setSelectedPersonnel([])}
-                className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
+                className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium hover:bg-red-200"
               >
                 Temizle
               </button>
             </div>
             
-            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+            <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg bg-white">
               {Object.values(personnelData).map(personnel => (
-                <label key={personnel.employee_code} className="flex items-center gap-2 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                <label key={personnel.employee_code} className="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={selectedPersonnel.includes(personnel.employee_code)}
@@ -686,9 +683,9 @@ const StoreDistribution = () => {
                         setSelectedPersonnel(prev => prev.filter(code => code !== personnel.employee_code));
                       }
                     }}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-xs text-gray-700">
                     {personnel.employee_code} - {personnel.full_name}
                   </span>
                 </label>
@@ -696,7 +693,7 @@ const StoreDistribution = () => {
             </div>
             
             {selectedPersonnel.length > 0 && (
-              <div className="text-sm text-blue-600">
+              <div className="text-xs text-blue-600">
                 {selectedPersonnel.length} personel seçildi
               </div>
             )}

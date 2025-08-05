@@ -203,6 +203,9 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   // Aylık detay ay seçimi state'i
   const [selectedMonthlyMonth, setSelectedMonthlyMonth] = useState('all_months');
   const [selectedMonthlyYear, setSelectedMonthlyYear] = useState(new Date().getFullYear());
+  
+  // Aylık detay görev filtreleme state'i
+  const [selectedMonthlyPosition, setSelectedMonthlyPosition] = useState('all_positions');
 
   const [todayStatusLoading, setTodayStatusLoading] = useState(false);
   const [todayStatus, setTodayStatus] = useState({
@@ -2956,6 +2959,18 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                         })()}
                       </select>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium text-gray-700">Görev:</label>
+                      <select 
+                        value={selectedMonthlyPosition} 
+                        onChange={(e) => setSelectedMonthlyPosition(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      >
+                        <option value="all_positions">👥 Tümü</option>
+                        <option value="SEVKİYAT ELEMANI">🚚 SEVKİYAT ELEMANI</option>
+                        <option value="ŞOFÖR">🚗 ŞOFÖR</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
                 
@@ -2975,6 +2990,13 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       }
                     })
                     .filter(({ person, personStats, totalDays }) => {
+                      // Görev filtresi uygula
+                      if (selectedMonthlyPosition !== 'all_positions') {
+                        if (person.position !== selectedMonthlyPosition) {
+                          return false;
+                        }
+                      }
+                      
                       // Tümü seçildiğinde tüm personel gözüksün
                       if (selectedMonthlyMonth === 'all_months') {
                         return true; // Tüm personel göster

@@ -962,6 +962,10 @@ function MainApp() {
               >
                 <Package className="w-4 h-4 mr-2" />
                 Puantaj Takip
+                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
+                  Geliştirme
+                </span>
               </button>
 
             </div>

@@ -10,19 +10,24 @@ import {
   message,
   TimePicker,
   Space,
-  Divider
+  Divider,
+  Alert
 } from 'antd';
 import {
   SaveOutlined,
   LeftOutlined,
   RightOutlined,
-  CheckOutlined
+  CheckOutlined,
+  ExclamationCircleOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import { getTeamPersonnel, getPersonnelFromPersonnelTable, getTimesheetData, saveTimesheetData, updateTimesheetData, getTeamShiftsByDate, getAnadoluPersonnelShifts, getTeamPersonnelShifts } from '../../services/supabase';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import 'dayjs/locale/tr';
 
 dayjs.extend(customParseFormat);
+dayjs.locale('tr');
 
 const { Title, Text } = Typography;
 
@@ -32,7 +37,10 @@ const TimesheetTracking = () => {
   const [timesheetData, setTimesheetData] = useState({});
   const [anadoluTimesheetData, setAnadoluTimesheetData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const initialDate = dayjs();
+    return initialDate.isValid() ? initialDate : dayjs();
+  });
   const [teamShifts, setTeamShifts] = useState({});
   const [anadoluShifts, setAnadoluShifts] = useState({});
   const [teamPersonnelShifts, setTeamPersonnelShifts] = useState({});
@@ -41,6 +49,7 @@ const TimesheetTracking = () => {
   const [showOvertimeForPerson, setShowOvertimeForPerson] = useState(new Set());
   const [bulkApprovalActive, setBulkApprovalActive] = useState(false);
   const [isDataSaved, setIsDataSaved] = useState(false);
+  const [missingDaysWarning, setMissingDaysWarning] = useState([]);
 
   const ekipOptions = ['1.Ekip', '2.Ekip', '3.Ekip', '4.Ekip'];
 
@@ -48,7 +57,56 @@ const TimesheetTracking = () => {
     loadData();
   }, [selectedDate]);
 
+  useEffect(() => {
+    checkMissingDays();
+  }, []); // Sadece component mount olduğunda çalışsın
 
+  // Geçmiş günlerin kaydedilip kaydedilmediğini kontrol eden fonksiyon
+  const checkMissingDays = async () => {
+    try {
+      const today = dayjs();
+      const missingDays = [];
+      const currentMonth = today.month(); // Mevcut ay (0-11)
+      const currentYear = today.year();
+
+      // Sadece bugünden önceki günleri kontrol et (hafta sonları hariç)
+      for (let i = 1; i <= 14; i++) {
+        const checkDate = today.subtract(i, 'day');
+        
+        // Bugünden sonraki günleri kontrol etme
+        if (checkDate.isAfter(today)) {
+          continue;
+        }
+
+        // Hafta sonlarını da kontrol et ama farklı işaretle
+        const dayOfWeek = checkDate.day();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // 0 = Pazar, 6 = Cumartesi
+
+        // Bu tarih için veri var mı kontrol et
+        const timesheetResult = await getTimesheetData(checkDate.format('YYYY-MM-DD'));
+        
+        if (!timesheetResult.success || timesheetResult.data.length === 0) {
+          // Sadece mevcut ay ve yıl için eksik günleri göster
+          // Eğer bu ay için hiç eksik gün yoksa, eski aylardan veri gösterme
+          if (checkDate.month() === currentMonth && checkDate.year() === currentYear) {
+            missingDays.push({
+              date: checkDate.format('DD.MM.YYYY'),
+              dayName: checkDate.format('dddd'),
+              daysAgo: i,
+              dateObj: checkDate,
+              isWeekend: isWeekend
+            });
+          }
+        }
+      }
+
+      // En yakın eksik günleri önce göster
+      missingDays.sort((a, b) => a.daysAgo - b.daysAgo);
+      setMissingDaysWarning(missingDays);
+    } catch (error) {
+      console.error('Geçmiş gün kontrolü hatası:', error);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -60,10 +118,10 @@ const TimesheetTracking = () => {
       const [teamResult, anadoluResult, timesheetResult, shiftsResult, anadoluShiftsResult, teamPersonnelShiftsResult] = await Promise.all([
         getTeamPersonnel(),
         getPersonnelFromPersonnelTable(),
-        getTimesheetData(selectedDate.format('YYYY-MM-DD')),
-        getTeamShiftsByDate(selectedDate.format('YYYY-MM-DD')),
-        getAnadoluPersonnelShifts(selectedDate.format('YYYY-MM-DD')),
-        getTeamPersonnelShifts(selectedDate.format('YYYY-MM-DD'))
+        getTimesheetData(selectedDate && selectedDate.format ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')),
+        getTeamShiftsByDate(selectedDate && selectedDate.format ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')),
+        getAnadoluPersonnelShifts(selectedDate && selectedDate.format ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')),
+        getTeamPersonnelShifts(selectedDate && selectedDate.format ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'))
       ]);
       
       // Ekip personellerini yükle
@@ -506,7 +564,7 @@ const TimesheetTracking = () => {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const date = selectedDate.format('YYYY-MM-DD');
+      const date = selectedDate && selectedDate.format ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
       const savePromises = [];
 
       // Tüm personelleri (ekip + anadolu) birleştir
@@ -588,6 +646,8 @@ const TimesheetTracking = () => {
         message.success(`${savePromises.length} adet onaylanmış puantaj verisi başarıyla kaydedildi.`);
         // Kaydetme işleminden sonra isDataSaved state'ini güncelle
         setIsDataSaved(true);
+        // Eksik günleri yeniden kontrol et
+        await checkMissingDays();
       } else {
         message.info('Kaydedilecek onaylanmış veri bulunamadı');
       }
@@ -603,8 +663,30 @@ const TimesheetTracking = () => {
   };
 
   const handleNextDay = () => {
-    setSelectedDate(prev => prev.add(1, 'day'));
+    const tomorrow = dayjs().add(1, 'day');
+    setSelectedDate(prev => {
+      const nextDay = prev.add(1, 'day');
+      // Yarının ötesine geçmeyi engelle
+      if (nextDay.isAfter(tomorrow)) {
+        return prev; // Mevcut tarihi koru
+      }
+      return nextDay;
+    });
   };
+
+  const handleRefreshMissingDays = async () => {
+    setLoading(true);
+    try {
+      await checkMissingDays();
+      message.success('Eksik günler yeniden kontrol edildi');
+    } catch (error) {
+      console.error('Eksik gün kontrolü hatası:', error);
+      message.error('Eksik gün kontrolü sırasında hata oluştu');
+    }
+    setLoading(false);
+  };
+
+
 
   const handleApprove = (personId) => {
     // Personelin ekip bilgisini bul
@@ -1470,6 +1552,150 @@ const TimesheetTracking = () => {
                </Text>
              </div>
            )}
+
+           {/* Geçmiş Gün Uyarısı */}
+           {missingDaysWarning.length > 0 && (
+             <Alert
+               message={
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: '16px' }} />
+                   <Text style={{ fontWeight: '600', fontSize: '14px', color: '#d46b08' }}>
+                     {missingDaysWarning.length === 1 
+                       ? '⚠️ 1 gün için puantaj verisi KAYDEDİLMEMİŞ!'
+                       : `⚠️ ${missingDaysWarning.length} gün için puantaj verisi KAYDEDİLMEMİŞ!`
+                     }
+                   </Text>
+                 </div>
+               }
+               description={
+                 <div style={{ marginTop: '8px' }}>
+                   <Text style={{ fontSize: '13px', color: '#d46b08', fontWeight: '500' }}>
+                     Aşağıdaki günler için puantaj verileri KAYDEDİLMEMİŞ (hafta sonları dahil):
+                   </Text>
+                   <div style={{ 
+                     marginTop: '8px',
+                     display: 'flex',
+                     flexWrap: 'wrap',
+                     gap: '8px'
+                   }}>
+                     {missingDaysWarning.slice(0, 5).map((day, index) => (
+                       <div
+                         key={index}
+                         style={{
+                           backgroundColor: day.isWeekend ? '#f0f0f0' : '#fff2e8',
+                           border: `1px solid ${day.isWeekend ? '#d9d9d9' : '#ffbb96'}`,
+                           borderRadius: '4px',
+                           padding: '6px 10px',
+                           fontSize: '12px',
+                           fontWeight: '500',
+                           color: day.isWeekend ? '#666' : '#d46b08',
+                           cursor: 'pointer',
+                           transition: 'all 0.2s',
+                           display: 'flex',
+                           alignItems: 'center',
+                           gap: '4px'
+                         }}
+                         onClick={() => {
+                           setSelectedDate(day.dateObj);
+                         }}
+                         onMouseEnter={(e) => {
+                           e.target.style.backgroundColor = day.isWeekend ? '#e6e6e6' : '#ffe7ba';
+                           e.target.style.borderColor = day.isWeekend ? '#bfbfbf' : '#ffa940';
+                           e.target.style.transform = 'translateY(-1px)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.target.style.backgroundColor = day.isWeekend ? '#f0f0f0' : '#fff2e8';
+                           e.target.style.borderColor = day.isWeekend ? '#d9d9d9' : '#ffbb96';
+                           e.target.style.transform = 'translateY(0)';
+                         }}
+                       >
+                         <ExclamationCircleOutlined style={{ fontSize: '10px' }} />
+                         {day.date} ({day.dayName})
+                         {day.isWeekend && <span style={{ fontSize: '10px', color: '#999', marginLeft: '4px' }}>(Hafta Sonu)</span>}
+                         <span style={{ 
+                           fontSize: '10px', 
+                           opacity: 0.7,
+                           marginLeft: '4px'
+                         }}>
+                           {day.daysAgo === 1 ? 'dün' : `${day.daysAgo} gün önce`}
+                         </span>
+                       </div>
+                     ))}
+                     {missingDaysWarning.length > 5 && (
+                       <div style={{
+                         backgroundColor: '#f0f0f0',
+                         border: '1px solid #d9d9d9',
+                         borderRadius: '4px',
+                         padding: '6px 10px',
+                         fontSize: '12px',
+                         color: '#666',
+                         fontWeight: '500'
+                       }}>
+                         +{missingDaysWarning.length - 5} gün daha...
+                       </div>
+                     )}
+                   </div>
+                   <div style={{ 
+                     marginTop: '12px',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '8px'
+                   }}>
+                     <Text style={{ 
+                       fontSize: '12px', 
+                       color: '#999'
+                     }}>
+                       * Günlere tıklayarak o tarihe gidebilirsiniz
+                     </Text>
+                     <Button
+                       type="link"
+                       size="small"
+                       style={{ 
+                         fontSize: '11px', 
+                         padding: '0',
+                         height: 'auto',
+                         color: '#1890ff'
+                       }}
+                       onClick={() => {
+                         // En yakın eksik güne git
+                         if (missingDaysWarning.length > 0) {
+                           setSelectedDate(missingDaysWarning[0].dateObj);
+                         }
+                       }}
+                     >
+                       En yakın eksik güne git →
+                     </Button>
+                   </div>
+                 </div>
+               }
+               type="warning"
+               showIcon={false}
+             />
+           )}
+
+           {/* Seçili Gün Uyarısı - Bu günün verisi kaydedilmemişse (sadece bugün ve geçmiş günler için) */}
+           {!isDataSaved && selectedDate && selectedDate.isSameOrBefore && selectedDate.isSameOrBefore(dayjs(), 'day') && (
+             <Alert
+               message={
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: '16px' }} />
+                   <Text style={{ fontWeight: '600', fontSize: '14px', color: '#cf1322' }}>
+                     ⚠️ Bu gün için puantaj verisi KAYDEDİLMEMİŞ!
+                   </Text>
+                 </div>
+               }
+               description={
+                 <div style={{ marginTop: '8px' }}>
+                   <Text style={{ fontSize: '13px', color: '#cf1322', fontWeight: '500' }}>
+                     {selectedDate && selectedDate.format ? selectedDate.format('DD.MM.YYYY') : 'Tarih bilgisi yok'} ({selectedDate && selectedDate.format ? selectedDate.format('dddd') : 'Gün bilgisi yok'}) tarihi için puantaj verileri henüz kaydedilmemiş. 
+                     Lütfen aşağıdaki "Kaydet" butonunu kullanarak verileri kaydedin.
+                   </Text>
+                 </div>
+               }
+               type="error"
+               showIcon={false}
+             />
+           )}
            
            <div style={{ 
              display: 'flex', 
@@ -1486,7 +1712,7 @@ const TimesheetTracking = () => {
                style={{ fontSize: '16px' }}
              />
              <Text style={{ fontSize: '16px', fontWeight: '600', minWidth: '120px' }}>
-               {selectedDate.format('DD.MM.YYYY')}
+               {selectedDate && selectedDate.format ? selectedDate.format('DD.MM.YYYY') : 'Tarih bilgisi yok'}
              </Text>
              <Button
                type="text"
@@ -1494,7 +1720,18 @@ const TimesheetTracking = () => {
                onClick={handleNextDay}
                size="small"
                style={{ fontSize: '16px' }}
+               disabled={selectedDate && selectedDate.add ? selectedDate.add(1, 'day').isAfter(dayjs().add(1, 'day')) : false}
              />
+             <Button
+               type="text"
+               icon={<ReloadOutlined />}
+               onClick={handleRefreshMissingDays}
+               size="small"
+               style={{ fontSize: '14px' }}
+               title="Eksik günleri yeniden kontrol et"
+               loading={loading}
+             />
+
             </div>
            
       </div>
@@ -1746,7 +1983,7 @@ const TimesheetTracking = () => {
                      <Text strong>Anadolu Personeli:</Text> {anadoluPersonnel.length}
       </div>
                     <div>
-                     <Text strong>Tarih:</Text> {selectedDate.format('DD.MM.YYYY')}
+                     <Text strong>Tarih:</Text> {selectedDate && selectedDate.format ? selectedDate.format('DD.MM.YYYY') : 'Tarih bilgisi yok'}
                     </div>
                     </div>
         </div>
@@ -1784,22 +2021,25 @@ const TimesheetTracking = () => {
               Kaydet
             </Button>
           ) : (
-            <div style={{
-              backgroundColor: '#52c41a',
-              color: 'white',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              border: '2px solid #389e0d',
-              boxShadow: '0 2px 4px rgba(82, 196, 26, 0.3)'
-            }}>
-              <CheckOutlined />
-              Veriler Kaydedildi
-            </div>
+            // Sadece seçili tarih için veri kaydedilmişse ve eksik gün uyarısı yoksa göster
+            missingDaysWarning.length === 0 && (
+              <div style={{
+                backgroundColor: '#52c41a',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: '2px solid #389e0d',
+                boxShadow: '0 2px 4px rgba(82, 196, 26, 0.3)'
+              }}>
+                <CheckOutlined />
+                Veriler Kaydedildi
+              </div>
+            )
           )}
               </div>
 

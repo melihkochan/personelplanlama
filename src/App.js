@@ -1014,7 +1014,7 @@ function MainApp() {
                 Akıllı Dağıtım
                 <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
                   <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1"></div>
-                  AI
+                  Geliştirme
                 </span>
               </button>
 

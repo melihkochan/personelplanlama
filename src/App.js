@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map } from 'lucide-react';
 import 'antd/dist/reset.css';
 
 import PersonelList from './components/personnel/PersonelList';
@@ -8,6 +8,7 @@ import VehicleList from './components/vehicles/VehicleList';
 import StoreList from './components/stores/StoreList';
 import StoreDistanceCalculator from './components/stores/StoreDistanceCalculator';
 import VardiyaPlanlama from './components/timesheet/VardiyaPlanlama';
+import AkilliDagitim from './components/timesheet/AkilliDagitim';
 import PerformanceAnalysis from './components/personnel/PerformanceAnalysis';
 import PersonelVardiyaKontrol from './components/personnel/PersonelVardiyaKontrol';
 import StoreDistribution from './components/stores/StoreDistribution';
@@ -655,7 +656,8 @@ function MainApp() {
     { id: 'personnel', label: 'Personel Listesi', icon: Users },
     { id: 'vardiya-kontrol', label: 'Personel Kontrol', icon: Clock },
     { id: 'performance', label: 'Performans Analizi', icon: BarChart3 },
-    { id: 'planning', label: 'Vardiya Planlama', icon: Calendar },
+            { id: 'planning', label: 'Vardiya Planlama', icon: Calendar },
+        { id: 'akilli-dagitim', label: 'Akıllı Dağıtım', icon: Users },
     { id: 'statistics', label: 'İstatistikler', icon: BarChart3 }
   ];
 
@@ -993,6 +995,26 @@ function MainApp() {
                 <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                   <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
                   Geliştirme
+                </span>
+              </button>
+
+
+
+              <button
+                onClick={() => handleTabChange('akilli-dagitim')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'akilli-dagitim'
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Akıllı Dağıtım
+                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1"></div>
+                  AI
                 </span>
               </button>
 
@@ -1843,6 +1865,16 @@ function MainApp() {
             {/* Vardiya Planlama */}
             {activeTab === 'planning' && (
               <VardiyaPlanlama
+                userRole={userRole}
+                onDataUpdate={refreshData}
+              />
+            )}
+
+
+
+            {/* Akıllı Dağıtım */}
+            {activeTab === 'akilli-dagitim' && (
+              <AkilliDagitim
                 userRole={userRole}
                 onDataUpdate={refreshData}
               />

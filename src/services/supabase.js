@@ -484,15 +484,29 @@ export const deletePersonnel = async (id) => {
 // Vehicle functions
 export const getAllVehicles = async () => {
   try {
+    console.log('🔄 Araç verileri getiriliyor...');
+    
     const { data, error } = await supabase
       .from('vehicles')
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Araç verileri getirme hatası:', error);
+      throw error;
+    }
+    
+    console.log('📊 Araç verileri sonucu:', {
+      dataLength: data?.length || 0,
+      dataType: typeof data,
+      isArray: Array.isArray(data),
+      firstItem: data?.[0],
+      allItems: data
+    });
+    
     return { success: true, data: data || [] };
   } catch (error) {
-    console.error('Get all vehicles error:', error);
+    console.error('❌ Get all vehicles error:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -2214,9 +2228,60 @@ export const saveExcelData = async (periods, schedules) => {
 }; 
 
 // Current Weekly Shifts - Güncel hafta vardiya verileri
-// Bu fonksiyonlar artık kullanılmıyor - current_weekly_shifts tablosu silindi
-// export const saveCurrentWeeklyShifts = async (shiftsData) => { ... }
-// export const getCurrentWeeklyShifts = async () => { ... }
+export const saveCurrentWeeklyShifts = async (shiftsData) => {
+  try {
+    console.log('🔄 Güncel vardiya verileri kaydediliyor...');
+    
+    // Mevcut verileri temizle
+    const { error: deleteError } = await supabase
+      .from('current_weekly_shifts')
+      .delete()
+      .neq('id', 0);
+    
+    if (deleteError) {
+      console.error('❌ Mevcut veriler silinemedi:', deleteError);
+    }
+    
+    // Yeni verileri ekle
+    const { data, error } = await supabase
+      .from('current_weekly_shifts')
+      .insert(shiftsData)
+      .select();
+    
+    if (error) {
+      console.error('❌ Vardiya verileri kaydedilemedi:', error);
+      return { success: false, error };
+    }
+    
+    console.log('✅ Vardiya verileri kaydedildi:', data.length, 'kayıt');
+    return { success: true, data };
+  } catch (error) {
+    console.error('❌ Vardiya verileri kaydetme hatası:', error);
+    return { success: false, error };
+  }
+};
+
+export const getCurrentWeeklyShifts = async () => {
+  try {
+    console.log('🔄 Güncel vardiya verileri getiriliyor...');
+    
+    const { data, error } = await supabase
+      .from('current_weekly_shifts')
+      .select('*')
+      .order('employee_code');
+    
+    if (error) {
+      console.error('❌ Vardiya verileri getirilemedi:', error);
+      return { success: false, error };
+    }
+    
+    console.log('✅ Vardiya verileri getirildi:', data.length, 'kayıt');
+    return { success: true, data };
+  } catch (error) {
+    console.error('❌ Vardiya verileri getirme hatası:', error);
+    return { success: false, error };
+  }
+};
 
 // Excel'den güncel hafta verilerini yükleme
 export const saveCurrentWeekExcelData = async (excelData, weekLabel, startDate, endDate) => {

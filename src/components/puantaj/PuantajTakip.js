@@ -60,6 +60,7 @@ const PuantajTakip = () => {
   const [uploading, setUploading] = useState(false);
   const [filterText, setFilterText] = useState([]);
   const [selectedShift, setSelectedShift] = useState('all');
+  const [selectedAy, setSelectedAy] = useState('all');
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('Puantaj Takip verileri yükleniyor...');
 
@@ -67,9 +68,27 @@ const PuantajTakip = () => {
   // Tek değer varsa otomatik seç
   useEffect(() => {
     const shifts = getUniqueValues('vardiya_plani');
+    const months = getUniqueValues('ay');
 
     if (shifts.length === 1) {
       setSelectedShift(shifts[0]);
+    }
+    
+    // Ay filtresi için: Eğer birden fazla ay varsa "Tüm Aylar" seçili olsun
+    if (months.length > 1) {
+      setSelectedAy('all');
+    } else if (months.length === 1) {
+      setSelectedAy(months[0]);
+    }
+  }, [puantajData]);
+
+  // Veriler yüklendiğinde ay filtresini sıfırla
+  useEffect(() => {
+    if (puantajData.length > 0) {
+      const months = getUniqueValues('ay');
+      if (months.length > 1) {
+        setSelectedAy('all');
+      }
     }
   }, [puantajData]);
   const [dataStats, setDataStats] = useState({
@@ -99,6 +118,9 @@ const PuantajTakip = () => {
   useEffect(() => {
     // Başlangıçta veritabanından veri yükle
     loadPuantajData();
+    
+    // Başlangıçta ay filtresini "Tüm Aylar" olarak ayarla
+    setSelectedAy('all');
   }, []);
 
   // Veriler yüklendiğinde dropdown'ı hazırla
@@ -127,6 +149,12 @@ const PuantajTakip = () => {
       if (result.success) {
         setPuantajData(result.data);
         calculateStats(result.data);
+        
+        // Veriler yüklendiğinde filtreleri sıfırla
+        const months = [...new Set(result.data.map(item => item.ay).filter(Boolean))];
+        if (months.length > 1) {
+          setSelectedAy('all');
+        }
       } else {
         message.error('Veriler yüklenirken hata oluştu: ' + result.error);
       }
@@ -145,6 +173,11 @@ const PuantajTakip = () => {
     // Excel serial number'ı JavaScript Date'e çevir
     const excelEpoch = new Date(1900, 0, 1);
     const date = new Date(excelEpoch.getTime() + (serialNumber - 1) * 24 * 60 * 60 * 1000);
+    
+    // Geçerli tarih kontrolü
+    if (isNaN(date.getTime()) || date.getFullYear() < 1900 || date.getFullYear() > 2100) {
+      return '';
+    }
     
     // Tarih ve saat formatını ayarla
     const day = date.getDate().toString().padStart(2, '0');
@@ -276,7 +309,7 @@ const PuantajTakip = () => {
                   let value = row[colIndex];
                   
                   // Tarih ve saat alanları için özel işleme
-                  if (fieldName === 'vardiya_giris' || fieldName === 'vardiya_cikis') {
+                  if (fieldName === 'vardiya_giris' || fieldName === 'vardiya_cikis' || fieldName === 'giris_zamani' || fieldName === 'cikis_zamani') {
                     if (value && !isNaN(value)) {
                       // Excel serial number ise tarih formatına çevir
                       value = convertExcelSerialToDate(value);
@@ -359,6 +392,110 @@ const PuantajTakip = () => {
     }
 
     return false; // Dosyayı otomatik yükleme
+  };
+
+  // Excel indirme işlemi
+  const handleExcelDownload = () => {
+    try {
+      // Filtrelenmiş veriyi al
+      const dataToExport = getFilteredData();
+      
+      if (dataToExport.length === 0) {
+        message.warning('İndirilecek veri bulunamadı');
+        return;
+      }
+
+      // Excel için veriyi hazırla
+      const excelData = dataToExport.map(item => {
+        // Giriş ve çıkış zamanlarını formatla
+        let girisZamani = item.giris_zamani;
+        let cikisZamani = item.cikis_zamani;
+        
+        // Debug: İlk birkaç kayıt için veri tipini kontrol et
+        if (dataToExport.indexOf(item) < 3) {
+          console.log('Debug - Giriş Zamanı:', {
+            value: girisZamani,
+            type: typeof girisZamani,
+            isNumber: !isNaN(girisZamani),
+            isString: typeof girisZamani === 'string'
+          });
+          console.log('Debug - Çıkış Zamanı:', {
+            value: cikisZamani,
+            type: typeof cikisZamani,
+            isNumber: !isNaN(cikisZamani),
+            isString: typeof cikisZamani === 'string'
+          });
+        }
+        
+        // Eğer giriş zamanı varsa ve sayısal ise (Excel serial number) formatla
+        if (girisZamani && !isNaN(girisZamani) && typeof girisZamani === 'number') {
+          girisZamani = convertExcelSerialToDate(girisZamani);
+        } else if (girisZamani && typeof girisZamani === 'string' && !girisZamani.includes('.')) {
+          // Eğer string formatında ama tarih formatında değilse, sayısal olarak dene
+          const numericValue = parseFloat(girisZamani);
+          if (!isNaN(numericValue)) {
+            girisZamani = convertExcelSerialToDate(numericValue);
+          }
+        }
+        
+        // Eğer çıkış zamanı varsa ve sayısal ise (Excel serial number) formatla
+        if (cikisZamani && !isNaN(cikisZamani) && typeof cikisZamani === 'number') {
+          cikisZamani = convertExcelSerialToDate(cikisZamani);
+        } else if (cikisZamani && typeof cikisZamani === 'string' && !cikisZamani.includes('.')) {
+          // Eğer string formatında ama tarih formatında değilse, sayısal olarak dene
+          const numericValue = parseFloat(cikisZamani);
+          if (!isNaN(numericValue)) {
+            cikisZamani = convertExcelSerialToDate(numericValue);
+          }
+        }
+        
+        return {
+          'Sicil No': item.sicil_no,
+          'Çalışan': item.calisan,
+          'Bölüm': item.bolum,
+          'Ünvan': item.unvan,
+          'Vardiya Planı': item.vardiya_plani,
+          'Vardiya Saatleri': item.vardiya_saatleri,
+          'Tarih': item.tarih,
+          'Ay': item.ay,
+          'Vardiya Giriş': item.vardiya_giris,
+          'Vardiya Çıkış': item.vardiya_cikis,
+          'N.Ç Süresi': item.nc_suresi,
+          'Haftalık İzin': item.haftalik_izin,
+          'Resmi Tatil': item.resmi_tatil,
+          'FM%50': item.fm_50,
+          'HFM%200': item.hfm_200,
+          'Raporlu': item.raporlu,
+          'Devamsızlık İzni': item.devamsizlik_izni,
+          'Devamsız': item.devamsiz,
+          'Eksik Mesai': item.eksik_mesai,
+          'Yıllık İzin': item.yillik_izin,
+          'Ücretsiz İzin': item.ucretsiz_izin,
+          'Brüt Çalışılan Süre': item.burt_calisilan_sure,
+          'Net Çalışılan Süre': item.net_calisilan_sure,
+          'Giriş Zamanı': girisZamani,
+          'Çıkış Zamanı': cikisZamani,
+          'Toplam Hesaplanan Süre': item.toplam_hesaplanan_sure,
+          'Kontrol Toplam Süre': item.kontrol_toplam_sure
+        };
+      });
+
+      // Excel dosyası oluştur
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Puantaj Verileri');
+
+      // Dosya adını oluştur
+      const currentDate = dayjs().format('YYYY-MM-DD');
+      const fileName = `Puantaj_Verileri_${currentDate}.xlsx`;
+
+      // Dosyayı indir
+      XLSX.writeFile(wb, fileName);
+      
+      message.success(`${dataToExport.length} kayıt başarıyla indirildi`);
+    } catch (error) {
+      message.error(`Excel indirme hatası: ${error.message}`);
+    }
   };
 
   // Dinamik sütun sistemi
@@ -536,49 +673,73 @@ const PuantajTakip = () => {
         );
       }
     },
-    {
-             title: 'N.Ç Süresi',
-       dataIndex: 'nc_suresi',
-       key: 'nc_suresi',
-       width: 100,
-       sorter: (a, b) => {
-         const aVal = parseFloat(String(a.nc_suresi || '').replace(',', '.')) || 0;
-         const bVal = parseFloat(String(b.nc_suresi || '').replace(',', '.')) || 0;
-         return aVal - bVal;
-       },
-       render: (text) => {
-         const value = parseFloat(String(text || '').replace(',', '.')) || 0;
-         return (
-           <Text strong style={{ fontSize: '11px', color: value > 0 ? '#1890ff' : '#999' }}>
-             {value > 0 ? value.toFixed(2).replace('.', ',') : '0,00'}
-           </Text>
-         );
-       }
+        {
+      title: 'N.Ç Süresi',
+      dataIndex: 'nc_suresi',
+      key: 'nc_suresi',
+      width: 100,
+      sorter: (a, b) => {
+        const aVal = parseFloat(String(a.nc_suresi || '').replace(',', '.')) || 0;
+        const bVal = parseFloat(String(b.nc_suresi || '').replace(',', '.')) || 0;
+        return aVal - bVal;
+      },
+      render: (text) => {
+        const value = parseFloat(String(text || '').replace(',', '.')) || 0;
+        return (
+          <Text strong style={{ fontSize: '11px', color: value > 0 ? '#1890ff' : '#999' }}>
+            {value > 0 ? value.toFixed(2).replace('.', ',') : '0,00'}
+          </Text>
+        );
+              }
+      },
+      {
+        title: 'Haftalık İzin',
+        dataIndex: 'haftalik_izin',
+        key: 'haftalik_izin',
+        width: 80,
+        sorter: (a, b) => {
+          const aVal = parseFloat(String(a.haftalik_izin || '').replace(',', '.')) || 0;
+          const bVal = parseFloat(String(b.haftalik_izin || '').replace(',', '.')) || 0;
+          return aVal - bVal;
+        },
+        render: (text) => {
+          const textStr = String(text || '');
+          const value = parseFloat(textStr.replace(',', '.')) || 0;
+          return (
+            <Text style={{ 
+              fontSize: '11px',
+              color: value > 0 ? '#722ed1' : '#999',
+              fontWeight: value > 0 ? 'bold' : 'normal'
+            }}>
+              {textStr || '0,00'}
+            </Text>
+          );
+        }
+      },
+      {
+        title: 'Resmi Tatil',
+      dataIndex: 'resmi_tatil',
+      key: 'resmi_tatil',
+      width: 80,
+      sorter: (a, b) => {
+        const aVal = parseFloat(String(a.resmi_tatil || '').replace(',', '.')) || 0;
+        const bVal = parseFloat(String(b.resmi_tatil || '').replace(',', '.')) || 0;
+        return aVal - bVal;
+      },
+      render: (text) => {
+        const textStr = String(text || '');
+        const value = parseFloat(textStr.replace(',', '.')) || 0;
+        return (
+          <Text style={{ 
+            fontSize: '11px',
+            color: value > 0 ? '#f5222d' : '#999',
+            fontWeight: value > 0 ? 'bold' : 'normal'
+          }}>
+            {textStr || '0,00'}
+          </Text>
+        );
+      }
     },
-                   {
-               title: 'Resmi Tatil',
-       dataIndex: 'resmi_tatil',
-       key: 'resmi_tatil',
-       width: 80,
-       sorter: (a, b) => {
-         const aVal = parseFloat(String(a.resmi_tatil || '').replace(',', '.')) || 0;
-         const bVal = parseFloat(String(b.resmi_tatil || '').replace(',', '.')) || 0;
-         return aVal - bVal;
-       },
-       render: (text) => {
-         const textStr = String(text || '');
-         const value = parseFloat(textStr.replace(',', '.')) || 0;
-         return (
-           <Text style={{ 
-             fontSize: '11px',
-             color: value > 0 ? '#f5222d' : '#999',
-             fontWeight: value > 0 ? 'bold' : 'normal'
-           }}>
-             {textStr || '0,00'}
-           </Text>
-         );
-       }
-     },
          {
        title: 'FM%50',
        dataIndex: 'fm_50',
@@ -627,6 +788,30 @@ const PuantajTakip = () => {
          );
        }
      },
+         {
+       title: 'Raporlu',
+       dataIndex: 'raporlu',
+       key: 'raporlu',
+       width: 80,
+       sorter: (a, b) => {
+         const aVal = parseFloat(String(a.raporlu || '').replace(',', '.')) || 0;
+         const bVal = parseFloat(String(b.raporlu || '').replace(',', '.')) || 0;
+         return aVal - bVal;
+       },
+       render: (text) => {
+         const textStr = String(text || '');
+         const value = parseFloat(textStr.replace(',', '.')) || 0;
+         return (
+           <Text style={{ 
+             fontSize: '11px',
+             color: value > 0 ? '#f5222d' : '#999',
+             fontWeight: value > 0 ? 'bold' : 'normal'
+           }}>
+             {textStr || '0,00'}
+           </Text>
+         );
+       }
+     },
               {
         title: 'Devamsızlık İzni',
         dataIndex: 'devamsizlik_izni',
@@ -643,6 +828,30 @@ const PuantajTakip = () => {
           </Text>
         )
     },
+         {
+       title: 'Devamsız',
+       dataIndex: 'devamsiz',
+       key: 'devamsiz',
+       width: 80,
+       sorter: (a, b) => {
+         const aVal = parseFloat(String(a.devamsiz || '').replace(',', '.')) || 0;
+         const bVal = parseFloat(String(b.devamsiz || '').replace(',', '.')) || 0;
+         return aVal - bVal;
+       },
+       render: (text) => {
+         const textStr = String(text || '');
+         const value = parseFloat(textStr.replace(',', '.')) || 0;
+         return (
+           <Text style={{ 
+             fontSize: '11px',
+             color: value > 0 ? '#f5222d' : '#999',
+             fontWeight: value > 0 ? 'bold' : 'normal'
+           }}>
+             {textStr || '0,00'}
+           </Text>
+         );
+       }
+     },
          
                    {
         title: 'Eksik Mesai',
@@ -668,30 +877,6 @@ const PuantajTakip = () => {
           );
         }
      },
-                   {
-        title: 'Haftalık İzin',
-        dataIndex: 'haftalik_izin',
-        key: 'haftalik_izin',
-        width: 80,
-        sorter: (a, b) => {
-          const aVal = parseFloat(String(a.haftalik_izin || '').replace(',', '.')) || 0;
-          const bVal = parseFloat(String(b.haftalik_izin || '').replace(',', '.')) || 0;
-          return aVal - bVal;
-        },
-        render: (text) => {
-          const textStr = String(text || '');
-          const value = parseFloat(textStr.replace(',', '.')) || 0;
-          return (
-            <Text style={{ 
-              fontSize: '11px',
-              color: value > 0 ? '#722ed1' : '#999',
-              fontWeight: value > 0 ? 'bold' : 'normal'
-            }}>
-              {textStr || '0,00'}
-            </Text>
-          );
-        }
-    },
                    {
         title: 'Yıllık İzin',
         dataIndex: 'yillik_izin',
@@ -741,30 +926,6 @@ const PuantajTakip = () => {
           );
         }
     },
-         {
-       title: 'Raporlu',
-       dataIndex: 'raporlu',
-       key: 'raporlu',
-       width: 80,
-       sorter: (a, b) => {
-         const aVal = parseFloat(String(a.raporlu || '').replace(',', '.')) || 0;
-         const bVal = parseFloat(String(b.raporlu || '').replace(',', '.')) || 0;
-         return aVal - bVal;
-       },
-       render: (text) => {
-         const textStr = String(text || '');
-         const value = parseFloat(textStr.replace(',', '.')) || 0;
-         return (
-           <Text style={{ 
-             fontSize: '11px',
-             color: value > 0 ? '#f5222d' : '#999',
-             fontWeight: value > 0 ? 'bold' : 'normal'
-           }}>
-             {textStr || '0,00'}
-           </Text>
-         );
-       }
-     },
          
          {
        title: 'Brüt Çalışılan Süre',
@@ -941,10 +1102,15 @@ const PuantajTakip = () => {
 
     
 
-    // Vardiya filtresi
-    if (selectedShift !== 'all') {
-      filtered = filtered.filter(item => item.vardiya_plani === selectedShift);
-    }
+         // Vardiya filtresi
+     if (selectedShift !== 'all') {
+       filtered = filtered.filter(item => item.vardiya_plani === selectedShift);
+     }
+
+     // Ay filtresi
+     if (selectedAy !== 'all') {
+       filtered = filtered.filter(item => item.ay === selectedAy);
+     }
 
     // Varsayılan sıralama uygula
     filtered.sort((a, b) => {
@@ -1073,60 +1239,77 @@ const PuantajTakip = () => {
       {/* Kontroller */}
       <Card style={{ marginBottom: '20px' }}>
         <Row gutter={16} align="middle" justify="space-between">
-          <Col span={16}>
-            <Row gutter={16}>
-              <Col span={12}>
-                {/* Personel Filtresi */}
-                                 <Select
-                   mode="multiple"
-                   showSearch
-                   placeholder="Personel seçin veya arayın..."
-                   optionFilterProp="children"
+                     <Col span={16}>
+             <Row gutter={16}>
+               <Col span={8}>
+                 {/* Personel Filtresi */}
+                                  <Select
+                    mode="multiple"
+                    showSearch
+                    placeholder="Personel seçin veya arayın..."
+                    optionFilterProp="children"
+                    style={{ width: '100%' }}
+                    value={filterText}
+                    onChange={setFilterText}
+                    allowClear
+                    notFoundContent="Personel bulunamadı"
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    styles={{
+                      popup: {
+                        root: {
+                          zIndex: 1000
+                        }
+                      }
+                    }}
+                    getPopupContainer={(triggerNode) => triggerNode.parentNode}
+                    maxTagCount="responsive"
+                    maxTagTextLength={20}
+                  >
+                    {getUniqueValues('calisan').sort((a, b) => a.localeCompare(b, 'tr')).map(calisan => (
+                      <Select.Option key={calisan} value={calisan}>
+                        {calisan}
+                      </Select.Option>
+                    ))}
+                  </Select>
+               </Col>
+               
+               <Col span={4}>
+                 <Select
+                   placeholder="Ay"
+                   value={selectedAy}
+                   onChange={setSelectedAy}
                    style={{ width: '100%' }}
-                   value={filterText}
-                   onChange={setFilterText}
-                   allowClear
-                   notFoundContent="Personel bulunamadı"
-                   filterOption={(input, option) =>
-                     (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
-                   }
-                   styles={{
-                     popup: {
-                       root: {
-                         zIndex: 1000
-                       }
-                     }
-                   }}
-                   getPopupContainer={(triggerNode) => triggerNode.parentNode}
-                   maxTagCount="responsive"
-                   maxTagTextLength={20}
+                   disabled={getUniqueValues('ay').length <= 1}
                  >
-                   {getUniqueValues('calisan').sort((a, b) => a.localeCompare(b, 'tr')).map(calisan => (
-                     <Select.Option key={calisan} value={calisan}>
-                       {calisan}
-                     </Select.Option>
+                   {getUniqueValues('ay').length > 1 && (
+                     <Option value="all">Tüm Aylar</Option>
+                   )}
+                   {getUniqueValues('ay').sort((a, b) => a.localeCompare(b, 'tr')).map(ay => (
+                     <Option key={ay} value={ay}>{ay}</Option>
                    ))}
                  </Select>
-              </Col>
-              
-              <Col span={12}>
-                <Select
-                  placeholder="Vardiya"
-                  value={selectedShift}
-                  onChange={setSelectedShift}
-                  style={{ width: '100%' }}
-                  disabled={getUniqueValues('vardiya_plani').length <= 1}
-                >
-                  {getUniqueValues('vardiya_plani').length > 1 && (
-                    <Option value="all">Tümü</Option>
-                  )}
-                  {getUniqueValues('vardiya_plani').map(shift => (
-                    <Option key={shift} value={shift}>{shift}</Option>
-                  ))}
-                </Select>
-              </Col>
-            </Row>
-          </Col>
+               </Col>
+               
+               <Col span={4}>
+                 <Select
+                   placeholder="Vardiya"
+                   value={selectedShift}
+                   onChange={setSelectedShift}
+                   style={{ width: '100%' }}
+                   disabled={getUniqueValues('vardiya_plani').length <= 1}
+                 >
+                   {getUniqueValues('vardiya_plani').length > 1 && (
+                     <Option value="all">Tüm Vardiyalar</Option>
+                   )}
+                   {getUniqueValues('vardiya_plani').map(shift => (
+                     <Option key={shift} value={shift}>{shift}</Option>
+                   ))}
+                 </Select>
+               </Col>
+             </Row>
+           </Col>
           <Col span={8} style={{ textAlign: 'right' }}>
             <Space>
               <Button
@@ -1136,12 +1319,12 @@ const PuantajTakip = () => {
               >
                 Excel Yükle
               </Button>
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={() => message.info('Excel indirme özelliği yakında eklenecek')}
-              >
-                Excel İndir
-              </Button>
+                             <Button
+                 icon={<DownloadOutlined />}
+                 onClick={handleExcelDownload}
+               >
+                 Excel İndir
+               </Button>
             </Space>
           </Col>
         </Row>

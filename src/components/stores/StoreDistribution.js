@@ -641,49 +641,49 @@ const StoreDistribution = () => {
           <p className="text-blue-100 text-sm mt-1">Her personelin her mağaza konumuna kaç kez gittiği</p>
         </div>
         
-        <div className="overflow-x-auto">
+        <div className="overflow-auto" style={{ maxHeight: '70vh' }}>
           <table className="w-full text-xs">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-50">
               <tr>
-                <th 
-                  className="px-3 py-3 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('employeeCode')}
-                >
-                  <div className="flex items-center gap-1">
-                    Sicil No
-                    {getSortIcon('employeeCode')}
-                  </div>
-                </th>
-                <th 
-                  className="px-3 py-3 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 cursor-pointer hover:bg-gray-100 transition-colors" 
-                  style={{left: '60px'}}
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center gap-1">
-                    Ad Soyad
-                    {getSortIcon('name')}
-                  </div>
-                </th>
-                <th 
-                  className="px-3 py-3 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 cursor-pointer hover:bg-gray-100 transition-colors" 
-                  style={{left: '140px'}}
-                  onClick={() => handleSort('position')}
-                >
-                  <div className="flex items-center gap-1">
-                    Pozisyon
-                    {getSortIcon('position')}
-                  </div>
-                </th>
-                <th 
-                  className="px-3 py-3 text-center text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 cursor-pointer hover:bg-gray-100 transition-colors" 
-                  style={{left: '220px'}}
-                  onClick={() => handleSort('totalVisits')}
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    Toplam Ziyaret
-                    {getSortIcon('totalVisits')}
-                  </div>
-                </th>
+                                 <th 
+                   className="px-3 py-3 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-60 cursor-pointer hover:bg-gray-100 transition-colors"
+                   onClick={() => handleSort('employeeCode')}
+                 >
+                   <div className="flex items-center gap-1">
+                     Sicil No
+                     {getSortIcon('employeeCode')}
+                   </div>
+                 </th>
+                 <th 
+                   className="px-3 py-3 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-60 cursor-pointer hover:bg-gray-100 transition-colors" 
+                   style={{left: '60px'}}
+                   onClick={() => handleSort('name')}
+                 >
+                   <div className="flex items-center gap-1">
+                     Ad Soyad
+                     {getSortIcon('name')}
+                   </div>
+                 </th>
+                 <th 
+                   className="px-3 py-3 text-left text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-60 cursor-pointer hover:bg-gray-100 transition-colors" 
+                   style={{left: '140px'}}
+                   onClick={() => handleSort('position')}
+                 >
+                   <div className="flex items-center gap-1">
+                     Pozisyon
+                     {getSortIcon('position')}
+                   </div>
+                 </th>
+                 <th 
+                   className="px-3 py-3 text-center text-xs font-semibold text-gray-900 sticky left-0 bg-gray-50 z-60 cursor-pointer hover:bg-gray-100 transition-colors" 
+                   style={{left: '220px'}}
+                   onClick={() => handleSort('totalVisits')}
+                 >
+                   <div className="flex items-center justify-center gap-1">
+                     Toplam Ziyaret
+                     {getSortIcon('totalVisits')}
+                   </div>
+                 </th>
                 {uniqueLocations.map((location, index) => (
                   <th 
                     key={location} 
@@ -714,24 +714,28 @@ const StoreDistribution = () => {
                                 isSofor ? 'bg-green-50 hover:bg-green-100' : 
                                 'bg-gray-50 hover:bg-gray-100';
                 
+                const stickyBgColor = isSevkiyat ? 'bg-blue-50' : 
+                                    isSofor ? 'bg-green-50' : 
+                                    'bg-gray-50';
+                
                 return (
                   <tr key={personnel.employeeCode} className={`${rowColor} transition-colors`}>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900 sticky left-0 bg-white z-10">
-                      {personnel.employeeCode}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 sticky left-0 bg-white z-10" style={{left: '60px'}}>
-                      {personnel.name}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap sticky left-0 bg-white z-10" style={{left: '140px'}}>
-                      <span className={`inline-flex px-1.5 py-0.5 rounded-full text-xs font-medium border ${getPositionColor(personnel.position)}`}>
-                        {personnel.position}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center sticky left-0 bg-white z-10" style={{left: '220px'}}>
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${getTotalVisitColor(personnel.totalVisits)}`}>
-                        {personnel.totalVisits}
-                      </span>
-                    </td>
+                                         <td className={`px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900 sticky left-0 z-40 ${stickyBgColor}`}>
+                       {personnel.employeeCode}
+                     </td>
+                     <td className={`px-3 py-2 whitespace-nowrap text-xs text-gray-900 sticky left-0 z-40 ${stickyBgColor}`} style={{left: '60px'}}>
+                       {personnel.name}
+                     </td>
+                     <td className={`px-3 py-2 whitespace-nowrap sticky left-0 z-40 ${stickyBgColor}`} style={{left: '140px'}}>
+                       <span className={`inline-flex px-1.5 py-0.5 rounded-full text-xs font-medium border ${getPositionColor(personnel.position)}`}>
+                         {personnel.position}
+                       </span>
+                     </td>
+                     <td className={`px-3 py-2 whitespace-nowrap text-center sticky left-0 z-40 ${stickyBgColor}`} style={{left: '220px'}}>
+                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${getTotalVisitColor(personnel.totalVisits)}`}>
+                         {personnel.totalVisits}
+                       </span>
+                     </td>
                     {uniqueLocations.map(location => {
                       const maxVisits = getMaxVisitsForLocation(location);
                       const visitCount = personnel.locationVisits[location] || 0;

@@ -691,7 +691,9 @@ const VehicleDistribution = () => {
               </div>
               
               <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg bg-white">
-                {personnelData.map(personnel => (
+                {personnelData
+                  .sort((a, b) => a.full_name.localeCompare(b.full_name))
+                  .map(personnel => (
                   <label key={personnel.employee_code} className="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer">
                     <input
                       type="checkbox"

@@ -670,27 +670,29 @@ const StoreDistribution = () => {
               </button>
             </div>
             
-            <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg bg-white">
-              {Object.values(personnelData).map(personnel => (
-                <label key={personnel.employee_code} className="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedPersonnel.includes(personnel.employee_code)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedPersonnel(prev => [...prev, personnel.employee_code]);
-                      } else {
-                        setSelectedPersonnel(prev => prev.filter(code => code !== personnel.employee_code));
-                      }
-                    }}
-                    className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-xs text-gray-700">
-                    {personnel.employee_code} - {personnel.full_name}
-                  </span>
-                </label>
-              ))}
-            </div>
+                         <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+               {Object.values(personnelData)
+                 .sort((a, b) => a.full_name.localeCompare(b.full_name))
+                 .map(personnel => (
+                 <label key={personnel.employee_code} className="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer">
+                   <input
+                     type="checkbox"
+                     checked={selectedPersonnel.includes(personnel.employee_code)}
+                     onChange={(e) => {
+                       if (e.target.checked) {
+                         setSelectedPersonnel(prev => [...prev, personnel.employee_code]);
+                       } else {
+                         setSelectedPersonnel(prev => prev.filter(code => code !== personnel.employee_code));
+                       }
+                     }}
+                     className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                   />
+                   <span className="text-xs text-gray-700">
+                     {personnel.employee_code} - {personnel.full_name}
+                   </span>
+                 </label>
+               ))}
+             </div>
             
             {selectedPersonnel.length > 0 && (
               <div className="text-xs text-blue-600">

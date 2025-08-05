@@ -963,20 +963,6 @@ function MainApp() {
               </div>
 
               <button
-                onClick={() => handleTabChange('puantaj-takvim')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
-                  ${activeTab === 'puantaj-takvim'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
-                  }
-                `}
-              >
-                <Package className="w-4 h-4 mr-2" />
-                Puantaj Takvim
-              </button>
-
-              <button
                 onClick={() => handleTabChange('puantaj-takip')}
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
@@ -988,6 +974,20 @@ function MainApp() {
               >
                 <FileExcelOutlined className="w-4 h-4 mr-2" />
                 Puantaj Takip
+              </button>
+
+              <button
+                onClick={() => handleTabChange('puantaj-takvim')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'puantaj-takvim'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Puantaj Takvim
               </button>
 
             </div>

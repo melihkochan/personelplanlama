@@ -18,7 +18,8 @@ import {
   Tooltip,
   Modal,
   Progress,
-  Statistic
+  Statistic,
+  Spin
 } from 'antd';
 import {
   UploadOutlined,
@@ -50,7 +51,7 @@ dayjs.locale('tr');
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-const TimesheetTracking = () => {
+const PuantajTakvim = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -60,6 +61,8 @@ const TimesheetTracking = () => {
   const [teamShifts, setTeamShifts] = useState({});
   const [availableDates, setAvailableDates] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingText, setLoadingText] = useState('Puantaj Takvim verileri yükleniyor...');
 
   useEffect(() => {
     loadData();
@@ -75,6 +78,8 @@ const TimesheetTracking = () => {
   const loadData = async () => {
     setLoading(true);
     setInitialLoading(true);
+    setLoadingProgress(0);
+    setLoadingText('Puantaj Takvim verileri yükleniyor...');
     try {
       // Ekip personellerini yükle
       const teamResult = await getTeamPersonnel();
@@ -89,43 +94,39 @@ const TimesheetTracking = () => {
       }
 
       // PuantajTakipV2'den verileri çek
-      const puantajResult = await getPuantajData();
-      console.log('Puantaj result:', puantajResult);
+      const puantajResult = await getPuantajData({}, (progress, page, pageSize, totalCount) => {
+        setLoadingProgress(progress);
+        setLoadingText(`Veriler ${Math.round(progress)}% yüklendi`);
+      });
       if (puantajResult.success) {
-        console.log('Puantaj data length:', puantajResult.data.length);
-        console.log('İlk 3 kayıt:', puantajResult.data.slice(0, 3));
         setPuantajData(puantajResult.data);
         
         // Mevcut tarihleri çıkar ve sırala (null/boş değerleri filtrele)
         const dates = [...new Set(puantajResult.data
           .map(item => item.tarih)
           .filter(tarih => tarih && tarih.trim() !== ''))]; // null ve boş string'leri filtrele
-        console.log('Benzersiz tarihler (filtrelenmiş):', dates);
         dates.sort((a, b) => {
           const dateA = dayjs(a, 'DD.MM.YYYY');
           const dateB = dayjs(b, 'DD.MM.YYYY');
           return dateA.isBefore(dateB) ? -1 : 1;
         });
-        console.log('Sıralanmış tarihler:', dates);
         setAvailableDates(dates);
         
         // En son tarihi otomatik seç
         if (dates.length > 0) {
           const lastDate = dayjs(dates[dates.length - 1], 'DD.MM.YYYY');
-          console.log('Son tarih:', dates[dates.length - 1], 'Dayjs objesi:', lastDate, 'Geçerli mi:', lastDate.isValid());
           if (lastDate.isValid()) {
             setSelectedDate(lastDate);
-            console.log('selectedDate ayarlandı:', lastDate.format('DD.MM.YYYY'));
           }
         }
       }
 
     } catch (error) {
-      console.error('Veri yükleme hatası:', error);
       message.error('Veriler yüklenirken hata oluştu');
     } finally {
       setLoading(false);
       setInitialLoading(false);
+      setLoadingProgress(100);
     }
   };
 
@@ -176,7 +177,7 @@ const TimesheetTracking = () => {
         setTeamShifts(shiftsMap);
       }
     } catch (error) {
-      console.error('Vardiya yükleme hatası:', error);
+      // Vardiya yükleme hatası
     }
   };
 
@@ -356,7 +357,7 @@ const TimesheetTracking = () => {
     }
   ];
 
-  // Modern yükleme ekranı
+  // Loading ekranı
   if (initialLoading) {
     return (
       <div style={{ 
@@ -368,59 +369,35 @@ const TimesheetTracking = () => {
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        <div style={{
-          backgroundColor: 'white',
-          padding: '40px',
-          borderRadius: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          textAlign: 'center',
+        {/* Modern Loading Card */}
+        <Card style={{ 
+          width: '100%', 
           maxWidth: '400px',
-          width: '100%'
+          textAlign: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          borderRadius: '12px'
         }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            border: '4px solid #e6f7ff',
-            borderTop: '4px solid #1890ff',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 20px'
-          }}></div>
-          
-          <Title level={3} style={{ 
-            margin: '0 0 10px 0', 
-            fontSize: '18px', 
-            fontWeight: 'bold',
-            color: '#1890ff'
-          }}>
-            Puantaj Takvim
-          </Title>
-          
-          <Text style={{ 
-            fontSize: '16px', 
-            color: '#666',
-            marginBottom: '20px'
-          }}>
-            Veriler yükleniyor...
-          </Text>
-          
-          <Progress 
-            percent={75} 
-            showInfo={false}
-            strokeColor="#1890ff"
-            trailColor="#e6f7ff"
-            style={{ width: '100%' }}
-          />
-          
-          <Text style={{ 
-            fontSize: '12px', 
-            color: '#999',
-            marginTop: '15px'
-          }}>
-            PuantajTakipV2'den veriler çekiliyor
-          </Text>
-        </div>
-        
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Spin size="large" />
+            <Text style={{ fontSize: '16px', color: '#666', marginBottom: '20px', display: 'block' }}>
+              {loadingText}
+            </Text>
+            <Progress 
+              percent={loadingProgress} 
+              status="active" 
+              strokeColor={{
+                '0%': '#108ee9',
+                '100%': '#52c41a',
+              }}
+              showInfo={true} 
+              strokeWidth={6} 
+              format={(percent) => `${Math.round(percent)}%`} 
+              style={{ maxWidth: '400px', margin: '0 auto' }}
+            />
+          </div>
+        </Card>
+
+        {/* CSS Animation */}
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -506,7 +483,7 @@ const TimesheetTracking = () => {
                e.target.style.transform = 'translateY(0)';
              }}
            >
-             {selectedDate && selectedDate.isValid() ? selectedDate.format('DD.MM.YYYY') : (availableDates.length > 0 ? `Son veri: ${availableDates[availableDates.length - 1]}` : 'Veriler yükleniyor...')}
+             {selectedDate && selectedDate.isValid() ? selectedDate.format('DD.MM.YYYY') : (availableDates.length > 0 ? `Son veri: ${availableDates[availableDates.length - 1]}` : 'Puantaj Takvim verileri yükleniyor...')}
            </div>
           
           <Button
@@ -656,7 +633,7 @@ const TimesheetTracking = () => {
           marginTop: '15px'
         }}>
                      <Text type="secondary" style={{ fontSize: '13px', color: '#666' }}>
-             {selectedDate && selectedDate.isValid() ? selectedDate.format('dddd') : (availableDates.length > 0 ? 'Son veri seçiliyor...' : 'Veriler yükleniyor...')}
+             {selectedDate && selectedDate.isValid() ? selectedDate.format('dddd') : (availableDates.length > 0 ? 'Son veri seçiliyor...' : 'Puantaj Takvim verileri yükleniyor...')}
            </Text>
           <div style={{
             width: '4px',
@@ -665,7 +642,7 @@ const TimesheetTracking = () => {
             backgroundColor: '#52c41a'
           }}></div>
           <Text type="secondary" style={{ fontSize: '13px', color: '#666' }}>
-            PuantajTakipV2'den saat verileri çekiliyor
+            Puantaj Takip'den saat verileri çekiliyor
           </Text>
         </div>
       </div>
@@ -810,4 +787,4 @@ const TimesheetTracking = () => {
   );
 };
 
-export default TimesheetTracking; 
+export default PuantajTakvim; 

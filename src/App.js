@@ -16,8 +16,8 @@ import StoreDistribution from './components/stores/StoreDistribution';
 import VehicleDistribution from './components/vehicles/VehicleDistribution';
 import Statistics from './components/statistics/Statistics';
 import TeamShifts from './components/timesheet/TeamShifts';
-import TimesheetTracking from './components/timesheet/TimesheetTracking';
-import PuantajTakipV2 from './components/timesheet/PuantajTakipV2';
+import PuantajTakvim from './components/puantaj/PuantajTakvim';
+import PuantajTakip from './components/puantaj/PuantajTakip';
 import TeamPersonnel from './components/timesheet/TeamPersonnel';
 import AdminPanel from './components/admin/AdminPanel';
 import LoginForm from './components/ui/LoginForm';
@@ -91,19 +91,19 @@ function MainApp() {
     return 'bg-red-500';
   };
 
-    // Günün raporu oluşturma fonksiyonu
+  // Günün raporu oluşturma fonksiyonu
   const generateDailyReport = async () => {
     try {
       // Bugün dağıtılan kasa ve palet sayılarını al
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Performance_data tablosundan bugünkü verileri al
       const { data: performanceData, error: performanceError } = await supabase
         .from('performance_data')
         .select('*')
         .gte('date', today)
         .lte('date', today);
-      
+
       if (performanceError) throw performanceError;
 
       // Bugün dağıtılan kasa ve palet sayılarını hesapla
@@ -348,13 +348,13 @@ function MainApp() {
     }
   }, [isAuthenticated, user]);
 
-      // Günün raporu periyodik güncelleme (her 5 dakikada bir)
-    useEffect(() => {
-      if (isAuthenticated && user) {
-        const interval = setInterval(generateDailyReport, 300000); // 5 dakika
-        return () => clearInterval(interval);
-      }
-    }, [isAuthenticated, user]);
+  // Günün raporu periyodik güncelleme (her 5 dakikada bir)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const interval = setInterval(generateDailyReport, 300000); // 5 dakika
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, user]);
 
   // Periyodik olarak güncel vardiya verilerini yenile (her 2 dakikada bir)
   useEffect(() => {
@@ -370,60 +370,60 @@ function MainApp() {
     await loadDailyNotes();
     await loadCurrentShiftData(); // Güncel vardiya verilerini de yenile
     await generateDailyReport(); // Günün raporunu da güncelle
-    
+
     showNotification('Veriler yenilendi!', 'success');
   };
 
   // Güncel vardiya verilerini yükle
   const loadCurrentShiftData = async () => {
     try {
-      
+
       // En güncel dönemi bul
       const { data: periods, error: periodsError } = await supabase
         .from('weekly_periods')
         .select('*')
         .order('start_date', { ascending: false })
         .limit(1);
-      
+
       if (periodsError) {
         return;
       }
-      
+
       if (periods && periods.length > 0) {
         const latestPeriod = periods[0];
-        
+
         // Bu dönemdeki tüm vardiya verilerini getir
         const { data: shifts, error: shiftsError } = await supabase
           .from('weekly_schedules')
           .select('*')
           .eq('period_id', latestPeriod.id)
           .order('employee_code', { ascending: true });
-        
+
         if (shiftsError) {
           console.error('❌ Güncel vardiya verileri getirilemedi:', shiftsError);
           return;
         }
-        
+
         if (shifts && shifts.length > 0) {
           // Personel listesini getir
           const employeeCodes = shifts.map(s => s.employee_code);
-          
+
           const { data: personnel, error: personnelError } = await supabase
             .from('personnel')
             .select('employee_code, full_name, position')
             .in('employee_code', employeeCodes);
-          
+
           if (personnelError) {
             console.error('❌ Personel verileri getirilemedi:', personnelError);
             return;
           }
-          
+
           // Personel bilgilerini birleştir
           const personnelMap = {};
           personnel.forEach(p => {
             personnelMap[p.employee_code] = p;
           });
-          
+
           const enrichedShifts = shifts.map(shift => {
             const person = personnelMap[shift.employee_code];
             return {
@@ -432,7 +432,7 @@ function MainApp() {
               position: person?.position || 'Belirtilmemiş'
             };
           });
-          
+
           setCurrentShiftData(enrichedShifts);
         } else {
           setCurrentShiftData([]);
@@ -658,8 +658,8 @@ function MainApp() {
     { id: 'personnel', label: 'Personel Listesi', icon: Users },
     { id: 'vardiya-kontrol', label: 'Personel Kontrol', icon: Clock },
     { id: 'performance', label: 'Performans Analizi', icon: BarChart3 },
-            { id: 'planning', label: 'Vardiya Planlama', icon: Calendar },
-        { id: 'akilli-dagitim', label: 'Akıllı Dağıtım', icon: Users },
+    { id: 'planning', label: 'Vardiya Planlama', icon: Calendar },
+    { id: 'akilli-dagitim', label: 'Akıllı Dağıtım', icon: Users },
     { id: 'statistics', label: 'İstatistikler', icon: BarChart3 }
   ];
 
@@ -763,8 +763,8 @@ function MainApp() {
                 }
               `}
             >
-                                      <MessageCircle className="w-4 h-4 mr-2" />
-                        Mesajlar
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Mesajlar
               {unreadMessageCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-lg border-2 border-white animate-pulse">
                   {unreadMessageCount}
@@ -935,7 +935,7 @@ function MainApp() {
               >
                 <Clock className="w-4 h-4 mr-2" />
                 Ekip Vardiyaları
-              
+
               </button>
 
               <button
@@ -963,10 +963,10 @@ function MainApp() {
               </div>
 
               <button
-                onClick={() => handleTabChange('timesheet-tracking')}
+                onClick={() => handleTabChange('puantaj-takvim')}
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
-                  ${activeTab === 'timesheet-tracking'
+                  ${activeTab === 'puantaj-takvim'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
@@ -977,10 +977,10 @@ function MainApp() {
               </button>
 
               <button
-                onClick={() => handleTabChange('puantaj-takip-v2')}
+                onClick={() => handleTabChange('puantaj-takip')}
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
-                  ${activeTab === 'puantaj-takip-v2'
+                  ${activeTab === 'puantaj-takip'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                   }
@@ -1063,8 +1063,8 @@ function MainApp() {
               <button
                 onClick={() => setShowNotificationPanel(true)}
                 className={`relative p-2 rounded-lg transition-colors ${unreadNotificationCount > 0
-                    ? 'bg-green-50 hover:bg-green-100 text-green-600'
-                    : 'hover:bg-gray-100 text-gray-600'
+                  ? 'bg-green-50 hover:bg-green-100 text-green-600'
+                  : 'hover:bg-gray-100 text-gray-600'
                   }`}
               >
                 <Bell className="w-4 h-4" />
@@ -1197,7 +1197,7 @@ function MainApp() {
                     `}
                   >
                     <MessageCircle className="w-5 h-5 mr-3" />
-                                         Mesajlar
+                    Mesajlar
                     {unreadMessageCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-lg border-2 border-white animate-pulse">
                         {unreadMessageCount}
@@ -1367,7 +1367,7 @@ function MainApp() {
                     >
                       <Clock className="w-5 h-5 mr-3" />
                       Ekip Vardiyaları
-                      
+
                     </button>
 
                     <button
@@ -1399,12 +1399,12 @@ function MainApp() {
 
                     <button
                       onClick={() => {
-                        handleTabChange('timesheet-tracking');
+                        handleTabChange('puantaj-takvim');
                         setMobileMenuOpen(false);
                       }}
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'timesheet-tracking'
+                        ${activeTab === 'puantaj-takvim'
                           ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
@@ -1416,12 +1416,12 @@ function MainApp() {
 
                     <button
                       onClick={() => {
-                        handleTabChange('puantaj-takip-v2');
+                        handleTabChange('puantaj-takip');
                         setMobileMenuOpen(false);
                       }}
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'puantaj-takip-v2'
+                        ${activeTab === 'puantaj-takip'
                           ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
@@ -1582,7 +1582,7 @@ function MainApp() {
                     <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl animate-bounce"></div>
                     <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-blue-400/30 rounded-full blur-xl animate-spin"></div>
                   </div>
-                  
+
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-6">
                       <div>
@@ -1623,7 +1623,7 @@ function MainApp() {
                     <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                       <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                       Günün Raporu
-                      <button 
+                      <button
                         onClick={generateDailyReport}
                         className="ml-auto p-1 rounded-lg hover:bg-gray-100 transition-colors"
                         title="Raporu yenile"
@@ -1659,8 +1659,8 @@ function MainApp() {
                       {/* Son Güncelleme */}
                       <div className="text-center pt-2">
                         <p className="text-xs text-gray-500">
-                          {dailyReport.lastUpdated ? 
-                            `Son güncelleme: ${dailyReport.lastUpdated.toLocaleTimeString('tr-TR')}` : 
+                          {dailyReport.lastUpdated ?
+                            `Son güncelleme: ${dailyReport.lastUpdated.toLocaleTimeString('tr-TR')}` :
                             'Veriler yükleniyor...'
                           }
                         </p>
@@ -1682,7 +1682,7 @@ function MainApp() {
                         <Users className="w-6 h-6 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                         <p className="text-xs font-medium text-gray-900">Personel</p>
                       </button>
-                      
+
                       <button
                         onClick={() => handleTabChange('stores')}
                         className="group bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
@@ -1690,7 +1690,7 @@ function MainApp() {
                         <Store className="w-6 h-6 text-green-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                         <p className="text-xs font-medium text-gray-900">Mağaza Listesi</p>
                       </button>
-                      
+
                       <button
                         onClick={() => handleTabChange('vardiya-kontrol')}
                         className="group bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
@@ -1698,7 +1698,7 @@ function MainApp() {
                         <Shield className="w-6 h-6 text-purple-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                         <p className="text-xs font-medium text-gray-900">Personel Kontrol</p>
                       </button>
-                      
+
                       <button
                         onClick={() => handleTabChange('store-distribution')}
                         className="group bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
@@ -1706,7 +1706,7 @@ function MainApp() {
                         <MapPin className="w-6 h-6 text-orange-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                         <p className="text-xs font-medium text-gray-900">Personel Konum Dağılımı</p>
                       </button>
-                      
+
                       <button
                         onClick={() => handleTabChange('statistics')}
                         className="group bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
@@ -1714,7 +1714,7 @@ function MainApp() {
                         <BarChart3 className="w-6 h-6 text-indigo-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                         <p className="text-xs font-medium text-gray-900">İstatistikler</p>
                       </button>
-                      
+
                       <button
                         onClick={() => handleTabChange('vehicle-distribution')}
                         className="group bg-gradient-to-br from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
@@ -1737,12 +1737,11 @@ function MainApp() {
                     <div className="space-y-4">
                       {dataStatus.dailyNotes.slice(0, 5).map((note, index) => (
                         <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                          <div className={`w-3 h-3 rounded-full ${
-                            note.status === 'raporlu' ? 'bg-red-500' :
+                          <div className={`w-3 h-3 rounded-full ${note.status === 'raporlu' ? 'bg-red-500' :
                             note.status === 'dinlenme' ? 'bg-green-500' :
-                            note.status === 'izinli' ? 'bg-purple-500' :
-                            note.status === 'hastalık' ? 'bg-orange-500' : 'bg-blue-500'
-                          }`}></div>
+                              note.status === 'izinli' ? 'bg-purple-500' :
+                                note.status === 'hastalık' ? 'bg-orange-500' : 'bg-blue-500'
+                            }`}></div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900">{note.full_name}</p>
                             <p className="text-xs text-gray-500">{note.status} • {new Date(note.date).toLocaleDateString('tr-TR')}</p>
@@ -1968,16 +1967,16 @@ function MainApp() {
             {activeTab === 'team-shifts' && (
               <TeamShifts />
             )}
-
             {/* Puantaj Takip */}
-            {activeTab === 'timesheet-tracking' && (
-              <TimesheetTracking />
+            {activeTab === 'puantaj-takip' && (
+              <PuantajTakip />
+            )}
+            {/* Puantaj Takvim */}
+            {activeTab === 'puantaj-takvim' && (
+              <PuantajTakvim />
             )}
 
-            {/* Puantaj Takip V2 */}
-            {activeTab === 'puantaj-takip-v2' && (
-              <PuantajTakipV2 />
-            )}
+
 
             {/* Ekip Personel Bilgileri */}
             {activeTab === 'team-personnel' && (
@@ -2022,10 +2021,10 @@ function MainApp() {
             {/* Chat Sistemi */}
             {activeTab === 'chat' && (
               <div className="flex-1 h-full">
-                <ChatSystem 
-              currentUser={user} 
-              
-            />
+                <ChatSystem
+                  currentUser={user}
+
+                />
               </div>
             )}
 

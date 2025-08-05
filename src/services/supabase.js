@@ -4418,12 +4418,11 @@ export const savePuantajData = async (puantajData) => {
       message: `${puantajData.length} kayıt başarıyla kaydedildi`
     };
   } catch (error) {
-    console.error('Save puantaj data error:', error);
     return { success: false, error: error.message };
   }
 };
 
-export const getPuantajData = async (filters = {}) => {
+export const getPuantajData = async (filters = {}, onProgress = null) => {
   try {
     // Önce toplam kayıt sayısını kontrol et
     const { count: totalCount, error: countError } = await supabase
@@ -4431,9 +4430,7 @@ export const getPuantajData = async (filters = {}) => {
       .select('*', { count: 'exact', head: true });
     
     if (countError) {
-      console.error('❌ Toplam kayıt sayısı alma hatası:', countError);
-    } else {
-      console.log('📊 Veritabanındaki toplam kayıt sayısı:', totalCount);
+      throw countError;
     }
     
     // Sayfalama ile tüm verileri çek
@@ -4450,20 +4447,22 @@ export const getPuantajData = async (filters = {}) => {
         .range(page * pageSize, (page + 1) * pageSize - 1);
       
       if (error) {
-        console.error('❌ Sayfa çekme hatası:', error);
-        break;
+        throw error;
       }
       
       if (pageData && pageData.length > 0) {
         allData = [...allData, ...pageData];
         page++;
-        console.log(`📄 Sayfa ${page} çekildi: ${pageData.length} kayıt`);
+        
+        // Progress callback'i çağır
+        if (onProgress && totalCount > 0) {
+          const progress = Math.min((allData.length / totalCount) * 100, 100);
+          onProgress(progress, `Veriler ${Math.round(progress)}% yüklendi`);
+        }
       } else {
         hasMore = false;
       }
     }
-    
-    console.log(`📊 Toplam ${allData.length} kayıt çekildi`);
     
     // Filtreler uygula
     let filteredData = allData;
@@ -4485,18 +4484,8 @@ export const getPuantajData = async (filters = {}) => {
       );
     }
     
-    console.log('📊 Veritabanından çekilen toplam kayıt sayısı:', filteredData?.length || 0);
-    console.log('👥 Benzersiz personel sayısı:', new Set(filteredData?.map(item => item.sicil_no) || []).size);
-    
-    // Eğer çekilen veri sayısı beklenenden azsa uyarı ver
-    if (filteredData?.length < totalCount) {
-      console.warn('⚠️ Dikkat: Çekilen veri sayısı beklenenden az!');
-      console.warn(`   Beklenen: ${totalCount}, Çekilen: ${filteredData?.length}`);
-    }
-    
     return { success: true, data: filteredData || [] };
   } catch (error) {
-    console.error('Get puantaj data error:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -4509,7 +4498,6 @@ export const deletePuantajData = async (ay) => {
       .select('*', { count: 'exact', head: true });
     
     if (countError) {
-      console.error('❌ Kayıt sayısı alma hatası:', countError);
       return { success: false, error: countError.message };
     }
     
@@ -4536,7 +4524,6 @@ export const deletePuantajData = async (ay) => {
       message: ay === 'all' ? `${totalCount} puantaj verisi başarıyla silindi` : `${ay} ayına ait tüm puantaj verileri silindi`
     };
   } catch (error) {
-    console.error('Delete puantaj data error:', error);
     return { success: false, error: error.message };
   }
 };
@@ -4585,7 +4572,6 @@ export const getPuantajStats = async (ay = null) => {
       }
     };
   } catch (error) {
-    console.error('Get puantaj stats error:', error);
     return { success: false, error: error.message };
   }
 };

@@ -80,16 +80,22 @@ const PuantajTakipV2 = () => {
     lastMonth: '',
     lastDay: ''
   });
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 100,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    pageSizeOptions: ['50', '100', '250', '500'],
-    showTotal: (total, range) => 
-      `${range[0]}-${range[1]} / ${total} kayıt`,
-    position: ['bottomCenter']
-  });
+     const [pagination, setPagination] = useState({
+     current: 1,
+     pageSize: 100,
+     showSizeChanger: true,
+     showQuickJumper: true,
+     pageSizeOptions: ['50', '100', '250', '500'],
+     showTotal: (total, range) => 
+       `${range[0]}-${range[1]} / ${total} kayıt`,
+     position: ['bottomCenter']
+   });
+
+   // Varsayılan sıralama state'i
+   const [sortConfig, setSortConfig] = useState({
+     key: 'calisan',
+     order: 'ascend'
+   });
 
 
   useEffect(() => {
@@ -294,10 +300,9 @@ const PuantajTakipV2 = () => {
               }
             });
             
-            return {
-              id: index + 1,
-              ...rowData
-            };
+                         return {
+               ...rowData
+             };
           });
           
           resolve(processedData);
@@ -357,70 +362,90 @@ const PuantajTakipV2 = () => {
   // Dinamik sütun sistemi
   const getColumns = () => {
     const baseColumns = [
-    {
-      title: 'Sicil No',
-      dataIndex: 'sicil_no',
-      key: 'sicil_no',
-      width: 80,
-      fixed: 'left',
-      render: (text) => (
-        <Text strong style={{ fontSize: '11px' }}>
-          {text}
-        </Text>
-      )
-    },
          {
-       title: 'Çalışan',
-       dataIndex: 'calisan',
-       key: 'calisan',
-       width: 120,
+       title: 'Sicil No',
+       dataIndex: 'sicil_no',
+       key: 'sicil_no',
+       width: 80,
        fixed: 'left',
+       sorter: (a, b) => {
+         const aVal = String(a.sicil_no || '').toLowerCase();
+         const bVal = String(b.sicil_no || '').toLowerCase();
+         return aVal.localeCompare(bVal);
+       },
        render: (text) => (
-         <Text style={{ fontSize: '11px' }}>
+         <Text strong style={{ fontSize: '11px' }}>
            {text}
          </Text>
        )
      },
-    {
-      title: 'Departman',
-      dataIndex: 'departman',
-      key: 'departman',
-      width: 100,
-      render: (text) => (
-        <Tag color="blue" style={{ fontSize: '10px' }}>
-          {text}
-        </Tag>
-      )
-    },
-
+                   {
+        title: 'Çalışan',
+        dataIndex: 'calisan',
+        key: 'calisan',
+        width: 120,
+        fixed: 'left',
+        sorter: (a, b) => {
+          const aVal = String(a.calisan || '').toLowerCase();
+          const bVal = String(b.calisan || '').toLowerCase();
+          return aVal.localeCompare(bVal);
+        },
+        render: (text) => (
+          <Text style={{ fontSize: '11px' }}>
+            {text}
+          </Text>
+        )
+      },
          {
-       title: 'Ünvan',
-       dataIndex: 'unvan',
-       key: 'unvan',
-       width: 120,
-       render: (text) => {
-         // Ünvana göre renk belirleme
-         let color = 'default';
-         if (text) {
-           const unvan = text.toLowerCase();
-           if (unvan.includes('müdür') || unvan.includes('mudur')) color = 'red';
-           else if (unvan.includes('şef') || unvan.includes('sef')) color = 'orange';
-           else if (unvan.includes('uzman') || unvan.includes('uzman')) color = 'purple';
-           else if (unvan.includes('teknisyen') || unvan.includes('teknisyen')) color = 'blue';
-           else if (unvan.includes('operatör') || unvan.includes('operator')) color = 'cyan';
-           else if (unvan.includes('işçi') || unvan.includes('isci') || unvan.includes('çalışan') || unvan.includes('calisan')) color = 'green';
-           else if (unvan.includes('stajyer') || unvan.includes('stajyer')) color = 'lime';
-           else if (unvan.includes('öğrenci') || unvan.includes('ogrenci')) color = 'geekblue';
-           else color = 'default';
-         }
-         
-         return (
-           <Tag color={color} style={{ fontSize: '10px' }}>
-             {text}
-           </Tag>
-         );
-       }
+       title: 'Departman',
+       dataIndex: 'departman',
+       key: 'departman',
+       width: 100,
+       sorter: (a, b) => {
+         const aVal = String(a.departman || '').toLowerCase();
+         const bVal = String(b.departman || '').toLowerCase();
+         return aVal.localeCompare(bVal);
+       },
+       render: (text) => (
+         <Tag color="blue" style={{ fontSize: '10px' }}>
+           {text}
+         </Tag>
+       )
      },
+
+                   {
+        title: 'Ünvan',
+        dataIndex: 'unvan',
+        key: 'unvan',
+        width: 120,
+        sorter: (a, b) => {
+          const aVal = String(a.unvan || '').toLowerCase();
+          const bVal = String(b.unvan || '').toLowerCase();
+          return aVal.localeCompare(bVal);
+        },
+        render: (text) => {
+          // Ünvana göre renk belirleme
+          let color = 'default';
+          if (text) {
+            const unvan = text.toLowerCase();
+            if (unvan.includes('müdür') || unvan.includes('mudur')) color = 'red';
+            else if (unvan.includes('şef') || unvan.includes('sef')) color = 'orange';
+            else if (unvan.includes('uzman') || unvan.includes('uzman')) color = 'purple';
+            else if (unvan.includes('teknisyen') || unvan.includes('teknisyen')) color = 'blue';
+            else if (unvan.includes('operatör') || unvan.includes('operator')) color = 'cyan';
+            else if (unvan.includes('işçi') || unvan.includes('isci') || unvan.includes('çalışan') || unvan.includes('calisan')) color = 'green';
+            else if (unvan.includes('stajyer') || unvan.includes('stajyer')) color = 'lime';
+            else if (unvan.includes('öğrenci') || unvan.includes('ogrenci')) color = 'geekblue';
+            else color = 'default';
+          }
+          
+          return (
+            <Tag color={color} style={{ fontSize: '10px' }}>
+              {text}
+            </Tag>
+          );
+        }
+      },
     {
       title: 'Vardiya Planı',
       dataIndex: 'vardiya_plani',
@@ -450,17 +475,22 @@ const PuantajTakipV2 = () => {
          </Text>
        )
      },
-    {
-      title: 'Tarih',
-      dataIndex: 'tarih',
-      key: 'tarih',
-      width: 100,
-      render: (text) => (
-        <Text style={{ fontSize: '11px' }}>
-          {text}
-        </Text>
-      )
-    },
+         {
+       title: 'Tarih',
+       dataIndex: 'tarih',
+       key: 'tarih',
+       width: 100,
+       sorter: (a, b) => {
+         const aVal = String(a.tarih || '').toLowerCase();
+         const bVal = String(b.tarih || '').toLowerCase();
+         return aVal.localeCompare(bVal);
+       },
+       render: (text) => (
+         <Text style={{ fontSize: '11px' }}>
+           {text}
+         </Text>
+       )
+     },
     {
       title: 'Ay',
       dataIndex: 'ay',
@@ -798,32 +828,37 @@ const PuantajTakipV2 = () => {
 
   const columns = getColumns();
 
-  // Filtreleme fonksiyonu
-  const getFilteredData = () => {
-    let filtered = puantajData;
+     // Filtreleme ve sıralama fonksiyonu
+   const getFilteredData = () => {
+     let filtered = puantajData;
 
-    // Metin filtresi
-    if (filterText) {
-      filtered = filtered.filter(item =>
-        item.calisan?.toLowerCase().includes(filterText.toLowerCase()) ||
-        String(item.sicil_no || '').includes(filterText)
-      );
-    }
+     // Metin filtresi
+     if (filterText) {
+       filtered = filtered.filter(item =>
+         item.calisan?.toLowerCase().includes(filterText.toLowerCase()) ||
+         String(item.sicil_no || '').includes(filterText)
+       );
+     }
 
-    // Departman filtresi
-    if (selectedDepartment !== 'all') {
-      filtered = filtered.filter(item => item.departman === selectedDepartment);
-    }
+     // Departman filtresi
+     if (selectedDepartment !== 'all') {
+       filtered = filtered.filter(item => item.departman === selectedDepartment);
+     }
 
+     // Vardiya filtresi
+     if (selectedShift !== 'all') {
+       filtered = filtered.filter(item => item.vardiya_plani === selectedShift);
+     }
 
+     // Varsayılan sıralama uygula
+     filtered.sort((a, b) => {
+       const aVal = String(a.calisan || '').toLowerCase();
+       const bVal = String(b.calisan || '').toLowerCase();
+       return aVal.localeCompare(bVal);
+     });
 
-    // Vardiya filtresi
-    if (selectedShift !== 'all') {
-      filtered = filtered.filter(item => item.vardiya_plani === selectedShift);
-    }
-
-    return filtered;
-  };
+     return filtered;
+   };
 
   // Benzersiz değerleri al
   const getUniqueValues = (field) => {
@@ -831,27 +866,110 @@ const PuantajTakipV2 = () => {
     return [...new Set(values)];
   };
 
-  const filteredData = getFilteredData();
+     const filteredData = getFilteredData();
 
-  return (
-    <div style={{ padding: '20px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Başlık */}
-      <div style={{ 
-        textAlign: 'center', 
-        marginBottom: '20px',
-        backgroundColor: 'white',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-          <FileExcelOutlined style={{ marginRight: '10px' }} />
-          PUANTAJ TAKİBİ V2
-        </Title>
-        <Text type="secondary" style={{ fontSize: '14px' }}>
-          Excel'den yüklenen puantaj verilerinin takibi
-        </Text>
-      </div>
+   // Loading ekranı
+   if (loading) {
+     return (
+       <div style={{ 
+         padding: '20px', 
+         backgroundColor: '#f5f5f5', 
+         minHeight: '100vh',
+         display: 'flex',
+         flexDirection: 'column',
+         alignItems: 'center',
+         justifyContent: 'center'
+       }}>
+         {/* Başlık */}
+         <div style={{ 
+           textAlign: 'center', 
+           marginBottom: '40px',
+           backgroundColor: 'white',
+           padding: '20px',
+           borderRadius: '8px',
+           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+           width: '100%',
+           maxWidth: '600px'
+         }}>
+           <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
+             <FileExcelOutlined style={{ marginRight: '10px' }} />
+             PUANTAJ TAKİBİ V2
+           </Title>
+           <Text type="secondary" style={{ fontSize: '14px' }}>
+             Excel'den yüklenen puantaj verilerinin takibi
+           </Text>
+         </div>
+
+         {/* Modern Loading Card */}
+         <Card style={{ 
+           width: '100%', 
+           maxWidth: '400px',
+           textAlign: 'center',
+           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+           borderRadius: '12px'
+         }}>
+           <div style={{ padding: '40px 20px' }}>
+             {/* Modern Spinner */}
+             <div style={{ 
+               width: '80px', 
+               height: '80px', 
+               margin: '0 auto 20px',
+               border: '4px solid #f3f3f3',
+               borderTop: '4px solid #1890ff',
+               borderRadius: '50%',
+               animation: 'spin 1s linear infinite'
+             }}></div>
+             
+             <Title level={4} style={{ margin: '0 0 10px', color: '#1890ff' }}>
+               Veriler Yükleniyor...
+             </Title>
+             <Text type="secondary" style={{ fontSize: '14px' }}>
+               Puantaj verileri veritabanından çekiliyor
+             </Text>
+             
+             {/* Progress Bar */}
+             <div style={{ marginTop: '20px' }}>
+               <Progress 
+                 percent={100} 
+                 status="active" 
+                 strokeColor="#1890ff"
+                 showInfo={false}
+                 strokeWidth={6}
+               />
+             </div>
+           </div>
+         </Card>
+
+         {/* CSS Animation */}
+         <style>{`
+           @keyframes spin {
+             0% { transform: rotate(0deg); }
+             100% { transform: rotate(360deg); }
+           }
+         `}</style>
+       </div>
+     );
+   }
+
+   return (
+     <div style={{ padding: '20px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+       {/* Başlık */}
+       <div style={{ 
+         textAlign: 'center', 
+         marginBottom: '20px',
+         backgroundColor: 'white',
+         padding: '20px',
+         borderRadius: '8px',
+         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+       }}>
+         <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
+           <FileExcelOutlined style={{ marginRight: '10px' }} />
+           PUANTAJ TAKİBİ V2
+         </Title>
+         <Text type="secondary" style={{ fontSize: '14px' }}>
+           Excel'den yüklenen puantaj verilerinin takibi
+         </Text>
+       </div>
 
                            {/* İstatistikler */}
         <Row gutter={8} style={{ marginBottom: '15px' }}>
@@ -895,15 +1013,28 @@ const PuantajTakipV2 = () => {
       {/* Kontroller */}
       <Card style={{ marginBottom: '20px' }}>
         <Row gutter={16} align="middle">
-          <Col span={6}>
-            <Input
-              placeholder="Personel ara..."
-              prefix={<UserOutlined />}
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              allowClear
-            />
-          </Col>
+                     <Col span={6}>
+                                                                               <Select
+                  showSearch
+                  placeholder="Personel seçin veya arayın..."
+                  value={filterText}
+                  onChange={setFilterText}
+                  onSearch={setFilterText}
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  allowClear
+                  style={{ width: '100%' }}
+                  loading={loading}
+                  notFoundContent={loading ? "Veriler yükleniyor..." : "Personel bulunamadı"}
+                  options={getUniqueValues('calisan')
+                    .sort((a, b) => a.localeCompare(b, 'tr'))
+                    .map(calisan => ({
+                      value: calisan,
+                      label: calisan
+                    }))}
+                />
+           </Col>
                                  <Col span={4}>
               <Select
                 placeholder="Departman"

@@ -41,6 +41,7 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import 'dayjs/locale/tr';
 import * as XLSX from 'xlsx';
+import { savePuantajData, getPuantajData, deletePuantajData, getPuantajStats } from '../../services/supabase';
 
 dayjs.extend(customParseFormat);
 dayjs.locale('tr');
@@ -58,20 +59,16 @@ const PuantajTakipV2 = () => {
   const [uploading, setUploading] = useState(false);
   const [filterText, setFilterText] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
-  const [selectedSection, setSelectedSection] = useState('all');
   const [selectedShift, setSelectedShift] = useState('all');
+
 
   // Tek değer varsa otomatik seç
   useEffect(() => {
     const departments = getUniqueValues('departman');
-    const sections = getUniqueValues('bolum');
     const shifts = getUniqueValues('vardiya_plani');
 
     if (departments.length === 1) {
       setSelectedDepartment(departments[0]);
-    }
-    if (sections.length === 1) {
-      setSelectedSection(sections[0]);
     }
     if (shifts.length === 1) {
       setSelectedShift(shifts[0]);
@@ -79,14 +76,16 @@ const PuantajTakipV2 = () => {
   }, [puantajData]);
   const [dataStats, setDataStats] = useState({
     totalRecords: 0,
-    totalEmployees: 0
+    totalEmployees: 0,
+    lastMonth: '',
+    lastDay: ''
   });
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 20,
+    pageSize: 100,
     showSizeChanger: true,
     showQuickJumper: true,
-    pageSizeOptions: ['10', '20', '50', '100'],
+    pageSizeOptions: ['50', '100', '250', '500'],
     showTotal: (total, range) => 
       `${range[0]}-${range[1]} / ${total} kayıt`,
     position: ['bottomCenter']
@@ -94,10 +93,32 @@ const PuantajTakipV2 = () => {
 
 
   useEffect(() => {
-    // Başlangıçta boş veri ile başla
-    setPuantajData([]);
-    calculateStats([]);
+    // Başlangıçta veritabanından veri yükle
+    loadPuantajData();
   }, []);
+
+  // Veritabanından puantaj verilerini yükle
+  const loadPuantajData = async () => {
+    setLoading(true);
+    try {
+      console.log('🔄 Veritabanından veri yükleniyor...');
+      const result = await getPuantajData();
+      if (result.success) {
+        console.log('✅ Veri yükleme başarılı!');
+        console.log('📊 Yüklenen veri sayısı:', result.data.length);
+        setPuantajData(result.data);
+        calculateStats(result.data);
+      } else {
+        console.error('❌ Veri yükleme hatası:', result.error);
+        message.error('Veriler yüklenirken hata oluştu: ' + result.error);
+      }
+    } catch (error) {
+      console.error('❌ Veri yükleme exception:', error);
+      message.error('Veriler yüklenirken hata oluştu: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Excel serial number'ı tarih formatına çevir
   const convertExcelSerialToDate = (serialNumber) => {
@@ -121,9 +142,43 @@ const PuantajTakipV2 = () => {
     const totalRecords = data.length;
     const uniqueEmployees = new Set(data.map(item => item.sicil_no)).size;
 
+    // Son güncel ay ve gün bilgisini bul
+    let lastMonth = '';
+    let lastDay = '';
+    
+    if (data.length > 0) {
+      // Tarih alanlarını kontrol et ve en son tarihi bul
+      const dates = data
+        .map(item => {
+          const tarih = item.tarih;
+          const ay = item.ay;
+          return { tarih, ay };
+        })
+        .filter(item => item.tarih || item.ay)
+        .sort((a, b) => {
+          // Tarih sıralaması için basit bir yaklaşım
+          const dateA = a.tarih || '';
+          const dateB = b.tarih || '';
+          return dateB.localeCompare(dateA);
+        });
+
+      if (dates.length > 0) {
+        lastMonth = dates[0].ay || 'Bilinmiyor';
+        lastDay = dates[0].tarih || 'Bilinmiyor';
+      }
+    }
+
+    console.log('📈 UI İstatistikleri:');
+    console.log('   - Toplam Kayıt:', totalRecords);
+    console.log('   - Benzersiz Personel:', uniqueEmployees);
+    console.log('   - Son Güncel Ay:', lastMonth);
+    console.log('   - Son Güncel Gün:', lastDay);
+
     setDataStats({
       totalRecords,
-      totalEmployees: uniqueEmployees
+      totalEmployees: uniqueEmployees,
+      lastMonth,
+      lastDay
     });
   };
 
@@ -152,6 +207,9 @@ const PuantajTakipV2 = () => {
           const headers = jsonData[0];
           const dataRows = jsonData.slice(1);
           
+          // Debug: Excel başlıklarını göster
+          console.log('Excel başlıkları:', headers);
+          
           // Veriyi işle
           const processedData = dataRows.map((row, index) => {
             const rowData = {};
@@ -165,6 +223,7 @@ const PuantajTakipV2 = () => {
                    'Çalışan': 'calisan',
                    'Departman': 'departman',
                    'Bölüm': 'bolum',
+                   'Unvan': 'unvan',
                    'Ünvan': 'unvan',
                    'Vardiya Planı': 'vardiya_plani',
                    'Vardiya Saatleri': 'vardiya_saatleri',
@@ -173,6 +232,7 @@ const PuantajTakipV2 = () => {
                    'Vardiya Giriş': 'vardiya_giris',
                    'Vardiya Çıkış': 'vardiya_cikis',
                    'N.Ç Süresi': 'nc_suresi',
+                   'Normal Çalışma Süresi': 'nc_suresi',
                    'Resmi Tatil': 'resmi_tatil',
                    'FM%50': 'fm_50',
                    'HFM%200': 'hfm_200',
@@ -187,6 +247,9 @@ const PuantajTakipV2 = () => {
                    'İş Kazası İzni': 'is_kazasi_izni',
                    'Telafi İzni': 'telafi_izni',
                    'Bürt Çalışılan Süre': 'burt_calisilan_sure',
+                   'Brüt Çalışılan Süre': 'burt_calisilan_sure',
+                   'Bürt Çalışılan': 'burt_calisilan_sure',
+                   'Brüt Çalışılan': 'burt_calisilan_sure',
                    'Net Çalışılan Süre': 'net_calisilan_sure',
                    'Giriş Zamanı': 'giris_zamani',
                    'Çıkış Zamanı': 'cikis_zamani',
@@ -200,8 +263,34 @@ const PuantajTakipV2 = () => {
                    'Kontrol Toplam Süre': 'kontrol_toplam_sure'
                  };
                 
-                const fieldName = fieldMapping[header] || header.toLowerCase().replace(/\s+/g, '_');
-                rowData[fieldName] = row[colIndex];
+                const fieldName = fieldMapping[header];
+                if (fieldName) {
+                  let value = row[colIndex];
+                  
+                  // Tarih ve saat alanları için özel işleme
+                  if (fieldName === 'vardiya_giris' || fieldName === 'vardiya_cikis') {
+                    if (value && !isNaN(value)) {
+                      // Excel serial number ise tarih formatına çevir
+                      value = convertExcelSerialToDate(value);
+                    } else if (value) {
+                      // String formatında ise olduğu gibi bırak
+                      value = String(value);
+                    }
+                  }
+                  
+                  // Sayısal alanlar için virgülü noktaya çevir
+                  if (['nc_suresi', 'resmi_tatil', 'fm_50', 'hfm_200', 'devamsizlik_izni', 
+                       'devamsiz', 'eksik_mesai', 'haftalik_izin', 'yillik_izin', 'ucretli', 
+                       'ucretsiz_izin', 'raporlu', 'is_kazasi_izni', 'telafi_izni', 
+                       'burt_calisilan_sure', 'net_calisilan_sure', 'toplam_hesaplanan_sure',
+                       'hes_katilmayan_sure', 'gunluk_net_calisma', 'kontrol_toplam_sure'].includes(fieldName)) {
+                    if (value && typeof value === 'string') {
+                      value = value.replace(',', '.');
+                    }
+                  }
+                  
+                  rowData[fieldName] = value;
+                }
               }
             });
             
@@ -242,13 +331,20 @@ const PuantajTakipV2 = () => {
       // Dosyayı işle
       const processedData = await processExcelFile(file);
       
-      setUploadProgress(100);
-      setPuantajData(processedData);
-      calculateStats(processedData);
-      
-      setUploading(false);
-      setUploadModalVisible(false);
-      message.success(`${processedData.length} kayıt başarıyla yüklendi!`);
+             setUploadProgress(100);
+       
+               // Veritabanına kaydet
+        const saveResult = await savePuantajData(processedData);
+        if (saveResult.success) {
+          message.success(saveResult.message);
+          // Veriler kaydedildikten sonra otomatik olarak yeniden yükle
+          await loadPuantajData();
+        } else {
+          message.error('Veriler kaydedilirken hata oluştu: ' + saveResult.error);
+        }
+       
+       setUploading(false);
+       setUploadModalVisible(false);
       
     } catch (error) {
       setUploading(false);
@@ -258,8 +354,9 @@ const PuantajTakipV2 = () => {
     return false; // Dosyayı otomatik yükleme
   };
 
-  // Tablo sütunları
-  const columns = [
+  // Dinamik sütun sistemi
+  const getColumns = () => {
+    const baseColumns = [
     {
       title: 'Sicil No',
       dataIndex: 'sicil_no',
@@ -272,18 +369,18 @@ const PuantajTakipV2 = () => {
         </Text>
       )
     },
-    {
-      title: 'Çalışan',
-      dataIndex: 'calisan',
-      key: 'calisan',
-      width: 150,
-      fixed: 'left',
-      render: (text) => (
-        <Text style={{ fontSize: '11px' }}>
-          {text}
-        </Text>
-      )
-    },
+         {
+       title: 'Çalışan',
+       dataIndex: 'calisan',
+       key: 'calisan',
+       width: 120,
+       fixed: 'left',
+       render: (text) => (
+         <Text style={{ fontSize: '11px' }}>
+           {text}
+         </Text>
+       )
+     },
     {
       title: 'Departman',
       dataIndex: 'departman',
@@ -295,28 +392,35 @@ const PuantajTakipV2 = () => {
         </Tag>
       )
     },
-    {
-      title: 'Bölüm',
-      dataIndex: 'bolum',
-      key: 'bolum',
-      width: 120,
-      render: (text) => (
-        <Text style={{ fontSize: '11px' }}>
-          {text}
-        </Text>
-      )
-    },
-    {
-      title: 'Ünvan',
-      dataIndex: 'unvan',
-      key: 'unvan',
-      width: 140,
-      render: (text) => (
-        <Tag color="green" style={{ fontSize: '10px' }}>
-          {text}
-        </Tag>
-      )
-    },
+
+         {
+       title: 'Ünvan',
+       dataIndex: 'unvan',
+       key: 'unvan',
+       width: 120,
+       render: (text) => {
+         // Ünvana göre renk belirleme
+         let color = 'default';
+         if (text) {
+           const unvan = text.toLowerCase();
+           if (unvan.includes('müdür') || unvan.includes('mudur')) color = 'red';
+           else if (unvan.includes('şef') || unvan.includes('sef')) color = 'orange';
+           else if (unvan.includes('uzman') || unvan.includes('uzman')) color = 'purple';
+           else if (unvan.includes('teknisyen') || unvan.includes('teknisyen')) color = 'blue';
+           else if (unvan.includes('operatör') || unvan.includes('operator')) color = 'cyan';
+           else if (unvan.includes('işçi') || unvan.includes('isci') || unvan.includes('çalışan') || unvan.includes('calisan')) color = 'green';
+           else if (unvan.includes('stajyer') || unvan.includes('stajyer')) color = 'lime';
+           else if (unvan.includes('öğrenci') || unvan.includes('ogrenci')) color = 'geekblue';
+           else color = 'default';
+         }
+         
+         return (
+           <Tag color={color} style={{ fontSize: '10px' }}>
+             {text}
+           </Tag>
+         );
+       }
+     },
     {
       title: 'Vardiya Planı',
       dataIndex: 'vardiya_plani',
@@ -335,17 +439,17 @@ const PuantajTakipV2 = () => {
         );
       }
     },
-    {
-      title: 'Vardiya Saatleri',
-      dataIndex: 'vardiya_saatleri',
-      key: 'vardiya_saatleri',
-      width: 120,
-      render: (text) => (
-        <Text style={{ fontSize: '11px' }}>
-          {text}
-        </Text>
-      )
-    },
+         {
+       title: 'Vardiya Saatleri',
+       dataIndex: 'vardiya_saatleri',
+       key: 'vardiya_saatleri',
+       width: 100,
+       render: (text) => (
+         <Text style={{ fontSize: '11px' }}>
+           {text}
+         </Text>
+       )
+     },
     {
       title: 'Tarih',
       dataIndex: 'tarih',
@@ -373,39 +477,48 @@ const PuantajTakipV2 = () => {
       dataIndex: 'vardiya_giris',
       key: 'vardiya_giris',
       width: 100,
-      render: (text) => (
-        <Text style={{ fontSize: '11px', color: text ? '#52c41a' : '#999' }}>
-          {text || '--:--'}
-        </Text>
-      )
+      render: (text) => {
+        const displayText = text && text !== 'undefined' && text !== 'null' && text !== '' ? text : '--:--';
+        return (
+          <Text style={{ fontSize: '11px', color: displayText !== '--:--' ? '#52c41a' : '#999' }}>
+            {displayText}
+          </Text>
+        );
+      }
     },
     {
       title: 'Vardiya Çıkış',
       dataIndex: 'vardiya_cikis',
       key: 'vardiya_cikis',
       width: 100,
-      render: (text) => (
-        <Text style={{ fontSize: '11px', color: text ? '#52c41a' : '#999' }}>
-          {text || '--:--'}
-        </Text>
-      )
+      render: (text) => {
+        const displayText = text && text !== 'undefined' && text !== 'null' && text !== '' ? text : '--:--';
+        return (
+          <Text style={{ fontSize: '11px', color: displayText !== '--:--' ? '#52c41a' : '#999' }}>
+            {displayText}
+          </Text>
+        );
+      }
     },
     {
       title: 'N.Ç Süresi',
       dataIndex: 'nc_suresi',
       key: 'nc_suresi',
       width: 100,
-      render: (text) => (
-        <Text strong style={{ fontSize: '11px', color: '#1890ff' }}>
-          {text || '0,00'}
-        </Text>
-      )
+      render: (text) => {
+        const value = parseFloat(String(text || '').replace(',', '.')) || 0;
+        return (
+          <Text strong style={{ fontSize: '11px', color: value > 0 ? '#1890ff' : '#999' }}>
+            {value > 0 ? value.toFixed(2).replace('.', ',') : '0,00'}
+          </Text>
+        );
+      }
     },
-         {
-       title: 'Resmi Tatil',
-       dataIndex: 'resmi_tatil',
-       key: 'resmi_tatil',
-       width: 100,
+                   {
+        title: 'Resmi Tatil',
+        dataIndex: 'resmi_tatil',
+        key: 'resmi_tatil',
+        width: 80,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -458,41 +571,23 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-    {
-      title: 'Devamsızlık İzni',
-      dataIndex: 'devamsizlik_izni',
-      key: 'devamsizlik_izni',
-      width: 120,
+              {
+        title: 'Devamsızlık İzni',
+        dataIndex: 'devamsizlik_izni',
+        key: 'devamsizlik_izni',
+        width: 100,
       render: (text) => (
         <Text style={{ fontSize: '11px' }}>
           {text || '0,00'}
         </Text>
       )
     },
-         {
-       title: 'Devamsız',
-       dataIndex: 'devamsiz',
-       key: 'devamsiz',
-       width: 80,
-       render: (text) => {
-         const textStr = String(text || '');
-         const value = parseFloat(textStr.replace(',', '.')) || 0;
-         return (
-           <Text style={{ 
-             fontSize: '11px',
-             color: value > 0 ? '#f5222d' : '#999',
-             fontWeight: value > 0 ? 'bold' : 'normal'
-           }}>
-             {textStr || '0,00'}
-           </Text>
-         );
-       }
-     },
-         {
-       title: 'Eksik Mesai',
-       dataIndex: 'eksik_mesai',
-       key: 'eksik_mesai',
-       width: 100,
+         
+                   {
+        title: 'Eksik Mesai',
+        dataIndex: 'eksik_mesai',
+        key: 'eksik_mesai',
+        width: 80,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -507,11 +602,11 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-         {
-       title: 'Haftalık İzin',
-       dataIndex: 'haftalik_izin',
-       key: 'haftalik_izin',
-       width: 100,
+                   {
+        title: 'Haftalık İzin',
+        dataIndex: 'haftalik_izin',
+        key: 'haftalik_izin',
+        width: 80,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -526,11 +621,11 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-         {
-       title: 'Yıllık İzin',
-       dataIndex: 'yillik_izin',
-       key: 'yillik_izin',
-       width: 100,
+                   {
+        title: 'Yıllık İzin',
+        dataIndex: 'yillik_izin',
+        key: 'yillik_izin',
+        width: 80,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -545,30 +640,12 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-         {
-       title: 'Ücretli',
-       dataIndex: 'ucretli',
-       key: 'ucretli',
-       width: 80,
-       render: (text) => {
-         const textStr = String(text || '');
-         const value = parseFloat(textStr.replace(',', '.')) || 0;
-         return (
-           <Text style={{ 
-             fontSize: '11px',
-             color: value > 0 ? '#52c41a' : '#999',
-             fontWeight: value > 0 ? 'bold' : 'normal'
-           }}>
-             {textStr || '0,00'}
-           </Text>
-         );
-       }
-     },
-         {
-       title: 'Ücretsiz İzin',
-       dataIndex: 'ucretsiz_izin',
-       key: 'ucretsiz_izin',
-       width: 100,
+         
+                   {
+        title: 'Ücretsiz İzin',
+        dataIndex: 'ucretsiz_izin',
+        key: 'ucretsiz_izin',
+        width: 80,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -602,60 +679,31 @@ const PuantajTakipV2 = () => {
          );
        }
      },
+         
          {
-       title: 'İş Kazası İzni',
-       dataIndex: 'is_kazasi_izni',
-       key: 'is_kazasi_izni',
+       title: 'Brüt Çalışılan Süre',
+       dataIndex: 'burt_calisilan_sure',
+       key: 'burt_calisilan_sure',
        width: 120,
-       render: (text) => {
-         const textStr = String(text || '');
-         const value = parseFloat(textStr.replace(',', '.')) || 0;
-         return (
-           <Text style={{ 
-             fontSize: '11px',
-             color: value > 0 ? '#f5222d' : '#999',
-             fontWeight: value > 0 ? 'bold' : 'normal'
-           }}>
-             {textStr || '0,00'}
-           </Text>
-         );
-       }
-     },
-         {
-       title: 'Telafi İzni',
-       dataIndex: 'telafi_izni',
-       key: 'telafi_izni',
-       width: 100,
-       render: (text) => {
-         const textStr = String(text || '');
-         const value = parseFloat(textStr.replace(',', '.')) || 0;
-         return (
-           <Text style={{ 
-             fontSize: '11px',
-             color: value > 0 ? '#52c41a' : '#999',
-             fontWeight: value > 0 ? 'bold' : 'normal'
-           }}>
-             {textStr || '0,00'}
-           </Text>
-         );
-       }
-     },
-    {
-      title: 'Bürt Çalışılan Süre',
-      dataIndex: 'burt_calisilan_sure',
-      key: 'burt_calisilan_sure',
-      width: 140,
-      render: (text) => (
-        <Text style={{ fontSize: '11px' }}>
-          {text || '0,00'}
-        </Text>
-      )
+      render: (text) => {
+        const textStr = String(text || '');
+        const value = parseFloat(textStr.replace(',', '.')) || 0;
+        return (
+          <Text style={{ 
+            fontSize: '11px',
+            color: value > 0 ? '#1890ff' : '#999',
+            fontWeight: value > 0 ? 'bold' : 'normal'
+          }}>
+            {textStr || '0,00'}
+          </Text>
+        );
+      }
     },
-         {
-       title: 'Net Çalışılan Süre',
-       dataIndex: 'net_calisilan_sure',
-       key: 'net_calisilan_sure',
-       width: 120,
+                   {
+        title: 'Net Çalışılan Süre',
+        dataIndex: 'net_calisilan_sure',
+        key: 'net_calisilan_sure',
+        width: 100,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -672,11 +720,11 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-         {
-       title: 'Giriş Zamanı',
-       dataIndex: 'giris_zamani',
-       key: 'giris_zamani',
-       width: 140,
+                   {
+        title: 'Giriş Zamanı',
+        dataIndex: 'giris_zamani',
+        key: 'giris_zamani',
+        width: 100,
        render: (text) => {
          const formattedDate = convertExcelSerialToDate(text);
          return (
@@ -686,11 +734,11 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-         {
-       title: 'Çıkış Zamanı',
-       dataIndex: 'cikis_zamani',
-       key: 'cikis_zamani',
-       width: 140,
+                   {
+        title: 'Çıkış Zamanı',
+        dataIndex: 'cikis_zamani',
+        key: 'cikis_zamani',
+        width: 100,
        render: (text) => {
          const formattedDate = convertExcelSerialToDate(text);
          return (
@@ -700,11 +748,11 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-         {
-       title: 'Toplam Hesaplanan Süre',
-       dataIndex: 'toplam_hesaplanan_sure',
-       key: 'toplam_hesaplanan_sure',
-       width: 160,
+                   {
+        title: 'Toplam Hesaplanan Süre',
+        dataIndex: 'toplam_hesaplanan_sure',
+        key: 'toplam_hesaplanan_sure',
+        width: 120,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -721,33 +769,12 @@ const PuantajTakipV2 = () => {
          );
        }
      },
-    {
-      title: 'Hes. Katılmayan Süre',
-      dataIndex: 'hes_katilmayan_sure',
-      key: 'hes_katilmayan_sure',
-      width: 150,
-      render: (text) => (
-        <Text style={{ fontSize: '11px' }}>
-          {text || '0,00'}
-        </Text>
-      )
-    },
-    {
-      title: 'Günlük Net Çalışma',
-      dataIndex: 'gunluk_net_calisma',
-      key: 'gunluk_net_calisma',
-      width: 140,
-      render: (text) => (
-        <Text strong style={{ fontSize: '11px', color: '#52c41a' }}>
-          {text || '0,00'}
-        </Text>
-      )
-    },
-         {
-       title: 'Kontrol Toplam Süre',
-       dataIndex: 'kontrol_toplam_sure',
-       key: 'kontrol_toplam_sure',
-       width: 140,
+                   
+                   {
+        title: 'Kontrol Toplam Süre',
+        dataIndex: 'kontrol_toplam_sure',
+        key: 'kontrol_toplam_sure',
+        width: 120,
        render: (text) => {
          const textStr = String(text || '');
          const value = parseFloat(textStr.replace(',', '.')) || 0;
@@ -762,9 +789,14 @@ const PuantajTakipV2 = () => {
              {textStr || '0,00'}
            </Text>
          );
-       }
-     }
-  ];
+               }
+      }
+    ];
+
+               return baseColumns;
+  };
+
+  const columns = getColumns();
 
   // Filtreleme fonksiyonu
   const getFilteredData = () => {
@@ -774,8 +806,7 @@ const PuantajTakipV2 = () => {
     if (filterText) {
       filtered = filtered.filter(item =>
         item.calisan?.toLowerCase().includes(filterText.toLowerCase()) ||
-        String(item.sicil_no || '').includes(filterText) ||
-        item.bolum?.toLowerCase().includes(filterText.toLowerCase())
+        String(item.sicil_no || '').includes(filterText)
       );
     }
 
@@ -784,10 +815,7 @@ const PuantajTakipV2 = () => {
       filtered = filtered.filter(item => item.departman === selectedDepartment);
     }
 
-    // Bölüm filtresi
-    if (selectedSection !== 'all') {
-      filtered = filtered.filter(item => item.bolum === selectedSection);
-    }
+
 
     // Vardiya filtresi
     if (selectedShift !== 'all') {
@@ -826,27 +854,42 @@ const PuantajTakipV2 = () => {
       </div>
 
                            {/* İstatistikler */}
-        <Row gutter={16} style={{ marginBottom: '20px' }}>
-          <Col span={12}>
-            <Card>
+        <Row gutter={8} style={{ marginBottom: '15px' }}>
+          <Col span={8}>
+            <Card size="small" style={{ padding: '8px' }}>
               <Statistic
                 title="Toplam Kayıt"
                 value={dataStats.totalRecords}
                 prefix={<BarChartOutlined />}
-                valueStyle={{ color: '#1890ff' }}
+                valueStyle={{ color: '#1890ff', fontSize: '16px' }}
               />
             </Card>
           </Col>
-          <Col span={12}>
-            <Card>
+          <Col span={8}>
+            <Card size="small" style={{ padding: '8px' }}>
               <Statistic
                 title="Toplam Personel"
                 value={dataStats.totalEmployees}
                 prefix={<UserOutlined />}
-                valueStyle={{ color: '#52c41a' }}
+                valueStyle={{ color: '#52c41a', fontSize: '16px' }}
               />
             </Card>
           </Col>
+                     <Col span={8}>
+             <Card size="small" style={{ padding: '8px' }}>
+               <Statistic
+                 title="Son Güncel Veri"
+                 value={`${dataStats.lastMonth} - ${dataStats.lastDay}`}
+                 prefix={<CalendarOutlined />}
+                 valueStyle={{ color: '#722ed1', fontSize: '14px' }}
+                 suffix={
+                   <Text type="secondary" style={{ fontSize: '10px', marginLeft: '4px' }}>
+                     (Son güncel ay ve gün)
+                   </Text>
+                 }
+               />
+             </Card>
+           </Col>
         </Row>
 
       {/* Kontroller */}
@@ -877,22 +920,7 @@ const PuantajTakipV2 = () => {
                 ))}
               </Select>
             </Col>
-            <Col span={4}>
-              <Select
-                placeholder="Bölüm"
-                value={selectedSection}
-                onChange={setSelectedSection}
-                style={{ width: '100%' }}
-                disabled={getUniqueValues('bolum').length <= 1}
-              >
-                {getUniqueValues('bolum').length > 1 && (
-                  <Option value="all">Tümü</Option>
-                )}
-                {getUniqueValues('bolum').map(section => (
-                  <Option key={section} value={section}>{section}</Option>
-                ))}
-              </Select>
-            </Col>
+
             <Col span={4}>
               <Select
                 placeholder="Vardiya"
@@ -909,35 +937,27 @@ const PuantajTakipV2 = () => {
                 ))}
               </Select>
             </Col>
-          <Col span={6}>
-            <Space>
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={() => setUploadModalVisible(true)}
-              >
-                Excel Yükle
-              </Button>
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={() => message.info('Excel indirme özelliği yakında eklenecek')}
-              >
-                Excel İndir
-              </Button>
-                             <Button
-                 icon={<ReloadOutlined />}
-                 onClick={() => {
-                   setPuantajData([]);
-                   calculateStats([]);
-                   message.success('Veriler temizlendi');
-                 }}
-               >
-                 Temizle
-               </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+                                           <Col span={6}>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
+                  onClick={() => setUploadModalVisible(true)}
+                >
+                  Excel Yükle
+                </Button>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={() => message.info('Excel indirme özelliği yakında eklenecek')}
+                >
+                  Excel İndir
+                </Button>
+              </Space>
+            </Col>
+                 </Row>
+         
+         
+       </Card>
 
       {/* Tablo */}
       <Card>
@@ -954,7 +974,7 @@ const PuantajTakipV2 = () => {
                   pageSize: paginationInfo.pageSize
                 }));
               }}
-              scroll={{ x: 3000 }}
+                             scroll={{ x: 1800, y: 600 }}
               size="small"
               bordered
               loading={loading}

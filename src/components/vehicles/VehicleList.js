@@ -21,11 +21,10 @@ const VehicleList = ({ vehicleData: propVehicleData, currentUser }) => {
       try {
         const result = await getAllVehicles();
         if (result.success) {
-          console.log('✅ Araç verileri veritabanından yüklendi:', result.data.length, 'kayıt');
           setVehicleData(result.data);
         }
       } catch (error) {
-        console.error('❌ Araç veri yükleme hatası:', error);
+        // Hata durumunda sessizce devam et
       } finally {
         setLoading(false);
       }

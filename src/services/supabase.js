@@ -13,6 +13,14 @@ export const supabase = supabaseInstance || (supabaseInstance = createClient(sup
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true
+  },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'supabase-js/2.x'
+    }
   }
 }));
 
@@ -484,29 +492,17 @@ export const deletePersonnel = async (id) => {
 // Vehicle functions
 export const getAllVehicles = async () => {
   try {
-    console.log('🔄 Araç verileri getiriliyor...');
-    
     const { data, error } = await supabase
       .from('vehicles')
       .select('*')
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('❌ Araç verileri getirme hatası:', error);
       throw error;
     }
     
-    console.log('📊 Araç verileri sonucu:', {
-      dataLength: data?.length || 0,
-      dataType: typeof data,
-      isArray: Array.isArray(data),
-      firstItem: data?.[0],
-      allItems: data
-    });
-    
     return { success: true, data: data || [] };
   } catch (error) {
-    console.error('❌ Get all vehicles error:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -4391,5 +4387,205 @@ export const getAnadoluPersonnelShifts = async (date) => {
   } catch (error) {
     console.error('❌ Anadolu vardiya verileri yükleme hatası:', error);
     return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Puantaj verileri için yeni fonksiyonlar
+export const savePuantajData = async (puantajData) => {
+  try {
+    // Önce aynı ay için mevcut verileri sil
+    const firstRecord = puantajData[0];
+    if (firstRecord && firstRecord.ay) {
+      const { error: deleteError } = await supabase
+        .from('puantaj_data')
+        .delete()
+        .eq('ay', firstRecord.ay);
+      
+      if (deleteError) throw deleteError;
+    }
+
+    // Yeni verileri ekle
+    const { data, error } = await supabase
+      .from('puantaj_data')
+      .insert(puantajData)
+      .select();
+    
+    if (error) throw error;
+    
+    return { 
+      success: true, 
+      data: data || [],
+      message: `${puantajData.length} kayıt başarıyla kaydedildi`
+    };
+  } catch (error) {
+    console.error('Save puantaj data error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPuantajData = async (filters = {}) => {
+  try {
+    // Önce toplam kayıt sayısını kontrol et
+    const { count: totalCount, error: countError } = await supabase
+      .from('puantaj_data')
+      .select('*', { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error('❌ Toplam kayıt sayısı alma hatası:', countError);
+    } else {
+      console.log('📊 Veritabanındaki toplam kayıt sayısı:', totalCount);
+    }
+    
+    // Sayfalama ile tüm verileri çek
+    let allData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: pageData, error } = await supabase
+        .from('puantaj_data')
+        .select('*')
+        .order('id', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) {
+        console.error('❌ Sayfa çekme hatası:', error);
+        break;
+      }
+      
+      if (pageData && pageData.length > 0) {
+        allData = [...allData, ...pageData];
+        page++;
+        console.log(`📄 Sayfa ${page} çekildi: ${pageData.length} kayıt`);
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    console.log(`📊 Toplam ${allData.length} kayıt çekildi`);
+    
+    // Filtreler uygula
+    let filteredData = allData;
+    if (filters.ay) {
+      filteredData = filteredData.filter(item => item.ay === filters.ay);
+    }
+    if (filters.departman) {
+      filteredData = filteredData.filter(item => item.departman === filters.departman);
+    }
+    if (filters.bolum) {
+      filteredData = filteredData.filter(item => item.bolum === filters.bolum);
+    }
+    if (filters.sicil_no) {
+      filteredData = filteredData.filter(item => item.sicil_no === filters.sicil_no);
+    }
+    if (filters.tarih_baslangic && filters.tarih_bitis) {
+      filteredData = filteredData.filter(item => 
+        item.tarih >= filters.tarih_baslangic && item.tarih <= filters.tarih_bitis
+      );
+    }
+    
+    console.log('📊 Veritabanından çekilen toplam kayıt sayısı:', filteredData?.length || 0);
+    console.log('👥 Benzersiz personel sayısı:', new Set(filteredData?.map(item => item.sicil_no) || []).size);
+    
+    // Eğer çekilen veri sayısı beklenenden azsa uyarı ver
+    if (filteredData?.length < totalCount) {
+      console.warn('⚠️ Dikkat: Çekilen veri sayısı beklenenden az!');
+      console.warn(`   Beklenen: ${totalCount}, Çekilen: ${filteredData?.length}`);
+    }
+    
+    return { success: true, data: filteredData || [] };
+  } catch (error) {
+    console.error('Get puantaj data error:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+export const deletePuantajData = async (ay) => {
+  try {
+    // Önce toplam kayıt sayısını al
+    const { count: totalCount, error: countError } = await supabase
+      .from('puantaj_data')
+      .select('*', { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error('❌ Kayıt sayısı alma hatası:', countError);
+      return { success: false, error: countError.message };
+    }
+    
+    if (totalCount === 0) {
+      return { success: true, message: 'Silinecek veri bulunamadı' };
+    }
+    
+    let query = supabase.from('puantaj_data').delete();
+    
+    // Eğer 'all' değilse, sadece o ay için sil
+    if (ay !== 'all') {
+      query = query.eq('ay', ay);
+    } else {
+      // Eğer 'all' ise, tüm verileri sil (WHERE koşulu ile)
+      query = query.neq('id', 0); // Tüm kayıtları sil (id != 0 koşulu ile)
+    }
+    
+    const { error } = await query;
+    
+    if (error) throw error;
+    
+    return { 
+      success: true, 
+      message: ay === 'all' ? `${totalCount} puantaj verisi başarıyla silindi` : `${ay} ayına ait tüm puantaj verileri silindi`
+    };
+  } catch (error) {
+    console.error('Delete puantaj data error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPuantajStats = async (ay = null) => {
+  try {
+    let query = supabase
+      .from('puantaj_data')
+      .select('*');
+    
+    if (ay) {
+      query = query.eq('ay', ay);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    // İstatistikleri hesapla
+    const totalRecords = data?.length || 0;
+    const uniqueEmployees = new Set(data?.map(item => item.sicil_no) || []).size;
+    
+    // Fazla mesai yapan personel sayısı
+    const overtimeEmployees = new Set(
+      data?.filter(item => {
+        const value = parseFloat(String(item.fm_50 || '').replace(',', '.')) || 0;
+        return value > 0;
+      }).map(item => item.sicil_no) || []
+    ).size;
+    
+    // Devamsızlık yapan personel sayısı
+    const absentEmployees = new Set(
+      data?.filter(item => {
+        const value = parseFloat(String(item.devamsiz || '').replace(',', '.')) || 0;
+        return value > 0;
+      }).map(item => item.sicil_no) || []
+    ).size;
+    
+    return {
+      success: true,
+      stats: {
+        totalRecords,
+        totalEmployees: uniqueEmployees,
+        overtimeEmployees,
+        absentEmployees
+      }
+    };
+  } catch (error) {
+    console.error('Get puantaj stats error:', error);
+    return { success: false, error: error.message };
   }
 };

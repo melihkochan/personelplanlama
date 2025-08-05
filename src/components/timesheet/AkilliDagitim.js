@@ -55,8 +55,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
   const getFixedVehicles = () => {
     // Araç verileri yüklenmediyse veya undefined ise, manuel araç listesi oluştur
     if (!vehicleData || vehicleData.length === 0 || vehicleData.some(v => v === undefined)) {
-      console.log('❌ Araç verileri yüklenmedi veya undefined, manuel liste kullanılıyor');
-      
       // Manuel araç listesi oluştur
       const manualVehicles = fixedVehiclePlates.map((plate, index) => {
         let type = 'Kamyon';
@@ -74,17 +72,12 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
         };
       });
       
-      console.log('✅ Manuel araç listesi oluşturuldu:', manualVehicles.map(v => `${v.plate} (${v.type}) - Sabit Şoför1: ${v.driver1 || 'Yok'} - Sabit Şoför2: ${v.driver2 || 'Yok'}`));
       return manualVehicles;
     }
-
-    console.log('🔍 Mevcut araçlar:', vehicleData.map(v => v?.license_plate || 'undefined'));
-    console.log('🎯 Aranan plakalar:', fixedVehiclePlates);
 
     const foundVehicles = fixedVehiclePlates.map(plate => {
       const vehicle = vehicleData.find(v => v && v.license_plate === plate);
       if (vehicle) {
-        console.log(`✅ Araç bulundu: ${plate} - ${vehicle.vehicle_type} - Sabit Şoför1: ${vehicle.first_driver || 'Yok'} - Sabit Şoför2: ${vehicle.second_driver || 'Yok'}`);
         return {
           id: vehicle.id,
           plate: vehicle.license_plate,
@@ -95,7 +88,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           driver2: vehicle.second_driver
         };
       } else {
-        console.log(`❌ Araç bulunamadı: ${plate}`);
         // Bulunamayan araç için manuel oluştur
         let type = 'Kamyon';
         if (plate === '34NBU785') type = 'Panelvan';
@@ -113,7 +105,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
       }
     });
 
-    console.log('✅ Bulunan araçlar:', foundVehicles.map(v => `${v.plate} (${v.type}) - Sabit Şoför1: ${v.driver1 || 'Yok'} - Sabit Şoför2: ${v.driver2 || 'Yok'}`));
     return foundVehicles;
   };
 
@@ -174,34 +165,22 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
       const personnelResult = await getAllPersonnel();
       if (personnelResult.success) {
         setPersonnelData(personnelResult.data);
-        console.log('✅ Personel verileri yüklendi:', personnelResult.data.length, 'kayıt');
-      } else {
-        console.error('❌ Personel verileri yüklenemedi:', personnelResult.error);
       }
 
       // Araç verilerini yükle
       const vehicleResult = await getAllVehicles();
       if (vehicleResult.success) {
         setVehicleData(vehicleResult.data);
-        console.log('✅ Araç verileri yüklendi:', vehicleResult.data.length, 'kayıt');
-        console.log('🚗 Araç plakaları:', vehicleResult.data.map(v => v.plate));
-      } else {
-        console.error('❌ Araç verileri yüklenemedi:', vehicleResult.error);
       }
 
       // Mağaza verilerini yükle
       const storeResult = await getAllStores();
       if (storeResult.success) {
         setStoreData(storeResult.data);
-        console.log('✅ Mağaza verileri yüklendi:', storeResult.data.length, 'kayıt');
-      } else {
-        console.error('❌ Mağaza verileri yüklenemedi:', storeResult.error);
       }
 
       // Personel Kontrol mantığı ile vardiya verilerini yükle
       try {
-        console.log('🔍 Personel Kontrol mantığı ile vardiya verileri yükleniyor...');
-        
         // En güncel dönemi bul
         const { data: periods, error: periodsError } = await supabase
           .from('weekly_periods')
@@ -210,11 +189,9 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           .limit(1);
         
         if (periodsError) {
-          console.error('❌ Güncel dönem bulunamadı:', periodsError);
           setCurrentShifts([]);
         } else if (periods && periods.length > 0) {
           const latestPeriod = periods[0];
-          console.log('✅ En güncel dönem bulundu:', latestPeriod);
           
           // Bu dönemdeki tüm vardiya verilerini getir
           const { data: shifts, error: shiftsError } = await supabase
@@ -224,27 +201,21 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
             .order('employee_code', { ascending: true });
           
           if (shiftsError) {
-            console.error('❌ Vardiya verileri getirilemedi:', shiftsError);
             setCurrentShifts([]);
           } else if (shifts && shifts.length > 0) {
-            console.log('✅ Vardiya verileri yüklendi:', shifts.length, 'kayıt');
             setCurrentShifts(shifts);
             
             // Güncel hafta bilgisini al
             if (latestPeriod.week_label) {
               setCurrentWeek(latestPeriod.week_label);
-              console.log('📅 Güncel hafta:', latestPeriod.week_label);
             }
           } else {
-            console.log('⚠️ Bu dönemde vardiya verisi bulunamadı');
             setCurrentShifts([]);
           }
         } else {
-          console.log('⚠️ Hiç dönem bulunamadı');
           setCurrentShifts([]);
         }
       } catch (error) {
-        console.error('❌ Vardiya verileri yükleme hatası:', error);
         setCurrentShifts([]);
       }
 
@@ -257,9 +228,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
 
   // Personel kategorilerini ayır
   const categorizePersonnel = () => {
-    console.log('👥 Toplam personel:', personnelData.length);
-    console.log('📋 Personel pozisyonları:', personnelData.map(p => `${p.full_name} (${p.position})`));
-
     const anadoluPersonnel = personnelData.filter(person => 
       person.position === 'ŞOFÖR' || person.position === 'SEVKİYAT ELEMANI'
     );

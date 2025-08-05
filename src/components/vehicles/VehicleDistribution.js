@@ -12,6 +12,8 @@ const VehicleDistribution = () => {
   const [availableDates, setAvailableDates] = useState([]);
   const [selectedDates, setSelectedDates] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [selectedPersonnel, setSelectedPersonnel] = useState([]); // Seçili personeller
+  const [showPersonnelFilter, setShowPersonnelFilter] = useState(false); // Personel filtre paneli
 
   // Seçili ay değiştiğinde tarihleri filtrele
   useEffect(() => {
@@ -229,18 +231,26 @@ const VehicleDistribution = () => {
       return [];
     }
     
-    const filteredData = performanceData.filter(record => {
-      const key = `${record.date}_${record.shift}`;
-      if (selectedDay) {
-        const recordDate = new Date(record.date);
-        const selectedDate = new Date(selectedDay);
-        return recordDate.toDateString() === selectedDate.toDateString();
-      } else {
-        return selectedDates.includes(key);
-      }
-    });
+         const filteredData = performanceData.filter(record => {
+       const key = `${record.date}_${record.shift}`;
+       if (selectedDay) {
+         const recordDate = new Date(record.date);
+         const selectedDate = new Date(selectedDay);
+         return recordDate.toDateString() === selectedDate.toDateString();
+       } else {
+         return selectedDates.includes(key);
+       }
+     });
+     
+     // Personel filtresi uygula
+     let filteredPersonnel = personnelData;
+     if (selectedPersonnel.length > 0) {
+       filteredPersonnel = personnelData.filter(personnel => 
+         selectedPersonnel.includes(personnel.employee_code)
+       );
+     }
     
-    let result = personnelData.map(personnel => {
+         let result = filteredPersonnel.map(personnel => {
       const personnelRecords = filteredData.filter(record => record.employee_code === personnel.employee_code);
       const stats = {
         Kamyon: { total: 0, doubleTrips: 0 },
@@ -366,7 +376,7 @@ const VehicleDistribution = () => {
     }
     
     return result;
-  }, [performanceData, personnelData, selectedDates, selectedDay, vehicleData, sortConfig]);
+  }, [performanceData, personnelData, selectedDates, selectedDay, vehicleData, sortConfig, selectedPersonnel]);
 
   // Sıralama ikonu fonksiyonu
   const getSortIcon = (column) => {
@@ -635,15 +645,80 @@ const VehicleDistribution = () => {
             </div>
           )}
           
-          {/* Gün Seçimi (Opsiyonel) */}
-          <div className="mt-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Gün (Opsiyonel)</label>
-            <input 
-              type="date"
-              onChange={(e) => setSelectedDay(e.target.value ? new Date(e.target.value) : null)}
-              className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
-            />
+                     {/* Gün Seçimi (Opsiyonel) */}
+           <div className="mt-2">
+             <label className="block text-xs font-medium text-gray-700 mb-1">Gün (Opsiyonel)</label>
+             <input 
+               type="date"
+               onChange={(e) => setSelectedDay(e.target.value ? new Date(e.target.value) : null)}
+               className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+             />
+           </div>
+           
+
+        </div>
+
+        {/* Personel Filtreleme */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-medium text-blue-700">👥 Personel Filtreleme</label>
+            <button
+              onClick={() => setShowPersonnelFilter(!showPersonnelFilter)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              {showPersonnelFilter ? 'Gizle' : 'Göster'}
+            </button>
           </div>
+          
+          {showPersonnelFilter && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Personel adı ile ara..."
+                  className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    // Arama fonksiyonu burada implement edilebilir
+                  }}
+                />
+                <button
+                  onClick={() => setSelectedPersonnel([])}
+                  className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium hover:bg-red-200"
+                >
+                  Temizle
+                </button>
+              </div>
+              
+              <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+                {personnelData.map(personnel => (
+                  <label key={personnel.employee_code} className="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPersonnel.includes(personnel.employee_code)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedPersonnel(prev => [...prev, personnel.employee_code]);
+                        } else {
+                          setSelectedPersonnel(prev => prev.filter(code => code !== personnel.employee_code));
+                        }
+                      }}
+                      className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-700">
+                      {personnel.employee_code} - {personnel.full_name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              
+              {selectedPersonnel.length > 0 && (
+                <div className="text-xs text-blue-600">
+                  {selectedPersonnel.length} personel seçildi
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Ana Tablo */}

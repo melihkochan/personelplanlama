@@ -17,6 +17,8 @@ const StoreDistribution = () => {
     column: 'default',
     direction: 'asc'
   });
+  const [selectedPersonnel, setSelectedPersonnel] = useState([]); // Seçili personeller
+  const [showPersonnelFilter, setShowPersonnelFilter] = useState(false); // Personel filtre paneli
 
   // Veri yükleme
   useEffect(() => {
@@ -361,7 +363,7 @@ const StoreDistribution = () => {
 
   const getSortedPersonnel = () => {
     // Tüm personelleri al ve performans verisi olmayanlar için 0 değerler ekle
-    const personnelArray = Object.entries(personnelData).map(([employeeCode, personnel]) => {
+    let personnelArray = Object.entries(personnelData).map(([employeeCode, personnel]) => {
       const stats = personnelStats[employeeCode] || {
         name: personnel.full_name || 'Bilinmeyen',
         totalVisits: 0,
@@ -376,6 +378,13 @@ const StoreDistribution = () => {
         employeeCodeNum: parseInt(employeeCode) || 0
       };
     });
+    
+    // Personel filtresi uygula
+    if (selectedPersonnel.length > 0) {
+      personnelArray = personnelArray.filter(personnel => 
+        selectedPersonnel.includes(personnel.employeeCode)
+      );
+    }
 
     // Eğer özel bir sıralama seçilmişse uygula
     if (sortConfig.column !== 'default') {
@@ -629,7 +638,71 @@ const StoreDistribution = () => {
         )}
       </div>
 
-      
+      {/* Personel Filtreleme */}
+      <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-sm font-medium text-blue-700 flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            👥 Personel Filtreleme
+          </label>
+          <button
+            onClick={() => setShowPersonnelFilter(!showPersonnelFilter)}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            {showPersonnelFilter ? 'Gizle' : 'Göster'}
+          </button>
+        </div>
+        
+        {showPersonnelFilter && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Personel adı ile ara..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => {
+                  const searchTerm = e.target.value.toLowerCase();
+                  // Arama fonksiyonu burada implement edilebilir
+                }}
+              />
+              <button
+                onClick={() => setSelectedPersonnel([])}
+                className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
+              >
+                Temizle
+              </button>
+            </div>
+            
+            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+              {Object.values(personnelData).map(personnel => (
+                <label key={personnel.employee_code} className="flex items-center gap-2 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                  <input
+                    type="checkbox"
+                    checked={selectedPersonnel.includes(personnel.employee_code)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedPersonnel(prev => [...prev, personnel.employee_code]);
+                      } else {
+                        setSelectedPersonnel(prev => prev.filter(code => code !== personnel.employee_code));
+                      }
+                    }}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    {personnel.employee_code} - {personnel.full_name}
+                  </span>
+                </label>
+              ))}
+            </div>
+            
+            {selectedPersonnel.length > 0 && (
+              <div className="text-sm text-blue-600">
+                {selectedPersonnel.length} personel seçildi
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Ana Tablo */}
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">

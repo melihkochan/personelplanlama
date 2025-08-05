@@ -962,13 +962,9 @@ const PuantajTakipV2 = () => {
          borderRadius: '8px',
          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
        }}>
-         <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-           <FileExcelOutlined style={{ marginRight: '10px' }} />
-           PUANTAJ TAKİBİ V2
+         <Title level={3} style={{ margin: 0, color: '#1890ff', fontSize: '18px', fontWeight: 'bold' }}>
+           Puantaj Takip
          </Title>
-         <Text type="secondary" style={{ fontSize: '14px' }}>
-           Excel'den yüklenen puantaj verilerinin takibi
-         </Text>
        </div>
 
                            {/* İstatistikler */}

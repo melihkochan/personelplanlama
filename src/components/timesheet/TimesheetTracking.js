@@ -104,7 +104,7 @@ const TimesheetTracking = () => {
       missingDays.sort((a, b) => a.daysAgo - b.daysAgo);
       setMissingDaysWarning(missingDays);
     } catch (error) {
-      console.error('Geçmiş gün kontrolü hatası:', error);
+      // Hata durumunda sessizce devam et
     }
   };
 
@@ -127,15 +127,11 @@ const TimesheetTracking = () => {
       // Ekip personellerini yükle
       if (teamResult.success) {
         setTeamPersonnel(teamResult.data);
-      } else {
-        console.error('Team personel yüklenemedi:', teamResult.error);
       }
       
       // Anadolu personellerini yükle
       if (anadoluResult.success) {
         setAnadoluPersonnel(anadoluResult.data);
-      } else {
-        console.error('Anadolu personel yüklenemedi:', anadoluResult.error);
       }
 
       // Vardiya verilerini yükle ve işle
@@ -383,7 +379,7 @@ const TimesheetTracking = () => {
       setIsDataSaved(hasSavedData);
       
     } catch (error) {
-      console.error('loadData error:', error);
+      // Hata durumunda sessizce devam et
     }
     setLoading(false);
   };
@@ -632,9 +628,6 @@ const TimesheetTracking = () => {
           };
           savePromises.push(
             saveTimesheetData(saveData).then(result => {
-              if (!result.success) {
-                console.error('KAYIT HATASI:', result.error);
-              }
               return result;
             })
           );
@@ -652,7 +645,6 @@ const TimesheetTracking = () => {
         message.info('Kaydedilecek onaylanmış veri bulunamadı');
       }
     } catch (error) {
-      console.error('Error saving timesheet:', error);
       message.error('Veriler kaydedilirken hata oluştu');
     }
     setLoading(false);
@@ -680,7 +672,6 @@ const TimesheetTracking = () => {
       await checkMissingDays();
       message.success('Eksik günler yeniden kontrol edildi');
     } catch (error) {
-      console.error('Eksik gün kontrolü hatası:', error);
       message.error('Eksik gün kontrolü sırasında hata oluştu');
     }
     setLoading(false);
@@ -1159,7 +1150,6 @@ const TimesheetTracking = () => {
                      minWidth: '30px'
                    }}
                    onClick={() => {
-                     console.log('İptal butonuna tıklandı! Personel ID:', record.id);
                      handleCancelOvertime(record.id);
                    }}
                  >
@@ -1182,7 +1172,6 @@ const TimesheetTracking = () => {
                  minWidth: '30px'
                }}
                onClick={() => {
-                 console.log('Onay kaldır butonuna tıklandı! Personel ID:', record.id);
                  handleApprove(record.id);
                }}
                disabled={isDataSaved}
@@ -1202,7 +1191,6 @@ const TimesheetTracking = () => {
                  minWidth: '30px'
                }}
                onClick={() => {
-                 console.log('Onay butonuna tıklandı! Personel ID:', record.id);
                  handleApprove(record.id);
                }}
                disabled={isDataSaved}
@@ -1453,10 +1441,9 @@ const TimesheetTracking = () => {
                     padding: '0',
                     minWidth: '30px'
                   }}
-                  onClick={() => {
-                    console.log('Anadolu İptal butonuna tıklandı! Personel ID:', record.id);
-                    handleCancelAnadoluOvertime(record.id);
-                  }}
+                                onClick={() => {
+                handleCancelAnadoluOvertime(record.id);
+              }}
                 >
                   ✗
                 </Button>
@@ -1477,7 +1464,6 @@ const TimesheetTracking = () => {
                 minWidth: '30px'
               }}
               onClick={() => {
-                console.log('Anadolu Onay kaldır butonuna tıklandı! Personel ID:', record.id);
                 handleAnadoluApprove(record.id);
               }}
               disabled={isDataSaved}
@@ -1497,7 +1483,6 @@ const TimesheetTracking = () => {
                 minWidth: '30px'
               }}
               onClick={() => {
-                console.log('Anadolu Onay butonuna tıklandı! Personel ID:', record.id);
                 handleAnadoluApprove(record.id);
               }}
               disabled={isDataSaved}

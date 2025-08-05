@@ -29,7 +29,8 @@ import {
   UserSwitchOutlined,
   SafetyOutlined,
   BuildOutlined,
-  AuditOutlined
+  AuditOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import { getTeamPersonnel, addTeamPersonnel, updateTeamPersonnel, deleteTeamPersonnel, getPersonnelFromPersonnelTable } from '../../services/supabase';
 
@@ -85,14 +86,27 @@ const TeamPersonnel = () => {
       ]);
 
       if (teamResult.success) {
-        setTeamPersonnel(teamResult.data);
+        setTeamPersonnel(teamResult.data || []);
+      } else {
+        message.error('Ekip personel verileri yüklenemedi');
       }
+      
       if (anadoluResult.success) {
-        setAnadoluPersonnel(anadoluResult.data);
+        setAnadoluPersonnel(anadoluResult.data || []);
+      } else {
+        message.error('Anadolu personel verileri yüklenemedi');
       }
+
+      // Veri yüklendikten sonra başarı mesajı göster
+      const totalLoaded = (teamResult.success ? (teamResult.data?.length || 0) : 0) + 
+                         (anadoluResult.success ? (anadoluResult.data?.length || 0) : 0);
+      
+      if (totalLoaded > 0) {
+        message.success(`${totalLoaded} personel verisi başarıyla yüklendi`);
+      }
+      
     } catch (error) {
-      console.error('Error loading data:', error);
-      message.error('Veriler yüklenirken hata oluştu');
+      message.error('Veriler yüklenirken hata oluştu: ' + error.message);
     }
     setLoading(false);
   };
@@ -193,7 +207,6 @@ const TeamPersonnel = () => {
         }
       }
     } catch (error) {
-      console.error('Error adding personnel:', error);
       if (error.message && error.message.includes('duplicate')) {
         message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
       } else {
@@ -227,7 +240,6 @@ const TeamPersonnel = () => {
         }
       }
     } catch (error) {
-      console.error('Error updating personnel:', error);
       if (error.message && error.message.includes('duplicate')) {
         message.error('Bu personel zaten sistemde kayıtlı! Lütfen farklı bir sicil numarası veya isim kullanın.');
       } else {
@@ -247,7 +259,6 @@ const TeamPersonnel = () => {
         message.error('Personel silinirken hata oluştu: ' + result.error);
       }
     } catch (error) {
-      console.error('Error deleting personnel:', error);
       message.error('Personel silinirken hata oluştu');
     }
   };
@@ -303,7 +314,6 @@ const TeamPersonnel = () => {
         }
       })
       .catch(errorInfo => {
-        console.log('Validation failed:', errorInfo);
         message.error('Lütfen tüm alanları doğru şekilde doldurun!');
       });
   };
@@ -418,24 +428,45 @@ const TeamPersonnel = () => {
             </Text>
           </Col>
           <Col>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />}
-              onClick={() => setShowModal(true)}
-              style={{ 
-                background: 'rgba(255,255,255,0.25)', 
-                border: '1px solid rgba(255,255,255,0.4)', 
-                fontSize: '13px',
-                fontWeight: '500',
-                padding: '8px 16px',
-                height: 'auto',
-                borderRadius: '8px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}
-              size="middle"
-            >
-              Personel Ekle
-            </Button>
+            <Space>
+              <Button 
+                type="primary" 
+                icon={<ReloadOutlined />}
+                onClick={loadData}
+                loading={loading}
+                style={{ 
+                  background: 'rgba(255,255,255,0.25)', 
+                  border: '1px solid rgba(255,255,255,0.4)', 
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  padding: '8px 16px',
+                  height: 'auto',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}
+                size="middle"
+              >
+                Yenile
+              </Button>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={() => setShowModal(true)}
+                style={{ 
+                  background: 'rgba(255,255,255,0.25)', 
+                  border: '1px solid rgba(255,255,255,0.4)', 
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  padding: '8px 16px',
+                  height: 'auto',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}
+                size="middle"
+              >
+                Personel Ekle
+              </Button>
+            </Space>
           </Col>
         </Row>
       </Card>
@@ -486,11 +517,20 @@ const TeamPersonnel = () => {
        </Row>
 
       {/* Ana İçerik - Sol: Ekipler, Sağ: Anadolu */}
-      <Row gutter={8}>
-        {/* Sol taraf - Ekipler */}
-        <Col span={12}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {ekipOptions.map(ekip => (
+      {loading ? (
+        <Card style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '16px', color: '#1890ff', marginBottom: '16px' }}>
+            <ReloadOutlined spin style={{ fontSize: '24px', marginRight: '8px' }} />
+            Veriler yükleniyor...
+          </div>
+          <Text type="secondary">Ekip ve Anadolu personel verileri getiriliyor</Text>
+        </Card>
+      ) : (
+        <Row gutter={8}>
+          {/* Sol taraf - Ekipler */}
+          <Col span={12}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {ekipOptions.map(ekip => (
               <Card 
                 key={ekip}
                                  title={
@@ -564,6 +604,7 @@ const TeamPersonnel = () => {
           </Card>
         </Col>
       </Row>
+      )}
 
       {/* Modal */}
       <Modal

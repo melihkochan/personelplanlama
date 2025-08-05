@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map } from 'lucide-react';
+import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
 import PersonelList from './components/personnel/PersonelList';
@@ -16,6 +17,7 @@ import VehicleDistribution from './components/vehicles/VehicleDistribution';
 import Statistics from './components/statistics/Statistics';
 import TeamShifts from './components/timesheet/TeamShifts';
 import TimesheetTracking from './components/timesheet/TimesheetTracking';
+import PuantajTakipV2 from './components/timesheet/PuantajTakipV2';
 import TeamPersonnel from './components/timesheet/TeamPersonnel';
 import AdminPanel from './components/admin/AdminPanel';
 import LoginForm from './components/ui/LoginForm';
@@ -695,9 +697,9 @@ function MainApp() {
       {/* Main Layout */}
       <div className="relative z-10 flex h-screen">
         {/* Sidebar */}
-        <div className="sidebar-container w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col">
-          {/* Sidebar Header */}
-          <div className="p-4 border-b border-gray-200/50">
+        <div className="sidebar-container w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col h-screen">
+          {/* Sidebar Header - Fixed */}
+          <div className="p-4 border-b border-gray-200/50 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -718,10 +720,8 @@ function MainApp() {
             </div>
           </div>
 
-          {/* User Info - Moved to bottom */}
-
-          {/* Navigation */}
-          <nav className="flex-1 p-3 space-y-1">
+          {/* Navigation - Scrollable */}
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1">
             {/* Ana Sayfa */}
             <button
               onClick={() => handleTabChange('home')}
@@ -915,11 +915,11 @@ function MainApp() {
 
             </div>
 
-            {/* TUZLA SEVKİYAT PUANTAJ TAKİP Grubu */}
+            {/* TUZLA EKİP BİLGİLERİ Grubu */}
             <div className="space-y-1">
               <div className="flex items-center px-3 py-1">
                 <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">TUZLA SEVKİYAT PUANTAJ TAKİP</span>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">TUZLA EKİP BİLGİLERİ</span>
                 <div className="flex-1 h-px bg-gray-300"></div>
               </div>
 
@@ -952,6 +952,16 @@ function MainApp() {
                 Ekip Personel Bilgileri
               </button>
 
+            </div>
+
+            {/* PUANTAJ TAKİP Grubu */}
+            <div className="space-y-1">
+              <div className="flex items-center px-3 py-1">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">PUANTAJ TAKİP</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+
               <button
                 onClick={() => handleTabChange('timesheet-tracking')}
                 className={`
@@ -967,6 +977,24 @@ function MainApp() {
                 <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                   <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
                   Geliştirme
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('puantaj-takip-v2')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  ${activeTab === 'puantaj-takip-v2'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  }
+                `}
+              >
+                <FileExcelOutlined className="w-4 h-4 mr-2" />
+                Puantaj Takibi V2
+                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>
+                  Yeni
                 </span>
               </button>
 
@@ -1021,8 +1049,8 @@ function MainApp() {
             </div>
           </nav>
 
-          {/* Sidebar Footer */}
-          <div className="p-3 border-t border-gray-200/50 space-y-2">
+          {/* Sidebar Footer - Fixed */}
+          <div className="p-3 border-t border-gray-200/50 space-y-2 flex-shrink-0">
             {/* User Info - Moved here */}
             <div className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
@@ -1123,8 +1151,8 @@ function MainApp() {
           {/* Mobile Menu Overlay */}
           {mobileMenuOpen && (
             <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-              <div className="absolute left-0 top-0 h-full w-80 bg-white shadow-2xl">
-                <div className="p-6 border-b border-gray-200/50">
+              <div className="absolute left-0 top-0 h-full w-80 bg-white shadow-2xl flex flex-col">
+                <div className="p-6 border-b border-gray-200/50 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -1143,7 +1171,7 @@ function MainApp() {
                   </div>
                 </div>
 
-                <div className="p-4 space-y-2">
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
                   {/* Ana Sayfa */}
                   <button
                     onClick={() => {
@@ -1324,11 +1352,11 @@ function MainApp() {
                     </button>
                   </div>
 
-                  {/* TUZLA SEVKİYAT PUANTAJ TAKİP Grubu */}
+                  {/* TUZLA EKİP BİLGİLERİ Grubu */}
                   <div className="space-y-2">
                     <div className="flex items-center px-4 py-2">
                       <div className="flex-1 h-px bg-gray-300"></div>
-                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">TUZLA SEVKİYAT PUANTAJ TAKİP</span>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">TUZLA EKİP BİLGİLERİ</span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
 
@@ -1367,6 +1395,16 @@ function MainApp() {
                       Ekip Personel Bilgileri
                     </button>
 
+                  </div>
+
+                  {/* PUANTAJ TAKİP Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">PUANTAJ TAKİP</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+
                     <button
                       onClick={() => {
                         handleTabChange('timesheet-tracking');
@@ -1382,6 +1420,27 @@ function MainApp() {
                     >
                       <Package className="w-5 h-5 mr-3" />
                       Puantaj Takip
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('puantaj-takip-v2');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'puantaj-takip-v2'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <FileExcelOutlined className="w-5 h-5 mr-3" />
+                      Puantaj Takibi V2
+                      <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>
+                        Yeni
+                      </span>
                     </button>
 
                   </div>
@@ -1925,6 +1984,11 @@ function MainApp() {
             {/* Puantaj Takip */}
             {activeTab === 'timesheet-tracking' && (
               <TimesheetTracking />
+            )}
+
+            {/* Puantaj Takip V2 */}
+            {activeTab === 'puantaj-takip-v2' && (
+              <PuantajTakipV2 />
             )}
 
             {/* Ekip Personel Bilgileri */}

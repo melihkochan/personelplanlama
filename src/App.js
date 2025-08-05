@@ -721,7 +721,7 @@ function MainApp() {
           </div>
 
           {/* Navigation - Scrollable */}
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1 sidebar-scroll">
             {/* Ana Sayfa */}
             <button
               onClick={() => handleTabChange('home')}
@@ -1163,7 +1163,7 @@ function MainApp() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <div className="flex-1 overflow-y-auto p-4 space-y-2 sidebar-scroll">
                   {/* Ana Sayfa */}
                   <button
                     onClick={() => {

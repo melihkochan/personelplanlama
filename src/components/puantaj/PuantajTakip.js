@@ -168,7 +168,9 @@ const PuantajTakip = () => {
 
   // Excel serial number'ı tarih formatına çevir
   const convertExcelSerialToDate = (serialNumber) => {
-    if (!serialNumber || isNaN(serialNumber)) return '';
+    if (!serialNumber || isNaN(serialNumber)) {
+      return '';
+    }
     
     // Excel serial number'ı JavaScript Date'e çevir
     const excelEpoch = new Date(1900, 0, 1);
@@ -187,6 +189,60 @@ const PuantajTakip = () => {
     const minutes = date.getMinutes().toString().padStart(2, '0');
     
     return `${day}.${month}.${year} ${hours}:${minutes}`;
+  };
+
+  // Genel tarih formatı dönüştürme fonksiyonu
+  const formatDateTimeForExcel = (value) => {
+    if (!value) return '';
+    
+    // Eğer zaten doğru formatta ise (DD.MM.YYYY HH:MM)
+    if (typeof value === 'string' && /^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/.test(value)) {
+      return value;
+    }
+    
+    // Eğer sayısal değer ise (Excel serial number)
+    if (typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)))) {
+      const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+      return convertExcelSerialToDate(numericValue);
+    }
+    
+    // Eğer string ama farklı formatta ise, parse etmeye çalış
+    if (typeof value === 'string') {
+      // ISO format (2023-12-31T14:30:00)
+      if (value.includes('T') && value.includes('-')) {
+        try {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${day}.${month}.${year} ${hours}:${minutes}`;
+          }
+        } catch (e) {
+          // Hata durumunda sessizce devam et
+        }
+      }
+      
+      // Diğer tarih formatları için deneme
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          const hours = date.getHours().toString().padStart(2, '0');
+          const minutes = date.getMinutes().toString().padStart(2, '0');
+          return `${day}.${month}.${year} ${hours}:${minutes}`;
+        }
+      } catch (e) {
+        // Hata durumunda sessizce devam et
+      }
+    }
+    
+    // Son çare olarak string'e çevir
+    return String(value);
   };
 
   const calculateStats = (data) => {
@@ -310,12 +366,9 @@ const PuantajTakip = () => {
                   
                   // Tarih ve saat alanları için özel işleme
                   if (fieldName === 'vardiya_giris' || fieldName === 'vardiya_cikis' || fieldName === 'giris_zamani' || fieldName === 'cikis_zamani') {
-                    if (value && !isNaN(value)) {
-                      // Excel serial number ise tarih formatına çevir
-                      value = convertExcelSerialToDate(value);
-                    } else if (value) {
-                      // String formatında ise olduğu gibi bırak
-                      value = String(value);
+                    if (value) {
+                      // Kapsamlı tarih formatı dönüştürme
+                      value = formatDateTimeForExcel(value);
                     }
                   }
                   
@@ -411,43 +464,11 @@ const PuantajTakip = () => {
         let girisZamani = item.giris_zamani;
         let cikisZamani = item.cikis_zamani;
         
-        // Debug: İlk birkaç kayıt için veri tipini kontrol et
-        if (dataToExport.indexOf(item) < 3) {
-          console.log('Debug - Giriş Zamanı:', {
-            value: girisZamani,
-            type: typeof girisZamani,
-            isNumber: !isNaN(girisZamani),
-            isString: typeof girisZamani === 'string'
-          });
-          console.log('Debug - Çıkış Zamanı:', {
-            value: cikisZamani,
-            type: typeof cikisZamani,
-            isNumber: !isNaN(cikisZamani),
-            isString: typeof cikisZamani === 'string'
-          });
-        }
+
         
-        // Eğer giriş zamanı varsa ve sayısal ise (Excel serial number) formatla
-        if (girisZamani && !isNaN(girisZamani) && typeof girisZamani === 'number') {
-          girisZamani = convertExcelSerialToDate(girisZamani);
-        } else if (girisZamani && typeof girisZamani === 'string' && !girisZamani.includes('.')) {
-          // Eğer string formatında ama tarih formatında değilse, sayısal olarak dene
-          const numericValue = parseFloat(girisZamani);
-          if (!isNaN(numericValue)) {
-            girisZamani = convertExcelSerialToDate(numericValue);
-          }
-        }
-        
-        // Eğer çıkış zamanı varsa ve sayısal ise (Excel serial number) formatla
-        if (cikisZamani && !isNaN(cikisZamani) && typeof cikisZamani === 'number') {
-          cikisZamani = convertExcelSerialToDate(cikisZamani);
-        } else if (cikisZamani && typeof cikisZamani === 'string' && !cikisZamani.includes('.')) {
-          // Eğer string formatında ama tarih formatında değilse, sayısal olarak dene
-          const numericValue = parseFloat(cikisZamani);
-          if (!isNaN(numericValue)) {
-            cikisZamani = convertExcelSerialToDate(numericValue);
-          }
-        }
+        // Giriş ve çıkış zamanlarını formatla
+        girisZamani = formatDateTimeForExcel(girisZamani);
+        cikisZamani = formatDateTimeForExcel(cikisZamani);
         
         return {
           'Sicil No': item.sicil_no,

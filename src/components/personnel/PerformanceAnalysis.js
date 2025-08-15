@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
+import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X, Trash2, Edit } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes } from '../../services/supabase';
+import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes, logAuditEvent, supabase } from '../../services/supabase';
 
 const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole, currentUser }) => {
   // PerformanceAnalysis başladı
@@ -24,11 +24,192 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const [weeklyView, setWeeklyView] = useState(false); // Haftalık görünüm
   const [selectedWeeks, setSelectedWeeks] = useState([]); // Seçili haftalar
   
+  // Tarih düzenleme modal state'leri
+  const [showDateEditModal, setShowDateEditModal] = useState(false);
+  const [allPerformanceDates, setAllPerformanceDates] = useState([]);
+  const [selectedDateForEdit, setSelectedDateForEdit] = useState(null);
+  const [dateEditForm, setDateEditForm] = useState({
+    old_date: '',
+    old_shift_type: '',
+    new_date: '',
+    new_shift_type: ''
+  });
+  const [dateEditLoading, setDateEditLoading] = useState(false);
+  
 
 
   
   // File input ref
   const fileInputRef = useRef(null);
+
+  // Tarih düzenleme fonksiyonları
+  const handleOpenDateEditModal = async () => {
+    setShowDateEditModal(true);
+    setDateEditLoading(true);
+    
+    try {
+      // Performance_data tablosundan tüm benzersiz tarih+shift kombinasyonlarını çek
+      const { data: performanceData, error } = await supabase
+        .from('performance_data')
+        .select('date, date_shift_type, sheet_name')
+        .order('date', { ascending: true });
+      
+      if (error) throw error;
+      
+      // Benzersiz tarih+shift kombinasyonlarını oluştur
+      const uniqueDates = new Map();
+      
+      performanceData.forEach(record => {
+        const dateKey = `${record.date}_${record.date_shift_type}`;
+        if (!uniqueDates.has(dateKey)) {
+          uniqueDates.set(dateKey, {
+            id: dateKey,
+            date: record.date,
+            shift_type: record.date_shift_type,
+            sheet_name: record.sheet_name,
+            display_name: `${new Date(record.date).toLocaleDateString('tr-TR')} ${record.date_shift_type === 'gece' ? 'Gece' : 'Gündüz'}`
+          });
+        }
+      });
+      
+      setAllPerformanceDates(Array.from(uniqueDates.values()));
+      console.log('🔍 Performans tarihleri bulundu:', uniqueDates.size, 'kayıt');
+    } catch (error) {
+      console.error('❌ Performans tarihleri yükleme hatası:', error);
+      alert(`❌ Performans tarihleri yüklenemedi: ${error.message}`);
+    } finally {
+      setDateEditLoading(false);
+    }
+  };
+
+  const handleSelectDateForEdit = (dateItem) => {
+    setSelectedDateForEdit(dateItem);
+    setDateEditForm({
+      old_date: dateItem.date,
+      old_shift_type: dateItem.shift_type,
+      new_date: dateItem.date,
+      new_shift_type: dateItem.shift_type
+    });
+  };
+
+  const handleUpdatePerformanceDate = async () => {
+    if (!selectedDateForEdit) return;
+
+    setDateEditLoading(true);
+    try {
+      // Performance_data tablosundaki tüm kayıtları güncelle
+      const { data: updatedRecords, error } = await supabase
+        .from('performance_data')
+        .update({
+          date: dateEditForm.new_date,
+          date_shift_type: dateEditForm.new_shift_type
+        })
+        .eq('date', selectedDateForEdit.date)
+        .eq('date_shift_type', selectedDateForEdit.shift_type)
+        .select();
+
+      if (error) throw error;
+
+      console.log(`✅ ${updatedRecords.length} performans kaydı güncellendi`);
+
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'UPDATE',
+        tableName: 'performance_data',
+        recordId: null,
+        oldValues: selectedDateForEdit,
+        newValues: {
+          ...selectedDateForEdit,
+          date: dateEditForm.new_date,
+          date_shift_type: dateEditForm.new_shift_type
+        },
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Performans tarihi güncellendi: ${selectedDateForEdit.date} ${selectedDateForEdit.shift_type} → ${dateEditForm.new_date} ${dateEditForm.new_shift_type} (${updatedRecords.length} kayıt etkilendi)`
+      });
+
+      // Modal'ı kapat ve verileri yenile
+      setShowDateEditModal(false);
+      setSelectedDateForEdit(null);
+      
+      // State'leri sıfırla ve verileri yeniden yükle
+      setAnalysisData(null);
+      setAvailableDates([]);
+      setSelectedDates([]);
+      
+      // Kısa bir gecikme ile verileri yeniden yükle
+      setTimeout(() => {
+        loadPerformanceDataFromDatabase();
+      }, 200);
+
+      alert(`✅ Tarih başarıyla güncellendi!\n\n${updatedRecords.length} performans kaydı etkilendi.\n\nVeriler yenileniyor...`);
+    } catch (error) {
+      alert(`❌ Güncelleme hatası: ${error.message}`);
+    } finally {
+      setDateEditLoading(false);
+    }
+  };
+
+  const handleDeletePerformanceDate = async (dateItem) => {
+    if (!confirm(`⚠️ Bu tarih aralığını ve tüm performans verilerini silmek istediğinizden emin misiniz?\n\nTarih: ${dateItem.display_name}\n\nBu işlem geri alınamaz!`)) {
+      return;
+    }
+
+    setDateEditLoading(true);
+    
+    try {
+      // Performance_data tablosundan ilgili kayıtları sil
+      const { data: deletedRecords, error } = await supabase
+        .from('performance_data')
+        .delete()
+        .eq('date', dateItem.date)
+        .eq('date_shift_type', dateItem.shift_type)
+        .select();
+
+      if (error) throw error;
+
+      console.log(`✅ ${deletedRecords.length} performans kaydı silindi`);
+
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'DELETE',
+        tableName: 'performance_data',
+        recordId: null,
+        oldValues: { dateItem, deletedRecords: deletedRecords.length },
+        newValues: null,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Performans tarihi silindi: ${dateItem.display_name} (${deletedRecords.length} kayıt silindi)`
+      });
+
+      alert(`✅ Tarih başarıyla silindi!\n\n${deletedRecords.length} performans kaydı silindi.\n\nVeriler yenileniyor...`);
+      
+      // Modal verilerini yenile
+      await handleOpenDateEditModal();
+      
+      // State'leri sıfırla ve verileri yeniden yükle
+      setAnalysisData(null);
+      setAvailableDates([]);
+      setSelectedDates([]);
+      
+      // Kısa bir gecikme ile verileri yeniden yükle
+      setTimeout(() => {
+        loadPerformanceDataFromDatabase();
+      }, 200);
+      
+    } catch (error) {
+      console.error('❌ Performans tarihi silme hatası:', error);
+      alert(`❌ Tarih silinirken hata oluştu: ${error.message}`);
+    } finally {
+      setDateEditLoading(false);
+    }
+  };
 
   // Sheet adlarını normalize et
   const normalizeSheetName = (sheetName) => {
@@ -48,6 +229,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     
     if (!personnelDatabase.length) {
       // Personnel database henüz yüklenmemiş
+      console.log('⚠️ Personnel database henüz yüklenmemiş, veri yükleme bekleniyor...');
       return;
     }
 
@@ -429,6 +611,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
         
         // İlk veri yükleme tamamlandı
+        console.log('✅ Performans verileri başarıyla yüklendi ve analiz edildi');
         setTimeout(() => {
           setInitialDataLoading(false);
         }, 300);
@@ -440,7 +623,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         }, 500);
       }
       } catch (error) {
-      console.error('Performans verileri yükleme hatası:', error);
+      console.error('❌ Performans verileri yükleme hatası:', error);
       // Hata durumunda da loading'i bitir
       setTimeout(() => {
         setInitialDataLoading(false);
@@ -2285,6 +2468,15 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               />
             </label>
 
+            {analysisData && (
+              <button
+                onClick={handleOpenDateEditModal}
+                className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <Calendar className="w-3 h-3" />
+                <span className="font-medium text-sm">Tarih Düzenle</span>
+              </button>
+            )}
 
           </div>
         </div>
@@ -2803,6 +2995,141 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         </>
       )}
 
+      {/* Performans Tarih Düzenleme Modalı */}
+      {showDateEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[85vh] overflow-hidden border border-gray-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-100">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                <Calendar className="w-6 h-6 mr-3 text-purple-600" />
+                Performans Tarih Düzenleme
+              </h3>
+              <button
+                onClick={() => setShowDateEditModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+              <div className="space-y-6">
+                {/* Tüm Tarihler Listesi */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                  <h4 className="font-bold text-blue-900 text-lg mb-4">📋 Tüm Performans Tarihleri</h4>
+                  
+                  {dateEditLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-3 text-blue-600 font-medium">Tarihler yükleniyor...</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {allPerformanceDates.map((dateItem, index) => (
+                        <div 
+                          key={dateItem.id}
+                          onClick={() => handleSelectDateForEdit(dateItem)}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                            selectedDateForEdit?.id === dateItem.id
+                              ? 'border-purple-500 bg-purple-50'
+                              : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
+                          }`}
+                        >
+                          <div className="text-sm font-medium text-gray-900">
+                            {dateItem.display_name}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            ID: {dateItem.id}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Sheet: {dateItem.sheet_name || 'N/A'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Seçili Tarih Düzenleme */}
+                {selectedDateForEdit && (
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                    <h4 className="font-bold text-green-900 text-lg mb-4">✏️ Seçili Tarihi Düzenle</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-green-800 mb-2">Yeni Tarih</label>
+                        <input
+                          type="date"
+                          value={dateEditForm.new_date}
+                          onChange={(e) => setDateEditForm({...dateEditForm, new_date: e.target.value})}
+                          className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-green-800 mb-2">Yeni Vardiya Türü</label>
+                        <select
+                          value={dateEditForm.new_shift_type}
+                          onChange={(e) => setDateEditForm({...dateEditForm, new_shift_type: e.target.value})}
+                          className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                          <option value="gunduz">🌅 Gündüz</option>
+                          <option value="gece">🌙 Gece</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="text-sm text-yellow-800">
+                        <strong>⚠️ Dikkat:</strong> Bu işlem tüm veritabanında bu tarih aralığındaki tüm performans kayıtlarını etkileyecektir.
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end space-x-3">
+                      <button
+                        onClick={() => setSelectedDateForEdit(null)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                      >
+                        Seçimi İptal Et
+                      </button>
+                      <button
+                        onClick={() => handleDeletePerformanceDate(selectedDateForEdit)}
+                        disabled={dateEditLoading}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {dateEditLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                            Siliniyor...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2 inline" />
+                            Bu Tarihi Sil
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={handleUpdatePerformanceDate}
+                        disabled={dateEditLoading}
+                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {dateEditLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                            Güncelleniyor...
+                          </>
+                        ) : (
+                          'Tüm Veritabanında Güncelle'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -36,9 +36,35 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   });
   const [dateEditLoading, setDateEditLoading] = useState(false);
   
+  // Yardımcı: dd.MM.yyyy[ boşluk + metin] -> yyyy-MM-dd
+  const formatDateToISO = (displayDate) => {
+    if (!displayDate) return '';
+    // Örn: '19.09.2025' veya '19.09.2025 GÜNDÜZ'
+    const pure = displayDate.toString().split(' ')[0].trim();
+    const parts = pure.split('.');
+    if (parts.length !== 3) return pure; // zaten ISO olabilir
+    const [dayRaw, monthRaw, yearRaw] = parts;
+    const day = dayRaw.replace(/\D/g, '').padStart(2, '0');
+    const month = monthRaw.replace(/\D/g, '').padStart(2, '0');
+    const year = yearRaw.replace(/\D/g, '');
+    if (!year || !month || !day) return pure;
+    return `${year}-${month}-${day}`;
+  };
 
+  // Yardımcı: pozisyondan sürücü/şoför tespiti (tüm varyasyonlar)
+  const isDriverRole = (position) => {
+    if (!position) return false;
+    const lower = position.toString().toLowerCase();
+    // Türkçe karakter varyasyonlarını da yakala
+    const normalized = lower
+      .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i');
+    return (
+      lower.includes('şoför') || lower.includes('sürücü') ||
+      normalized.includes('sofor') || normalized.includes('surucu') ||
+      lower.includes('driver') || lower.includes('şöför') || lower.includes('soför')
+    );
+  };
 
-  
   // File input ref
   const fileInputRef = useRef(null);
 
@@ -788,8 +814,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           const sheetName = dayInfo ? dayInfo.sheetName : date;
           
           // Position'a bakarak şoför olup olmadığını belirle
-          const isDriverPosition = personnelInfo.position && 
-            personnelInfo.position.toLowerCase().includes('şoför');
+          const isDriverPosition = isDriverRole(personnelInfo.position);
           
           performanceDataArray.push({
             date: formattedDate,
@@ -836,8 +861,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           const sheetName = dayInfo ? dayInfo.sheetName : date;
           
           // Position'a bakarak şoför olup olmadığını belirle
-          const isDriverPosition = personnelInfo.position && 
-            personnelInfo.position.toLowerCase().includes('şoför');
+          const isDriverPosition = isDriverRole(personnelInfo.position);
           
           performanceDataArray.push({
             date: formattedDate,
@@ -1377,42 +1401,49 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         
         // ŞOFÖRLERİ İŞLE
         const matchedDriver = findMatchingPerson(sofor, results.drivers);
-          if (matchedDriver) {
-          // Güncel vardiya bilgisini veritabanından çek ve güncelle
-          const currentShift = getPersonnelShiftFromDatabase(matchedDriver);
-          results.drivers[matchedDriver].shift = currentShift;
+        // Eşleşme yoksa bile, Excel'deki adıyla geçici bir şoför kaydı aç
+        const driverKey = matchedDriver || sofor;
+        if (!results.drivers[driverKey]) {
+          results.drivers[driverKey] = {
+            name: driverKey,
+            shift: results.dailyData[sheetName].dateShiftType?.toUpperCase() === 'GECE' ? 'GECE' : 'GÜNDÜZ',
+            totalTrips: 0,
+            totalPallets: 0,
+            totalBoxes: 0,
+            dayData: {}
+          };
+        }
+        {
+          // Güncel vardiya bilgisini veritabanından çek ve güncelle (varsa)
+          const currentShift = getPersonnelShiftFromDatabase(driverKey);
+          if (currentShift) {
+            results.drivers[driverKey].shift = currentShift;
+          }
           
           // Günlük veri yapısını hazırla
-            if (!results.drivers[matchedDriver].dayData[sheetName]) {
-              results.drivers[matchedDriver].dayData[sheetName] = {
+          if (!results.drivers[driverKey].dayData[sheetName]) {
+            results.drivers[driverKey].dayData[sheetName] = {
               trips: 0, pallets: 0, boxes: 0, stores: []
             };
           }
           
           // Günlük benzersiz mağaza takibi
-          if (!dailyPersonnelVisits.has(matchedDriver)) {
-            dailyPersonnelVisits.set(matchedDriver, new Set());
+          if (!dailyPersonnelVisits.has(driverKey)) {
+            dailyPersonnelVisits.set(driverKey, new Set());
           }
           
           // Bu şoför bu mağazaya daha önce gitmişse tekrar sayma
-          if (!dailyPersonnelVisits.get(matchedDriver).has(magazaKodu)) {
-            dailyPersonnelVisits.get(matchedDriver).add(magazaKodu);
-            
-            // Sefer sayısını artır
-            results.drivers[matchedDriver].totalTrips++;
-            results.drivers[matchedDriver].dayData[sheetName].trips++;
-            results.drivers[matchedDriver].dayData[sheetName].stores.push(magazaKodu);
-            
-            // Yeni sefer sayıldı
-          } else {
-            // Aynı mağaza, tekrar sayılmadı
+          if (!dailyPersonnelVisits.get(driverKey).has(magazaKodu)) {
+            dailyPersonnelVisits.get(driverKey).add(magazaKodu);
+            results.drivers[driverKey].totalTrips++;
+            results.drivers[driverKey].dayData[sheetName].trips++;
+            results.drivers[driverKey].dayData[sheetName].stores.push(magazaKodu);
           }
-          
-          // Palet ve kasa her zaman ekle
-          results.drivers[matchedDriver].totalPallets += palet;
-          results.drivers[matchedDriver].totalBoxes += kasa;
-          results.drivers[matchedDriver].dayData[sheetName].pallets += palet;
-          results.drivers[matchedDriver].dayData[sheetName].boxes += kasa;
+          // Palet ve kasa ekle
+          results.drivers[driverKey].totalPallets += palet;
+          results.drivers[driverKey].totalBoxes += kasa;
+          results.drivers[driverKey].dayData[sheetName].pallets += palet;
+          results.drivers[driverKey].dayData[sheetName].boxes += kasa;
         }
         
         // PERSONELLERİ İŞLE

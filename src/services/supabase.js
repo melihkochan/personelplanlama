@@ -1022,10 +1022,21 @@ export const bulkSavePerformanceData = async (performanceDataArray, sheetNames =
     
     // Mevcut verileri temizle
     if (sheetNames && sheetNames.length > 0) {
+      // Sheet adlarını kayıtlardaki formatla aynı olacak şekilde normalize et
+      const normalizeSheet = (name) => {
+        if (!name) return '';
+        return name.toUpperCase()
+          .replace(/\s+/g, ' ')
+          .replace(/GUNDUZ/g, 'GÜNDÜZ')
+          .replace(/GÜNDUEZ/g, 'GÜNDÜZ')
+          .trim();
+      };
+      const normalizedSheets = sheetNames.map(normalizeSheet);
+
       const { error: deleteError } = await supabase
         .from('performance_data')
         .delete()
-        .in('sheet_name', sheetNames);
+        .in('sheet_name', normalizedSheets);
       
       if (deleteError) {
         console.error('❌ Mevcut veri temizleme hatası:', deleteError);
@@ -1076,10 +1087,27 @@ export const bulkSavePerformanceData = async (performanceDataArray, sheetNames =
       };
     }));
     
+    // Upsert öncesi: varchar(20) kısıtı olan alanları güvenli şekilde kısalt
+    const sanitizeTo20 = (val) => {
+      if (val === null || val === undefined) return null;
+      const s = val.toString();
+      return s.length > 20 ? s.substring(0, 20) : s;
+    };
+
+    const sanitizedArray = enrichedDataArray.map((rec) => ({
+      ...rec,
+      // En riskli alanlar
+      store_codes: sanitizeTo20(rec.store_codes),
+      license_plate: sanitizeTo20(rec.license_plate),
+      employee_type: sanitizeTo20(rec.employee_type),
+      date_shift_type: sanitizeTo20(rec.date_shift_type)
+      // employee_code KESİNLİKLE kısaltılmamalı; eşsiz anahtar
+    }));
+    
     // Yeni verileri ekle (upsert ile duplicate kontrolü)
     const { data, error } = await supabase
       .from('performance_data')
-      .upsert(enrichedDataArray, { 
+      .upsert(sanitizedArray, { 
         onConflict: 'date,employee_code',
         ignoreDuplicates: false 
       })
@@ -4572,6 +4600,29 @@ export const getPuantajStats = async (ay = null) => {
       }
     };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Veritabanı şemasını güncelle - store_codes alanını text yap
+export const updatePerformanceDataSchema = async () => {
+  try {
+    // store_codes alanını character varying(20)'den text'e çevir
+    const { error } = await supabaseAdmin.rpc('exec_sql', {
+      sql: `
+        ALTER TABLE performance_data 
+        ALTER COLUMN store_codes TYPE text;
+      `
+    });
+    
+    if (error) {
+      console.error('❌ Şema güncelleme hatası:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true, message: 'Veritabanı şeması güncellendi' };
+  } catch (error) {
+    console.error('❌ Şema güncelleme catch hatası:', error);
     return { success: false, error: error.message };
   }
 };

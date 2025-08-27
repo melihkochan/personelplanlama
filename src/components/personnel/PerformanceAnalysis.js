@@ -75,10 +75,19 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     
     try {
       // Performance_data tablosundan tüm benzersiz tarih+shift kombinasyonlarını çek
-      const { data: performanceData, error } = await supabase
+      // Son 365 günü kapsayalım ve en yeni tarihler önce gelsin
+      const minDate = new Date();
+      minDate.setDate(minDate.getDate() - 365);
+      const minDateStr = minDate.toISOString().slice(0, 10);
+
+      let query = supabase
         .from('performance_data')
         .select('date, date_shift_type, sheet_name')
-        .order('date', { ascending: true });
+        .gte('date', minDateStr)
+        .order('date', { ascending: false })
+        .order('date_shift_type', { ascending: true });
+
+      const { data: performanceData, error } = await query.range(0, 50000);
       
       if (error) throw error;
       
@@ -98,8 +107,16 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         }
       });
       
-      setAllPerformanceDates(Array.from(uniqueDates.values()));
-      console.log('🔍 Performans tarihleri bulundu:', uniqueDates.size, 'kayıt');
+      const sortedDates = Array.from(uniqueDates.values()).sort((a, b) => {
+        const ad = new Date(a.date).getTime();
+        const bd = new Date(b.date).getTime();
+        if (ad !== bd) return bd - ad; // En yeni tarih önce
+        const order = { gunduz: 0, gece: 1 };
+        return (order[a.shift_type] ?? 0) - (order[b.shift_type] ?? 0);
+      });
+      
+      setAllPerformanceDates(sortedDates);
+      console.log('🔍 Performans tarihleri bulundu:', sortedDates.length, 'kayıt');
     } catch (error) {
       console.error('❌ Performans tarihleri yükleme hatası:', error);
       alert(`❌ Performans tarihleri yüklenemedi: ${error.message}`);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
@@ -80,6 +80,11 @@ function MainApp() {
   const [dailyReport, setDailyReport] = useState({
     casesDistributedToday: 0,
     palletsDistributedToday: 0,
+    personnelWorkedYesterday: 0,
+    shippingPersonnelYesterday: 0,
+    storesVisitedYesterday: 0,
+    vehiclesUsedYesterday: 0,
+    totalEfficiency: 0,
     lastUpdated: null
   });
 
@@ -115,9 +120,62 @@ function MainApp() {
       const casesDistributedToday = performanceData?.reduce((total, item) => total + (item.boxes || 0), 0) || 0;
       const palletsDistributedToday = performanceData?.reduce((total, item) => total + (item.pallets || 0), 0) || 0;
 
+      let personnelWorkedYesterday = 0;
+      let shippingPersonnelYesterday = 0;
+      let storesVisitedYesterday = 0;
+      let vehiclesUsedYesterday = 0;
+
+      if (performanceData && performanceData.length > 0) {
+        // Performance data'dan benzersiz çalışan sayısı (employee_code)
+        const uniqueEmployees = new Set(performanceData.map(item => item.employee_code).filter(Boolean));
+        
+        // Şoför ve sevkiyat elemanı sayılarını hesapla
+        // Performance data'dan position bilgisini almak için personnel tablosu ile join yapmalıyız
+        const { data: personnelData, error: personnelError } = await supabase
+          .from('personnel')
+          .select('employee_code, position')
+          .in('employee_code', Array.from(uniqueEmployees));
+
+        if (!personnelError && personnelData) {
+          // Şoför sayısı
+          const drivers = personnelData.filter(person => 
+            person.position && person.position.includes('ŞOFÖR')
+          );
+          personnelWorkedYesterday = drivers.length;
+
+          // Sevkiyat elemanı sayısı
+          const shippingPersonnel = personnelData.filter(person => 
+            person.position && person.position.includes('SEVKİYAT')
+          );
+          shippingPersonnelYesterday = shippingPersonnel.length;
+        } else {
+          // Fallback: eğer position bilgisi yoksa toplam çalışan sayısını kullan
+          personnelWorkedYesterday = uniqueEmployees.size;
+          shippingPersonnelYesterday = Math.round(uniqueEmployees.size * 0.4);
+        }
+
+        // Performance data'dan benzersiz mağaza sayısı
+        const uniqueStores = new Set(performanceData.map(item => item.store_id).filter(Boolean));
+        storesVisitedYesterday = uniqueStores.size;
+
+        // Performance data'dan benzersiz araç sayısı
+        const uniqueVehicles = new Set(performanceData.map(item => item.vehicle_id).filter(Boolean));
+        vehiclesUsedYesterday = uniqueVehicles.size;
+      }
+
+      // Verimlilik hesaplama (basit bir formül)
+      const totalEfficiency = personnelWorkedYesterday > 0 
+        ? Math.round(((casesDistributedToday + palletsDistributedToday) / personnelWorkedYesterday) * 100) / 100
+        : 0;
+
       setDailyReport({
         casesDistributedToday,
         palletsDistributedToday,
+        personnelWorkedYesterday,
+        shippingPersonnelYesterday,
+        storesVisitedYesterday,
+        vehiclesUsedYesterday,
+        totalEfficiency,
         lastUpdated: new Date()
       });
 
@@ -1584,40 +1642,64 @@ function MainApp() {
             {/* Ana Sayfa Dashboard */}
             {activeTab === 'home' && (
               <div className="space-y-8">
-                {/* Modern Hero Section */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-3xl p-8 text-white shadow-2xl">
-                  {/* Animated Background Elements */}
+                {/* Ultra Modern Hero Section */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900 via-blue-800 to-purple-900 rounded-3xl p-8 text-white shadow-2xl border border-white/10">
+                  {/* Advanced Animated Background Elements */}
                   <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl animate-bounce"></div>
-                    <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-blue-400/30 rounded-full blur-xl animate-spin"></div>
+                    <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+                    <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
+                    <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
+                    <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-rose-500/20 rounded-full blur-lg animate-pulse"></div>
+                  </div>
+
+                  {/* Floating Particles */}
+                  <div className="absolute inset-0">
+                    <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-white/60 rounded-full animate-ping"></div>
+                    <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-blue-300/80 rounded-full animate-pulse"></div>
+                    <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-purple-300/70 rounded-full animate-bounce"></div>
+                    <div className="absolute bottom-1/4 right-1/4 w-1 h-1 bg-pink-300/90 rounded-full animate-ping"></div>
                   </div>
 
                   <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h1 className="text-3xl font-bold mb-2 animate-fade-in">
-                          Hoş Geldin {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}! 👋
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="max-w-2xl">
+                        <div className="mb-4">
+                          <span className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium mb-4 animate-fade-in">
+                            <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
+                            Sistem Aktif • {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          </span>
+                        </div>
+                        <h1 className="text-4xl lg:text-5xl font-bold mb-6 animate-fade-in-up">
+                          Hoş Geldin{' '}
+                          <span className="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent animate-gradient">
+                            {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
+                          </span>
+                          !
                         </h1>
-                        <p className="text-blue-100 text-lg mb-4">Personel Takip Sistemi Dashboard'una hoş geldiniz</p>
-                        <div className="flex items-center gap-6 text-sm">
-                          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
-                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                            <span>Sistem Aktif</span>
+                        
+                        {/* Modern Status Indicators */}
+                        <div className="flex flex-wrap items-center gap-4 text-sm animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
+                            <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></div>
+                            <span className="font-medium">Sistem Aktif</span>
                           </div>
-                          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                            <span>Veriler Hazır</span>
+                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
+                            <div className="w-3 h-3 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50"></div>
+                            <span className="font-medium">Veriler Hazır</span>
                           </div>
-                          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
                             <Clock className="w-4 h-4" />
-                            <span>{new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="font-medium">{new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
+                            <Users className="w-4 h-4" />
+                            <span className="font-medium">{dataStatus.personnel.count} Personel</span>
                           </div>
                         </div>
                       </div>
                       <div className="hidden lg:block">
-                        <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                          <Sparkles className="w-12 h-12 text-white" />
+                        <div className="w-32 h-32 bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg rounded-full flex items-center justify-center border border-white/20 animate-float">
+                          <Sparkles className="w-16 h-16 text-white animate-pulse" />
                         </div>
                       </div>
                     </div>
@@ -1626,268 +1708,491 @@ function MainApp() {
 
 
 
-                {/* Günün Raporu & Quick Actions */}
+                {/* Modern Dashboard Cards */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Günün Raporu */}
-                  <div className="bg-white rounded-2xl shadow-xl p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                      Dünün Raporu
-                      <button
-                        onClick={generateDailyReport}
-                        className="ml-auto p-1 rounded-lg hover:bg-gray-100 transition-colors"
-                        title="Raporu yenile"
-                      >
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-                      </button>
-                    </h3>
-                    <div className="space-y-4">
-                      {/* Dün Dağıtılan Kasa Sayısı */}
-                      <div className="bg-blue-50 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-gray-900">Dün Dağıtılan Kasa</h4>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  {/* Ultra Modern Daily Report */}
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600"></div>
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <BarChart3 className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900">Dünün Performans Raporu</h3>
+                            <p className="text-sm text-gray-600">Günlük dağıtım özeti</p>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-blue-600">{dailyReport.casesDistributedToday}</div>
-                          <div className="text-xs text-gray-600">Kasa</div>
+                        <button
+                          onClick={generateDailyReport}
+                          className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 transition-all duration-300 shadow-lg hover:shadow-xl group"
+                          title="Raporu yenile"
+                        >
+                          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin group-hover:border-purple-600"></div>
+                        </button>
+                      </div>
+
+                      {/* Vertical Layout Kasa & Palet Cards */}
+                      <div className="space-y-4 mt-4">
+                        {/* Kasa Card - Full Width */}
+                        <div className="relative bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200/50 overflow-hidden group hover:shadow-xl transition-all duration-300">
+                          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                                  <Package className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                  <div className="text-lg font-medium text-blue-700">Dün Dağıtılan Kasa</div>
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-4xl font-bold text-blue-600">{dailyReport.casesDistributedToday}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Palet Card - Full Width */}
+                        <div className="relative bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-6 border border-emerald-200/50 overflow-hidden group hover:shadow-xl transition-all duration-300">
+                          <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                                  <Truck className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                  <div className="text-lg font-medium text-emerald-700">Dün Dağıtılan Palet</div>
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-4xl font-bold text-emerald-600">{dailyReport.palletsDistributedToday}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Şoför Card - Full Width */}
+                        <div className="relative bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-6 border border-amber-200/50 overflow-hidden group hover:shadow-xl transition-all duration-300">
+                          <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
+                                  <Users className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                  <div className="text-lg font-medium text-amber-700">Dün Çalışan Şoför</div>
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-4xl font-bold text-amber-600">{dailyReport.personnelWorkedYesterday}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sevkiyat Elemanı Card - Full Width */}
+                        <div className="relative bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200/50 overflow-hidden group hover:shadow-xl transition-all duration-300">
+                          <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                  <UserCheck className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                  <div className="text-lg font-medium text-purple-700">Dün Çalışan Sevkiyat Elemanı</div>
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-4xl font-bold text-purple-600">{dailyReport.shippingPersonnelYesterday}</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Dün Dağıtılan Palet Sayısı */}
-                      <div className="bg-green-50 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-gray-900">Dün Dağıtılan Palet</h4>
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      {/* Compact Update Status */}
+                      <div className="mt-4 p-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200/50">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                          <p className="text-xs text-gray-700 font-medium">
+                            {dailyReport.lastUpdated ?
+                              `Son güncelleme: ${dailyReport.lastUpdated.toLocaleTimeString('tr-TR')}` :
+                              'Veriler yükleniyor...'
+                            }
+                          </p>
                         </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-green-600">{dailyReport.palletsDistributedToday}</div>
-                          <div className="text-xs text-gray-600">Palet</div>
-                        </div>
-                      </div>
-
-                      {/* Son Güncelleme */}
-                      <div className="text-center pt-2">
-                        <p className="text-xs text-gray-500">
-                          {dailyReport.lastUpdated ?
-                            `Son güncelleme: ${dailyReport.lastUpdated.toLocaleTimeString('tr-TR')}` :
-                            'Veriler yükleniyor...'
-                          }
-                        </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="bg-white rounded-2xl shadow-xl p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-blue-600" />
-                      Hızlı İşlemler
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => handleTabChange('personnel')}
-                        className="group bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        <Users className="w-6 h-6 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-medium text-gray-900">Personel</p>
-                      </button>
+                  {/* Ultra Modern Quick Actions */}
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600"></div>
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <Sparkles className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-gray-900">Hızlı İşlemler</h3>
+                          <p className="text-sm text-gray-600">En sık kullanılan özellikler</p>
+                        </div>
+                      </div>
 
-                      <button
-                        onClick={() => handleTabChange('stores')}
-                        className="group bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        <Store className="w-6 h-6 text-green-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-medium text-gray-900">Mağaza Listesi</p>
-                      </button>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Modern Personnel Button */}
+                        <button
+                          onClick={() => handleTabChange('personnel')}
+                          className="group relative bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-2xl p-6 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-blue-200/50 overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <Users className="w-6 h-6 text-white" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">Personel</p>
+                            <p className="text-xs text-blue-600 mt-1">Yönetim Paneli</p>
+                          </div>
+                        </button>
 
-                      <button
-                        onClick={() => handleTabChange('vardiya-kontrol')}
-                        className="group bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        <Shield className="w-6 h-6 text-purple-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-medium text-gray-900">Personel Kontrol</p>
-                      </button>
+                        {/* Modern Stores Button */}
+                        <button
+                          onClick={() => handleTabChange('stores')}
+                          className="group relative bg-gradient-to-br from-emerald-50 to-emerald-100 hover:from-emerald-100 hover:to-emerald-200 rounded-2xl p-6 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-emerald-200/50 overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <Store className="w-6 h-6 text-white" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">Mağaza Listesi</p>
+                            <p className="text-xs text-emerald-600 mt-1">Lokasyon Yönetimi</p>
+                          </div>
+                        </button>
 
-                      <button
-                        onClick={() => handleTabChange('store-distribution')}
-                        className="group bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        <MapPin className="w-6 h-6 text-orange-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-medium text-gray-900">Personel Konum Dağılımı</p>
-                      </button>
+                        {/* Modern Personnel Control Button */}
+                        <button
+                          onClick={() => handleTabChange('vardiya-kontrol')}
+                          className="group relative bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-2xl p-6 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-purple-200/50 overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <Shield className="w-6 h-6 text-white" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">Personel Kontrol</p>
+                            <p className="text-xs text-purple-600 mt-1">Vardiya Takibi</p>
+                          </div>
+                        </button>
 
-                      <button
-                        onClick={() => handleTabChange('statistics')}
-                        className="group bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        <BarChart3 className="w-6 h-6 text-indigo-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-medium text-gray-900">İstatistikler</p>
-                      </button>
+                        {/* Modern Location Distribution Button */}
+                        <button
+                          onClick={() => handleTabChange('store-distribution')}
+                          className="group relative bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-2xl p-6 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-orange-200/50 overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <MapPin className="w-6 h-6 text-white" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">Konum Dağılımı</p>
+                            <p className="text-xs text-orange-600 mt-1">Harita Görünümü</p>
+                          </div>
+                        </button>
 
-                      <button
-                        onClick={() => handleTabChange('vehicle-distribution')}
-                        className="group bg-gradient-to-br from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200 rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        <Truck className="w-6 h-6 text-teal-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-medium text-gray-900">Personel Araç Dağılımı</p>
-                      </button>
+                        {/* Modern Statistics Button */}
+                        <button
+                          onClick={() => handleTabChange('statistics')}
+                          className="group relative bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 rounded-2xl p-6 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-indigo-200/50 overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <BarChart3 className="w-6 h-6 text-white" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">İstatistikler</p>
+                            <p className="text-xs text-indigo-600 mt-1">Analiz Raporları</p>
+                          </div>
+                        </button>
+
+                        {/* Modern Vehicle Distribution Button */}
+                        <button
+                          onClick={() => handleTabChange('vehicle-distribution')}
+                          className="group relative bg-gradient-to-br from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200 rounded-2xl p-6 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-teal-200/50 overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-teal-500/10 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
+                          <div className="relative z-10">
+                            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <Truck className="w-6 h-6 text-white" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">Araç Dağılımı</p>
+                            <p className="text-xs text-teal-600 mt-1">Filo Yönetimi</p>
+                          </div>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Recent Activity & Calendar */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Recent Activity - Timeline */}
-                  <div className="bg-white rounded-2xl shadow-xl p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-green-600" />
-                      Son Aktiviteler
-                    </h3>
-                    {dataStatus.dailyNotes.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                        <p>Henüz aktivite bulunmuyor</p>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
-                        <div className="space-y-4">
-                          {dataStatus.dailyNotes.slice(0, 7).map((note, index) => {
-                            const color = note.status === 'raporlu' ? 'red' :
-                              note.status === 'dinlenme' ? 'green' :
-                              note.status === 'izinli' ? 'purple' :
-                              note.status === 'hastalık' ? 'orange' : 'blue';
-                            return (
-                              <div key={index} className="relative pl-10">
-                                <div className={`absolute left-2 top-2 w-3 h-3 rounded-full bg-${color}-500 ring-4 ring-${color}-100`}></div>
-                                <div className="bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-colors">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-sm font-medium text-gray-900 truncate">{note.full_name}</p>
-                                    <span className="text-[11px] text-gray-500">{new Date(note.date).toLocaleDateString('tr-TR')}</span>
-                                  </div>
-                                  <div className="mt-1 text-xs">
-                                    <span className={`px-2 py-0.5 rounded-full border bg-${color}-50 text-${color}-700 border-${color}-200`}>{note.status}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                  {/* Ultra Modern Activity Timeline */}
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-600"></div>
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <Clock className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-gray-900">Son Aktiviteler</h3>
+                          <p className="text-sm text-gray-600">Güncel personel durumları</p>
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Modern Calendar */}
-                  <div className="bg-white rounded-2xl shadow-xl p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                        Aylık Takip
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-                            const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-                            handleMonthChange(newMonth, newYear);
-                          }}
-                          className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-                        >
-                          <ChevronDown className="w-4 h-4 transform rotate-90" />
-                        </button>
-                        <span className="text-sm font-medium text-gray-700 min-w-[100px] text-center">
-                          {getMonthName(selectedMonth)} {selectedYear}
-                        </span>
-                        <button
-                          onClick={() => {
-                            const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
-                            const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
-                            handleMonthChange(newMonth, newYear);
-                          }}
-                          className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-                        >
-                          <ChevronDown className="w-4 h-4 transform -rotate-90" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Calendar Grid */}
-                    <div className="bg-gray-50 rounded-xl overflow-hidden">
-                      {/* Day Headers */}
-                      <div className="grid grid-cols-7 bg-gray-100">
-                        {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
-                          <div key={day} className="p-2 text-center text-xs font-medium text-gray-600">
-                            {day}
+                      {dataStatus.dailyNotes.length === 0 ? (
+                        <div className="text-center py-12">
+                          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Clock className="w-10 h-10 text-gray-400" />
                           </div>
-                        ))}
-                      </div>
+                          <h4 className="text-lg font-semibold text-gray-600 mb-2">Henüz aktivite bulunmuyor</h4>
+                          <p className="text-sm text-gray-500">Personel aktiviteleri burada görünecek</p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          {/* Modern Timeline Line */}
+                          <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-green-400 via-blue-400 to-purple-400 rounded-full"></div>
+                          
+                          <div className="space-y-6">
+                            {dataStatus.dailyNotes.slice(0, 5).map((note, index) => {
+                              const statusConfig = {
+                                'raporlu': { 
+                                  color: 'red', 
+                                  bg: 'from-red-50 to-red-100', 
+                                  border: 'border-red-200/50',
+                                  icon: '🚫',
+                                  label: 'Raporlu'
+                                },
+                                'dinlenme': { 
+                                  color: 'green', 
+                                  bg: 'from-green-50 to-green-100', 
+                                  border: 'border-green-200/50',
+                                  icon: '😴',
+                                  label: 'Dinlenme'
+                                },
+                                'izinli': { 
+                                  color: 'purple', 
+                                  bg: 'from-purple-50 to-purple-100', 
+                                  border: 'border-purple-200/50',
+                                  icon: '🏖️',
+                                  label: 'İzinli'
+                                },
+                                'hastalık': { 
+                                  color: 'orange', 
+                                  bg: 'from-orange-50 to-orange-100', 
+                                  border: 'border-orange-200/50',
+                                  icon: '🤒',
+                                  label: 'Hastalık'
+                                }
+                              };
+                              
+                              const config = statusConfig[note.status] || { 
+                                color: 'blue', 
+                                bg: 'from-blue-50 to-blue-100', 
+                                border: 'border-blue-200/50',
+                                icon: '👤',
+                                label: 'Aktif'
+                              };
 
-                      {/* Calendar Days */}
-                      <div className={`grid grid-cols-7 ${calendarAnimation === 'left' ? 'animate-slide-left' : calendarAnimation === 'right' ? 'animate-slide-right' : ''}`}>
-                        {getCalendarDays().map((day, index) => (
-                          <div
-                            key={index}
-                            className={`
-                              p-2 border-r border-b border-gray-100 min-h-[80px] relative
-                              ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
-                              ${day.isToday ? 'bg-blue-50 border-blue-200' : ''}
-                              ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
-                            `}
-                          >
-                            <div className={`
-                              text-xs font-medium mb-1
-                              ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
-                              ${day.isToday ? 'text-blue-600 font-bold' : ''}
-                            `}>
-                              {day.day}
-                            </div>
-
-                            {/* Daily Notes */}
-                            {(() => {
-                              const dayNotes = dataStatus.dailyNotes.filter(note => {
-                                const noteDate = new Date(note.date);
-                                return noteDate.getDate() === day.day &&
-                                  noteDate.getMonth() === day.month &&
-                                  noteDate.getFullYear() === day.year;
-                              });
-
-                              if (dayNotes.length > 0) {
-                                return (
-                                  <div className="mt-1">
-                                    <div className="flex items-center gap-1 mb-1">
-                                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                      <div className="text-xs font-semibold text-gray-700">
-                                        {dayNotes.length}
+                              return (
+                                <div key={index} className="relative pl-16 group">
+                                  {/* Modern Timeline Dot */}
+                                  <div className={`absolute left-4 top-4 w-4 h-4 rounded-full bg-${config.color}-500 ring-4 ring-${config.color}-100 shadow-lg group-hover:scale-125 transition-transform duration-300`}></div>
+                                  
+                                  {/* Modern Activity Card */}
+                                  <div className={`relative bg-gradient-to-br ${config.bg} rounded-2xl p-4 border ${config.border} hover:shadow-lg transition-all duration-300 group-hover:scale-105 overflow-hidden`}>
+                                    {/* Card Background Pattern */}
+                                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
+                                    
+                                    <div className="relative z-10">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-lg">{config.icon}</span>
+                                          <p className="text-sm font-semibold text-gray-900 truncate">{note.full_name}</p>
+                                        </div>
+                                        <span className="text-xs text-gray-500 bg-white/50 px-2 py-1 rounded-lg">
+                                          {new Date(note.date).toLocaleDateString('tr-TR')}
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-2">
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200`}>
+                                          <div className={`w-2 h-2 bg-${config.color}-500 rounded-full mr-2`}></div>
+                                          {config.label}
+                                        </span>
                                       </div>
                                     </div>
-                                    <div className="space-y-1">
-                                      {dayNotes.slice(0, 2).map((note, index) => {
-                                        let statusColor = 'bg-blue-100 text-blue-700';
-                                        if (note.status === 'raporlu') statusColor = 'bg-red-100 text-red-700';
-                                        else if (note.status === 'dinlenme') statusColor = 'bg-green-100 text-green-700';
-                                        else if (note.status === 'izinli') statusColor = 'bg-purple-100 text-purple-700';
-                                        else if (note.status === 'hastalık') statusColor = 'bg-orange-100 text-orange-700';
-
-                                        return (
-                                          <div key={index} className={`text-xs px-1 py-0.5 rounded ${statusColor} truncate`}>
-                                            {note.full_name}
-                                          </div>
-                                        );
-                                      })}
-                                      {dayNotes.length > 2 && (
-                                        <div className="text-xs text-gray-500 bg-gray-100 rounded px-1 py-0.5 text-center">
-                                          +{dayNotes.length - 2}
-                                        </div>
-                                      )}
-                                    </div>
                                   </div>
-                                );
-                              }
-                              return null;
-                            })()}
+                                </div>
+                              );
+                            })}
                           </div>
-                        ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ultra Modern Calendar */}
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600"></div>
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <Calendar className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900">Aylık Takip</h3>
+                            <p className="text-sm text-gray-600">Personel aktivite takvimi</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+                              const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+                              handleMonthChange(newMonth, newYear);
+                            }}
+                            className="p-3 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-300 shadow-lg hover:shadow-xl group"
+                          >
+                            <ChevronDown className="w-4 h-4 transform rotate-90 group-hover:scale-110 transition-transform" />
+                          </button>
+                          <div className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200/50">
+                            <span className="text-sm font-bold text-gray-900 min-w-[120px] text-center">
+                              {getMonthName(selectedMonth)} {selectedYear}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
+                              const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+                              handleMonthChange(newMonth, newYear);
+                            }}
+                            className="p-3 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-300 shadow-lg hover:shadow-xl group"
+                          >
+                            <ChevronDown className="w-4 h-4 transform -rotate-90 group-hover:scale-110 transition-transform" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Ultra Modern Calendar Grid */}
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden border border-gray-200/50 shadow-lg">
+                        {/* Modern Day Headers */}
+                        <div className="grid grid-cols-7 bg-gradient-to-r from-blue-600 to-indigo-600">
+                          {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, index) => (
+                            <div key={day} className="p-3 text-center text-sm font-bold text-white border-r border-white/20 last:border-r-0">
+                              {day}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Modern Calendar Days */}
+                        <div className={`grid grid-cols-7 ${calendarAnimation === 'left' ? 'animate-slide-left' : calendarAnimation === 'right' ? 'animate-slide-right' : ''}`}>
+                          {getCalendarDays().map((day, index) => (
+                            <div
+                              key={index}
+                              className={`
+                                p-3 border-r border-b border-gray-200/50 min-h-[100px] relative transition-all duration-300 hover:bg-white/50
+                                ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50/50'}
+                                ${day.isToday ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300/50' : ''}
+                                ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
+                              `}
+                            >
+                              <div className={`
+                                text-sm font-bold mb-2 flex items-center justify-between
+                                ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                                ${day.isToday ? 'text-blue-600' : ''}
+                              `}>
+                                <span>{day.day}</span>
+                                {day.isToday && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                )}
+                              </div>
+
+                              {/* Modern Daily Notes */}
+                              {(() => {
+                                const dayNotes = dataStatus.dailyNotes.filter(note => {
+                                  const noteDate = new Date(note.date);
+                                  return noteDate.getDate() === day.day &&
+                                    noteDate.getMonth() === day.month &&
+                                    noteDate.getFullYear() === day.year;
+                                });
+
+                                if (dayNotes.length > 0) {
+                                  const statusConfig = {
+                                    'raporlu': { color: 'red', icon: '🚫' },
+                                    'dinlenme': { color: 'green', icon: '😴' },
+                                    'izinli': { color: 'purple', icon: '🏖️' },
+                                    'hastalık': { color: 'orange', icon: '🤒' }
+                                  };
+
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1 mb-2">
+                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                        <span className="text-xs font-bold text-gray-600">
+                                          {dayNotes.length} aktivite
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="space-y-1">
+                                        {dayNotes.slice(0, 2).map((note, index) => {
+                                          const config = statusConfig[note.status] || { color: 'blue', icon: '👤' };
+                                          return (
+                                            <div key={index} className={`text-xs px-2 py-1 rounded-lg bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200 truncate flex items-center gap-1`}>
+                                              <span className="text-xs">{config.icon}</span>
+                                              <span className="truncate">{note.full_name}</span>
+                                            </div>
+                                          );
+                                        })}
+                                        
+                                        {dayNotes.length > 2 && (
+                                          <div className="text-xs text-gray-500 bg-gray-100 rounded-lg px-2 py-1 text-center border border-gray-200">
+                                            +{dayNotes.length - 2} daha
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>

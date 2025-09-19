@@ -107,6 +107,17 @@ function MainApp() {
       yesterday.setDate(today.getDate() - 1);
       const yDate = yesterday.toISOString().split('T')[0];
 
+      console.log('🔍 Ana sayfa - Dünün tarihi:', yDate);
+
+      // Daily_notes tablosundan dünkü verileri al (burada veri var)
+      const { data: dailyNotesData, error: dailyNotesError } = await supabase
+        .from('daily_notes')
+        .select('*')
+        .gte('date', yDate)
+        .lte('date', yDate);
+
+      if (dailyNotesError) throw dailyNotesError;
+
       // Performance_data tablosundan dünkü verileri al
       const { data: performanceData, error: performanceError } = await supabase
         .from('performance_data')
@@ -116,21 +127,56 @@ function MainApp() {
 
       if (performanceError) throw performanceError;
 
+      console.log('📊 Ana sayfa - Daily notes kayıt sayısı:', dailyNotesData?.length || 0);
+      console.log('📊 Ana sayfa - Performance data kayıt sayısı:', performanceData?.length || 0);
+
       // Dünde dağıtılan kasa ve palet sayılarını hesapla
-      const casesDistributedToday = performanceData?.reduce((total, item) => total + (item.boxes || 0), 0) || 0;
-      const palletsDistributedToday = performanceData?.reduce((total, item) => total + (item.pallets || 0), 0) || 0;
+      let casesDistributedToday = 0;
+      let palletsDistributedToday = 0;
+      
+      // Önce performance_data'dan dene
+      if (performanceData && performanceData.length > 0) {
+        console.log('🔍 Ana sayfa - Performance data örnek:', performanceData[0]);
+        console.log('🔍 Ana sayfa - Performance data toplam kayıt sayısı:', performanceData.length);
+        
+        // Basit toplam hesapla
+        casesDistributedToday = performanceData.reduce((total, item) => total + (item.boxes || 0), 0);
+        palletsDistributedToday = performanceData.reduce((total, item) => total + (item.pallets || 0), 0);
+        
+        console.log('📦 Ana sayfa - Performance data kasa sayısı:', casesDistributedToday);
+        console.log('🚛 Ana sayfa - Performance data palet sayısı:', palletsDistributedToday);
+      }
+      // Eğer performance_data boşsa, daily_notes'dan dene
+      else if (dailyNotesData && dailyNotesData.length > 0) {
+        console.log('🔍 Ana sayfa - Daily notes örnek:', dailyNotesData[0]);
+        console.log('🔍 Ana sayfa - Daily notes toplam kayıt sayısı:', dailyNotesData.length);
+        
+        // Daily notes'dan basit toplam hesapla
+        casesDistributedToday = dailyNotesData.reduce((total, item) => total + (item.boxes || 0), 0);
+        palletsDistributedToday = dailyNotesData.reduce((total, item) => total + (item.pallets || 0), 0);
+        
+        console.log('📦 Ana sayfa - Daily notes kasa sayısı:', casesDistributedToday);
+        console.log('🚛 Ana sayfa - Daily notes palet sayısı:', palletsDistributedToday);
+      }
+      else {
+        console.log('⚠️ Ana sayfa - Hiçbir tabloda dünkü veri bulunamadı');
+      }
 
       let personnelWorkedYesterday = 0;
       let shippingPersonnelYesterday = 0;
       let storesVisitedYesterday = 0;
       let vehiclesUsedYesterday = 0;
 
-      if (performanceData && performanceData.length > 0) {
-        // Performance data'dan benzersiz çalışan sayısı (employee_code)
-        const uniqueEmployees = new Set(performanceData.map(item => item.employee_code).filter(Boolean));
+      // Personel sayılarını hesapla
+      let activeData = performanceData && performanceData.length > 0 ? performanceData : dailyNotesData;
+      
+      if (activeData && activeData.length > 0) {
+        // Benzersiz çalışan sayısı (employee_code)
+        const uniqueEmployees = new Set(activeData.map(item => item.employee_code).filter(Boolean));
+        
+        console.log('👥 Ana sayfa - Benzersiz çalışan sayısı:', uniqueEmployees.size);
         
         // Şoför ve sevkiyat elemanı sayılarını hesapla
-        // Performance data'dan position bilgisini almak için personnel tablosu ile join yapmalıyız
         const { data: personnelData, error: personnelError } = await supabase
           .from('personnel')
           .select('employee_code, position')
@@ -148,19 +194,26 @@ function MainApp() {
             person.position && person.position.includes('SEVKİYAT')
           );
           shippingPersonnelYesterday = shippingPersonnel.length;
+          
+          console.log('🚛 Ana sayfa - Şoför sayısı:', personnelWorkedYesterday);
+          console.log('📦 Ana sayfa - Sevkiyat elemanı sayısı:', shippingPersonnelYesterday);
         } else {
           // Fallback: eğer position bilgisi yoksa toplam çalışan sayısını kullan
           personnelWorkedYesterday = uniqueEmployees.size;
           shippingPersonnelYesterday = Math.round(uniqueEmployees.size * 0.4);
+          console.log('⚠️ Ana sayfa - Position bilgisi yok, fallback kullanılıyor');
         }
 
-        // Performance data'dan benzersiz mağaza sayısı
-        const uniqueStores = new Set(performanceData.map(item => item.store_id).filter(Boolean));
+        // Benzersiz mağaza sayısı
+        const uniqueStores = new Set(activeData.map(item => item.store_id).filter(Boolean));
         storesVisitedYesterday = uniqueStores.size;
 
-        // Performance data'dan benzersiz araç sayısı
-        const uniqueVehicles = new Set(performanceData.map(item => item.vehicle_id).filter(Boolean));
+        // Benzersiz araç sayısı
+        const uniqueVehicles = new Set(activeData.map(item => item.vehicle_id).filter(Boolean));
         vehiclesUsedYesterday = uniqueVehicles.size;
+        
+        console.log('🏪 Ana sayfa - Benzersiz mağaza sayısı:', storesVisitedYesterday);
+        console.log('🚗 Ana sayfa - Benzersiz araç sayısı:', vehiclesUsedYesterday);
       }
 
       // Verimlilik hesaplama (basit bir formül)

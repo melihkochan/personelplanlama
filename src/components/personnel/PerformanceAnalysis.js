@@ -281,11 +281,38 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       
       if (result.success && result.data.length > 0) {
         
+        // Personel bazında TÜM verileri göster, sadece toplam hesaplamada benzersiz olanları say
+        const processedData = result.data; // Tüm verileri kullan
+        
+        // Toplam hesaplama için benzersiz mağaza teslimatlarını takip et
+        const uniqueStoreDeliveries = new Map();
+        
+        result.data.forEach(record => {
+          // Benzersizlik anahtarı: tarih + mağaza + palet + kasa
+          const uniqueKey = `${record.date}_${record.store_id || ''}_${record.pallets || 0}_${record.boxes || 0}`;
+          
+          if (!uniqueStoreDeliveries.has(uniqueKey)) {
+            // İlk teslimat - ekle
+            uniqueStoreDeliveries.set(uniqueKey, {
+              date: record.date,
+              store_id: record.store_id,
+              pallets: record.pallets || 0,
+              boxes: record.boxes || 0,
+              employee_count: 1
+            });
+          } else {
+            // Aynı teslimat var - personel sayısını artır
+            uniqueStoreDeliveries.get(uniqueKey).employee_count += 1;
+          }
+        });
+        
+        console.log(`🔍 Orijinal kayıt: ${result.data.length}, Benzersiz teslimat: ${uniqueStoreDeliveries.size}`);
+        
         // Performance_data'daki shift_type dağılımını kontrol et (tarih shift'i)
         const shiftDistribution = {};
         const dateShiftCombos = new Set();
         
-        result.data.forEach(record => {
+        processedData.forEach(record => {
           const shift = record.shift_type || 'undefined';
           const date = new Date(record.date).toLocaleDateString('tr-TR');
           
@@ -300,10 +327,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         const personnel = {};
         const allDatesSet = new Set();
         
+        // Benzersiz teslimatları global olarak sakla (toplam hesaplamada kullanılacak)
+        window.uniqueStoreDeliveries = uniqueStoreDeliveries;
+        
         // GRUPLANDIRMA: Aynı gün aynı çalışan için kayıtları birleştir
         const groupedRecords = {};
         
-        result.data.forEach(record => {
+        processedData.forEach(record => {
           const { employee_name, employee_code, date, trips = 0, pallets = 0, boxes = 0, stores_visited = 0, date_shift_type, store_codes, sheet_name } = record;
           
           // Performance record işleniyor
@@ -944,6 +974,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     try {
       const result = await getPerformanceData();
       if (result.success && result.data.length > 0) {
+        // Tarih kontrolü için tüm verileri kullan (benzersiz yapmaya gerek yok)
         const existingDates = new Set();
         result.data.forEach(record => {
           if (record.sheet_name) {
@@ -1216,9 +1247,17 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         // Mağaza kodunu kaydet
         processedStores.add(magazaKodu);
         
-        // Günlük toplam güncelle
-        results.dailyData[sheetName].totalPallets += palet;
-        results.dailyData[sheetName].totalBoxes += kasa;
+        // Günlük toplam güncelle - mağaza bazında benzersiz (aynı gün aynı mağaza sadece 1 kere)
+        if (!results.dailyData[sheetName].processedStores) {
+          results.dailyData[sheetName].processedStores = new Set();
+        }
+        
+        const storeKey = `${magazaKodu}_${sheetName}`;
+        if (!results.dailyData[sheetName].processedStores.has(storeKey)) {
+          results.dailyData[sheetName].totalPallets += palet;
+          results.dailyData[sheetName].totalBoxes += kasa;
+          results.dailyData[sheetName].processedStores.add(storeKey);
+        }
         
         // Basit personel işleme
         [sofor, personel1, personel2].forEach(personName => {
@@ -1412,9 +1451,17 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         // Mağaza kodunu kaydet
         processedStores.add(magazaKodu);
         
-        // Günlük toplam güncelle
-        results.dailyData[sheetName].totalPallets += palet;
-        results.dailyData[sheetName].totalBoxes += kasa;
+        // Günlük toplam güncelle - mağaza bazında benzersiz (aynı gün aynı mağaza sadece 1 kere)
+        if (!results.dailyData[sheetName].processedStores) {
+          results.dailyData[sheetName].processedStores = new Set();
+        }
+        
+        const storeKey = `${magazaKodu}_${sheetName}`;
+        if (!results.dailyData[sheetName].processedStores.has(storeKey)) {
+          results.dailyData[sheetName].totalPallets += palet;
+          results.dailyData[sheetName].totalBoxes += kasa;
+          results.dailyData[sheetName].processedStores.add(storeKey);
+        }
         
         // ŞOFÖRLERİ İŞLE
         const matchedDriver = findMatchingPerson(sofor, results.drivers);
@@ -1657,9 +1704,41 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       Object.values(results.drivers).reduce((sum, driver) => sum + driver.totalPallets, 0) +
       Object.values(results.personnel).reduce((sum, person) => sum + person.totalPallets, 0);
     
-    results.summary.totalBoxes = 
-      Object.values(results.drivers).reduce((sum, driver) => sum + driver.totalBoxes, 0) +
-      Object.values(results.personnel).reduce((sum, person) => sum + person.totalBoxes, 0);
+    // Toplam kasa sayısını benzersiz mağaza teslimatlarından hesapla
+    // Aynı gün aynı mağazaya giden personellerin teslimatları tek sefer sayılacak
+    const uniqueStoreDeliveries = new Map();
+    
+    // Tüm personel verilerini kontrol et ve benzersiz mağaza teslimatlarını bul
+    Object.values(results.drivers).forEach(driver => {
+      Object.entries(driver.dayData).forEach(([sheetName, dayData]) => {
+        if (dayData.boxes > 0 && dayData.stores && dayData.stores.length > 0) {
+          // Her mağaza için benzersiz teslimat
+          dayData.stores.forEach(storeCode => {
+            const storeKey = `${storeCode}_${sheetName}`;
+            if (!uniqueStoreDeliveries.has(storeKey)) {
+              // Ortalama kasa ve palet hesapla
+              const avgBoxesPerStore = dayData.boxes / dayData.stores.length;
+              const avgPalletsPerStore = dayData.pallets / dayData.stores.length;
+              
+              uniqueStoreDeliveries.set(storeKey, {
+                store_code: storeCode,
+                sheet_name: sheetName,
+                boxes: avgBoxesPerStore,
+                pallets: avgPalletsPerStore
+              });
+            }
+          });
+        }
+      });
+    });
+    
+    // Benzersiz mağaza teslimatlarından toplam hesapla
+    results.summary.totalBoxes = Math.round(Array.from(uniqueStoreDeliveries.values())
+      .reduce((sum, delivery) => sum + delivery.boxes, 0));
+    results.summary.totalPallets = Math.round(Array.from(uniqueStoreDeliveries.values())
+      .reduce((sum, delivery) => sum + delivery.pallets, 0));
+    
+    console.log(`🏪 Benzersiz mağaza teslimatları: ${uniqueStoreDeliveries.size}, Toplam kasa: ${results.summary.totalBoxes}, Toplam palet: ${results.summary.totalPallets}`);
   };
 
 
@@ -1836,9 +1915,38 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       Object.values(filteredResults.drivers).reduce((sum, driver) => sum + driver.totalPallets, 0) +
       Object.values(filteredResults.personnel).reduce((sum, person) => sum + person.totalPallets, 0);
 
-    filteredResults.summary.totalBoxes = 
-      Object.values(filteredResults.drivers).reduce((sum, driver) => sum + driver.totalBoxes, 0) +
-      Object.values(filteredResults.personnel).reduce((sum, person) => sum + person.totalBoxes, 0);
+    // Filtrelenmiş veri için de benzersiz mağaza teslimatlarından hesapla
+    const filteredUniqueStoreDeliveries = new Map();
+    
+    Object.values(filteredResults.drivers).forEach(driver => {
+      Object.entries(driver.dayData).forEach(([sheetName, dayData]) => {
+        if (selectedDateShiftSet.has(sheetName) && dayData.boxes > 0 && dayData.stores && dayData.stores.length > 0) {
+          // Her mağaza için benzersiz teslimat
+          dayData.stores.forEach(storeCode => {
+            const storeKey = `${storeCode}_${sheetName}`;
+            if (!filteredUniqueStoreDeliveries.has(storeKey)) {
+              // Ortalama kasa ve palet hesapla
+              const avgBoxesPerStore = dayData.boxes / dayData.stores.length;
+              const avgPalletsPerStore = dayData.pallets / dayData.stores.length;
+              
+              filteredUniqueStoreDeliveries.set(storeKey, {
+                store_code: storeCode,
+                sheet_name: sheetName,
+                boxes: avgBoxesPerStore,
+                pallets: avgPalletsPerStore
+              });
+            }
+          });
+        }
+      });
+    });
+    
+    filteredResults.summary.totalBoxes = Math.round(Array.from(filteredUniqueStoreDeliveries.values())
+      .reduce((sum, delivery) => sum + delivery.boxes, 0));
+    filteredResults.summary.totalPallets = Math.round(Array.from(filteredUniqueStoreDeliveries.values())
+      .reduce((sum, delivery) => sum + delivery.pallets, 0));
+    
+    console.log(`🔍 Filtrelenmiş benzersiz mağaza teslimatları: ${filteredUniqueStoreDeliveries.size}, Toplam kasa: ${filteredResults.summary.totalBoxes}`);
 
     // Shift kombinasyonu sayısını ekle
     filteredResults.summary.shiftCombinations = selectedDateShiftCombinations.length;

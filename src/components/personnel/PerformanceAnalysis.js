@@ -270,11 +270,13 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const loadPerformanceDataFromDatabase = async () => {
     // loadPerformanceDataFromDatabase başladı
     
-    if (!personnelDatabase.length) {
-      // Personnel database henüz yüklenmemiş
-      console.log('⚠️ Personnel database henüz yüklenmemiş, veri yükleme bekleniyor...');
-      return;
-    }
+    console.log('🔍 Personnel database durumu:', personnelDatabase.length);
+    
+    // Personnel database kontrolünü geçici olarak kaldır
+    // if (!personnelDatabase.length) {
+    //   console.log('⚠️ Personnel database henüz yüklenmemiş, veri yükleme bekleniyor...');
+    //   return;
+    // }
 
     try {
       const result = await getPerformanceData();

@@ -435,10 +435,18 @@ function MainApp() {
       loadDailyNotes(); // Daily notes'u da yükle
       loadCurrentShiftData(); // Güncel vardiya verilerini yükle
       
-      // Aylık raporu biraz gecikmeyle oluştur (performans analizi yüklenmesini bekle)
+      // Aylık raporu hemen oluştur
+      generateMonthlyReport();
+      
+      // Ayrıca 2 saniye sonra tekrar dene (performans analizi yüklenmesini bekle)
       setTimeout(() => {
         generateMonthlyReport();
       }, 2000);
+      
+      // 5 saniye sonra da bir kez daha dene
+      setTimeout(() => {
+        generateMonthlyReport();
+      }, 5000);
     }
   }, [isAuthenticated, user]);
 

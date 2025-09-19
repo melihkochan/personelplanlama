@@ -96,19 +96,22 @@ function MainApp() {
   // Günün raporu oluşturma fonksiyonu
   const generateDailyReport = async () => {
     try {
-      // Bugün dağıtılan kasa ve palet sayılarını al
-      const today = new Date().toISOString().split('T')[0];
+      // Dünün dağıtılan kasa ve palet sayılarını al
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yDate = yesterday.toISOString().split('T')[0];
 
-      // Performance_data tablosundan bugünkü verileri al
+      // Performance_data tablosundan dünkü verileri al
       const { data: performanceData, error: performanceError } = await supabase
         .from('performance_data')
         .select('*')
-        .gte('date', today)
-        .lte('date', today);
+        .gte('date', yDate)
+        .lte('date', yDate);
 
       if (performanceError) throw performanceError;
 
-      // Bugün dağıtılan kasa ve palet sayılarını hesapla
+      // Dünde dağıtılan kasa ve palet sayılarını hesapla
       const casesDistributedToday = performanceData?.reduce((total, item) => total + (item.boxes || 0), 0) || 0;
       const palletsDistributedToday = performanceData?.reduce((total, item) => total + (item.pallets || 0), 0) || 0;
 
@@ -1629,7 +1632,7 @@ function MainApp() {
                   <div className="bg-white rounded-2xl shadow-xl p-6">
                     <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                       <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                      Günün Raporu
+                      Dünün Raporu
                       <button
                         onClick={generateDailyReport}
                         className="ml-auto p-1 rounded-lg hover:bg-gray-100 transition-colors"
@@ -1639,10 +1642,10 @@ function MainApp() {
                       </button>
                     </h3>
                     <div className="space-y-4">
-                      {/* Bugün Dağıtılan Kasa Sayısı */}
+                      {/* Dün Dağıtılan Kasa Sayısı */}
                       <div className="bg-blue-50 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-gray-900">Bugün Dağıtılan Kasa</h4>
+                          <h4 className="text-sm font-semibold text-gray-900">Dün Dağıtılan Kasa</h4>
                           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                         </div>
                         <div className="text-center">
@@ -1651,10 +1654,10 @@ function MainApp() {
                         </div>
                       </div>
 
-                      {/* Bugün Dağıtılan Palet Sayısı */}
+                      {/* Dün Dağıtılan Palet Sayısı */}
                       <div className="bg-green-50 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-gray-900">Bugün Dağıtılan Palet</h4>
+                          <h4 className="text-sm font-semibold text-gray-900">Dün Dağıtılan Palet</h4>
                           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         </div>
                         <div className="text-center">
@@ -1735,33 +1738,44 @@ function MainApp() {
 
                 {/* Recent Activity & Calendar */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Recent Activity */}
+                  {/* Recent Activity - Timeline */}
                   <div className="bg-white rounded-2xl shadow-xl p-6">
                     <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                       <Clock className="w-5 h-5 text-green-600" />
                       Son Aktiviteler
                     </h3>
-                    <div className="space-y-4">
-                      {dataStatus.dailyNotes.slice(0, 5).map((note, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                          <div className={`w-3 h-3 rounded-full ${note.status === 'raporlu' ? 'bg-red-500' :
-                            note.status === 'dinlenme' ? 'bg-green-500' :
-                              note.status === 'izinli' ? 'bg-purple-500' :
-                                note.status === 'hastalık' ? 'bg-orange-500' : 'bg-blue-500'
-                            }`}></div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">{note.full_name}</p>
-                            <p className="text-xs text-gray-500">{note.status} • {new Date(note.date).toLocaleDateString('tr-TR')}</p>
-                          </div>
+                    {dataStatus.dailyNotes.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>Henüz aktivite bulunmuyor</p>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+                        <div className="space-y-4">
+                          {dataStatus.dailyNotes.slice(0, 7).map((note, index) => {
+                            const color = note.status === 'raporlu' ? 'red' :
+                              note.status === 'dinlenme' ? 'green' :
+                              note.status === 'izinli' ? 'purple' :
+                              note.status === 'hastalık' ? 'orange' : 'blue';
+                            return (
+                              <div key={index} className="relative pl-10">
+                                <div className={`absolute left-2 top-2 w-3 h-3 rounded-full bg-${color}-500 ring-4 ring-${color}-100`}></div>
+                                <div className="bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-colors">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-sm font-medium text-gray-900 truncate">{note.full_name}</p>
+                                    <span className="text-[11px] text-gray-500">{new Date(note.date).toLocaleDateString('tr-TR')}</span>
+                                  </div>
+                                  <div className="mt-1 text-xs">
+                                    <span className={`px-2 py-0.5 rounded-full border bg-${color}-50 text-${color}-700 border-${color}-200`}>{note.status}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                      {dataStatus.dailyNotes.length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                          <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                          <p>Henüz aktivite bulunmuyor</p>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Modern Calendar */}

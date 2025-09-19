@@ -98,149 +98,116 @@ function MainApp() {
     return 'bg-red-500';
   };
 
-  // Günün raporu oluşturma fonksiyonu
-  const generateDailyReport = async () => {
+  // Aylık rapor oluşturma fonksiyonu - Performans analizindeki toplam değerleri çeker
+  const generateMonthlyReport = async () => {
     try {
-      // Dünün dağıtılan kasa ve palet sayılarını al
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const yDate = yesterday.toISOString().split('T')[0];
+      console.log('🔍 Ana sayfa - Aylık rapor oluşturuluyor...');
 
-      console.log('🔍 Ana sayfa - Dünün tarihi:', yDate);
-
-      // Daily_notes tablosundan dünkü verileri al (burada veri var)
-      const { data: dailyNotesData, error: dailyNotesError } = await supabase
-        .from('daily_notes')
-        .select('*')
-        .gte('date', yDate)
-        .lte('date', yDate);
-
-      if (dailyNotesError) throw dailyNotesError;
-
-      // Performance_data tablosundan dünkü verileri al
-      const { data: performanceData, error: performanceError } = await supabase
-        .from('performance_data')
-        .select('*')
-        .gte('date', yDate)
-        .lte('date', yDate);
-
-      if (performanceError) throw performanceError;
-
-      console.log('📊 Ana sayfa - Daily notes kayıt sayısı:', dailyNotesData?.length || 0);
-      console.log('📊 Ana sayfa - Performance data kayıt sayısı:', performanceData?.length || 0);
-
-      // Dünde dağıtılan kasa ve palet sayılarını hesapla
-      let casesDistributedToday = 0;
-      let palletsDistributedToday = 0;
-      
-      // Önce performance_data'dan dene
-      if (performanceData && performanceData.length > 0) {
-        console.log('🔍 Ana sayfa - Performance data örnek:', performanceData[0]);
-        console.log('🔍 Ana sayfa - Performance data toplam kayıt sayısı:', performanceData.length);
+      // Global performance summary'den verileri al
+      if (window.performanceSummary && window.performanceSummary.totalBoxes > 0) {
+        console.log('🌐 Ana sayfa - Global performance summary bulundu:', window.performanceSummary);
         
-        // Basit toplam hesapla
-        casesDistributedToday = performanceData.reduce((total, item) => total + (item.boxes || 0), 0);
-        palletsDistributedToday = performanceData.reduce((total, item) => total + (item.pallets || 0), 0);
-        
-        console.log('📦 Ana sayfa - Performance data kasa sayısı:', casesDistributedToday);
-        console.log('🚛 Ana sayfa - Performance data palet sayısı:', palletsDistributedToday);
-      }
-      // Eğer performance_data boşsa, daily_notes'dan dene
-      else if (dailyNotesData && dailyNotesData.length > 0) {
-        console.log('🔍 Ana sayfa - Daily notes örnek:', dailyNotesData[0]);
-        console.log('🔍 Ana sayfa - Daily notes toplam kayıt sayısı:', dailyNotesData.length);
-        
-        // Daily notes'dan basit toplam hesapla
-        casesDistributedToday = dailyNotesData.reduce((total, item) => total + (item.boxes || 0), 0);
-        palletsDistributedToday = dailyNotesData.reduce((total, item) => total + (item.pallets || 0), 0);
-        
-        console.log('📦 Ana sayfa - Daily notes kasa sayısı:', casesDistributedToday);
-        console.log('🚛 Ana sayfa - Daily notes palet sayısı:', palletsDistributedToday);
-      }
-      else {
-        console.log('⚠️ Ana sayfa - Hiçbir tabloda dünkü veri bulunamadı');
-      }
+        setDailyReport({
+          casesDistributedToday: window.performanceSummary.totalBoxes,
+          palletsDistributedToday: window.performanceSummary.totalPallets,
+          personnelWorkedYesterday: window.performanceSummary.geceDays, // Gece vardiyası sayısı
+          shippingPersonnelYesterday: window.performanceSummary.gunduzDays, // Gündüz vardiyası sayısı
+          storesVisitedYesterday: 0, // Bu veriler için ayrı hesaplama gerekebilir
+          vehiclesUsedYesterday: 0, // Bu veriler için ayrı hesaplama gerekebilir
+          totalEfficiency: 0,
+          lastUpdated: new Date()
+        });
 
-      let personnelWorkedYesterday = 0;
-      let shippingPersonnelYesterday = 0;
-      let storesVisitedYesterday = 0;
-      let vehiclesUsedYesterday = 0;
-
-      // Personel sayılarını hesapla
-      let activeData = performanceData && performanceData.length > 0 ? performanceData : dailyNotesData;
-      
-      if (activeData && activeData.length > 0) {
-        // Benzersiz çalışan sayısı (employee_code)
-        const uniqueEmployees = new Set(activeData.map(item => item.employee_code).filter(Boolean));
+        console.log('✅ Ana sayfa - Global summary\'den aylık rapor güncellendi:', {
+          totalBoxes: window.performanceSummary.totalBoxes,
+          totalPallets: window.performanceSummary.totalPallets,
+          geceDays: window.performanceSummary.geceDays,
+          gunduzDays: window.performanceSummary.gunduzDays
+        });
+      } else {
+        console.log('⚠️ Ana sayfa - Global performance summary henüz hazır değil, fallback kullanılıyor');
         
-        console.log('👥 Ana sayfa - Benzersiz çalışan sayısı:', uniqueEmployees.size);
+        // Fallback: performance_data'dan direkt çek
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         
-        // Şoför ve sevkiyat elemanı sayılarını hesapla
-        const { data: personnelData, error: personnelError } = await supabase
-          .from('personnel')
-          .select('employee_code, position')
-          .in('employee_code', Array.from(uniqueEmployees));
+        const startDate = firstDayOfMonth.toISOString().split('T')[0];
+        const endDate = lastDayOfMonth.toISOString().split('T')[0];
 
-        if (!personnelError && personnelData) {
-          // Şoför sayısı
-          const drivers = personnelData.filter(person => 
-            person.position && person.position.includes('ŞOFÖR')
-          );
-          personnelWorkedYesterday = drivers.length;
+        const { data: performanceData, error: performanceError } = await supabase
+          .from('performance_data')
+          .select('*')
+          .gte('date', startDate)
+          .lte('date', endDate);
 
-          // Sevkiyat elemanı sayısı
-          const shippingPersonnel = personnelData.filter(person => 
-            person.position && person.position.includes('SEVKİYAT')
-          );
-          shippingPersonnelYesterday = shippingPersonnel.length;
+        if (performanceError) throw performanceError;
+
+        let casesDistributedThisMonth = 0;
+        let palletsDistributedThisMonth = 0;
+        let driversThisMonth = 0;
+        let shippingPersonnelThisMonth = 0;
+
+        if (performanceData && performanceData.length > 0) {
+          // Benzersiz mağaza teslimatları hesapla
+          const uniqueStoreDeliveries = new Map();
           
-          console.log('🚛 Ana sayfa - Şoför sayısı:', personnelWorkedYesterday);
-          console.log('📦 Ana sayfa - Sevkiyat elemanı sayısı:', shippingPersonnelYesterday);
-        } else {
-          // Fallback: eğer position bilgisi yoksa toplam çalışan sayısını kullan
-          personnelWorkedYesterday = uniqueEmployees.size;
-          shippingPersonnelYesterday = Math.round(uniqueEmployees.size * 0.4);
-          console.log('⚠️ Ana sayfa - Position bilgisi yok, fallback kullanılıyor');
+          performanceData.forEach(item => {
+            if (item.boxes > 0 && item.pallets > 0 && item.store_id) {
+              const storeKey = `${item.store_id}_${item.date}`;
+              if (!uniqueStoreDeliveries.has(storeKey)) {
+                uniqueStoreDeliveries.set(storeKey, {
+                  boxes: item.boxes,
+                  pallets: item.pallets
+                });
+              }
+            }
+          });
+
+          casesDistributedThisMonth = Array.from(uniqueStoreDeliveries.values())
+            .reduce((sum, delivery) => sum + delivery.boxes, 0);
+          palletsDistributedThisMonth = Array.from(uniqueStoreDeliveries.values())
+            .reduce((sum, delivery) => sum + delivery.pallets, 0);
+
+          // Personel sayılarını hesapla
+          const uniqueEmployees = new Set(performanceData.map(item => item.employee_code).filter(Boolean));
+          
+          const { data: personnelData, error: personnelError } = await supabase
+            .from('personnel')
+            .select('employee_code, position')
+            .in('employee_code', Array.from(uniqueEmployees));
+
+          if (!personnelError && personnelData) {
+            driversThisMonth = personnelData.filter(person => 
+              person.position && person.position.includes('ŞOFÖR')
+            ).length;
+            shippingPersonnelThisMonth = personnelData.filter(person => 
+              person.position && person.position.includes('SEVKİYAT')
+            ).length;
+          }
         }
 
-        // Benzersiz mağaza sayısı
-        const uniqueStores = new Set(activeData.map(item => item.store_id).filter(Boolean));
-        storesVisitedYesterday = uniqueStores.size;
+        setDailyReport({
+          casesDistributedToday: casesDistributedThisMonth,
+          palletsDistributedToday: palletsDistributedThisMonth,
+          personnelWorkedYesterday: driversThisMonth,
+          shippingPersonnelYesterday: shippingPersonnelThisMonth,
+          storesVisitedYesterday: 0,
+          vehiclesUsedYesterday: 0,
+          totalEfficiency: 0,
+          lastUpdated: new Date()
+        });
 
-        // Benzersiz araç sayısı
-        const uniqueVehicles = new Set(activeData.map(item => item.vehicle_id).filter(Boolean));
-        vehiclesUsedYesterday = uniqueVehicles.size;
-        
-        console.log('🏪 Ana sayfa - Benzersiz mağaza sayısı:', storesVisitedYesterday);
-        console.log('🚗 Ana sayfa - Benzersiz araç sayısı:', vehiclesUsedYesterday);
+        console.log('✅ Ana sayfa - Fallback ile aylık rapor güncellendi:', {
+          casesDistributedThisMonth,
+          palletsDistributedThisMonth,
+          driversThisMonth,
+          shippingPersonnelThisMonth
+        });
       }
 
-      // Verimlilik hesaplama (basit bir formül)
-      const totalEfficiency = personnelWorkedYesterday > 0 
-        ? Math.round(((casesDistributedToday + palletsDistributedToday) / personnelWorkedYesterday) * 100) / 100
-        : 0;
-
-      setDailyReport({
-        casesDistributedToday,
-        palletsDistributedToday,
-        personnelWorkedYesterday,
-        shippingPersonnelYesterday,
-        storesVisitedYesterday,
-        vehiclesUsedYesterday,
-        totalEfficiency,
-        lastUpdated: new Date()
-      });
-
-      console.log('✅ Ana sayfa - Daily report güncellendi:', {
-        casesDistributedToday,
-        palletsDistributedToday,
-        personnelWorkedYesterday,
-        shippingPersonnelYesterday
-      });
-
     } catch (error) {
-      console.error('❌ Ana sayfa - Günlük rapor oluşturulurken hata:', error);
+      console.error('❌ Ana sayfa - Aylık rapor oluşturulurken hata:', error);
     }
   };
 
@@ -467,14 +434,18 @@ function MainApp() {
       loadData();
       loadDailyNotes(); // Daily notes'u da yükle
       loadCurrentShiftData(); // Güncel vardiya verilerini yükle
-      generateDailyReport(); // Günün raporunu oluştur
+      
+      // Aylık raporu biraz gecikmeyle oluştur (performans analizi yüklenmesini bekle)
+      setTimeout(() => {
+        generateMonthlyReport();
+      }, 2000);
     }
   }, [isAuthenticated, user]);
 
-  // Günün raporu periyodik güncelleme (her 5 dakikada bir)
+  // Aylık rapor periyodik güncelleme (her 5 dakikada bir)
   useEffect(() => {
     if (isAuthenticated && user) {
-      const interval = setInterval(generateDailyReport, 300000); // 5 dakika
+      const interval = setInterval(generateMonthlyReport, 300000); // 5 dakika
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
@@ -492,7 +463,7 @@ function MainApp() {
     await loadData();
     await loadDailyNotes();
     await loadCurrentShiftData(); // Güncel vardiya verilerini de yenile
-    await generateDailyReport(); // Günün raporunu da güncelle
+    await generateMonthlyReport(); // Aylık raporu da güncelle
 
     showNotification('Veriler yenilendi!', 'success');
   };
@@ -1725,8 +1696,8 @@ function MainApp() {
                       <div className="max-w-2xl">
                         <div className="mb-4">
                           <span className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium mb-4 animate-fade-in">
-                            <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
-                            Sistem Aktif • {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            <Clock className="w-4 h-4 mr-2" />
+                            {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} • {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                           </span>
                         </div>
                         <h1 className="text-4xl lg:text-5xl font-bold mb-6 animate-fade-in-up">
@@ -1737,25 +1708,6 @@ function MainApp() {
                           !
                         </h1>
                         
-                        {/* Modern Status Indicators */}
-                        <div className="flex flex-wrap items-center gap-4 text-sm animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
-                            <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></div>
-                            <span className="font-medium">Sistem Aktif</span>
-                          </div>
-                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
-                            <div className="w-3 h-3 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50"></div>
-                            <span className="font-medium">Veriler Hazır</span>
-                          </div>
-                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
-                            <Clock className="w-4 h-4" />
-                            <span className="font-medium">{new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20">
-                            <Users className="w-4 h-4" />
-                            <span className="font-medium">{dataStatus.personnel.count} Personel</span>
-                          </div>
-                        </div>
                       </div>
                       <div className="hidden lg:block">
                         <div className="w-32 h-32 bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg rounded-full flex items-center justify-center border border-white/20 animate-float">
@@ -1784,12 +1736,12 @@ function MainApp() {
                             <BarChart3 className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <h3 className="text-2xl font-bold text-gray-900">Dünün Performans Raporu</h3>
-                            <p className="text-sm text-gray-600">Günlük dağıtım özeti</p>
+                            <h3 className="text-2xl font-bold text-gray-900">Bu Ayın Performans Raporu</h3>
+                            <p className="text-sm text-gray-600">Aylık dağıtım özeti</p>
                           </div>
                         </div>
                         <button
-                          onClick={generateDailyReport}
+                          onClick={generateMonthlyReport}
                           className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 transition-all duration-300 shadow-lg hover:shadow-xl group"
                           title="Raporu yenile"
                         >
@@ -1809,7 +1761,7 @@ function MainApp() {
                                   <Package className="w-7 h-7 text-white" />
                                 </div>
                                 <div>
-                                  <div className="text-lg font-medium text-blue-700">Dün Dağıtılan Kasa</div>
+                                  <div className="text-lg font-medium text-blue-700">Bu Ay Dağıtılan Kasa</div>
                                 </div>
                               </div>
                               <div className="text-center">
@@ -1829,7 +1781,7 @@ function MainApp() {
                                   <Truck className="w-7 h-7 text-white" />
                                 </div>
                                 <div>
-                                  <div className="text-lg font-medium text-emerald-700">Dün Dağıtılan Palet</div>
+                                  <div className="text-lg font-medium text-emerald-700">Bu Ay Dağıtılan Palet</div>
                                 </div>
                               </div>
                               <div className="text-center">
@@ -1849,7 +1801,7 @@ function MainApp() {
                                   <Users className="w-7 h-7 text-white" />
                                 </div>
                                 <div>
-                                  <div className="text-lg font-medium text-amber-700">Dün Çalışan Şoför</div>
+                                  <div className="text-lg font-medium text-amber-700">Bu Ay Çalışan Şoför</div>
                                 </div>
                               </div>
                               <div className="text-center">
@@ -1869,7 +1821,7 @@ function MainApp() {
                                   <UserCheck className="w-7 h-7 text-white" />
                                 </div>
                                 <div>
-                                  <div className="text-lg font-medium text-purple-700">Dün Çalışan Sevkiyat Elemanı</div>
+                                  <div className="text-lg font-medium text-purple-700">Bu Ay Çalışan Sevkiyat Elemanı</div>
                                 </div>
                               </div>
                               <div className="text-center">

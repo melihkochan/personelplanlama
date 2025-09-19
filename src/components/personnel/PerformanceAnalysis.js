@@ -678,10 +678,40 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         });
         
         // Basit format hazırlandı
+        const dbAnalysisResults = {
+          drivers,
+          personnel,
+          dailyData: {},
+          summary: {
+            gunduzDays: Object.values(drivers).reduce((sum, driver) => {
+              return sum + Object.values(driver.dayData).filter(day => day.shift === 'GÜNDÜZ').length;
+            }, 0) + Object.values(personnel).reduce((sum, person) => {
+              return sum + Object.values(person.dayData).filter(day => day.shift === 'GÜNDÜZ').length;
+            }, 0),
+            geceDays: Object.values(drivers).reduce((sum, driver) => {
+              return sum + Object.values(driver.dayData).filter(day => day.shift === 'GECE').length;
+            }, 0) + Object.values(personnel).reduce((sum, person) => {
+              return sum + Object.values(person.dayData).filter(day => day.shift === 'GECE').length;
+            }, 0),
+            totalDeliveries: Object.values(drivers).reduce((sum, driver) => sum + driver.totalTrips, 0) + 
+                           Object.values(personnel).reduce((sum, person) => sum + person.totalTrips, 0),
+            totalPallets: 0, // Bu değerler aşağıda hesaplanacak
+            totalBoxes: 0
+          }
+        };
         
-        setAnalysisData(analysisResults);
+        setAnalysisData(dbAnalysisResults);
         
-
+        // Global summary'yi de set et (ana sayfa için)
+        window.performanceSummary = {
+          totalBoxes: dbAnalysisResults.summary.totalBoxes,
+          totalPallets: dbAnalysisResults.summary.totalPallets,
+          totalDeliveries: dbAnalysisResults.summary.totalDeliveries,
+          geceDays: dbAnalysisResults.summary.geceDays,
+          gunduzDays: dbAnalysisResults.summary.gunduzDays
+        };
+        
+        console.log('🌐 Database yükleme sırasında global summary güncellendi:', window.performanceSummary);
         
         // İlk veri yükleme tamamlandı
         console.log('✅ Performans verileri başarıyla yüklendi ve analiz edildi');
@@ -1950,6 +1980,17 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
     // Shift kombinasyonu sayısını ekle
     filteredResults.summary.shiftCombinations = selectedDateShiftCombinations.length;
+    
+    // Summary verilerini global olarak erişilebilir hale getir
+    window.performanceSummary = {
+      totalBoxes: filteredResults.summary.totalBoxes,
+      totalPallets: filteredResults.summary.totalPallets,
+      totalDeliveries: filteredResults.summary.totalDeliveries,
+      geceDays: filteredResults.summary.geceDays,
+      gunduzDays: filteredResults.summary.gunduzDays
+    };
+    
+    console.log('🌐 Global performance summary güncellendi:', window.performanceSummary);
     
     // Toplam gün sayısını hesapla (sadece benzersiz tarihler)
     const uniqueDates = new Set();

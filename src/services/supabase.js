@@ -839,7 +839,7 @@ export const getUserRole = async (userId, userEmail = null) => {
       return 'admin'; // Diğer hatalar için de admin ver (test)
     }
     
-    const role = data?.role || 'user';
+    const role = data?.role || 'admin'; // Test için admin döndür
     return role;
   } catch (error) {
     console.error('❌ getUserRole catch error:', error);

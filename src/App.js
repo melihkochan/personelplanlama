@@ -232,8 +232,15 @@ function MainApp() {
         lastUpdated: new Date()
       });
 
+      console.log('✅ Ana sayfa - Daily report güncellendi:', {
+        casesDistributedToday,
+        palletsDistributedToday,
+        personnelWorkedYesterday,
+        shippingPersonnelYesterday
+      });
+
     } catch (error) {
-      console.error('Günlük rapor oluşturulurken hata:', error);
+      console.error('❌ Ana sayfa - Günlük rapor oluşturulurken hata:', error);
     }
   };
 

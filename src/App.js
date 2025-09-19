@@ -30,6 +30,7 @@ import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, supabase } from './services/supabase';
+import { getPendingRegistrationsCount } from './services/supabase';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -75,6 +76,7 @@ function MainApp() {
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
   const [dailyReport, setDailyReport] = useState({
     casesDistributedToday: 0,
     palletsDistributedToday: 0,
@@ -1080,10 +1082,15 @@ function MainApp() {
             {(userRole === 'admin' || userRole === 'yönetici') && (
               <button
                 onClick={() => handleTabChange('admin')}
-                className="w-full flex items-center px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 text-xs shadow-lg"
+                className="w-full relative flex items-center px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 text-xs shadow-lg"
               >
                 <Shield className="w-4 h-4 mr-2" />
                 Admin Panel
+                {pendingApprovalCount > 0 && (
+                  <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-green-700 border border-green-200">
+                    {pendingApprovalCount}
+                  </span>
+                )}
               </button>
             )}
 

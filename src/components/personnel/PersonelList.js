@@ -367,34 +367,36 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   // Vardiya tipini belirle
   const getVardiyaType = (vardiya) => {
     if (!vardiya) return 'belirsiz';
-    
     const normalizedVardiya = vardiya.toString().toLowerCase().trim();
-    
+
+    // Doğrudan bilinen anahtarlar
     if (normalizedVardiya === 'gece') return 'gece';
-    if (normalizedVardiya === 'gunduz') return 'gunduz';
+    if (normalizedVardiya === 'gunduz' || normalizedVardiya === 'gündüz') return 'gunduz';
+    if (normalizedVardiya === 'aksam' || normalizedVardiya === 'akşam') return 'aksam';
     if (normalizedVardiya === 'izin') return 'izin';
+    if (normalizedVardiya === 'yillik_izin' || normalizedVardiya === 'yıllık_izin') return 'yillik_izin';
+    if (normalizedVardiya === 'raporlu') return 'raporlu';
+    if (normalizedVardiya === 'dinlenme') return 'dinlenme';
+    if (normalizedVardiya === 'gecici_gorev' || normalizedVardiya === 'geçici_görev') return 'gecici_gorev';
+    if (normalizedVardiya === 'habersiz') return 'habersiz';
     if (normalizedVardiya === 'belirsiz') return 'belirsiz';
-    
-    // Önce yıllık izin kontrolü yap
-    if (normalizedVardiya.includes('yıllık izin') || normalizedVardiya.includes('yillik izin') || 
-        normalizedVardiya.includes('izin') || normalizedVardiya.includes('rapor') || 
-        normalizedVardiya.includes('tatil') || normalizedVardiya.includes('izinli')) {
-      return 'izin';
-    }
-    
-    // Sonra gece vardiyası kontrolü (izin içermiyorsa)
-    if ((normalizedVardiya.includes('gece') && !normalizedVardiya.includes('izin')) || 
-        normalizedVardiya.includes('22:00') || normalizedVardiya.includes('23:00') || 
-        normalizedVardiya.includes('00:00') || normalizedVardiya.includes('06:00')) {
+
+    // Anahtar kelime bazlı tespitler
+    if (normalizedVardiya.includes('yıllık izin') || normalizedVardiya.includes('yillik izin')) return 'yillik_izin';
+    if (normalizedVardiya.includes('rapor')) return 'raporlu';
+    if (normalizedVardiya.includes('dinlenme')) return 'dinlenme';
+    if (normalizedVardiya.includes('geçici') || normalizedVardiya.includes('gecici')) return 'gecici_gorev';
+    if (normalizedVardiya.includes('habersiz') || normalizedVardiya.includes('gelmedi')) return 'habersiz';
+    if (normalizedVardiya.includes('izin')) return 'izin';
+
+    // Saat bazlı tespitler
+    if (normalizedVardiya.includes('22:00') || normalizedVardiya.includes('23:00') || normalizedVardiya.includes('00:00') || normalizedVardiya.includes('06:00') || normalizedVardiya.includes('gece')) {
       return 'gece';
     }
-    
-    // Gündüz vardiyası kontrolü
-    if (normalizedVardiya.includes('gunduz') || normalizedVardiya.includes('gündüz') || 
-        normalizedVardiya.includes('08:00') || normalizedVardiya.includes('16:00')) {
+    if (normalizedVardiya.includes('08:00') || normalizedVardiya.includes('16:00') || normalizedVardiya.includes('gunduz') || normalizedVardiya.includes('gündüz')) {
       return 'gunduz';
     }
-    
+
     return 'belirsiz';
   };
 
@@ -403,9 +405,14 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     if (employeeCode && currentShiftData && currentShiftData.length > 0) {
       const currentShift = currentShiftData.find(shift => shift.employee_code === employeeCode);
       if (currentShift) {
-        
-        const shiftType = currentShift.shift_type;
-        
+        // shift_type dolu ve tanınmıyorsa shift_hours üzerinden fallback yap
+        let shiftType = currentShift.shift_type;
+        if (!shiftType || getVardiyaType(shiftType) === 'belirsiz') {
+          shiftType = getVardiyaType(currentShift.shift_hours || currentShift.shift_details);
+        } else {
+          shiftType = getVardiyaType(shiftType);
+        }
+
         switch (shiftType) {
           case 'gece':
             return (
@@ -419,6 +426,13 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
                 <Sun className="w-3 h-3 mr-1" />
                 Gündüz
+              </span>
+            );
+          case 'aksam':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300">
+                <Calendar className="w-3 h-3 mr-1" />
+                Akşam
               </span>
             );
           case 'izin':
@@ -445,24 +459,33 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 😴 Dinlenme
               </span>
             );
+          case 'gecici_gorev':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                <MapPin className="w-3 h-3 mr-1" />
+                Geçici Görev
+              </span>
+            );
+          case 'habersiz':
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300">
+                ❗ Habersiz
+              </span>
+            );
           default:
+            // Son çare: vardiya alanını da parse et
             return (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
                 ❓ Belirsiz
               </span>
             );
         }
-      } else {
-       
       }
-    } else {
-    
     }
-    
+
     // Eğer güncel vardiya verisi yoksa, eski yöntemi kullan
-    
     const vardiyaType = getVardiyaType(vardiya);
-    
+
     switch (vardiyaType) {
       case 'gece':
         return (
@@ -478,10 +501,48 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
             Gündüz
           </span>
         );
+      case 'aksam':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300">
+            <Calendar className="w-3 h-3 mr-1" />
+            Akşam
+          </span>
+        );
       case 'izin':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
             🛌 İzinli
+          </span>
+        );
+      case 'yillik_izin':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+            🏖️ Yıllık İzin
+          </span>
+        );
+      case 'raporlu':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
+            🏥 Raporlu
+          </span>
+        );
+      case 'dinlenme':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+            😴 Dinlenme
+          </span>
+        );
+      case 'gecici_gorev':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+            <MapPin className="w-3 h-3 mr-1" />
+            Geçici Görev
+          </span>
+        );
+      case 'habersiz':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300">
+            ❗ Habersiz
           </span>
         );
       default:

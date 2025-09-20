@@ -1,7 +1,7 @@
 // Otomatik versiyon sistemi
 export const VERSION_CONFIG = {
   major: 1,
-  minor: 1,
+  minor: 2,
   patch: 0,
   buildDate: new Date().toISOString().split('T')[0], // Bugünün tarihi
   lastUpdate: new Date().toLocaleDateString('tr-TR', { 

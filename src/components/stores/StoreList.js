@@ -365,22 +365,41 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
             </div>
 
             {/* Müdür Bilgileri */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg mb-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Yönetim Bilgileri</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <UserCheck className="w-5 h-5 text-purple-600" />
-                  <div>
-                    <p className="text-gray-500 text-sm">Bölge Müdürü</p>
-                    <p className="font-medium">{selectedStore.region_manager || selectedStore.bolge_muduru || 'Belirtilmemiş'}</p>
-                  </div>
+            <div className="bg-gradient-to-br from-white via-gray-50 to-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 mb-6 border border-gray-200/50">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+                  <UserCheck className="w-6 h-6 text-white" />
                 </div>
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-purple-600" />
-                  <div>
-                    <p className="text-gray-500 text-sm">Satış Müdürü</p>
-                    <p className="font-medium">{selectedStore.sales_manager || selectedStore.satis_muduru || 'Belirtilmemiş'}</p>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Yönetim Bilgileri
+                </h3>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Bölge Müdürü */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200/50 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg">
+                      <UserCheck className="w-5 h-5 text-white" />
+                    </div>
+                    <h4 className="font-semibold text-gray-800">Bölge Müdürü</h4>
                   </div>
+                  <p className="text-lg font-bold text-purple-700 bg-white/50 rounded-lg px-3 py-2 border border-purple-200">
+                    {selectedStore.region_manager || selectedStore.bolge_muduru || 'Belirtilmemiş'}
+                  </p>
+                </div>
+
+                {/* Satış Müdürü */}
+                <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-4 border border-pink-200/50 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <h4 className="font-semibold text-gray-800">Satış Müdürü</h4>
+                  </div>
+                  <p className="text-lg font-bold text-pink-700 bg-white/50 rounded-lg px-3 py-2 border border-pink-200">
+                    {selectedStore.sales_manager || selectedStore.satis_muduru || 'Belirtilmemiş'}
+                  </p>
                 </div>
               </div>
             </div>

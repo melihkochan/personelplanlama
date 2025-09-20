@@ -73,13 +73,14 @@ const Statistics = () => {
     }
   };
 
-  // Gerçek veri yapısını performans analizi sayfasından al
+  // Gerçek veri yapısını performans analizi sayfasından al - MAĞAZA BAZINDA BENZERSİZ VERİ
   const processRealData = (rawData) => {
     if (!rawData || !rawData.length) return [];
     
+    console.log('📊 Statistics - Gerçek veri işleniyor, toplam kayıt:', rawData.length);
     
-    // Performans analizi sayfasındaki gibi gruplandır
-    const groupedRecords = {};
+    // Mağaza bazında benzersiz veri için gruplandırma (tarih + vardiya + mağaza)
+    const storeUniqueRecords = {};
     
     rawData.forEach(record => {
       const { employee_name, employee_code, date, trips = 0, pallets = 0, boxes = 0, stores_visited = 0, date_shift_type, store_codes, sheet_name } = record;
@@ -107,57 +108,59 @@ const Statistics = () => {
         shiftForKey = 'GÜNDÜZ';
       }
       
-      const dayDataKey = `${dateForKey}_${shiftForKey}`;
-      const groupKey = `${employee_name}_${dayDataKey}`;
-      
-      // Gruplandırma - aynı çalışan aynı gün için
-      if (!groupedRecords[groupKey]) {
-        groupedRecords[groupKey] = {
-          employee_name,
-          dayDataKey,
-          formattedDate,
-          trips: 0,
-          pallets: 0,
-          boxes: 0,
-          stores: new Set(), // Mağaza kodlarını benzersiz tutmak için Set kullan
-          date_shift_type
-        };
-      }
-      
-      // Mağaza kodlarını ekle (benzersiz olması için Set kullanıyoruz)
+      // Mağaza kodlarını işle
       if (store_codes) {
         const stores = store_codes.split(',').map(s => s.trim()).filter(s => s);
-        stores.forEach(store => groupedRecords[groupKey].stores.add(store));
+        
+        stores.forEach(store => {
+          // Her mağaza için benzersiz kayıt oluştur (tarih + vardiya + mağaza)
+          const storeKey = `${dateForKey}_${shiftForKey}_${store}`;
+          
+          if (!storeUniqueRecords[storeKey]) {
+            storeUniqueRecords[storeKey] = {
+              storeKey,
+              formattedDate,
+              store,
+              trips: 1, // Her mağaza için 1 sefer
+              pallets: 0,
+              boxes: 0,
+              date_shift_type,
+              personnel: new Set() // Bu mağazaya giden personel sayısı
+            };
+          }
+          
+          // Personel sayısını takip et
+          storeUniqueRecords[storeKey].personnel.add(employee_name);
+          
+          // Palet ve kasa miktarlarını topla (aynı mağazaya birden fazla personel gidiyorsa)
+          storeUniqueRecords[storeKey].pallets += pallets;
+          storeUniqueRecords[storeKey].boxes += boxes;
+        });
       }
-      
-      // Palet ve kasa miktarlarını topla
-      groupedRecords[groupKey].pallets += pallets;
-      groupedRecords[groupKey].boxes += boxes;
-      
-      // Trips değerini topla ama sonra benzersiz mağaza sayısı ile düzelteceğiz
-      groupedRecords[groupKey].trips += trips;
     });
     
-    // Gruplandırılmış kayıtları düzleştir
-    const processedData = Object.values(groupedRecords).map(groupedRecord => {
-      const { employee_name, dayDataKey, formattedDate, pallets, boxes, stores, date_shift_type } = groupedRecord;
+    // Mağaza bazında benzersiz kayıtları düzleştir
+    const processedData = Object.values(storeUniqueRecords).map(storeRecord => {
+      const { storeKey, formattedDate, store, pallets, boxes, date_shift_type, personnel } = storeRecord;
       
-      // Benzersiz mağaza sayısını hesapla
-      const uniqueStoreCount = stores.size;
+      const personnelCount = personnel.size;
       
       return {
-        employee_name,
+        employee_name: `${personnelCount} Personel`, // Bu mağazaya giden personel sayısı
         date: new Date(formattedDate.split('.').reverse().join('-')),
         boxes: boxes,
         pallets: pallets,
-        trips: uniqueStoreCount, // Benzersiz mağaza sayısı = sefer sayısı
-        stores_visited: uniqueStoreCount,
+        trips: 1, // Her mağaza için 1 sefer
+        stores_visited: 1, // Her mağaza için 1 ziyaret
         date_shift_type: date_shift_type,
-        dayDataKey: dayDataKey,
-        formattedDate: formattedDate
+        dayDataKey: storeKey,
+        formattedDate: formattedDate,
+        personnelCount: personnelCount,
+        store: store // Hangi mağaza olduğunu takip et
       };
     });
     
+    console.log('📊 Statistics - İşlenmiş mağaza bazında benzersiz veri:', processedData.length, 'mağaza ziyareti');
     return processedData;
   };
 

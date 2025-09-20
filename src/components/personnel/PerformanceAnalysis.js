@@ -705,13 +705,24 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         setAnalysisData(dbAnalysisResults);
         
         // Global summary'yi de set et (ana sayfa için)
-        window.performanceSummary = {
+        const performanceSummary = {
           totalBoxes: dbAnalysisResults.summary.totalBoxes,
           totalPallets: dbAnalysisResults.summary.totalPallets,
           totalDeliveries: dbAnalysisResults.summary.totalDeliveries,
           geceDays: dbAnalysisResults.summary.geceDays,
-          gunduzDays: dbAnalysisResults.summary.gunduzDays
+          gunduzDays: dbAnalysisResults.summary.gunduzDays,
+          lastUpdated: new Date().toISOString()
         };
+        
+        window.performanceSummary = performanceSummary;
+        
+        // localStorage'a da kaydet (F5 yenileme için)
+        try {
+          localStorage.setItem('performanceSummary', JSON.stringify(performanceSummary));
+          console.log('💾 Performance summary localStorage\'a kaydedildi');
+        } catch (error) {
+          console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
+        }
         
         console.log('🌐 Database yükleme sırasında global summary güncellendi:', window.performanceSummary);
         
@@ -1984,13 +1995,24 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     filteredResults.summary.shiftCombinations = selectedDateShiftCombinations.length;
     
     // Summary verilerini global olarak erişilebilir hale getir
-    window.performanceSummary = {
+    const performanceSummary = {
       totalBoxes: filteredResults.summary.totalBoxes,
       totalPallets: filteredResults.summary.totalPallets,
       totalDeliveries: filteredResults.summary.totalDeliveries,
       geceDays: filteredResults.summary.geceDays,
-      gunduzDays: filteredResults.summary.gunduzDays
+      gunduzDays: filteredResults.summary.gunduzDays,
+      lastUpdated: new Date().toISOString()
     };
+    
+    window.performanceSummary = performanceSummary;
+    
+    // localStorage'a da kaydet (F5 yenileme için)
+    try {
+      localStorage.setItem('performanceSummary', JSON.stringify(performanceSummary));
+      console.log('💾 Performance summary localStorage\'a kaydedildi');
+    } catch (error) {
+      console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
+    }
     
     console.log('🌐 Global performance summary güncellendi:', window.performanceSummary);
     

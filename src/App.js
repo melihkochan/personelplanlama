@@ -103,29 +103,46 @@ function MainApp() {
     try {
       console.log('🔍 Ana sayfa - Aylık rapor oluşturuluyor...');
 
-      // Global performance summary'den verileri al
-      if (window.performanceSummary && window.performanceSummary.totalBoxes > 0) {
-        console.log('🌐 Ana sayfa - Global performance summary bulundu:', window.performanceSummary);
+      // Önce localStorage'dan veri yüklemeyi dene
+      let performanceSummary = null;
+      try {
+        const storedData = localStorage.getItem('performanceSummary');
+        if (storedData) {
+          performanceSummary = JSON.parse(storedData);
+          console.log('💾 Ana sayfa - localStorage\'dan performance summary yüklendi:', performanceSummary);
+        }
+      } catch (error) {
+        console.warn('⚠️ localStorage\'dan veri okuma hatası:', error);
+      }
+
+      // Global performance summary'den verileri al (eğer localStorage'da yoksa)
+      if (!performanceSummary && window.performanceSummary && window.performanceSummary.totalBoxes > 0) {
+        performanceSummary = window.performanceSummary;
+        console.log('🌐 Ana sayfa - Global performance summary bulundu:', performanceSummary);
+      }
+
+      if (performanceSummary && performanceSummary.totalBoxes > 0) {
+        console.log('✅ Ana sayfa - Performance summary bulundu:', performanceSummary);
         
         setDailyReport({
-          casesDistributedToday: window.performanceSummary.totalBoxes,
-          palletsDistributedToday: window.performanceSummary.totalPallets,
-          personnelWorkedYesterday: window.performanceSummary.geceDays, // Gece vardiyası sayısı
-          shippingPersonnelYesterday: window.performanceSummary.gunduzDays, // Gündüz vardiyası sayısı
+          casesDistributedToday: performanceSummary.totalBoxes,
+          palletsDistributedToday: performanceSummary.totalPallets,
+          personnelWorkedYesterday: performanceSummary.geceDays, // Gece vardiyası sayısı
+          shippingPersonnelYesterday: performanceSummary.gunduzDays, // Gündüz vardiyası sayısı
           storesVisitedYesterday: 0, // Bu veriler için ayrı hesaplama gerekebilir
           vehiclesUsedYesterday: 0, // Bu veriler için ayrı hesaplama gerekebilir
           totalEfficiency: 0,
-          lastUpdated: new Date()
+          lastUpdated: performanceSummary.lastUpdated ? new Date(performanceSummary.lastUpdated) : new Date()
         });
 
-        console.log('✅ Ana sayfa - Global summary\'den aylık rapor güncellendi:', {
-          totalBoxes: window.performanceSummary.totalBoxes,
-          totalPallets: window.performanceSummary.totalPallets,
-          geceDays: window.performanceSummary.geceDays,
-          gunduzDays: window.performanceSummary.gunduzDays
+        console.log('✅ Ana sayfa - Performance summary\'den aylık rapor güncellendi:', {
+          totalBoxes: performanceSummary.totalBoxes,
+          totalPallets: performanceSummary.totalPallets,
+          geceDays: performanceSummary.geceDays,
+          gunduzDays: performanceSummary.gunduzDays
         });
       } else {
-        console.log('⚠️ Ana sayfa - Global performance summary henüz hazır değil, fallback kullanılıyor');
+        console.log('⚠️ Ana sayfa - Performance summary bulunamadı, fallback kullanılıyor');
         
         // Fallback: performance_data'dan direkt çek
         const today = new Date();
@@ -431,6 +448,36 @@ function MainApp() {
   // İlk yükleme
   useEffect(() => {
     if (isAuthenticated && user) {
+      // Önce localStorage'dan performans verilerini yükle (hızlı görünüm için)
+      try {
+        const storedData = localStorage.getItem('performanceSummary');
+        if (storedData) {
+          const performanceSummary = JSON.parse(storedData);
+          console.log('💾 Ana sayfa - localStorage\'dan performans verileri yüklendi:', performanceSummary);
+          
+          // Eğer veri 24 saatten eski değilse kullan
+          const lastUpdated = new Date(performanceSummary.lastUpdated);
+          const now = new Date();
+          const hoursDiff = (now - lastUpdated) / (1000 * 60 * 60);
+          
+          if (hoursDiff < 24) {
+            setDailyReport({
+              casesDistributedToday: performanceSummary.totalBoxes,
+              palletsDistributedToday: performanceSummary.totalPallets,
+              personnelWorkedYesterday: performanceSummary.geceDays,
+              shippingPersonnelYesterday: performanceSummary.gunduzDays,
+              storesVisitedYesterday: 0,
+              vehiclesUsedYesterday: 0,
+              totalEfficiency: 0,
+              lastUpdated: lastUpdated
+            });
+            console.log('✅ Ana sayfa - localStorage verileri kullanıldı');
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ localStorage\'dan veri okuma hatası:', error);
+      }
+      
       loadData();
       loadDailyNotes(); // Daily notes'u da yükle
       loadCurrentShiftData(); // Güncel vardiya verilerini yükle

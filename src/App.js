@@ -258,8 +258,20 @@ function MainApp() {
           setUserRole(role);
 
           const userDetailsResult = await getUserDetails(user.id, user.email);
+          console.log('🔍 App.js - User details sonucu:', userDetailsResult);
           if (userDetailsResult.success && userDetailsResult.data) {
             setUserDetails(userDetailsResult.data);
+            console.log('✅ App.js - User details set edildi:', userDetailsResult.data);
+          } else {
+            console.log('⚠️ App.js - User details bulunamadı, user metadata kullanılıyor');
+            // Eğer veritabanında bulunamazsa, user metadata'sını kullan
+            setUserDetails({
+              id: user.id,
+              email: user.email,
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Kullanıcı',
+              role: role,
+              is_active: true
+            });
           }
         } catch (error) {
           console.error('❌ User role or details fetch error:', error);

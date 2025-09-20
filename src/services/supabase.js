@@ -661,18 +661,21 @@ export const getAllUsers = async () => {
 // Kullanıcı detaylarını getir
 export const getUserDetails = async (userId, userEmail = null) => {
   try {
-    // Önce ID ile dene
+    console.log('🔍 getUserDetails çağrıldı - userId:', userId, 'userEmail:', userEmail);
+    
+    // Önce users tablosundan ID ile dene
     let { data, error } = await supabase
       .from('users')
-      .select('id, email, username, full_name, role, is_active')
+      .select('id, email, full_name, role, is_active')
       .eq('id', userId)
       .single();
     
     // ID ile bulunamazsa email ile dene
     if (error && error.code === 'PGRST116' && userEmail) {
+      console.log('🔍 getUserDetails - ID ile bulunamadı, email ile deneniyor');
       const emailQuery = await supabase
         .from('users')
-        .select('id, email, username, full_name, role, is_active')
+        .select('id, email, full_name, role, is_active')
         .eq('email', userEmail)
         .single();
       
@@ -681,14 +684,34 @@ export const getUserDetails = async (userId, userEmail = null) => {
     }
     
     if (error) {
-      console.error('Get user details error:', error);
-      return { success: false, error: error.message, data: null };
+      console.log('⚠️ getUserDetails - Kullanıcı bulunamadı, varsayılan değerler döndürülüyor');
+      // Kullanıcı bulunamazsa varsayılan değerler döndür
+      return { 
+        success: true, 
+        data: {
+          id: userId,
+          email: userEmail || '',
+          full_name: 'Kullanıcı',
+          role: 'user',
+          is_active: true
+        }
+      };
     }
     
+    console.log('✅ getUserDetails - Kullanıcı bulundu:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('Get user details catch error:', error);
-    return { success: false, error: error.message, data: null };
+    console.error('❌ getUserDetails error:', error);
+    return { 
+      success: true, 
+      data: {
+        id: userId,
+        email: userEmail || '',
+        full_name: 'Kullanıcı',
+        role: 'user',
+        is_active: true
+      }
+    };
   }
 };
 
@@ -814,13 +837,54 @@ export const getUserRole = async (userId, userEmail = null) => {
   try {
     console.log('🔍 getUserRole çağrıldı - userId:', userId, 'userEmail:', userEmail);
     
-    // Test için direkt admin döndür
-    console.log('✅ getUserRole - Test için admin döndürülüyor');
-    return 'admin';
+    if (!userId) {
+      console.log('⚠️ getUserRole - userId boş, user döndürülüyor');
+      return 'user';
+    }
+
+    // Önce users tablosundan kontrol et
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('role, full_name, email')
+      .eq('id', userId)
+      .single();
+
+    if (userError && userError.code !== 'PGRST116') {
+      console.error('❌ getUserRole - users sorgu hatası:', userError);
+      return 'user';
+    }
+
+    if (user) {
+      console.log('✅ getUserRole - users\'dan rol bulundu:', user.role);
+      return user.role || 'user';
+    }
+
+    // Eğer users'da yoksa, email ile kontrol et
+    if (userEmail) {
+      const { data: emailUser, error: emailError } = await supabase
+        .from('users')
+        .select('role, full_name, email')
+        .eq('email', userEmail)
+        .single();
+
+      if (emailError && emailError.code !== 'PGRST116') {
+        console.error('❌ getUserRole - email sorgu hatası:', emailError);
+        return 'user';
+      }
+
+      if (emailUser) {
+        console.log('✅ getUserRole - email ile rol bulundu:', emailUser.role);
+        return emailUser.role || 'user';
+      }
+    }
+
+    // Hiçbir yerde bulunamazsa user döndür
+    console.log('⚠️ getUserRole - Kullanıcı bulunamadı, user döndürülüyor');
+    return 'user';
     
   } catch (error) {
     console.error('❌ getUserRole catch error:', error);
-    return 'admin'; // Catch durumunda da admin ver (test için)
+    return 'user'; // Hata durumunda user döndür
   }
 };
 

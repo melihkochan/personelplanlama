@@ -2262,60 +2262,120 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (!filteredData) return null;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">🌙 gece vardiyası</p>
-              <p className="text-lg font-bold">{filteredData.summary.geceDays}</p>
-              <p className="text-blue-200 text-sm">Toplam Gün</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        {/* Gece Vardiyası */}
+        <div className="group relative bg-gradient-to-br from-slate-800 via-blue-900 to-slate-800 text-white rounded-2xl p-4 sm:p-6 shadow-2xl hover:shadow-blue-500/25 transition-all duration-500 hover:scale-105 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-bold text-white group-hover:text-blue-100 transition-colors duration-300">
+                  {filteredData.summary.geceDays}
+                </div>
+                <div className="text-blue-200 text-xs sm:text-sm font-medium">Gün</div>
+              </div>
             </div>
-            <Calendar className="w-6 h-6 text-blue-200" />
+            <div className="space-y-1">
+              <p className="text-blue-100 text-xs sm:text-sm font-semibold">🌙 Gece Vardiyası</p>
+              <p className="text-blue-200/80 text-xs">Toplam Çalışma Günü</p>
+            </div>
           </div>
+          <div className="absolute -top-4 -right-4 w-20 h-20 sm:w-24 sm:h-24 bg-blue-500/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
         </div>
         
-        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg p-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-indigo-100 text-sm">🌅 gündüz vardiyası</p>
-              <p className="text-lg font-bold">{filteredData.summary.gunduzDays}</p>
-              <p className="text-indigo-200 text-sm">Toplam Gün</p>
+        {/* Gündüz Vardiyası */}
+        <div className="group relative bg-gradient-to-br from-purple-600 via-indigo-700 to-purple-800 text-white rounded-2xl p-4 sm:p-6 shadow-2xl hover:shadow-purple-500/25 transition-all duration-500 hover:scale-105 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-bold text-white group-hover:text-purple-100 transition-colors duration-300">
+                  {filteredData.summary.gunduzDays}
+                </div>
+                <div className="text-purple-200 text-xs sm:text-sm font-medium">Gün</div>
+              </div>
             </div>
-            <Calendar className="w-6 h-6 text-indigo-200" />
+            <div className="space-y-1">
+              <p className="text-purple-100 text-xs sm:text-sm font-semibold">🌅 Gündüz Vardiyası</p>
+              <p className="text-purple-200/80 text-xs">Toplam Çalışma Günü</p>
+            </div>
           </div>
+          <div className="absolute -top-4 -right-4 w-20 h-20 sm:w-24 sm:h-24 bg-purple-500/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
         </div>
         
-        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Toplam Sefer</p>
-              <p className="text-lg font-bold">{filteredData.summary.totalDeliveries}</p>
-              <p className="text-green-200 text-sm">🚚 sefer</p>
+        {/* Toplam Sefer */}
+        <div className="group relative bg-gradient-to-br from-emerald-600 via-green-700 to-emerald-800 text-white rounded-2xl p-4 sm:p-6 shadow-2xl hover:shadow-green-500/25 transition-all duration-500 hover:scale-105 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-bold text-white group-hover:text-emerald-100 transition-colors duration-300">
+                  {filteredData.summary.totalDeliveries}
+                </div>
+                <div className="text-emerald-200 text-xs sm:text-sm font-medium">Sefer</div>
+              </div>
             </div>
-            <Truck className="w-6 h-6 text-green-200" />
+            <div className="space-y-1">
+              <p className="text-emerald-100 text-xs sm:text-sm font-semibold">🚚 Toplam Sefer</p>
+              <p className="text-emerald-200/80 text-xs">Teslimat Sayısı</p>
+            </div>
           </div>
+          <div className="absolute -top-4 -right-4 w-20 h-20 sm:w-24 sm:h-24 bg-emerald-500/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
         </div>
         
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm">Toplam Palet</p>
-              <p className="text-lg font-bold">{filteredData.summary.totalPallets}</p>
-              <p className="text-purple-200 text-sm">📦 palet</p>
+        {/* Toplam Palet */}
+        <div className="group relative bg-gradient-to-br from-violet-600 via-purple-700 to-violet-800 text-white rounded-2xl p-4 sm:p-6 shadow-2xl hover:shadow-violet-500/25 transition-all duration-500 hover:scale-105 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-bold text-white group-hover:text-violet-100 transition-colors duration-300">
+                  {filteredData.summary.totalPallets}
+                </div>
+                <div className="text-violet-200 text-xs sm:text-sm font-medium">Palet</div>
+              </div>
             </div>
-            <Package className="w-6 h-6 text-purple-200" />
+            <div className="space-y-1">
+              <p className="text-violet-100 text-xs sm:text-sm font-semibold">📦 Toplam Palet</p>
+              <p className="text-violet-200/80 text-xs">Palet Sayısı</p>
+            </div>
           </div>
+          <div className="absolute -top-4 -right-4 w-20 h-20 sm:w-24 sm:h-24 bg-violet-500/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
         </div>
         
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg p-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-100 text-sm">Toplam Kasa</p>
-              <p className="text-lg font-bold">{filteredData.summary.totalBoxes}</p>
-              <p className="text-orange-200 text-sm">📦 kasa</p>
+        {/* Toplam Kasa */}
+        <div className="group relative bg-gradient-to-br from-amber-600 via-orange-700 to-amber-800 text-white rounded-2xl p-4 sm:p-6 shadow-2xl hover:shadow-amber-500/25 transition-all duration-500 hover:scale-105 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-bold text-white group-hover:text-amber-100 transition-colors duration-300">
+                  {filteredData.summary.totalBoxes}
+                </div>
+                <div className="text-amber-200 text-xs sm:text-sm font-medium">Kasa</div>
+              </div>
             </div>
-            <Package className="w-6 h-6 text-orange-200" />
+            <div className="space-y-1">
+              <p className="text-amber-100 text-xs sm:text-sm font-semibold">📦 Toplam Kasa</p>
+              <p className="text-amber-200/80 text-xs">Kasa Sayısı</p>
+            </div>
           </div>
+          <div className="absolute -top-4 -right-4 w-20 h-20 sm:w-24 sm:h-24 bg-amber-500/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
         </div>
       </div>
     );

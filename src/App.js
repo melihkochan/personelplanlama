@@ -29,6 +29,7 @@ import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { getVersionInfo } from './config/version';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, supabase } from './services/supabase';
 import { getPendingRegistrationsCount } from './services/supabase';
 import './App.css';
@@ -846,325 +847,476 @@ function MainApp() {
       {/* Main Layout */}
       <div className="relative z-10 flex h-screen">
         {/* Sidebar */}
-        <div className="sidebar-container w-80 bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl flex flex-col h-screen">
-          {/* Sidebar Header - Fixed */}
-          <div className="p-4 border-b border-gray-200/50 flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Sparkles className="w-5 h-5 text-white" />
+        <div className="sidebar-container w-72 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 backdrop-blur-md border-r border-slate-700/50 shadow-2xl flex flex-col h-screen relative z-20 pointer-events-auto">
+          {/* Modern Sidebar Header */}
+          <div className="p-4 border-b border-slate-700/50 flex-shrink-0">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">Personel Takip</h1>
-                  <p className="text-xs text-gray-500">Modern İş Yönetimi</p>
+                  <h1 className="text-lg font-bold text-white">Personel Takip</h1>
+                  <p className="text-xs text-slate-300">Modern İş Yönetimi</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowRulesModal(true)}
-                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
                 title="Sistem Kuralları"
               >
-                <Shield className="w-5 h-5 text-blue-600" />
+                <Shield className="w-4 h-4 text-blue-400" />
               </button>
+            </div>
+            
+            {/* Version Info */}
+            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-slate-300">{getVersionInfo().version}</span>
+                </div>
+                <span className="text-xs text-slate-400">{getVersionInfo().lastUpdate}</span>
+              </div>
             </div>
           </div>
 
-          {/* Navigation - Scrollable */}
+          {/* Modern Navigation */}
           <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1 sidebar-scroll">
             {/* Ana Sayfa */}
             <button
               onClick={() => handleTabChange('home')}
               className={`
-                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                 ${activeTab === 'home'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                 }
               `}
             >
-              <Home className="w-4 h-4 mr-2" />
-              Ana Sayfa
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                activeTab === 'home' 
+                  ? 'bg-white/20' 
+                  : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+              }`}>
+                <Home className={`w-3 h-3 ${activeTab === 'home' ? 'text-white' : 'text-slate-400'}`} />
+              </div>
+              <span className="flex-1 text-left">Ana Sayfa</span>
+              {activeTab === 'home' && (
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+              )}
             </button>
 
             {/* İstatistikler */}
             <button
               onClick={() => handleTabChange('statistics')}
               className={`
-                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                 ${activeTab === 'statistics'
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                 }
               `}
             >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              İstatistikler
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                activeTab === 'statistics' 
+                  ? 'bg-white/20' 
+                  : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+              }`}>
+                <BarChart3 className={`w-3 h-3 ${activeTab === 'statistics' ? 'text-white' : 'text-slate-400'}`} />
+              </div>
+              <span className="flex-1 text-left">İstatistikler</span>
+              {activeTab === 'statistics' && (
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+              )}
             </button>
 
             {/* Chat */}
             <button
               onClick={() => handleTabChange('chat')}
               className={`
-                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative
+                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                 ${activeTab === 'chat'
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/25'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                 }
               `}
             >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Mesajlar
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                activeTab === 'chat' 
+                  ? 'bg-white/20' 
+                  : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+              }`}>
+                <MessageCircle className={`w-3 h-3 ${activeTab === 'chat' ? 'text-white' : 'text-slate-400'}`} />
+              </div>
+              <span className="flex-1 text-left">Mesajlar</span>
               {unreadMessageCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-lg border-2 border-white animate-pulse">
+                <span className="px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
                   {unreadMessageCount}
                 </span>
+              )}
+              {activeTab === 'chat' && (
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
               )}
             </button>
 
 
 
             {/* Personel Yönetimi Grubu */}
-            <div className="space-y-1">
-              <div className="flex items-center px-3 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
+            <div className="space-y-1 mt-4">
+              <div className="flex items-center px-2 py-1">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Personel Yönetimi</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
               <button
                 onClick={() => handleTabChange('vardiya-kontrol')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'vardiya-kontrol'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Clock className="w-4 h-4 mr-2" />
-                Personel Kontrol
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'vardiya-kontrol' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Clock className={`w-3 h-3 ${activeTab === 'vardiya-kontrol' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Personel Kontrol</span>
+                {activeTab === 'vardiya-kontrol' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
               <button
                 onClick={() => handleTabChange('performance')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'performance'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Performans Analizi
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'performance' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <BarChart3 className={`w-3 h-3 ${activeTab === 'performance' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Performans Analizi</span>
+                {activeTab === 'performance' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
               <button
                 onClick={() => handleTabChange('store-distribution')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'store-distribution'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <MapPin className="w-4 h-4 mr-2" />
-                Personel Konum Dağılımı
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'store-distribution' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <MapPin className={`w-3 h-3 ${activeTab === 'store-distribution' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Personel Konum Dağılımı</span>
+                {activeTab === 'store-distribution' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
               <button
                 onClick={() => handleTabChange('vehicle-distribution')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'vehicle-distribution'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Car className="w-4 h-4 mr-2" />
-                Personel Araç Dağılımı
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'vehicle-distribution' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Car className={`w-3 h-3 ${activeTab === 'vehicle-distribution' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Personel Araç Dağılımı</span>
+                {activeTab === 'vehicle-distribution' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
               <button
                 onClick={() => handleTabChange('personnel')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'personnel'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Users className="w-4 h-4 mr-2" />
-                Personel Listesi
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'personnel' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Users className={`w-3 h-3 ${activeTab === 'personnel' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Personel Listesi</span>
+                {activeTab === 'personnel' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
             </div>
 
             {/* Mağaza Yönetimi Grubu */}
-            <div className="space-y-1">
-              <div className="flex items-center px-3 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Mağaza Yönetimi</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
+            <div className="space-y-1 mt-4">
+              <div className="flex items-center px-2 py-1">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Mağaza Yönetimi</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
               <button
                 onClick={() => handleTabChange('stores')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'stores'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Store className="w-4 h-4 mr-2" />
-                Mağaza Listesi
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'stores' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Store className={`w-3 h-3 ${activeTab === 'stores' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Mağaza Listesi</span>
+                {activeTab === 'stores' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
               <button
                 onClick={() => handleTabChange('store-distance')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'store-distance'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <MapPin className="w-4 h-4 mr-2" />
-                Mağaza Uzaklık Ölçer
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'store-distance' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <MapPin className={`w-3 h-3 ${activeTab === 'store-distance' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Mağaza Uzaklık Ölçer</span>
+                {activeTab === 'store-distance' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
             </div>
 
             {/* Araç Yönetimi Grubu */}
-            <div className="space-y-1">
-              <div className="flex items-center px-3 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Araç Yönetimi</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
+            <div className="space-y-1 mt-4">
+              <div className="flex items-center px-2 py-1">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Araç Yönetimi</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
               <button
                 onClick={() => handleTabChange('vehicles')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'vehicles'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Car className="w-4 h-4 mr-2" />
-                Araç Listesi
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'vehicles' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Car className={`w-3 h-3 ${activeTab === 'vehicles' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Araç Listesi</span>
+                {activeTab === 'vehicles' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
-
-
             </div>
 
             {/* TUZLA EKİP BİLGİLERİ Grubu */}
-            <div className="space-y-1">
-              <div className="flex items-center px-3 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">TUZLA EKİP BİLGİLERİ</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
+            <div className="space-y-1 mt-4">
+              <div className="flex items-center px-2 py-1">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tuzla Ekip Bilgileri</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
               <button
                 onClick={() => handleTabChange('team-shifts')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'team-shifts'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Clock className="w-4 h-4 mr-2" />
-                Ekip Vardiyaları
-
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'team-shifts' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Clock className={`w-3 h-3 ${activeTab === 'team-shifts' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Ekip Vardiyaları</span>
+                {activeTab === 'team-shifts' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
               <button
                 onClick={() => handleTabChange('team-personnel')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'team-personnel'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Users className="w-4 h-4 mr-2" />
-                Ekip Personel Bilgileri
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'team-personnel' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Users className={`w-3 h-3 ${activeTab === 'team-personnel' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Ekip Personel Bilgileri</span>
+                {activeTab === 'team-personnel' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
             </div>
 
             {/* PUANTAJ TAKİP Grubu */}
-            <div className="space-y-1">
-              <div className="flex items-center px-3 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">PUANTAJ TAKİP</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
+            <div className="space-y-1 mt-4">
+              <div className="flex items-center px-2 py-1">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Puantaj Takip</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
               <button
                 onClick={() => handleTabChange('puantaj-takip')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'puantaj-takip'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <FileExcelOutlined className="w-4 h-4 mr-2" />
-                Puantaj Takip
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'puantaj-takip' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <FileExcelOutlined className={`w-3 h-3 ${activeTab === 'puantaj-takip' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Puantaj Takip</span>
+                {activeTab === 'puantaj-takip' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
               <button
                 onClick={() => handleTabChange('puantaj-takvim')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'puantaj-takvim'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-lime-500 to-green-600 text-white shadow-lg shadow-lime-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Package className="w-4 h-4 mr-2" />
-                Puantaj Takvim
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'puantaj-takvim' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Package className={`w-3 h-3 ${activeTab === 'puantaj-takvim' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Puantaj Takvim</span>
+                {activeTab === 'puantaj-takvim' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
             </div>
 
             {/* Vardiya Planlama Grubu */}
-            <div className="space-y-1">
-              <div className="flex items-center px-3 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Vardiya Planlama</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
+            <div className="space-y-1 mt-4">
+              <div className="flex items-center px-2 py-1">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Vardiya Planlama</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
               <button
                 onClick={() => handleTabChange('planning')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'planning'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Calendar className="w-4 h-4 mr-2" />
-                Vardiya Planlama
-                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'planning' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Calendar className={`w-3 h-3 ${activeTab === 'planning' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Vardiya Planlama</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
                   Geliştirme
                 </span>
+                {activeTab === 'planning' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
 
@@ -1172,69 +1324,106 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('akilli-dagitim')}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'akilli-dagitim'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-lg shadow-yellow-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
-                <Users className="w-4 h-4 mr-2" />
-                Akıllı Dağıtım
-                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
-                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1"></div>
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'akilli-dagitim' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Users className={`w-3 h-3 ${activeTab === 'akilli-dagitim' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Akıllı Dağıtım</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   Geliştirme
                 </span>
+                {activeTab === 'akilli-dagitim' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
               </button>
 
             </div>
           </nav>
 
-          {/* Sidebar Footer - Fixed */}
-          <div className="p-3 border-t border-gray-200/50 space-y-2 flex-shrink-0">
-            {/* User Info - Moved here */}
-            <div className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
-              <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-xs">
-                  {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-900 truncate">
-                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}
-                </p>
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <div className={`w-2 h-2 rounded-full ${userRole === 'admin' ? 'bg-green-500' : userRole === 'yönetici' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
-                  {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
-                </p>
-              </div>
-              {/* Bildirim Butonu */}
-              <button
-                onClick={() => setShowNotificationPanel(true)}
-                className={`relative p-2 rounded-lg transition-colors ${unreadNotificationCount > 0
-                  ? 'bg-green-50 hover:bg-green-100 text-green-600'
-                  : 'hover:bg-gray-100 text-gray-600'
-                  }`}
-              >
-                <Bell className="w-4 h-4" />
-                {unreadNotificationCount > 0 && (
-                  <span className={`absolute -top-1 -right-1 ${getNotificationColor(unreadNotificationCount)} text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center shadow-lg border-2 border-white animate-pulse`}>
-                    {unreadNotificationCount}
+          {/* Modern Sidebar Footer */}
+          <div className="p-3 border-t border-slate-700/50 space-y-2 flex-shrink-0">
+            {/* User Profile */}
+            <div className="flex items-center p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all duration-300 group">
+              <div className="relative">
+                <div className={`w-8 h-8 bg-gradient-to-r ${
+                  userRole === 'admin' ? 'from-red-500 to-pink-500' : 
+                  userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
+                  'from-blue-500 to-cyan-500'
+                } rounded-lg flex items-center justify-center shadow-lg`}>
+                  <span className="text-white font-bold text-sm">
+                    {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
                   </span>
-                )}
-              </button>
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border border-slate-800 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                </div>
+              </div>
+              
+              <div className="flex-1 ml-2 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">
+                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
+                </p>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-slate-300">
+                    {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    userRole === 'admin' ? 'bg-red-500/20 text-red-300' : 
+                    userRole === 'yönetici' ? 'bg-purple-500/20 text-purple-300' : 
+                    'bg-blue-500/20 text-blue-300'
+                  }`}>
+                    {userRole === 'admin' ? 'Yönetici' : userRole === 'yönetici' ? 'Moderatör' : 'Üye'}
+                  </span>
+                </div>
+              </div>
             </div>
+
+            {/* Notification Button */}
+            <button
+              onClick={() => setShowNotificationPanel(true)}
+              className={`w-full flex items-center justify-between p-2 rounded-lg transition-all duration-300 ${
+                unreadNotificationCount > 0
+                  ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/30'
+                  : 'bg-slate-800/50 hover:bg-slate-700/50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                  unreadNotificationCount > 0 ? 'bg-green-500/20' : 'bg-slate-700/50'
+                }`}>
+                  <Bell className={`w-3 h-3 ${unreadNotificationCount > 0 ? 'text-green-400' : 'text-slate-400'}`} />
+                </div>
+                <span className="text-xs font-medium text-slate-300">Bildirimler</span>
+              </div>
+              {unreadNotificationCount > 0 && (
+                <span className="px-1.5 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full animate-pulse">
+                  {unreadNotificationCount}
+                </span>
+              )}
+            </button>
 
             {/* Admin Panel Button */}
             {(userRole === 'admin' || userRole === 'yönetici') && (
               <button
                 onClick={() => handleTabChange('admin')}
-                className="w-full relative flex items-center px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 text-xs shadow-lg"
+                className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-green-500/25 group"
               >
-                <Shield className="w-4 h-4 mr-2" />
-                Admin Panel
+                <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Shield className="w-3 h-3" />
+                </div>
+                <span className="flex-1 text-xs font-medium">Admin Panel</span>
                 {pendingApprovalCount > 0 && (
-                  <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-green-700 border border-green-200">
+                  <span className="px-1.5 py-0.5 bg-white/20 text-white text-xs font-bold rounded-full">
                     {pendingApprovalCount}
                   </span>
                 )}
@@ -1244,10 +1433,12 @@ function MainApp() {
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="w-full flex items-center px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 text-xs shadow-lg"
+              className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-red-500/25 group"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Çıkış Yap
+              <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center group-hover:scale-110 transition-transform">
+                <LogOut className="w-3 h-3" />
+              </div>
+              <span className="flex-1 text-xs font-medium">Çıkış Yap</span>
             </button>
           </div>
         </div>

@@ -8,6 +8,7 @@ import PersonelList from './components/personnel/PersonelList';
 import VehicleList from './components/vehicles/VehicleList';
 import StoreList from './components/stores/StoreList';
 import StoreDistanceCalculator from './components/stores/StoreDistanceCalculator';
+import StoreDifficultyManager from './components/stores/StoreDifficultyManager';
 import VardiyaPlanlama from './components/timesheet/VardiyaPlanlama';
 import AkilliDagitim from './components/timesheet/AkilliDagitim';
 import PerformanceAnalysis from './components/personnel/PerformanceAnalysis';
@@ -817,6 +818,7 @@ function MainApp() {
     { id: 'home', label: 'Ana Sayfa', icon: Home },
     { id: 'vehicles', label: 'Araç Listesi', icon: Car },
     { id: 'stores', label: 'Mağaza Listesi', icon: Store },
+    { id: 'store-difficulty', label: 'Mağaza Zorluk Yönetimi', icon: AlertCircle },
     { id: 'personnel', label: 'Personel Listesi', icon: Users },
     { id: 'vardiya-kontrol', label: 'Personel Kontrol', icon: Clock },
     { id: 'performance', label: 'Performans Analizi', icon: BarChart3 },
@@ -1148,6 +1150,29 @@ function MainApp() {
                 </div>
                 <span className="flex-1 text-left">Mağaza Uzaklık Ölçer</span>
                 {activeTab === 'store-distance' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
+              </button>
+
+              <button
+                onClick={() => handleTabChange('store-difficulty')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                  ${activeTab === 'store-difficulty'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }
+                `}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'store-difficulty' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <AlertCircle className={`w-3 h-3 ${activeTab === 'store-difficulty' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Mağaza Zorluk Yönetimi</span>
+                {activeTab === 'store-difficulty' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
@@ -1698,6 +1723,23 @@ function MainApp() {
                     >
                       <Store className="w-5 h-5 mr-3" />
                       Mağaza Listesi
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('store-difficulty');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'store-difficulty'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <AlertCircle className="w-5 h-5 mr-3" />
+                      Mağaza Zorluk Yönetimi
                     </button>
                   </div>
 
@@ -2500,6 +2542,11 @@ function MainApp() {
             {/* Mağaza Uzaklık Ölçer */}
             {activeTab === 'store-distance' && (
               <StoreDistanceCalculator />
+            )}
+
+            {/* Mağaza Zorluk Yönetimi */}
+            {activeTab === 'store-difficulty' && (
+              <StoreDifficultyManager />
             )}
 
 

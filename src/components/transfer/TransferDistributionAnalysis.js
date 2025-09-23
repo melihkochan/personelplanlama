@@ -472,19 +472,23 @@ const TransferDistributionAnalysis = () => {
     {
       title: 'Kasa Dağılımı',
       key: 'kasa_dagilimi',
-      width: 110,
+      width: 120,
       render: (_, record) => (
-        <div className="space-y-0.5 text-xs">
+        <div className="space-y-1 text-xs">
           <div className="flex justify-between">
-            <span>B:</span>
+            <span>Büyük:</span>
             <span className="font-medium">{record.buyuk_gri_kasa}</span>
           </div>
           <div className="flex justify-between">
-            <span>K:</span>
+            <span>Küçük:</span>
             <span className="font-medium">{record.kucuk_gri_kasa}</span>
           </div>
-          <div className="flex justify-between font-semibold">
-            <span>T:</span>
+          <div className="flex justify-between">
+            <span>Koli:</span>
+            <span className="font-medium">{record.sevk_kolisi}</span>
+          </div>
+          <div className="flex justify-between font-semibold border-t pt-1">
+            <span>Toplam:</span>
             <span className="text-blue-600">{record.toplam_kasa}</span>
           </div>
         </div>
@@ -493,17 +497,24 @@ const TransferDistributionAnalysis = () => {
     {
       title: 'Okutma Durumu',
       key: 'okutma_durumu',
-      width: 90,
+      width: 100,
       render: (_, record) => (
         <div className="text-center">
-          <Progress 
-            percent={record.okutma_orani} 
-            size="small" 
-            strokeColor={record.okutma_orani > 95 ? '#52c41a' : record.okutma_orani > 90 ? '#1890ff' : '#faad14'}
-            showInfo={false}
-          />
-          <div className="text-xs mt-0.5">
+          <div className="relative bg-gray-200 rounded-full h-2 w-full mb-1">
+            <div 
+              className={`h-2 rounded-full transition-all duration-300 ${
+                record.okutma_orani > 95 ? 'bg-green-500' : 
+                record.okutma_orani > 90 ? 'bg-blue-500' : 
+                record.okutma_orani > 80 ? 'bg-yellow-500' : 'bg-red-500'
+              }`}
+              style={{ width: `${Math.min(record.okutma_orani, 100)}%` }}
+            />
+          </div>
+          <div className="text-xs font-medium">
             {record.okutulan_kasa}/{record.toplam_kasa}
+          </div>
+          <div className="text-xs text-gray-500">
+            {record.okutma_orani}%
           </div>
         </div>
       )
@@ -716,17 +727,7 @@ const TransferDistributionAnalysis = () => {
 
         {/* Tablo */}
         <div className="p-8">
-          {filteredData.length === 0 && (
-            <div className="mb-4 space-y-2">
-              
-              <Alert
-                message="Henüz dağıtım verisi yok. Aylık Excel dosyası yükleyerek başlayın."
-                type="warning"
-                showIcon
-                className="rounded-lg"
-                        />
-                      </div>
-          )}
+     
           
           <Spin spinning={loading}>
           <Table

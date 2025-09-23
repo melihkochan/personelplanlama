@@ -1108,26 +1108,26 @@ const StoreDifficultyManager = () => {
           open={isEditModalVisible}
           onCancel={() => setIsEditModalVisible(false)}
           footer={null}
-          width={800}
+          width={750}
           className="modern-modal"
           style={{
             borderRadius: '16px',
-            maxHeight: '85vh',
+            maxHeight: '82vh',
             overflow: 'hidden'
           }}
         >
         {editingRecord && (
-          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-4 shadow-lg max-h-[calc(85vh-100px)] overflow-y-auto">
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-3 shadow-lg max-h-[calc(82vh-80px)] overflow-y-auto">
             <Form
               layout="vertical"
               initialValues={editingRecord}
               onFinish={handleSaveEdit}
-              className="space-y-3"
+              className="space-y-2"
             >
             {/* Temel Bilgiler */}
-            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
-                <div className="w-5 h-5 bg-blue-100 rounded-lg flex items-center justify-center mr-2">
+            <div className="bg-white rounded-xl p-2 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1 flex items-center">
+                <div className="w-4 h-4 bg-blue-100 rounded-lg flex items-center justify-center mr-2">
                   <span className="text-blue-600 text-xs font-bold">1</span>
                 </div>
                 Temel Bilgiler
@@ -1135,7 +1135,7 @@ const StoreDifficultyManager = () => {
               <Row gutter={12}>
                 <Col span={6}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Mağaza Kodu</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Mağaza Kodu</span>}
                     name="storeCode"
                     rules={[{ required: true, message: 'Mağaza kodu gerekli!' }]}
                   >
@@ -1144,8 +1144,8 @@ const StoreDifficultyManager = () => {
                         width: '100%',
                         borderRadius: '8px',
                         border: '1px solid #e5e7eb',
-                        padding: '8px 12px',
-                        fontSize: '13px',
+                        padding: '6px 10px',
+                        fontSize: '12px',
                         transition: 'all 0.2s'
                       }} 
                       size="middle"
@@ -1155,7 +1155,7 @@ const StoreDifficultyManager = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Mağaza Adı</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Mağaza Adı</span>}
                     name="storeName"
                     rules={[{ required: true, message: 'Mağaza adı gerekli!' }]}
                   >
@@ -1165,8 +1165,8 @@ const StoreDifficultyManager = () => {
                       style={{
                         borderRadius: '8px',
                         border: '1px solid #e5e7eb',
-                        padding: '8px 12px',
-                        fontSize: '13px',
+                        padding: '6px 10px',
+                        fontSize: '12px',
                         transition: 'all 0.2s'
                       }}
                     />
@@ -1174,7 +1174,7 @@ const StoreDifficultyManager = () => {
                 </Col>
                 <Col span={6}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Bölge</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Bölge</span>}
                     name="region"
                     rules={[{ required: true, message: 'Bölge gerekli!' }]}
                   >
@@ -1184,8 +1184,8 @@ const StoreDifficultyManager = () => {
                       style={{
                         borderRadius: '8px',
                         border: '1px solid #e5e7eb',
-                        padding: '8px 12px',
-                        fontSize: '13px',
+                        padding: '6px 10px',
+                        fontSize: '12px',
                         transition: 'all 0.2s'
                       }}
                     />
@@ -1195,9 +1195,9 @@ const StoreDifficultyManager = () => {
             </div>
 
             {/* Sayısal Veriler */}
-            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
-                <div className="w-5 h-5 bg-green-100 rounded-lg flex items-center justify-center mr-2">
+            <div className="bg-white rounded-xl p-2 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1 flex items-center">
+                <div className="w-4 h-4 bg-green-100 rounded-lg flex items-center justify-center mr-2">
                   <span className="text-green-600 text-xs font-bold">2</span>
                 </div>
                 Sayısal Veriler
@@ -1205,7 +1205,7 @@ const StoreDifficultyManager = () => {
               <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Ort. Kasa</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Ort. Kasa</span>}
                     name="averageCases"
                   >
                     <InputNumber 
@@ -1213,8 +1213,8 @@ const StoreDifficultyManager = () => {
                         width: '100%',
                         borderRadius: '8px',
                         border: '1px solid #e5e7eb',
-                        padding: '8px 12px',
-                        fontSize: '13px',
+                        padding: '6px 10px',
+                        fontSize: '12px',
                         transition: 'all 0.2s'
                       }} 
                       size="middle"
@@ -1225,7 +1225,7 @@ const StoreDifficultyManager = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Ort. Palet</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Ort. Palet</span>}
                     name="averagePallets"
                   >
                     <InputNumber 
@@ -1233,8 +1233,8 @@ const StoreDifficultyManager = () => {
                         width: '100%',
                         borderRadius: '8px',
                         border: '1px solid #e5e7eb',
-                        padding: '8px 12px',
-                        fontSize: '13px',
+                        padding: '6px 10px',
+                        fontSize: '12px',
                         transition: 'all 0.2s'
                       }} 
                       size="middle"
@@ -1247,17 +1247,17 @@ const StoreDifficultyManager = () => {
             </div>
 
             {/* Zorluk Seviyeleri */}
-            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
-                <div className="w-5 h-5 bg-orange-100 rounded-lg flex items-center justify-center mr-2">
+            <div className="bg-white rounded-xl p-2 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1 flex items-center">
+                <div className="w-4 h-4 bg-orange-100 rounded-lg flex items-center justify-center mr-2">
                   <span className="text-orange-600 text-xs font-bold">3</span>
                 </div>
                 Zorluk Seviyeleri
               </h3>
-              <Row gutter={16}>
+              <Row gutter={12}>
                 <Col span={6}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Fiziksel Erişim</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Fiziksel Erişim</span>}
                     name="physicalAccessDifficulty"
                   >
                     <Select 
@@ -1279,7 +1279,7 @@ const StoreDifficultyManager = () => {
                 </Col>
                 <Col span={6}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Araç Uzaklığı</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Araç Uzaklığı</span>}
                     name="vehicleDistance"
                   >
                     <Select 
@@ -1301,7 +1301,7 @@ const StoreDifficultyManager = () => {
                 </Col>
                 <Col span={6}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">AVM Zorluğu</span>}
+                    label={<span className="text-xs font-medium text-gray-700">AVM Zorluğu</span>}
                     name="mallDifficulty"
                   >
                     <Select 
@@ -1323,7 +1323,7 @@ const StoreDifficultyManager = () => {
                 </Col>
                 <Col span={6}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Bölgesel Zorluk</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Bölgesel Zorluk</span>}
                     name="regionalDifficulty"
                   >
                     <Select 
@@ -1347,26 +1347,26 @@ const StoreDifficultyManager = () => {
             </div>
 
             {/* Ek Bilgiler */}
-            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
-                <div className="w-5 h-5 bg-purple-100 rounded-lg flex items-center justify-center mr-2">
+            <div className="bg-white rounded-xl p-2 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1 flex items-center">
+                <div className="w-4 h-4 bg-purple-100 rounded-lg flex items-center justify-center mr-2">
                   <span className="text-purple-600 text-xs font-bold">4</span>
                 </div>
                 Ek Bilgiler
               </h3>
-              <Row gutter={16}>
+              <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Mağaza Tipi</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Mağaza Tipi</span>}
                     name="storeType"
                   >
                     <Select 
-                      size="large"
+                      size="middle"
                       placeholder="Tip seçin"
                       style={{
-                        borderRadius: '12px',
-                        border: '2px solid #e5e7eb',
-                        fontSize: '14px'
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '12px'
                       }}
                     >
                       <Option value="CADDE">CADDE</Option>
@@ -1377,7 +1377,7 @@ const StoreDifficultyManager = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label={<span className="text-sm font-medium text-gray-700">Merdiven Basamak Sayısı</span>}
+                    label={<span className="text-xs font-medium text-gray-700">Merdiven Basamak Sayısı</span>}
                     name="stairSteps"
                   >
                     <InputNumber 
@@ -1385,8 +1385,8 @@ const StoreDifficultyManager = () => {
                         width: '100%',
                         borderRadius: '8px',
                         border: '1px solid #e5e7eb',
-                        padding: '8px 12px',
-                        fontSize: '13px',
+                        padding: '6px 10px',
+                        fontSize: '12px',
                         transition: 'all 0.2s'
                       }} 
                       size="middle"
@@ -1398,37 +1398,38 @@ const StoreDifficultyManager = () => {
               </Row>
               
               <Form.Item
-                label={<span className="text-sm font-medium text-gray-700">Açıklama</span>}
+                label={<span className="text-xs font-medium text-gray-700">Açıklama</span>}
                 name="description"
+                style={{ marginBottom: '8px' }}
               >
                 <TextArea 
-                  rows={2} 
+                  rows={1} 
                   size="middle"
                   placeholder="Mağaza hakkında açıklama yazın..."
                   style={{
                     borderRadius: '8px',
                     border: '1px solid #e5e7eb',
-                    padding: '8px 12px',
-                    fontSize: '13px',
+                    padding: '6px 10px',
+                    fontSize: '12px',
                     transition: 'all 0.2s'
                   }}
                 />
               </Form.Item>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
+            <div className="flex justify-end space-x-2 pt-1 border-t border-gray-200">
               <Button 
-                size="middle" 
+                size="small" 
                 onClick={() => setIsEditModalVisible(false)}
-                className="px-4 py-1.5 rounded-lg border-gray-300 text-gray-600 hover:bg-gray-50 transition-all duration-200"
+                className="px-3 py-1 rounded-lg border-gray-300 text-gray-600 hover:bg-gray-50 transition-all duration-200"
               >
                 İptal
               </Button>
               <Button 
                 type="primary" 
-                size="middle" 
+                size="small" 
                 htmlType="submit"
-                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
+                className="px-3 py-1 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 Kaydet
               </Button>

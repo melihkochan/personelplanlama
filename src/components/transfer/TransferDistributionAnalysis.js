@@ -58,6 +58,7 @@ const TransferDistributionAnalysis = () => {
   const [statistics, setStatistics] = useState({ totalKasa: 0, okutulanKasa: 0, okutmaOrani: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(200);
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0, percentage: 0 });
 
   // Aylar listesi - dinamik olarak veritabanından çek
   const [availableMonths, setAvailableMonths] = useState([]);
@@ -148,14 +149,11 @@ const TransferDistributionAnalysis = () => {
         loadAvailableRegions()
       ]);
       
-      const [count, stats] = await Promise.all([
-        loadTotalCount(selectedMonth, selectedRegion),
-        loadStatistics(selectedMonth, selectedRegion)
-      ]);
+      await loadDistributionData(selectedMonth, selectedRegion);
       
-      setTotalCount(count);
+      // İstatistikleri güncelle
+      const stats = loadStatistics();
       setStatistics(stats);
-      await loadDistributionData(1, selectedMonth, selectedRegion);
     };
     
     initializeData();
@@ -166,14 +164,11 @@ const TransferDistributionAnalysis = () => {
     setSelectedMonth(month);
     setCurrentPage(1);
     
-    const [count, stats] = await Promise.all([
-      loadTotalCount(month, selectedRegion),
-      loadStatistics(month, selectedRegion)
-    ]);
+    await loadDistributionData(month, selectedRegion);
     
-    setTotalCount(count);
+    // İstatistikleri güncelle
+    const stats = loadStatistics();
     setStatistics(stats);
-    await loadDistributionData(1, month, selectedRegion);
   };
 
   // Bölge seçimi değiştiğinde veri yenile
@@ -181,20 +176,20 @@ const TransferDistributionAnalysis = () => {
     setSelectedRegion(region);
     setCurrentPage(1);
     
-    const [count, stats] = await Promise.all([
-      loadTotalCount(selectedMonth, region),
-      loadStatistics(selectedMonth, region)
-    ]);
+    await loadDistributionData(selectedMonth, region);
     
-    setTotalCount(count);
+    // İstatistikleri güncelle
+    const stats = loadStatistics();
     setStatistics(stats);
-    await loadDistributionData(1, selectedMonth, region);
   };
 
-  // Sayfa değişikliği
-  const handlePageChange = async (page) => {
-    setCurrentPage(page);
-    await loadDistributionData(page, selectedMonth, selectedRegion);
+  // İstatistikleri hesapla (mevcut distributionData'dan)
+  const loadStatistics = () => {
+    const totalKasa = distributionData.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0);
+    const okutulanKasa = distributionData.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0);
+    const okutmaOrani = totalKasa > 0 ? Math.round((okutulanKasa / totalKasa) * 100 * 10) / 10 : 0;
+
+    return { totalKasa, okutulanKasa, okutmaOrani };
   };
 
   // Toplam kayıt sayısını çek (istatistikler için)
@@ -225,40 +220,10 @@ const TransferDistributionAnalysis = () => {
     }
   };
 
-  // İstatistik verilerini çek (toplam kasa, okutulan vs.)
-  const loadStatistics = async (month = 'all', region = 'all') => {
-    try {
-      let query = supabase
-        .from('aktarma_dagitim_verileri')
-        .select('toplam_kasa, okutulan_kasa');
+  // Eski loadStatistics fonksiyonu kaldırıldı - artık loadStatistics() kullanıyoruz
 
-      if (month !== 'all') {
-        query = query.eq('ay', month);
-      }
-      if (region !== 'all') {
-        query = query.eq('bolge', region);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('İstatistik verisi alma hatası:', error);
-        return { totalKasa: 0, okutulanKasa: 0, okutmaOrani: 0 };
-      }
-
-      const totalKasa = data?.reduce((sum, record) => sum + (record.toplam_kasa || 0), 0) || 0;
-      const okutulanKasa = data?.reduce((sum, record) => sum + (record.okutulan_kasa || 0), 0) || 0;
-      const okutmaOrani = totalKasa > 0 ? Math.round((okutulanKasa / totalKasa) * 100 * 10) / 10 : 0;
-
-      return { totalKasa, okutulanKasa, okutmaOrani };
-    } catch (error) {
-      console.error('İstatistik verisi alma hatası:', error);
-      return { totalKasa: 0, okutulanKasa: 0, okutmaOrani: 0 };
-    }
-  };
-
-  // Sayfa bazında veri yükleme (lazy loading)
-  const loadDistributionData = async (page = 1, month = 'all', region = 'all') => {
+  // Tüm verileri yükle (batch loading ile)
+  const loadDistributionData = async (month = 'all', region = 'all') => {
     setLoading(true);
     try {
       // Supabase tablosunun varlığını kontrol et
@@ -272,39 +237,81 @@ const TransferDistributionAnalysis = () => {
         return;
       }
 
-      // Sadece mevcut sayfa için veri çek
-      let query = supabase
+      // Önce toplam sayıyı al
+      let countQuery = supabase
         .from('aktarma_dagitim_verileri')
-        .select('*')
-        .order('tarih', { ascending: true });
+        .select('*', { count: 'exact', head: true });
 
-      // Filtreleme uygula
       if (month !== 'all') {
-        query = query.eq('ay', month);
+        countQuery = countQuery.eq('ay', month);
       }
       if (region !== 'all') {
-        query = query.eq('bolge', region);
+        countQuery = countQuery.eq('bolge', region);
       }
 
-      // Sayfalama uygula
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Veri yükleme hatası:', error);
-        message.error('Veri yüklenirken hata oluştu!');
+      const { count, error: countError } = await countQuery;
+      if (countError) {
+        console.error('Toplam sayı alma hatası:', countError);
         return;
       }
 
-      setDistributionData(data || []);
-      setFilteredData(data || []);
-      console.log(`Sayfa ${page}: ${data?.length || 0} kayıt yüklendi`);
+      // Progress başlangıcı
+      setLoadingProgress({ current: 0, total: count, percentage: 0 });
+
+      // Tüm verileri batch'ler halinde çek
+      const batchSize = 1000;
+      let allData = [];
+      
+      for (let offset = 0; offset < count; offset += batchSize) {
+        let query = supabase
+          .from('aktarma_dagitim_verileri')
+          .select('*')
+          .order('tarih', { ascending: true });
+
+        // Filtreleme uygula
+        if (month !== 'all') {
+          query = query.eq('ay', month);
+        }
+        if (region !== 'all') {
+          query = query.eq('bolge', region);
+        }
+
+        // Batch aralığı uygula
+        query = query.range(offset, offset + batchSize - 1);
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error(`Batch ${offset}-${offset + batchSize} hatası:`, error);
+          break;
+        }
+
+        allData = [...allData, ...(data || [])];
+        
+        // Progress güncelle
+        const percentage = Math.round((allData.length/count)*100);
+        setLoadingProgress({ 
+          current: allData.length, 
+          total: count, 
+          percentage: percentage 
+        });
+      }
+      setDistributionData(allData);
+      setFilteredData(allData);
+      
+      // İstatistikleri güncelle (allData kullanarak)
+      const totalKasa = allData.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0);
+      const okutulanKasa = allData.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0);
+      const okutmaOrani = totalKasa > 0 ? Math.round((okutulanKasa / totalKasa) * 100 * 10) / 10 : 0;
+      
+      setStatistics({ totalKasa, okutulanKasa, okutmaOrani });
+      
+      // Yükleme tamamlandı
+      setLoadingProgress({ current: 0, total: 0, percentage: 0 });
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
       message.error('Veri yüklenirken hata oluştu!');
+      setLoadingProgress({ current: 0, total: 0, percentage: 0 });
     }
     setLoading(false);
   };
@@ -483,19 +490,17 @@ const TransferDistributionAnalysis = () => {
             if (errorCount > 0) {
               message.warning(`${errorCount} batch'te hata oluştu. ${successCount}/${allData.length} kayıt başarılı.`);
             }
-            // Veri yüklendikten sonra sayfa 1'e dön ve verileri yenile
+            // Veri yüklendikten sonra verileri yenile
             setCurrentPage(1);
             await Promise.all([
               loadAvailableMonths(),
               loadAvailableRegions()
             ]);
-            const [count, stats] = await Promise.all([
-              loadTotalCount(selectedMonth, selectedRegion),
-              loadStatistics(selectedMonth, selectedRegion)
-            ]);
-            setTotalCount(count);
+            await loadDistributionData(selectedMonth, selectedRegion);
+            
+            // İstatistikleri güncelle
+            const stats = loadStatistics();
             setStatistics(stats);
-            await loadDistributionData(1, selectedMonth, selectedRegion);
           } else {
             message.error(`Hiçbir kayıt yüklenemedi! (${allData.length} kayıt işlendi, ${errorCount} batch hatası)`);
           }
@@ -545,7 +550,11 @@ const TransferDistributionAnalysis = () => {
       dataIndex: 'tarih',
       key: 'tarih',
       width: 90,
-      sorter: (a, b) => new Date(a.tarih) - new Date(b.tarih),
+      sorter: (a, b) => {
+        const dateA = new Date(a.tarih);
+        const dateB = new Date(b.tarih);
+        return dateA.getTime() - dateB.getTime();
+      },
       defaultSortOrder: 'ascend',
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }}>
@@ -589,13 +598,15 @@ const TransferDistributionAnalysis = () => {
       )
     },
     {
-      title: 'Mağaza',
-      key: 'magaza',
-      width: 140,
+      title: 'Mağaza Kodu',
+      dataIndex: 'magaza_kodu',
+      key: 'magaza_kodu',
+      width: 100,
+      sorter: (a, b) => (a.magaza_kodu || '').localeCompare(b.magaza_kodu || ''),
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Mağaza ara"
+            placeholder="Mağaza kodu ara"
             value={selectedKeys[0]}
             onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
             onPressEnter={() => confirm()}
@@ -619,13 +630,47 @@ const TransferDistributionAnalysis = () => {
       ),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => 
-        record.magaza_adi?.toLowerCase().includes(value.toLowerCase()) ||
         record.magaza_kodu?.toLowerCase().includes(value.toLowerCase()),
-      render: (_, record) => (
-        <div className="text-xs">
-          <div className="font-medium truncate">{record.magaza_adi}</div>
-          <div className="text-gray-500">{record.magaza_kodu}</div>
+      render: (text) => (
+        <div className="text-xs text-gray-500">{text}</div>
+      )
+    },
+    {
+      title: 'Mağaza Adı',
+      dataIndex: 'magaza_adi',
+      key: 'magaza_adi',
+      width: 120,
+      sorter: (a, b) => (a.magaza_adi || '').localeCompare(b.magaza_adi || ''),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="Mağaza adı ara"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              Ara
+            </Button>
+            <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+              Temizle
+            </Button>
+          </Space>
         </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => 
+        record.magaza_adi?.toLowerCase().includes(value.toLowerCase()),
+      render: (text) => (
+        <div className="text-xs font-medium truncate">{text}</div>
       )
     },
     {
@@ -764,6 +809,35 @@ const TransferDistributionAnalysis = () => {
       dataIndex: 'plaka',
       key: 'plaka',
       width: 80,
+      sorter: (a, b) => (a.plaka || '').localeCompare(b.plaka || ''),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="Plaka ara"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              Ara
+            </Button>
+            <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+              Temizle
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => 
+        record.plaka?.toLowerCase().includes(value.toLowerCase()),
       render: (text) => (
         <span className="font-mono text-xs">
           {text || '-'}
@@ -775,6 +849,12 @@ const TransferDistributionAnalysis = () => {
       dataIndex: 'dagitim',
       key: 'dagitim',
       width: 70,
+      sorter: (a, b) => (a.dagitim || '').localeCompare(b.dagitim || ''),
+      filters: [
+        { text: 'GECE', value: 'GECE' },
+        { text: 'GÜNDÜZ', value: 'GÜNDÜZ' }
+      ],
+      onFilter: (value, record) => record.dagitim === value,
       render: (text) => (
         <Tag color={text === 'GECE' ? 'purple' : 'blue'} className="text-xs">
           {text}
@@ -875,12 +955,12 @@ const TransferDistributionAnalysis = () => {
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Toplam Kayıt</span>}
-                  value={totalCount.toLocaleString('tr-TR')}
+                  value={distributionData.length.toLocaleString('tr-TR')}
                   valueStyle={{ color: '#1890ff', fontSize: '28px', fontWeight: 'bold' }}
                   prefix={<FileSpreadsheet className="w-6 h-6 text-blue-600" />}
                 />
                 <div className="text-xs text-gray-500 mt-2">
-                  <div>Veritabanı: {totalCount.toLocaleString('tr-TR')} kayıt</div>
+                  <div>Veritabanı: {distributionData.length.toLocaleString('tr-TR')} kayıt</div>
                   <div>
                     {selectedMonth === 'all' 
                       ? 'Tüm aylar (200\'er sayfa)' 
@@ -933,24 +1013,62 @@ const TransferDistributionAnalysis = () => {
           </Row>
         </div>
 
-        {/* Tablo */}
-        <div className="p-8">
-     
-          
-          <Spin spinning={loading}>
+          {/* Tablo */}
+          <div className="p-8">
+            {/* Yükleme Progress Bar */}
+            {loading && loadingProgress.total > 0 && (
+              <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-blue-800">Veriler Yükleniyor</h3>
+                      <p className="text-sm text-blue-600">
+                        {loadingProgress.current.toLocaleString('tr-TR')} / {loadingProgress.total.toLocaleString('tr-TR')} kayıt
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-blue-800">{loadingProgress.percentage}%</div>
+                    <div className="text-sm text-blue-600">Tamamlandı</div>
+                      </div>
+                    </div>
+                    
+                <div className="relative">
+                  <div className="w-full bg-blue-200 rounded-full h-3 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${loadingProgress.percentage}%` }}
+                    />
+                      </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                  </div>
+
+                <div className="mt-3 text-center">
+                  <div className="text-sm text-blue-700">
+                    {loadingProgress.percentage < 25 && "Veriler hazırlanıyor..."}
+                    {loadingProgress.percentage >= 25 && loadingProgress.percentage < 50 && "Veriler yükleniyor..."}
+                    {loadingProgress.percentage >= 50 && loadingProgress.percentage < 75 && "Neredeyse tamamlandı..."}
+                    {loadingProgress.percentage >= 75 && "Son kontroller yapılıyor..."}
+                  </div>
+                </div>
+        </div>
+            )}
+            
+            <Spin spinning={loading}>
           <Table
               columns={columns}
               dataSource={filteredData}
             rowKey="id"
               pagination={{
-                current: currentPage,
-                pageSize: pageSize,
-                total: totalCount,
+                pageSize: 100,
+                total: distributionData.length,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) => 
-                  `${range[0]}-${range[1]} / ${total.toLocaleString('tr-TR')} kayıt (Toplam: ${totalCount.toLocaleString('tr-TR')})`,
-                onChange: handlePageChange,
+                  `${range[0]}-${range[1]} / ${distributionData.length.toLocaleString('tr-TR')} kayıt`,
                 pageSizeOptions: ['50', '100', '200', '500'],
                 size: 'default'
               }}

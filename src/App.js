@@ -1190,47 +1190,47 @@ function MainApp() {
 
 
               <button
-                onClick={() => handleTabChange('transfer-personnel-list')}
+                onClick={() => handleTabChange('aktarma-personel-list')}
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                  ${activeTab === 'transfer-personnel-list'
+                  ${activeTab === 'aktarma-personel-list'
                     ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
                 <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'transfer-personnel-list' 
+                  activeTab === 'aktarma-personel-list' 
                     ? 'bg-white/20' 
                     : 'bg-slate-700/50 group-hover:bg-slate-600/50'
                 }`}>
-                  <Users className={`w-3 h-3 ${activeTab === 'transfer-personnel-list' ? 'text-white' : 'text-slate-400'}`} />
+                  <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Aktarma Depo Personel Listesi</span>
-                {activeTab === 'transfer-personnel-list' && (
+                <span className="flex-1 text-left">Aktarma Depo Personel Kontrol</span>
+                {activeTab === 'aktarma-personel-list' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
 
               <button
-                onClick={() => handleTabChange('transfer-distribution-analysis')}
+                onClick={() => handleTabChange('aktarma-dagitim-analizi')}
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                  ${activeTab === 'transfer-distribution-analysis'
+                  ${activeTab === 'aktarma-dagitim-analizi'
                     ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
               >
                 <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'transfer-distribution-analysis' 
+                  activeTab === 'aktarma-dagitim-analizi' 
                     ? 'bg-white/20' 
                     : 'bg-slate-700/50 group-hover:bg-slate-600/50'
                 }`}>
-                  <BarChart3 className={`w-3 h-3 ${activeTab === 'transfer-distribution-analysis' ? 'text-white' : 'text-slate-400'}`} />
+                  <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Aktarma Dağıtım Performans Analizi</span>
-                {activeTab === 'transfer-distribution-analysis' && (
+                <span className="flex-1 text-left">Aktarma Dağıtım Analizi</span>
+                {activeTab === 'aktarma-dagitim-analizi' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
@@ -2571,13 +2571,13 @@ function MainApp() {
             )}
 
 
-            {/* Aktarma Depo Personel Listesi */}
-            {activeTab === 'transfer-personnel-list' && (
+            {/* Aktarma Depo Personel Kontrol */}
+            {activeTab === 'aktarma-personel-list' && (
               <TransferPersonnelList />
             )}
 
-            {/* Aktarma Dağıtım Performans Analizi */}
-            {activeTab === 'transfer-distribution-analysis' && (
+            {/* Aktarma Dağıtım Analizi */}
+            {activeTab === 'aktarma-dagitim-analizi' && (
               <TransferDistributionAnalysis />
             )}
 

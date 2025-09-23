@@ -546,62 +546,6 @@ const Statistics = () => {
          </div>
       </div>
 
-             {/* Özet Kartları */}
-       {monthlyStats && (
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
-             <div className="flex items-center justify-between">
-               <div>
-                 <p className="text-blue-100 text-sm font-medium">Toplam Kasa</p>
-                 <p className="text-3xl font-bold">{monthlyStats.totalBoxes.toLocaleString()}</p>
-                 <p className="text-blue-200 text-xs mt-1">
-                   {selectedMonth !== null && selectedYear !== null 
-                     ? `${getMonthName(selectedMonth)} ${selectedYear}` 
-                     : 'Tüm Aylar'}
-                 </p>
-               </div>
-               <Package className="w-8 h-8 text-blue-200" />
-             </div>
-           </div>
-
-           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
-             <div className="flex items-center justify-between">
-               <div>
-                 <p className="text-green-100 text-sm font-medium">Toplam Personel</p>
-                 <p className="text-3xl font-bold">{monthlyStats.totalPersonnel}</p>
-                 <p className="text-green-200 text-xs mt-1">Aktif çalışan</p>
-               </div>
-               <Users className="w-8 h-8 text-green-200" />
-             </div>
-           </div>
-
-           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
-             <div className="flex items-center justify-between">
-               <div>
-                 <p className="text-purple-100 text-sm font-medium">Toplam Palet</p>
-                 <p className="text-3xl font-bold">{monthlyStats.totalPallets?.toLocaleString() || 0}</p>
-                 <p className="text-purple-200 text-xs mt-1">
-                   {selectedMonth !== null && selectedYear !== null 
-                     ? `${getMonthName(selectedMonth)} ${selectedYear}` 
-                     : 'Tüm Aylar'}
-                 </p>
-               </div>
-               <Target className="w-8 h-8 text-purple-200" />
-             </div>
-           </div>
-
-           <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
-             <div className="flex items-center justify-between">
-               <div>
-                 <p className="text-orange-100 text-sm font-medium">Veri Noktası</p>
-                 <p className="text-3xl font-bold">{monthlyStats.dataPoints}</p>
-                 <p className="text-orange-200 text-xs mt-1">Kayıt sayısı</p>
-               </div>
-               <Activity className="w-8 h-8 text-orange-200" />
-             </div>
-           </div>
-         </div>
-       )}
 
              {/* Modern Grafikler */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

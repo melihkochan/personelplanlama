@@ -34,6 +34,7 @@ import {
   Spin
 } from 'antd';
 import * as XLSX from 'xlsx';
+import { storeDifficultyService } from '../../services/supabase';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -55,6 +56,83 @@ const StoreDifficultyManager = () => {
   const fileInputRef = useRef(null);
   const carouselRef = useRef(null);
   const detailCarouselRef = useRef(null);
+
+  // Veritabanından mağazaları yükle
+  const loadStoresFromDatabase = async () => {
+    try {
+      setLoading(true);
+      const result = await storeDifficultyService.getAllStores();
+      
+      if (result.success) {
+        const processedData = result.data.map((store, index) => ({
+          key: store.id,
+          id: store.id,
+          storeCode: store.store_code,
+          storeName: store.store_name,
+          region: store.region,
+          averageCases: store.average_cases,
+          averagePallets: store.average_pallets,
+          physicalAccessDifficulty: store.physical_access_difficulty,
+          vehicleDistance: store.vehicle_distance,
+          mallDifficulty: store.mall_difficulty,
+          regionalDifficulty: store.regional_difficulty,
+          totalDifficultyScore: store.total_difficulty_score,
+          description: store.description,
+          storeType: store.store_type,
+          stairSteps: store.stair_steps,
+          images: store.store_difficulty_images || []
+        }));
+        
+        setStoreData(processedData);
+        setFilteredData(processedData);
+      } else {
+        message.error(`Veri yükleme hatası: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Veri yükleme hatası:', error);
+      message.error('Veriler yüklenirken hata oluştu!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Component mount olduğunda verileri yükle
+  useEffect(() => {
+    loadStoresFromDatabase();
+  }, []);
+
+  // Excel indirme
+  const handleDownloadExcel = () => {
+    try {
+      const dataToExport = storeData.map(store => ({
+        'Mağaza Kodu': store.storeCode,
+        'Mağaza Adı': store.storeName,
+        'Bölge': store.region,
+        'Sevkiyatta Bu Mağazaya Bırakılan Ortalama Kasa Sayısı': store.averageCases,
+        'Palet Sayısı Ortalama': store.averagePallets,
+        'Fiziksel Erişim Zorluğu': store.physicalAccessDifficulty,
+        'Araç Mağaza Uzaklığı': store.vehicleDistance,
+        'Avm Zorluğu': store.mallDifficulty,
+        'Bölgesel Zorluk (Uzaklık & Trafik)': store.regionalDifficulty,
+        'Toplam Zorluk Puanı': store.totalDifficultyScore,
+        'Açıklama': store.description,
+        'Mağaza Tipi': store.storeType,
+        'Merdiven Basamak Sayısı': store.stairSteps
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Mağaza Zorluk Verileri');
+      
+      const fileName = `mağaza_zorluk_verileri_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      message.success('Excel dosyası indirildi!');
+    } catch (error) {
+      console.error('Excel indirme hatası:', error);
+      message.error('Excel dosyası indirilemedi!');
+    }
+  };
 
   // Zorluk seviyeleri için renk kodları
   const getDifficultyColor = (level) => {
@@ -83,12 +161,12 @@ const StoreDifficultyManager = () => {
     setCurrentPage(1);
   };
 
-  // Excel dosyasını işle
-  const handleFileUpload = (file) => {
+  // Excel dosyasını işle ve Supabase'e kaydet
+  const handleFileUpload = async (file) => {
     setLoading(true);
     const reader = new FileReader();
     
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
@@ -100,30 +178,35 @@ const StoreDifficultyManager = () => {
         const headers = jsonData[0];
         const rows = jsonData.slice(1);
         
-        // Veriyi işle ve storeData formatına çevir - sadece kod'u olan verileri al
+        // Veriyi işle ve Supabase formatına çevir
         const processedData = rows
           .filter(row => row[0] && row[0].toString().trim() !== '') // Kod boş olmayan satırları filtrele
           .map((row, index) => ({
-            key: index,
-            storeCode: row[0] || '', // Mağaza Kodu (A sütunu)
-            storeName: row[1] || '',
+            store_code: parseInt(row[0]) || 0,
+            store_name: row[1] || '',
             region: row[2] || '',
-            averageCases: row[3] || 0,
-            averagePallets: row[4] || 0,
-            physicalAccessDifficulty: row[5] || 1,
-            vehicleDistance: row[6] || 1,
-            mallDifficulty: row[7] || 1,
-            regionalDifficulty: row[8] || 1,
-            totalDifficultyScore: row[9] || 0,
+            average_cases: parseInt(row[3]) || 0,
+            average_pallets: parseInt(row[4]) || 0,
+            physical_access_difficulty: parseInt(row[5]) || 1,
+            vehicle_distance: parseInt(row[6]) || 1,
+            mall_difficulty: parseInt(row[7]) || 0,
+            regional_difficulty: parseInt(row[8]) || 1,
+            total_difficulty_score: parseInt(row[9]) || 0,
             description: row[10] || '',
-            storeType: row[11] || '', // Mağaza Tipi (L sütunu)
-            stairSteps: row[12] || '', // Merdiven Basamak Sayısı (M sütunu)
-            images: [] // Görseller için boş array
+            store_type: row[11] || 'CADDE',
+            stair_steps: parseInt(row[12]) || 0
           }));
         
-        setStoreData(processedData);
-        setFilteredData(processedData);
-        message.success(`${processedData.length} mağaza verisi başarıyla yüklendi!`);
+        // Supabase'e toplu kaydet
+        const result = await storeDifficultyService.bulkUpsertStores(processedData);
+        
+        if (result.success) {
+          // Başarılı kayıt sonrası verileri tekrar getir
+          await loadStoresFromDatabase();
+          message.success(`${processedData.length} mağaza başarıyla Supabase'e kaydedildi!`);
+        } else {
+          message.error(`Kayıt hatası: ${result.error}`);
+        }
       } catch (error) {
         message.error('Excel dosyası işlenirken hata oluştu!');
         console.error('Excel processing error:', error);
@@ -159,20 +242,48 @@ const StoreDifficultyManager = () => {
   };
 
   // Düzenleme kaydet
-  const handleSaveEdit = (values) => {
-    const updatedData = storeData.map(item => 
-      item.key === editingRecord.key 
-        ? { ...item, ...values, totalDifficultyScore: 
-            values.physicalAccessDifficulty + values.vehicleDistance + 
-            values.mallDifficulty + values.regionalDifficulty }
-        : item
-    );
-    
-    setStoreData(updatedData);
-    setFilteredData(updatedData);
-    setIsEditModalVisible(false);
-    setEditingRecord(null);
-    message.success('Mağaza bilgileri güncellendi!');
+  const handleSaveEdit = async (values) => {
+    try {
+      setLoading(true);
+      
+      // Toplam zorluk puanını hesapla
+      const totalScore = values.physicalAccessDifficulty + values.vehicleDistance + 
+                        values.mallDifficulty + values.regionalDifficulty;
+      
+      // Supabase formatına çevir
+      const updateData = {
+        store_name: values.storeName,
+        region: values.region,
+        average_cases: values.averageCases,
+        average_pallets: values.averagePallets,
+        physical_access_difficulty: values.physicalAccessDifficulty,
+        vehicle_distance: values.vehicleDistance,
+        mall_difficulty: values.mallDifficulty,
+        regional_difficulty: values.regionalDifficulty,
+        total_difficulty_score: totalScore,
+        description: values.description,
+        store_type: values.storeType,
+        stair_steps: values.stairSteps
+      };
+      
+      // Supabase'e güncelle
+      const result = await storeDifficultyService.updateStore(editingRecord.id, updateData);
+      
+      if (result.success) {
+        // Başarılı güncelleme sonrası verileri tekrar getir
+        await loadStoresFromDatabase();
+        setIsEditModalVisible(false);
+        setEditingRecord(null);
+        message.success('Mağaza bilgileri güncellendi!');
+      } else {
+        message.error(`Güncelleme hatası: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Güncelleme hatası:', error);
+      message.error('Güncelleme sırasında hata oluştu!');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Görsel modalını aç
@@ -223,41 +334,17 @@ const StoreDifficultyManager = () => {
     }
   }, [isImageModalVisible, currentImageIndex, selectedStoreImages.length]);
 
-  // Görsel yükleme (tekli)
+  // Görsel yükleme (tek veya çoklu)
   const handleImageUpload = (file, recordKey) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const newImage = {
-        id: Date.now(),
-        url: e.target.result,
-        name: file.name
-      };
-      
-      const updatedData = storeData.map(item => 
-        item.key === recordKey 
-          ? { ...item, images: [...(item.images || []), newImage] }
-          : item
-      );
-      
-      setStoreData(updatedData);
-      setFilteredData(updatedData);
-      message.success('Görsel başarıyla yüklendi!');
-    };
-    reader.readAsDataURL(file);
-    return false;
+    return false; // beforeUpload'da false döndürüyoruz, asıl işlemi onChange'de yapacağız
   };
 
   // Çoklu görsel yükleme için state
   const [pendingImages, setPendingImages] = useState({});
   const [uploadingImages, setUploadingImages] = useState({});
 
-  // Çoklu görsel yükleme
-  const handleMultipleImageUpload = (file, recordKey) => {
-    return false; // beforeUpload'da false döndürüyoruz, asıl işlemi onChange'de yapacağız
-  };
-
   // Upload onChange handler
-  const handleUploadChange = (info, recordKey) => {
+  const handleUploadChange = async (info, recordKey) => {
     const { fileList } = info;
     
     if (fileList.length === 0) return;
@@ -269,60 +356,76 @@ const StoreDifficultyManager = () => {
     
     setUploadingImages(prev => ({ ...prev, [recordKey]: true }));
     
-    let loadedCount = 0;
-    const totalFiles = newFiles.length;
-    const newImages = [];
-    
-    newFiles.forEach((fileItem, index) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const newImage = {
-          id: Date.now() + index + Math.random(),
-          url: e.target.result,
-          name: fileItem.name || fileItem.originFileObj?.name || `görsel-${index + 1}`
-        };
-        newImages.push(newImage);
-        loadedCount++;
-        
-        // Tüm dosyalar yüklendiğinde state'i güncelle
-        if (loadedCount === totalFiles) {
-          const updatedData = storeData.map(item => 
-            item.key === recordKey 
-              ? { ...item, images: [...(item.images || []), ...newImages] }
-              : item
-          );
-          
-          setStoreData(updatedData);
-          setFilteredData(updatedData);
-          setUploadingImages(prev => ({ ...prev, [recordKey]: false }));
-          message.success(`${totalFiles} görsel başarıyla yüklendi!`);
-        }
-      };
+    try {
+      // Mağaza ID'sini bul
+      const store = storeData.find(s => s.key === recordKey);
+      if (!store || !store.id) {
+        message.error('Mağaza bulunamadı!');
+        return;
+      }
       
-      const fileToRead = fileItem.originFileObj || fileItem;
-      reader.readAsDataURL(fileToRead);
-    });
+      // Her dosya için Supabase'e kaydet
+      for (const file of newFiles) {
+        const reader = new FileReader();
+        
+        await new Promise((resolve, reject) => {
+          reader.onload = async (e) => {
+            try {
+              const base64Data = e.target.result;
+              
+              const imageData = {
+                url: base64Data,
+                name: file.name,
+                data: base64Data
+              };
+              
+              const result = await storeDifficultyService.addStoreImage(store.id, imageData);
+              
+              if (result.success) {
+                message.success(`${file.name} başarıyla yüklendi!`);
+              } else {
+                message.error(`${file.name} yüklenirken hata: ${result.error}`);
+              }
+              
+              resolve();
+            } catch (error) {
+              console.error('Görsel yükleme hatası:', error);
+              message.error(`${file.name} yüklenirken hata oluştu!`);
+              reject(error);
+            }
+          };
+          
+          reader.onerror = () => reject(new Error('Dosya okunamadı'));
+          reader.readAsDataURL(file.originFileObj || file);
+        });
+      }
+      
+      // Verileri tekrar yükle
+      await loadStoresFromDatabase();
+      
+    } catch (error) {
+      console.error('Görsel yükleme hatası:', error);
+      message.error('Görseller yüklenirken hata oluştu!');
+    } finally {
+      setUploadingImages(prev => ({ ...prev, [recordKey]: false }));
+    }
   };
 
   // Tablo sütunları
   const columns = [
     {
-      title: '#',
-      key: 'index',
-      width: 60,
-      render: (_, __, index) => (
-        <span className="text-sm font-medium text-gray-500">
-          {startIndex + index + 1}
-        </span>
-      ),
-    },
-    {
-      title: 'Mağaza Kodu',
+      title: 'Kod',
       dataIndex: 'storeCode',
       key: 'storeCode',
-      width: 100,
+      width: 80,
+      align: 'center',
       sorter: (a, b) => a.storeCode - b.storeCode,
-      render: (value) => <span className="text-sm font-medium text-blue-600">{value}</span>
+      filters: Array.from(new Set(storeData.map(store => store.storeCode))).map(code => ({
+        text: code,
+        value: code
+      })),
+      onFilter: (value, record) => record.storeCode === value,
+      render: (value) => <span className="text-sm font-medium text-blue-600 text-center block">{value}</span>
     },
     {
       title: 'Mağaza Adı',
@@ -330,6 +433,11 @@ const StoreDifficultyManager = () => {
       key: 'storeName',
       width: 180,
       sorter: (a, b) => a.storeName.localeCompare(b.storeName),
+      filters: Array.from(new Set(storeData.map(store => store.storeName))).map(name => ({
+        text: name,
+        value: name
+      })),
+      onFilter: (value, record) => record.storeName === value,
       render: (text) => <span className="text-sm">{text}</span>
     },
     {
@@ -345,74 +453,147 @@ const StoreDifficultyManager = () => {
       render: (text) => <span className="text-xs text-gray-600">{text}</span>
     },
     {
-      title: 'Kasa',
+      title: 'Ortalama Kasa',
       dataIndex: 'averageCases',
       key: 'averageCases',
-      width: 80,
+      width: 110,
+      align: 'center',
       sorter: (a, b) => a.averageCases - b.averageCases,
+      filters: [
+        { text: '0-29 (Düşük)', value: 'low' },
+        { text: '30-49 (Orta)', value: 'medium' },
+        { text: '50+ (Yüksek)', value: 'high' }
+      ],
+      onFilter: (value, record) => {
+        if (value === 'low') return record.averageCases < 30;
+        if (value === 'medium') return record.averageCases >= 30 && record.averageCases < 50;
+        if (value === 'high') return record.averageCases >= 50;
+        return true;
+      },
       render: (value) => (
-        <Tag color={value >= 50 ? 'red' : value >= 30 ? 'orange' : 'green'} size="small">
-          {value}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={value >= 50 ? 'red' : value >= 30 ? 'orange' : 'green'} size="small">
+            {value}
+          </Tag>
+        </div>
       )
     },
     {
-      title: 'Palet',
+      title: 'Ortalama Palet',
       dataIndex: 'averagePallets',
       key: 'averagePallets',
-      width: 80,
+      width: 110,
+      align: 'center',
       sorter: (a, b) => a.averagePallets - b.averagePallets,
+      filters: [
+        { text: '0-2 (Düşük)', value: 'low' },
+        { text: '3-4 (Orta)', value: 'medium' },
+        { text: '5+ (Yüksek)', value: 'high' }
+      ],
+      onFilter: (value, record) => {
+        if (value === 'low') return record.averagePallets < 3;
+        if (value === 'medium') return record.averagePallets >= 3 && record.averagePallets < 5;
+        if (value === 'high') return record.averagePallets >= 5;
+        return true;
+      },
       render: (value) => (
-        <Tag color={value >= 5 ? 'red' : value >= 3 ? 'orange' : 'green'} size="small">
-          {value}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={value >= 5 ? 'red' : value >= 3 ? 'orange' : 'green'} size="small">
+            {value}
+          </Tag>
+        </div>
       )
     },
     {
-      title: 'Fiziksel',
+      title: 'Fiziksel Zorluk',
       dataIndex: 'physicalAccessDifficulty',
       key: 'physicalAccessDifficulty',
-      width: 80,
+      width: 100,
+      align: 'center',
+      filters: [
+        { text: '1 (Kolay)', value: 1 },
+        { text: '2 (Orta)', value: 2 },
+        { text: '3 (Zor)', value: 3 },
+        { text: '4 (Çok Zor)', value: 4 },
+        { text: '5 (Aşırı Zor)', value: 5 }
+      ],
+      onFilter: (value, record) => record.physicalAccessDifficulty === value,
       render: (value) => (
-        <Tag color={getDifficultyColor(value)} size="small">
-          {value}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={getDifficultyColor(value)} size="small">
+            {value}
+          </Tag>
+        </div>
       ),
       sorter: (a, b) => a.physicalAccessDifficulty - b.physicalAccessDifficulty,
     },
     {
-      title: 'Araç',
+      title: 'Araç Mağaza Uzaklığı',
       dataIndex: 'vehicleDistance',
       key: 'vehicleDistance',
-      width: 80,
+      width: 130,
+      align: 'center',
+      filters: [
+        { text: '1 (Yakın)', value: 1 },
+        { text: '2 (Orta)', value: 2 },
+        { text: '3 (Uzak)', value: 3 },
+        { text: '4 (Çok Uzak)', value: 4 },
+        { text: '5 (Aşırı Uzak)', value: 5 }
+      ],
+      onFilter: (value, record) => record.vehicleDistance === value,
       render: (value) => (
-        <Tag color={getDifficultyColor(value)} size="small">
-          {value}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={getDifficultyColor(value)} size="small">
+            {value}
+          </Tag>
+        </div>
       ),
       sorter: (a, b) => a.vehicleDistance - b.vehicleDistance,
     },
     {
-      title: 'AVM',
+      title: 'Avm Zorluğu',
       dataIndex: 'mallDifficulty',
       key: 'mallDifficulty',
-      width: 80,
+      width: 100,
+      align: 'center',
+      filters: [
+        { text: '0 (Yok)', value: 0 },
+        { text: '1 (Kolay)', value: 1 },
+        { text: '2 (Orta)', value: 2 },
+        { text: '3 (Zor)', value: 3 },
+        { text: '4 (Çok Zor)', value: 4 },
+        { text: '5 (Aşırı Zor)', value: 5 }
+      ],
+      onFilter: (value, record) => record.mallDifficulty === value,
       render: (value) => (
-        <Tag color={getDifficultyColor(value)} size="small">
-          {value}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={getDifficultyColor(value)} size="small">
+            {value}
+          </Tag>
+        </div>
       ),
       sorter: (a, b) => a.mallDifficulty - b.mallDifficulty,
     },
     {
-      title: 'Bölgesel',
+      title: 'Bölgesel Zorluk',
       dataIndex: 'regionalDifficulty',
       key: 'regionalDifficulty',
-      width: 80,
+      width: 110,
+      align: 'center',
+      filters: [
+        { text: '1 (Kolay)', value: 1 },
+        { text: '2 (Orta)', value: 2 },
+        { text: '3 (Zor)', value: 3 },
+        { text: '4 (Çok Zor)', value: 4 },
+        { text: '5 (Aşırı Zor)', value: 5 }
+      ],
+      onFilter: (value, record) => record.regionalDifficulty === value,
       render: (value) => (
-        <Tag color={getDifficultyColor(value)} size="small">
-          {value}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={getDifficultyColor(value)} size="small">
+            {value}
+          </Tag>
+        </div>
       ),
       sorter: (a, b) => a.regionalDifficulty - b.regionalDifficulty,
     },
@@ -420,11 +601,27 @@ const StoreDifficultyManager = () => {
       title: 'Toplam',
       dataIndex: 'totalDifficultyScore',
       key: 'totalDifficultyScore',
-      width: 80,
+      width: 100,
+      align: 'center',
+      filters: [
+        { text: '0-1 (Düşük)', value: 'low' },
+        { text: '2-3 (Orta)', value: 'medium' },
+        { text: '4-5 (Yüksek)', value: 'high' },
+        { text: '6+ (Aşırı Yüksek)', value: 'very_high' }
+      ],
+      onFilter: (value, record) => {
+        if (value === 'low') return record.totalDifficultyScore <= 1;
+        if (value === 'medium') return record.totalDifficultyScore >= 2 && record.totalDifficultyScore <= 3;
+        if (value === 'high') return record.totalDifficultyScore >= 4 && record.totalDifficultyScore <= 5;
+        if (value === 'very_high') return record.totalDifficultyScore >= 6;
+        return true;
+      },
       render: (value) => (
-        <Tag color={value >= 2 ? 'red' : getDifficultyColor(value)} size="small">
-          {value}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={value >= 2 ? 'red' : getDifficultyColor(value)} size="small">
+            {value}
+          </Tag>
+        </div>
       ),
       sorter: (a, b) => a.totalDifficultyScore - b.totalDifficultyScore,
     },
@@ -432,8 +629,17 @@ const StoreDifficultyManager = () => {
       title: 'Açıklama',
       dataIndex: 'description',
       key: 'description',
-      width: 150,
+      width: 120,
       ellipsis: true,
+      filters: [
+        { text: 'Açıklama Var', value: 'has_description' },
+        { text: 'Açıklama Yok', value: 'no_description' }
+      ],
+      onFilter: (value, record) => {
+        if (value === 'has_description') return record.description && record.description.trim() !== '';
+        if (value === 'no_description') return !record.description || record.description.trim() === '';
+        return true;
+      },
       render: (text) => (
         <Tooltip title={text}>
           <span className="text-xs text-gray-600">
@@ -446,7 +652,8 @@ const StoreDifficultyManager = () => {
       title: 'Tip',
       dataIndex: 'storeType',
       key: 'storeType',
-      width: 80,
+      width: 70,
+      align: 'center',
       filters: [
         { text: 'CADDE', value: 'CADDE' },
         { text: 'AVM', value: 'AVM' },
@@ -454,31 +661,49 @@ const StoreDifficultyManager = () => {
       ],
       onFilter: (value, record) => record.storeType === value,
       render: (text) => (
-        <Tag color={text === 'AVM' ? 'purple' : text === 'BEAUTY' ? 'pink' : 'blue'} size="small">
-          {text}
-        </Tag>
+        <div className="flex justify-center">
+          <Tag color={text === 'AVM' ? 'purple' : text === 'BEAUTY' ? 'pink' : 'blue'} size="small">
+            {text}
+          </Tag>
+        </div>
       )
     },
     {
       title: 'Merdiven',
       dataIndex: 'stairSteps',
       key: 'stairSteps',
-      width: 80,
+      width: 100,
+      align: 'center',
+      filters: [
+        { text: 'Basamak Yok', value: 'no_stairs' },
+        { text: '1-2 Basamak', value: 'low' },
+        { text: '3-4 Basamak', value: 'medium' },
+        { text: '5+ Basamak', value: 'high' }
+      ],
+      onFilter: (value, record) => {
+        if (value === 'no_stairs') return record.stairSteps === 'Basamak Yok' || record.stairSteps === '' || isNaN(parseInt(record.stairSteps));
+        if (value === 'low') return parseInt(record.stairSteps) >= 1 && parseInt(record.stairSteps) <= 2;
+        if (value === 'medium') return parseInt(record.stairSteps) >= 3 && parseInt(record.stairSteps) <= 4;
+        if (value === 'high') return parseInt(record.stairSteps) >= 5;
+        return true;
+      },
       render: (text) => {
         if (text === 'Basamak Yok' || text === '' || isNaN(parseInt(text))) {
-          return <span className="text-xs text-gray-500">Basamak Yok</span>;
+          return <span className="text-xs text-gray-500 text-center block">-</span>;
         }
         return (
-          <Tag color={parseInt(text) <= 2 ? 'green' : parseInt(text) <= 4 ? 'orange' : 'red'} size="small">
-            {text}
-          </Tag>
+          <div className="flex justify-center">
+            <Tag color={parseInt(text) <= 2 ? 'green' : parseInt(text) <= 4 ? 'orange' : 'red'} size="small">
+              {text}
+            </Tag>
+          </div>
         );
       }
     },
     {
       title: 'Görseller',
       key: 'images',
-      width: 120,
+      width: 100,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Görselleri Görüntüle">
@@ -494,22 +719,13 @@ const StoreDifficultyManager = () => {
               </span>
             </Button>
           </Tooltip>
-          <Tooltip title="Tek Görsel Ekle">
+          <Tooltip title="Görsel Ekle (Tek veya Çoklu)">
             <AntUpload
+              multiple
               beforeUpload={(file) => handleImageUpload(file, record.key)}
-              showUploadList={false}
-              accept="image/*"
-            >
-              <Button type="text" size="small" icon={<Plus size={14} />} />
-            </AntUpload>
-          </Tooltip>
-          <Tooltip title="Çoklu Görsel Ekle">
-            <AntUpload
-              beforeUpload={handleMultipleImageUpload}
               onChange={(info) => handleUploadChange(info, record.key)}
               showUploadList={false}
               accept="image/*"
-              multiple
             >
               <Button 
                 type="text" 
@@ -525,7 +741,7 @@ const StoreDifficultyManager = () => {
     {
       title: 'İşlemler',
       key: 'actions',
-      width: 120,
+      width: 100,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Detay Görünümü">
@@ -580,6 +796,7 @@ const StoreDifficultyManager = () => {
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white hover:from-blue-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transform hover:scale-105'
               }`}
+              onClick={handleDownloadExcel}
               disabled={storeData.length === 0}
             >
               <Download size={16} className="mr-2" />
@@ -643,7 +860,7 @@ const StoreDifficultyManager = () => {
             columns={columns}
             dataSource={currentData}
             loading={loading}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1200 }}
             pagination={{
               current: currentPage,
               pageSize: pageSize,
@@ -671,18 +888,33 @@ const StoreDifficultyManager = () => {
               >
                 <div className="p-4">
                   {/* Mağaza Görseli */}
-                  <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden group-hover:bg-gray-200 transition-colors duration-300">
+                  <div className="w-full bg-gray-100 rounded-lg mb-3 overflow-hidden group-hover:bg-gray-200 transition-colors duration-300 cursor-pointer" onClick={() => handleViewImages(store)}>
                     {store.images && store.images.length > 0 ? (
-                      <Image
-                        src={store.images[0].url}
-                        alt={store.storeName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        preview={false}
-                      />
+                      <div className="relative">
+                        <Image
+                          src={store.images[0].url}
+                          alt={store.storeName}
+                          className="w-full group-hover:scale-105 transition-transform duration-300"
+                          preview={false}
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white text-center">
+                            <ImageIcon size={24} className="mx-auto mb-1" />
+                            <span className="text-xs">Görselleri Gör</span>
+                          </div>
+                        </div>
+                        {store.images.length > 1 && (
+                          <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                            +{store.images.length - 1}
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <div className="text-gray-400 text-center group-hover:text-gray-500 transition-colors duration-300">
-                        <ImageIcon size={32} className="mx-auto mb-2 group-hover:scale-110 transition-transform duration-300" />
-                        <span className="text-xs">Görsel Yok</span>
+                      <div className="h-32 flex items-center justify-center text-gray-400 text-center group-hover:text-gray-500 transition-colors duration-300">
+                        <div>
+                          <ImageIcon size={32} className="mx-auto mb-2 group-hover:scale-110 transition-transform duration-300" />
+                          <span className="text-xs">Görsel Yok</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -704,16 +936,16 @@ const StoreDifficultyManager = () => {
                     {/* Zorluk Puanları */}
                     <div className="flex flex-wrap gap-1">
                       <Tag color={getDifficultyColor(store.physicalAccessDifficulty)} size="small">
-                        F: {store.physicalAccessDifficulty}
+                        Fiziksel: {store.physicalAccessDifficulty}
                       </Tag>
                       <Tag color={getDifficultyColor(store.vehicleDistance)} size="small">
-                        A: {store.vehicleDistance}
+                        Araç: {store.vehicleDistance}
                       </Tag>
                       <Tag color={getDifficultyColor(store.mallDifficulty)} size="small">
                         AVM: {store.mallDifficulty}
                       </Tag>
                       <Tag color={getDifficultyColor(store.regionalDifficulty)} size="small">
-                        B: {store.regionalDifficulty}
+                        Bölgesel: {store.regionalDifficulty}
                       </Tag>
                     </div>
 
@@ -725,10 +957,22 @@ const StoreDifficultyManager = () => {
                       </Tag>
                     </div>
 
-                    {/* Görsel Sayısı */}
+                    {/* Mağaza Tipi ve Merdiven */}
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center space-x-2">
+                        <Tag color={store.storeType === 'AVM' ? 'purple' : store.storeType === 'BEAUTY' ? 'pink' : 'blue'} size="small">
+                          {store.storeType}
+                        </Tag>
+                        <Tag color={store.stairSteps === 'Basamak Yok' || store.stairSteps === '' || isNaN(parseInt(store.stairSteps)) ? 'gray' : parseInt(store.stairSteps) <= 2 ? 'green' : parseInt(store.stairSteps) <= 4 ? 'orange' : 'red'} size="small">
+                          {store.stairSteps === 'Basamak Yok' || store.stairSteps === '' || isNaN(parseInt(store.stairSteps)) ? '-' : store.stairSteps}
+                        </Tag>
+                      </div>
+                    </div>
+
+                    {/* Görsel Sayısı ve Ortalama */}
                     <div className="flex justify-between items-center text-xs text-gray-500">
                       <span>Görseller: {store.images?.length || 0}</span>
-                      <span>Kasa: {store.averageCases} | Palet: {store.averagePallets}</span>
+                      <span>Ort. Kasa: {store.averageCases} | Ort. Palet: {store.averagePallets}</span>
                     </div>
                   </div>
 
@@ -955,6 +1199,34 @@ const StoreDifficultyManager = () => {
               </Col>
             </Row>
 
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item
+                  label="Mağaza Tipi"
+                  name="storeType"
+                >
+                  <Select size="small">
+                    <Option value="CADDE">CADDE</Option>
+                    <Option value="AVM">AVM</Option>
+                    <Option value="BEAUTY">BEAUTY</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Merdiven Basamak Sayısı"
+                  name="stairSteps"
+                >
+                  <InputNumber 
+                    style={{ width: '100%' }} 
+                    size="small" 
+                    min={0}
+                    placeholder="Basamak sayısı"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
             <Form.Item
               label="Açıklama"
               name="description"
@@ -999,10 +1271,13 @@ const StoreDifficultyManager = () => {
                       <Image
                         src={image.url}
                         alt={image.name}
-                        style={{ width: '100%', height: 400, objectFit: 'cover' }}
-                        preview={false}
+                        className="w-full rounded-lg cursor-pointer"
+                        preview={{
+                          mask: 'Büyüt',
+                          maskClassName: 'bg-black bg-opacity-50 text-white'
+                        }}
                       />
-                      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-3">
+                      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-3 rounded-b-lg">
                         <div className="text-center">
                           <span className="font-medium text-lg">{image.name}</span>
                           <div className="text-sm text-gray-300 mt-1">
@@ -1062,28 +1337,6 @@ const StoreDifficultyManager = () => {
                   </span>
                 </div>
                 <div className="flex space-x-2">
-                  <AntUpload
-                    beforeUpload={handleMultipleImageUpload}
-                    onChange={(info) => {
-                      // Mevcut mağazanın key'ini bul
-                      const currentStore = storeData.find(store => 
-                        JSON.stringify(store.images) === JSON.stringify(selectedStoreImages)
-                      );
-                      if (currentStore) {
-                        handleUploadChange(info, currentStore.key);
-                      }
-                    }}
-                    showUploadList={false}
-                    accept="image/*"
-                    multiple
-                  >
-                    <Button 
-                      size="small" 
-                      icon={<Upload size={14} />}
-                    >
-                      Görsel Ekle
-                    </Button>
-                  </AntUpload>
                   <Button 
                     size="small" 
                     icon={<Download size={14} />}
@@ -1114,7 +1367,7 @@ const StoreDifficultyManager = () => {
       {/* Tek Mağaza Detay Modalı */}
       {selectedStore && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-start">
                 <div>
@@ -1166,8 +1419,11 @@ const StoreDifficultyManager = () => {
                               <Image
                                 src={image.url}
                                 alt={image.name}
-                                className="w-full h-64 object-cover rounded-lg"
-                                preview={false}
+                                className="w-full rounded-lg cursor-pointer"
+                                preview={{
+                                  mask: 'Büyüt',
+                                  maskClassName: 'bg-black bg-opacity-50 text-white'
+                                }}
                               />
                               <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg">
                                 <div className="text-center">
@@ -1218,48 +1474,11 @@ const StoreDifficultyManager = () => {
                         )}
                       </div>
                       
-                      {/* Görsel Yükleme */}
-                      <div className="flex space-x-2">
-                        <AntUpload
-                          beforeUpload={(file) => handleImageUpload(file, selectedStore.key)}
-                          showUploadList={false}
-                          accept="image/*"
-                        >
-                          <Button icon={<Plus size={16} />}>Tek Görsel Ekle</Button>
-                        </AntUpload>
-                        <AntUpload
-                          beforeUpload={handleMultipleImageUpload}
-                          onChange={(info) => handleUploadChange(info, selectedStore.key)}
-                          showUploadList={false}
-                          accept="image/*"
-                          multiple
-                        >
-                          <Button icon={<Upload size={16} />}>Çoklu Görsel Ekle</Button>
-                        </AntUpload>
-                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
                       <ImageIcon size={48} className="mx-auto mb-4" />
-                      <p className="mb-4">Bu mağaza için henüz görsel yüklenmemiş.</p>
-                      <div className="flex justify-center space-x-2">
-                        <AntUpload
-                          beforeUpload={(file) => handleImageUpload(file, selectedStore.key)}
-                          showUploadList={false}
-                          accept="image/*"
-                        >
-                          <Button icon={<Plus size={16} />}>Tek Görsel Ekle</Button>
-                        </AntUpload>
-                        <AntUpload
-                          beforeUpload={handleMultipleImageUpload}
-                          onChange={(info) => handleUploadChange(info, selectedStore.key)}
-                          showUploadList={false}
-                          accept="image/*"
-                          multiple
-                        >
-                          <Button icon={<Upload size={16} />}>Çoklu Görsel Ekle</Button>
-                        </AntUpload>
-                      </div>
+                      <p>Bu mağaza için henüz görsel yüklenmemiş.</p>
                     </div>
                   )}
                 </div>
@@ -1349,6 +1568,38 @@ const StoreDifficultyManager = () => {
                       {selectedStore.totalDifficultyScore > 10 && selectedStore.totalDifficultyScore <= 15 && "Yüksek zorluk - Zor erişim"}
                       {selectedStore.totalDifficultyScore > 15 && selectedStore.totalDifficultyScore <= 20 && "Çok yüksek zorluk - Çok zor erişim"}
                       {selectedStore.totalDifficultyScore > 20 && "Aşırı zorluk - Aşırı zor erişim"}
+                    </div>
+                  </div>
+
+                  {/* Mağaza Tipi ve Merdiven */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">Mağaza Tipi</span>
+                        <Tag color={selectedStore.storeType === 'AVM' ? 'purple' : selectedStore.storeType === 'BEAUTY' ? 'pink' : 'blue'}>
+                          {selectedStore.storeType}
+                        </Tag>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {selectedStore.storeType === 'CADDE' && "Cadde Mağazası"}
+                        {selectedStore.storeType === 'AVM' && "AVM Mağazası"}
+                        {selectedStore.storeType === 'BEAUTY' && "Beauty Mağazası"}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">Merdiven Basamak Sayısı</span>
+                        <Tag color={selectedStore.stairSteps === 'Basamak Yok' || selectedStore.stairSteps === '' || isNaN(parseInt(selectedStore.stairSteps)) ? 'gray' : parseInt(selectedStore.stairSteps) <= 2 ? 'green' : parseInt(selectedStore.stairSteps) <= 4 ? 'orange' : 'red'}>
+                          {selectedStore.stairSteps === 'Basamak Yok' || selectedStore.stairSteps === '' || isNaN(parseInt(selectedStore.stairSteps)) ? '-' : selectedStore.stairSteps}
+                        </Tag>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {selectedStore.stairSteps === 'Basamak Yok' || selectedStore.stairSteps === '' || isNaN(parseInt(selectedStore.stairSteps)) ? "Merdiven yok - Zemin kat" : 
+                         parseInt(selectedStore.stairSteps) <= 2 ? "Az basamak - Kolay erişim" :
+                         parseInt(selectedStore.stairSteps) <= 4 ? "Orta basamak - Normal erişim" :
+                         "Çok basamak - Zor erişim"}
+                      </div>
                     </div>
                   </div>
 

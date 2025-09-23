@@ -32,6 +32,164 @@ export const supabaseAdmin = supabaseAdminInstance || (supabaseAdminInstance = c
   }
 }));
 
+// Mağaza zorluk yönetimi fonksiyonları
+export const storeDifficultyService = {
+  // Tüm mağaza zorluk verilerini getir
+  async getAllStores() {
+    try {
+      const { data, error } = await supabase
+        .from('store_difficulty')
+        .select(`
+          *,
+          store_difficulty_images (
+            id,
+            image_url,
+            image_name,
+            created_at
+          )
+        `)
+        .order('store_code', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Mağaza zorluk verileri getirilirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Mağaza zorluk verisi oluştur veya güncelle
+  async upsertStore(storeData) {
+    try {
+      const { data, error } = await supabase
+        .from('store_difficulty')
+        .upsert(storeData, { 
+          onConflict: 'store_code',
+          ignoreDuplicates: false 
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Mağaza zorluk verisi kaydedilirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Toplu mağaza zorluk verisi kaydet
+  async bulkUpsertStores(storesData) {
+    try {
+      const { data, error } = await supabase
+        .from('store_difficulty')
+        .upsert(storesData, { 
+          onConflict: 'store_code',
+          ignoreDuplicates: false 
+        })
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Toplu mağaza zorluk verisi kaydedilirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Mağaza zorluk verisi güncelle
+  async updateStore(storeId, updateData) {
+    try {
+      const { data, error } = await supabase
+        .from('store_difficulty')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', storeId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Mağaza zorluk verisi güncellenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Mağaza zorluk verisi sil
+  async deleteStore(storeId) {
+    try {
+      const { error } = await supabase
+        .from('store_difficulty')
+        .delete()
+        .eq('id', storeId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Mağaza zorluk verisi silinirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Mağaza zorluk görseli ekle
+  async addStoreImage(storeId, imageData) {
+    try {
+      const { data, error } = await supabase
+        .from('store_difficulty_images')
+        .insert({
+          store_difficulty_id: storeId,
+          image_url: imageData.url,
+          image_name: imageData.name,
+          image_data: imageData.data // Base64 veri
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Görsel eklenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Mağaza zorluk görsellerini getir
+  async getStoreImages(storeId) {
+    try {
+      const { data, error } = await supabase
+        .from('store_difficulty_images')
+        .select('*')
+        .eq('store_difficulty_id', storeId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Görseller getirilirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Mağaza zorluk görseli sil
+  async deleteStoreImage(imageId) {
+    try {
+      const { error } = await supabase
+        .from('store_difficulty_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Görsel silinirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};
+
 // Auth functions
 export const signIn = async (email, password) => {
   try {

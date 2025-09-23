@@ -1188,28 +1188,6 @@ function MainApp() {
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
-              <button
-                onClick={() => handleTabChange('transfer-warehouse-control')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                  ${activeTab === 'transfer-warehouse-control'
-                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                  }
-                `}
-              >
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'transfer-warehouse-control' 
-                    ? 'bg-white/20' 
-                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                }`}>
-                  <Package className={`w-3 h-3 ${activeTab === 'transfer-warehouse-control' ? 'text-white' : 'text-slate-400'}`} />
-                </div>
-                <span className="flex-1 text-left">Aktarma Depo Kontrol</span>
-                {activeTab === 'transfer-warehouse-control' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                )}
-              </button>
 
               <button
                 onClick={() => handleTabChange('transfer-personnel-list')}
@@ -2592,22 +2570,6 @@ function MainApp() {
               </div>
             )}
 
-            {/* Aktarma Depo Kontrol */}
-            {activeTab === 'transfer-warehouse-control' && (
-              <div className="p-6">
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                    <Package className="w-6 h-6 mr-3 text-blue-600" />
-                    Aktarma Depo Kontrol
-                  </h2>
-                  <div className="text-center py-12">
-                    <Package className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-600 mb-2">Geliştirme Aşamasında</h3>
-                    <p className="text-gray-500">Aktarma depo kontrol modülü yakında aktif olacak.</p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Aktarma Depo Personel Listesi */}
             {activeTab === 'transfer-personnel-list' && (

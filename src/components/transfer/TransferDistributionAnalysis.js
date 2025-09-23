@@ -33,11 +33,11 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const TransferDistributionAnalysis = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [selectedPeriod, setSelectedPeriod] = useState('weekly');
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Örnek performans verileri
+  // Gerçekçi performans verileri
   const performanceData = {
     weekly: {
       totalDeliveries: 1247,
@@ -47,7 +47,12 @@ const TransferDistributionAnalysis = () => {
       efficiency: 95.3,
       customerSatisfaction: 4.7,
       topPerformer: 'Ahmet Yılmaz',
-      improvement: 2.1
+      improvement: 2.1,
+      totalDistance: 1847.5,
+      fuelConsumption: 342.8,
+      routeOptimization: 87.2,
+      vehicleUtilization: 92.5,
+      costPerDelivery: 15.8
     },
     monthly: {
       totalDeliveries: 5234,
@@ -57,7 +62,12 @@ const TransferDistributionAnalysis = () => {
       efficiency: 95.3,
       customerSatisfaction: 4.6,
       topPerformer: 'Fatma Demir',
-      improvement: 3.2
+      improvement: 3.2,
+      totalDistance: 7892.3,
+      fuelConsumption: 1456.7,
+      routeOptimization: 89.1,
+      vehicleUtilization: 94.2,
+      costPerDelivery: 14.2
     }
   };
 
@@ -213,6 +223,30 @@ const TransferDistributionAnalysis = () => {
 
   const currentData = performanceData[selectedPeriod];
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Performans verileri yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Data kontrolü
+  if (!currentData) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">Performans verileri bulunamadı</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="bg-white rounded-xl shadow-lg">
@@ -239,7 +273,7 @@ const TransferDistributionAnalysis = () => {
               onChange={setSelectedPeriod}
               style={{ width: 150 }}
             >
-              <Option value="week">Haftalık</Option>
+              <Option value="weekly">Haftalık</Option>
               <Option value="monthly">Aylık</Option>
             </Select>
             <RangePicker 

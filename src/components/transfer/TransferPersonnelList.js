@@ -14,7 +14,13 @@ import {
   message,
   Badge,
   Tooltip,
-  Avatar
+  Avatar,
+  Upload,
+  Progress,
+  Statistic,
+  Divider,
+  Alert,
+  Spin
 } from 'antd';
 import { 
   Users, 
@@ -22,17 +28,25 @@ import {
   Edit, 
   Trash2, 
   Search, 
-  Filter,
-  Clock,
-  MapPin,
-  Phone,
-  Mail,
+  Upload as UploadIcon,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  Package,
+  Palette,
+  CheckCircle,
+  XCircle,
+  BarChart3,
+  FileSpreadsheet,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const { Option } = Select;
-const { TextArea } = Input;
+const { Dragger } = Upload;
 
 const TransferPersonnelList = () => {
   const [personnelData, setPersonnelData] = useState([]);
@@ -41,66 +55,92 @@ const TransferPersonnelList = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [searchText, setSearchText] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedRegion, setSelectedRegion] = useState('all');
+  const [selectedPosition, setSelectedPosition] = useState('all');
+  const [uploadLoading, setUploadLoading] = useState(false);
 
-  // Örnek veri - gerçek uygulamada API'den gelecek
+  // Örnek veri - Excel'den yüklenecek veriler
   const mockData = [
     {
       id: 1,
-      employeeCode: 'TR001',
-      fullName: 'Ahmet Yılmaz',
-      department: 'Aktarma',
-      position: 'Depo Sorumlusu',
-      phone: '+90 532 123 4567',
-      email: 'ahmet.yilmaz@company.com',
-      status: 'active',
-      shift: 'Gündüz',
-      experience: '5 yıl',
-      lastActivity: '2024-01-15 14:30',
-      performance: 'excellent'
+      sicilNo: 'TR001',
+      adiSoyadi: 'Ahmet Yılmaz',
+      bolge: 'İstanbul Merkez',
+      pozisyon: 'Depo Sorumlusu',
+      // Performans metrikleri (API'den gelecek)
+      dagittigiKasaSayisi: 245,
+      paletSayisi: 18,
+      okuttuguKasaSayisi: 230,
+      okutmadigiKasaSayisi: 15,
+      okutmaOrani: 93.9,
+      gunlukHedef: 250,
+      hedefTamamlamaOrani: 98.0,
+      sonGuncelleme: '2024-01-15 14:30',
+      status: 'active'
     },
     {
       id: 2,
-      employeeCode: 'TR002',
-      fullName: 'Fatma Demir',
-      department: 'Aktarma',
-      position: 'Forklift Operatörü',
-      phone: '+90 533 234 5678',
-      email: 'fatma.demir@company.com',
-      status: 'active',
-      shift: 'Gece',
-      experience: '3 yıl',
-      lastActivity: '2024-01-15 12:15',
-      performance: 'good'
+      sicilNo: 'TR002',
+      adiSoyadi: 'Fatma Demir',
+      bolge: 'Ankara Şube',
+      pozisyon: 'Forklift Operatörü',
+      dagittigiKasaSayisi: 189,
+      paletSayisi: 12,
+      okuttuguKasaSayisi: 175,
+      okutmadigiKasaSayisi: 14,
+      okutmaOrani: 92.6,
+      gunlukHedef: 200,
+      hedefTamamlamaOrani: 94.5,
+      sonGuncelleme: '2024-01-15 12:15',
+      status: 'active'
     },
     {
       id: 3,
-      employeeCode: 'TR003',
-      fullName: 'Mehmet Kaya',
-      department: 'Aktarma',
-      position: 'Depo Elemanı',
-      phone: '+90 534 345 6789',
-      email: 'mehmet.kaya@company.com',
-      status: 'inactive',
-      shift: 'Gündüz',
-      experience: '2 yıl',
-      lastActivity: '2024-01-10 16:45',
-      performance: 'average'
+      sicilNo: 'TR003',
+      adiSoyadi: 'Mehmet Kaya',
+      bolge: 'İzmir Depo',
+      pozisyon: 'Depo Elemanı',
+      dagittigiKasaSayisi: 156,
+      paletSayisi: 9,
+      okuttuguKasaSayisi: 142,
+      okutmadigiKasaSayisi: 14,
+      okutmaOrani: 91.0,
+      gunlukHedef: 180,
+      hedefTamamlamaOrani: 86.7,
+      sonGuncelleme: '2024-01-10 16:45',
+      status: 'inactive'
     },
     {
       id: 4,
-      employeeCode: 'TR004',
-      fullName: 'Ayşe Özkan',
-      department: 'Aktarma',
-      position: 'Kalite Kontrol',
-      phone: '+90 535 456 7890',
-      email: 'ayse.ozkan@company.com',
-      status: 'active',
-      shift: 'Gündüz',
-      experience: '4 yıl',
-      lastActivity: '2024-01-15 15:20',
-      performance: 'excellent'
+      sicilNo: 'TR004',
+      adiSoyadi: 'Ayşe Özkan',
+      bolge: 'Bursa Merkez',
+      pozisyon: 'Kalite Kontrol',
+      dagittigiKasaSayisi: 278,
+      paletSayisi: 21,
+      okuttuguKasaSayisi: 265,
+      okutmadigiKasaSayisi: 13,
+      okutmaOrani: 95.3,
+      gunlukHedef: 280,
+      hedefTamamlamaOrani: 99.3,
+      sonGuncelleme: '2024-01-15 15:20',
+      status: 'active'
+    },
+    {
+      id: 5,
+      sicilNo: 'TR005',
+      adiSoyadi: 'Mustafa Çelik',
+      bolge: 'İstanbul Merkez',
+      pozisyon: 'Depo Elemanı',
+      dagittigiKasaSayisi: 203,
+      paletSayisi: 15,
+      okuttuguKasaSayisi: 195,
+      okutmadigiKasaSayisi: 8,
+      okutmaOrani: 96.1,
+      gunlukHedef: 220,
+      hedefTamamlamaOrani: 92.3,
+      sonGuncelleme: '2024-01-15 13:45',
+      status: 'active'
     }
   ];
 
@@ -109,28 +149,74 @@ const TransferPersonnelList = () => {
     setFilteredData(mockData);
   }, []);
 
+  // Excel dosyası yükleme fonksiyonu
+  const handleExcelUpload = (file) => {
+    setUploadLoading(true);
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        
+        // Excel verilerini işle ve performans metriklerini ekle
+        const processedData = jsonData.map((row, index) => ({
+          id: Date.now() + index,
+          sicilNo: row['Sicil No'] || row['sicilNo'] || `TR${String(index + 1).padStart(3, '0')}`,
+          adiSoyadi: row['Adı Soyadı'] || row['adiSoyadi'] || '',
+          bolge: row['Bölge'] || row['bolge'] || '',
+          pozisyon: row['Pozisyon'] || row['pozisyon'] || '',
+          // Performans metrikleri (şimdilik örnek değerler, API'den gelecek)
+          dagittigiKasaSayisi: Math.floor(Math.random() * 300) + 100,
+          paletSayisi: Math.floor(Math.random() * 30) + 5,
+          okuttuguKasaSayisi: Math.floor(Math.random() * 280) + 80,
+          okutmadigiKasaSayisi: Math.floor(Math.random() * 20) + 1,
+          okutmaOrani: Math.round((Math.random() * 20 + 80) * 10) / 10,
+          gunlukHedef: Math.floor(Math.random() * 350) + 150,
+          hedefTamamlamaOrani: Math.round((Math.random() * 30 + 70) * 10) / 10,
+          sonGuncelleme: new Date().toLocaleString('tr-TR'),
+          status: 'active'
+        }));
+        
+        setPersonnelData(processedData);
+        setFilteredData(processedData);
+        message.success(`${processedData.length} personel başarıyla yüklendi!`);
+      } catch (error) {
+        message.error('Excel dosyası okunurken hata oluştu!');
+      }
+      setUploadLoading(false);
+    };
+    
+    reader.readAsArrayBuffer(file);
+    return false; // Antd Upload bileşeninin otomatik yüklemesini engelle
+  };
+
   // Arama ve filtreleme
   useEffect(() => {
     let filtered = personnelData;
 
     if (searchText) {
       filtered = filtered.filter(person => 
-        person.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-        person.employeeCode.toLowerCase().includes(searchText.toLowerCase()) ||
-        person.position.toLowerCase().includes(searchText.toLowerCase())
+        person.adiSoyadi.toLowerCase().includes(searchText.toLowerCase()) ||
+        person.sicilNo.toLowerCase().includes(searchText.toLowerCase()) ||
+        person.pozisyon.toLowerCase().includes(searchText.toLowerCase()) ||
+        person.bolge.toLowerCase().includes(searchText.toLowerCase())
       );
     }
 
-    if (selectedDepartment !== 'all') {
-      filtered = filtered.filter(person => person.department === selectedDepartment);
+    if (selectedRegion !== 'all') {
+      filtered = filtered.filter(person => person.bolge === selectedRegion);
     }
 
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(person => person.status === selectedStatus);
+    if (selectedPosition !== 'all') {
+      filtered = filtered.filter(person => person.pozisyon === selectedPosition);
     }
 
     setFilteredData(filtered);
-  }, [searchText, selectedDepartment, selectedStatus, personnelData]);
+  }, [searchText, selectedRegion, selectedPosition, personnelData]);
 
   const getStatusColor = (status) => {
     switch (status) {

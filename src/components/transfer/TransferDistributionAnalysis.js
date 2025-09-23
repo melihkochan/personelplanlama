@@ -17,7 +17,8 @@ import {
   Alert,
   Tabs,
   Spin,
-  Divider
+  Divider,
+  Input
 } from 'antd';
 import { 
   BarChart3, 
@@ -37,6 +38,7 @@ import {
   UserCheck,
   FileSpreadsheet
 } from 'lucide-react';
+import { SearchOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../services/supabase';
 
@@ -52,34 +54,82 @@ const TransferDistributionAnalysis = () => {
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [distributionData, setDistributionData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [statistics, setStatistics] = useState({ totalKasa: 0, okutulanKasa: 0, okutmaOrani: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(200);
 
-  // Aylar listesi - dinamik olarak oluştur
-  const months = useMemo(() => {
-    const monthList = [
-      { value: 'all', label: 'Tüm Aylar' },
-      { value: '01', label: 'Ocak' },
-      { value: '02', label: 'Şubat' },
-      { value: '03', label: 'Mart' },
-      { value: '04', label: 'Nisan' },
-      { value: '05', label: 'Mayıs' },
-      { value: '06', label: 'Haziran' },
-      { value: '07', label: 'Temmuz' },
-      { value: '08', label: 'Ağustos' },
-      { value: '09', label: 'Eylül' },
-      { value: '10', label: 'Ekim' },
-      { value: '11', label: 'Kasım' },
-      { value: '12', label: 'Aralık' }
-    ];
+  // Aylar listesi - dinamik olarak veritabanından çek
+  const [availableMonths, setAvailableMonths] = useState([]);
+  // Bölgeler listesi - dinamik olarak veritabanından çek
+  const [availableRegions, setAvailableRegions] = useState([]);
+  
+  const loadAvailableMonths = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_dagitim_verileri')
+        .select('ay')
+        .order('ay', { ascending: true });
 
-    // Veritabanındaki mevcut ayları kontrol et
-    const availableMonths = [...new Set(distributionData.map(item => item.ay))];
-    console.log('Mevcut aylar:', availableMonths);
-    
-    return monthList.map(month => ({
-      ...month,
-      disabled: month.value !== 'all' && !availableMonths.includes(month.value)
-    }));
-  }, [distributionData]);
+      if (error) {
+        console.error('Ay listesi yükleme hatası:', error);
+        return;
+      }
+
+      const uniqueMonths = [...new Set(data?.map(item => item.ay).filter(Boolean))];
+      const monthNames = {
+        '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+        '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+        '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+      };
+
+      const monthList = [
+        { value: 'all', label: 'Tüm Aylar' },
+        ...uniqueMonths.map(month => ({
+          value: month,
+          label: `${monthNames[month]} (${data.filter(item => item.ay === month).length} kayıt)`
+        }))
+      ];
+
+      setAvailableMonths(monthList);
+      console.log('Mevcut aylar:', uniqueMonths);
+    } catch (error) {
+      console.error('Ay listesi yükleme hatası:', error);
+    }
+  };
+
+  const months = availableMonths;
+  
+  const loadAvailableRegions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_dagitim_verileri')
+        .select('bolge')
+        .order('bolge', { ascending: true });
+
+      if (error) {
+        console.error('Bölge listesi yükleme hatası:', error);
+        return;
+      }
+
+      const uniqueRegions = [...new Set(data?.map(item => item.bolge).filter(Boolean))];
+      
+      const regionList = [
+        { value: 'all', label: 'Tüm Bölgeler' },
+        ...uniqueRegions.map(region => ({
+          value: region,
+          label: `${region} (${data.filter(item => item.bolge === region).length} kayıt)`
+        }))
+      ];
+
+      setAvailableRegions(regionList);
+      console.log('Mevcut bölgeler:', uniqueRegions);
+    } catch (error) {
+      console.error('Bölge listesi yükleme hatası:', error);
+    }
+  };
+
+  const regions = availableRegions;
 
   // Ay adlarını döndüren fonksiyon
   const getMonthName = (monthNumber) => {
@@ -92,103 +142,171 @@ const TransferDistributionAnalysis = () => {
   };
 
   useEffect(() => {
-    loadDistributionData();
+    const initializeData = async () => {
+      await Promise.all([
+        loadAvailableMonths(),
+        loadAvailableRegions()
+      ]);
+      
+      const [count, stats] = await Promise.all([
+        loadTotalCount(selectedMonth, selectedRegion),
+        loadStatistics(selectedMonth, selectedRegion)
+      ]);
+      
+      setTotalCount(count);
+      setStatistics(stats);
+      await loadDistributionData(1, selectedMonth, selectedRegion);
+    };
+    
+    initializeData();
   }, []);
 
-  // Ay seçimi değiştiğinde o aya ait tüm verileri çek
-  const loadDataByMonth = async (month) => {
-    if (month === 'all') {
-      await loadDistributionData(); // Tüm veriler
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('aktarma_dagitim_verileri')
-        .select('*')
-        .eq('ay', month)
-        .order('tarih', { ascending: true }); // İlk günden başlayarak
-
-      if (error) {
-        console.warn('Ay verisi yükleme hatası:', error);
-        setDistributionData([]);
-        setFilteredData([]);
-        return;
-      }
-      
-      console.log(`${month} ayı için ${data?.length || 0} kayıt yüklendi`);
-      setDistributionData(data || []);
-      setFilteredData(data || []);
-    } catch (error) {
-      console.error('Ay verisi yükleme hatası:', error);
-      setDistributionData([]);
-      setFilteredData([]);
-    } finally {
-      setLoading(false);
-    }
+  // Ay seçimi değiştiğinde veri yenile
+  const handleMonthChange = async (month) => {
+    setSelectedMonth(month);
+    setCurrentPage(1);
+    
+    const [count, stats] = await Promise.all([
+      loadTotalCount(month, selectedRegion),
+      loadStatistics(month, selectedRegion)
+    ]);
+    
+    setTotalCount(count);
+    setStatistics(stats);
+    await loadDistributionData(1, month, selectedRegion);
   };
 
-  // Filtreleme
-  useEffect(() => {
-    let filtered = distributionData;
+  // Bölge seçimi değiştiğinde veri yenile
+  const handleRegionChange = async (region) => {
+    setSelectedRegion(region);
+    setCurrentPage(1);
+    
+    const [count, stats] = await Promise.all([
+      loadTotalCount(selectedMonth, region),
+      loadStatistics(selectedMonth, region)
+    ]);
+    
+    setTotalCount(count);
+    setStatistics(stats);
+    await loadDistributionData(1, selectedMonth, region);
+  };
 
-    if (selectedRegion !== 'all') {
-      filtered = filtered.filter(item => item.bolge === selectedRegion);
-    }
+  // Sayfa değişikliği
+  const handlePageChange = async (page) => {
+    setCurrentPage(page);
+    await loadDistributionData(page, selectedMonth, selectedRegion);
+  };
 
-    setFilteredData(filtered);
-  }, [selectedRegion, distributionData]);
-
-  // Supabase'den veri çekme - BATCH LOADING
-  const loadDistributionData = async () => {
-    setLoading(true);
+  // Toplam kayıt sayısını çek (istatistikler için)
+  const loadTotalCount = async (month = 'all', region = 'all') => {
     try {
-      // Önce toplam sayıyı al
-      const { count, error: countError } = await supabase
+      let query = supabase
         .from('aktarma_dagitim_verileri')
         .select('*', { count: 'exact', head: true });
 
-      if (countError) {
-        console.warn('Supabase tablosu bulunamadı, önce SQL dosyasını çalıştırın:', countError);
-        setDistributionData([]);
-        setFilteredData([]);
+      if (month !== 'all') {
+        query = query.eq('ay', month);
+      }
+      if (region !== 'all') {
+        query = query.eq('bolge', region);
+      }
+
+      const { count, error } = await query;
+
+      if (error) {
+        console.error('Toplam sayı alma hatası:', error);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (error) {
+      console.error('Toplam sayı alma hatası:', error);
+      return 0;
+    }
+  };
+
+  // İstatistik verilerini çek (toplam kasa, okutulan vs.)
+  const loadStatistics = async (month = 'all', region = 'all') => {
+    try {
+      let query = supabase
+        .from('aktarma_dagitim_verileri')
+        .select('toplam_kasa, okutulan_kasa');
+
+      if (month !== 'all') {
+        query = query.eq('ay', month);
+      }
+      if (region !== 'all') {
+        query = query.eq('bolge', region);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('İstatistik verisi alma hatası:', error);
+        return { totalKasa: 0, okutulanKasa: 0, okutmaOrani: 0 };
+      }
+
+      const totalKasa = data?.reduce((sum, record) => sum + (record.toplam_kasa || 0), 0) || 0;
+      const okutulanKasa = data?.reduce((sum, record) => sum + (record.okutulan_kasa || 0), 0) || 0;
+      const okutmaOrani = totalKasa > 0 ? Math.round((okutulanKasa / totalKasa) * 100 * 10) / 10 : 0;
+
+      return { totalKasa, okutulanKasa, okutmaOrani };
+    } catch (error) {
+      console.error('İstatistik verisi alma hatası:', error);
+      return { totalKasa: 0, okutulanKasa: 0, okutmaOrani: 0 };
+    }
+  };
+
+  // Sayfa bazında veri yükleme (lazy loading)
+  const loadDistributionData = async (page = 1, month = 'all', region = 'all') => {
+    setLoading(true);
+    try {
+      // Supabase tablosunun varlığını kontrol et
+      const { error: checkError } = await supabase
+        .from('aktarma_dagitim_verileri')
+        .select('*')
+        .limit(1);
+
+      if (checkError) {
+        console.warn('Supabase tablosu bulunamadı! SQL dosyasını çalıştırın.');
         return;
       }
 
-      console.log(`Veritabanında toplam ${count} kayıt var`);
+      // Sadece mevcut sayfa için veri çek
+      let query = supabase
+        .from('aktarma_dagitim_verileri')
+        .select('*')
+        .order('tarih', { ascending: true });
 
-      // Tüm verileri batch'ler halinde çek
-      const batchSize = 1000;
-      let allData = [];
-      
-      for (let offset = 0; offset < count; offset += batchSize) {
-        const { data, error } = await supabase
-          .from('aktarma_dagitim_verileri')
-          .select('*')
-          .order('tarih', { ascending: true })
-          .range(offset, offset + batchSize - 1);
-
-        if (error) {
-          console.error(`Batch ${offset}-${offset + batchSize} hatası:`, error);
-          break;
-        }
-
-        allData = [...allData, ...(data || [])];
-        console.log(`${allData.length}/${count} kayıt yüklendi`);
+      // Filtreleme uygula
+      if (month !== 'all') {
+        query = query.eq('ay', month);
       }
-      
-      console.log(`Toplam ${allData.length} kayıt yüklendi (Veritabanında: ${count} kayıt)`);
-      setDistributionData(allData);
-      setFilteredData(allData);
+      if (region !== 'all') {
+        query = query.eq('bolge', region);
+      }
+
+      // Sayfalama uygula
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Veri yükleme hatası:', error);
+        message.error('Veri yüklenirken hata oluştu!');
+        return;
+      }
+
+      setDistributionData(data || []);
+      setFilteredData(data || []);
+      console.log(`Sayfa ${page}: ${data?.length || 0} kayıt yüklendi`);
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
-      // Hata durumunda sessizce geç, kullanıcıya mesaj verme
-      setDistributionData([]);
-      setFilteredData([]);
-    } finally {
-      setLoading(false);
+      message.error('Veri yüklenirken hata oluştu!');
     }
+    setLoading(false);
   };
 
   // Excel yükleme fonksiyonu
@@ -365,7 +483,19 @@ const TransferDistributionAnalysis = () => {
             if (errorCount > 0) {
               message.warning(`${errorCount} batch'te hata oluştu. ${successCount}/${allData.length} kayıt başarılı.`);
             }
-            await loadDistributionData();
+            // Veri yüklendikten sonra sayfa 1'e dön ve verileri yenile
+            setCurrentPage(1);
+            await Promise.all([
+              loadAvailableMonths(),
+              loadAvailableRegions()
+            ]);
+            const [count, stats] = await Promise.all([
+              loadTotalCount(selectedMonth, selectedRegion),
+              loadStatistics(selectedMonth, selectedRegion)
+            ]);
+            setTotalCount(count);
+            setStatistics(stats);
+            await loadDistributionData(1, selectedMonth, selectedRegion);
           } else {
             message.error(`Hiçbir kayıt yüklenemedi! (${allData.length} kayıt işlendi, ${errorCount} batch hatası)`);
           }
@@ -387,7 +517,9 @@ const TransferDistributionAnalysis = () => {
   // Bölge renkleri
   const getRegionColor = (region) => {
     const regionColors = {
-      'İSTANBUL': 'blue',
+      'İSTANBUL - AVR': 'blue',
+      'İSTANBUL - ASY': 'cyan', 
+      'İSTANBUL': 'geekblue',
       'ANKARA': 'green',
       'İZMİR': 'orange',
       'BURSA': 'purple',
@@ -397,34 +529,14 @@ const TransferDistributionAnalysis = () => {
       'KONYA': 'volcano',
       'TRABZON': 'magenta',
       'ESKİŞEHİR': 'processing',
-      'MERSİN': 'success'
+      'MERSİN': 'success',
+      'KAYSERİ': 'warning',
+      'SAMSUN': 'error',
+      'DENİZLİ': 'default'
     };
-    
     const firstWord = region?.split(' ')[0] || '';
     return regionColors[region] || regionColors[firstWord] || 'default';
   };
-
-  // İstatistikler hesaplama - TÜM VERİLER İÇİN
-  const getStatistics = () => {
-    // Filtrelenmiş veriler için (sayfa değil, tüm veriler)
-    const dataToCalculate = selectedMonth === 'all' ? distributionData : 
-      distributionData.filter(item => item.ay === selectedMonth);
-    
-    const total = dataToCalculate.length;
-    const totalKasa = dataToCalculate.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0);
-    const totalOkutulan = dataToCalculate.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0);
-    const avgOkutmaOrani = total > 0 ? 
-      Math.round(dataToCalculate.reduce((sum, item) => sum + (item.okutma_orani || 0), 0) / total * 10) / 10 : 0;
-    
-    return { total, totalKasa, totalOkutulan, avgOkutmaOrani };
-  };
-
-  // Toplam veri sayısı (veritabanındaki tüm veriler)
-  const getTotalRecords = () => {
-    return distributionData.length;
-  };
-
-  const stats = getStatistics();
 
   // Tablo sütunları
   const columns = [
@@ -435,6 +547,36 @@ const TransferDistributionAnalysis = () => {
       width: 90,
       sorter: (a, b) => new Date(a.tarih) - new Date(b.tarih),
       defaultSortOrder: 'ascend',
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="Tarih ara (GG.AA.YYYY)"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              Ara
+            </Button>
+            <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+              Temizle
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => {
+        const dateStr = new Date(record.tarih).toLocaleDateString('tr-TR');
+        return dateStr.toLowerCase().includes(value.toLowerCase());
+      },
       render: (text, record) => (
         <div className="text-xs">
           <div className="font-medium">
@@ -450,6 +592,35 @@ const TransferDistributionAnalysis = () => {
       title: 'Mağaza',
       key: 'magaza',
       width: 140,
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="Mağaza ara"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              Ara
+            </Button>
+            <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+              Temizle
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => 
+        record.magaza_adi?.toLowerCase().includes(value.toLowerCase()) ||
+        record.magaza_kodu?.toLowerCase().includes(value.toLowerCase()),
       render: (_, record) => (
         <div className="text-xs">
           <div className="font-medium truncate">{record.magaza_adi}</div>
@@ -463,6 +634,11 @@ const TransferDistributionAnalysis = () => {
       key: 'bolge',
       width: 100,
       sorter: (a, b) => (a.bolge || '').localeCompare(b.bolge || ''),
+      filters: availableRegions.filter(r => r.value !== 'all').map(r => ({
+        text: r.value,
+        value: r.value
+      })),
+      onFilter: (value, record) => record.bolge === value,
       render: (text) => (
         <Tag color={getRegionColor(text)} className="text-xs">
           {text || 'N/A'}
@@ -523,6 +699,43 @@ const TransferDistributionAnalysis = () => {
       title: 'Personel',
       key: 'personel',
       width: 140,
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="Personel ara"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              Ara
+            </Button>
+            <Button onClick={() => clearFilters()} size="small" style={{ width: 90 }}>
+              Temizle
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => {
+        const allPersonnel = [
+          record.personel1,
+          record.personel2, 
+          record.personel3,
+          record.sicil_no_personel1,
+          record.sicil_no_personel2,
+          record.sicil_no_personel3
+        ].filter(Boolean).join(' ').toLowerCase();
+        return allPersonnel.includes(value.toLowerCase());
+      },
       render: (_, record) => (
         <div className="space-y-0.5">
           {record.personel1 && (
@@ -620,10 +833,7 @@ const TransferDistributionAnalysis = () => {
             <Select
               placeholder="Ay Seçin"
               value={selectedMonth}
-              onChange={(value) => {
-                setSelectedMonth(value);
-                loadDataByMonth(value);
-              }}
+              onChange={handleMonthChange}
               className="w-full h-12"
               size="large"
             >
@@ -640,15 +850,13 @@ const TransferDistributionAnalysis = () => {
             <Select
               placeholder="Bölge Seçin"
               value={selectedRegion}
-              onChange={setSelectedRegion}
+              onChange={handleRegionChange}
               className="w-full h-12"
               size="large"
             >
-              <Option value="all">Tüm Bölgeler</Option>
-              {Array.from(new Set(distributionData.map(p => p.bolge).filter(Boolean)))
-                .map(bolge => (
-                  <Option key={bolge} value={bolge}>{bolge}</Option>
-                ))}
+              {regions.map(region => (
+                <Option key={region.value} value={region.value}>{region.label}</Option>
+              ))}
             </Select>
             <Button 
               icon={<Download className="w-4 h-4" />}
@@ -667,12 +875,12 @@ const TransferDistributionAnalysis = () => {
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Toplam Kayıt</span>}
-                  value={stats.total.toLocaleString('tr-TR')}
+                  value={totalCount.toLocaleString('tr-TR')}
                   valueStyle={{ color: '#1890ff', fontSize: '28px', fontWeight: 'bold' }}
                   prefix={<FileSpreadsheet className="w-6 h-6 text-blue-600" />}
                 />
                 <div className="text-xs text-gray-500 mt-2">
-                  <div>Veritabanı: {getTotalRecords().toLocaleString('tr-TR')} kayıt</div>
+                  <div>Veritabanı: {totalCount.toLocaleString('tr-TR')} kayıt</div>
                   <div>
                     {selectedMonth === 'all' 
                       ? 'Tüm aylar (200\'er sayfa)' 
@@ -686,7 +894,7 @@ const TransferDistributionAnalysis = () => {
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Toplam Kasa</span>}
-                  value={stats.totalKasa.toLocaleString('tr-TR')}
+                  value={statistics.totalKasa.toLocaleString('tr-TR')}
                   valueStyle={{ color: '#52c41a', fontSize: '28px', fontWeight: 'bold' }}
                   prefix={<Package className="w-6 h-6 text-green-600" />}
                 />
@@ -699,7 +907,7 @@ const TransferDistributionAnalysis = () => {
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-purple-50 to-purple-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Okutulan Kasa</span>}
-                  value={stats.totalOkutulan.toLocaleString('tr-TR')}
+                  value={statistics.okutulanKasa.toLocaleString('tr-TR')}
                   valueStyle={{ color: '#722ed1', fontSize: '28px', fontWeight: 'bold' }}
                   prefix={<CheckCircle className="w-6 h-6 text-purple-600" />}
                 />
@@ -712,7 +920,7 @@ const TransferDistributionAnalysis = () => {
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 to-orange-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Ortalama Okutma Oranı</span>}
-                  value={stats.avgOkutmaOrani}
+                  value={statistics.okutmaOrani}
                   suffix="%"
                   valueStyle={{ color: '#fa8c16', fontSize: '28px', fontWeight: 'bold' }}
                   prefix={<Target className="w-6 h-6 text-orange-600" />}
@@ -735,11 +943,14 @@ const TransferDistributionAnalysis = () => {
               dataSource={filteredData}
             rowKey="id"
               pagination={{
-                pageSize: 200,
+                current: currentPage,
+                pageSize: pageSize,
+                total: totalCount,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) => 
-                  `${range[0]}-${range[1]} / ${total.toLocaleString('tr-TR')} kayıt (Toplam: ${getTotalRecords().toLocaleString('tr-TR')})`,
+                  `${range[0]}-${range[1]} / ${total.toLocaleString('tr-TR')} kayıt (Toplam: ${totalCount.toLocaleString('tr-TR')})`,
+                onChange: handlePageChange,
                 pageSizeOptions: ['50', '100', '200', '500'],
                 size: 'default'
               }}

@@ -150,10 +150,6 @@ const TransferDistributionAnalysis = () => {
       ]);
       
       await loadDistributionData(selectedMonth, selectedRegion);
-      
-      // İstatistikleri güncelle
-      const stats = loadStatistics();
-      setStatistics(stats);
     };
     
     initializeData();
@@ -184,9 +180,9 @@ const TransferDistributionAnalysis = () => {
   };
 
   // İstatistikleri hesapla (mevcut distributionData'dan)
-  const loadStatistics = () => {
-    const totalKasa = distributionData.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0);
-    const okutulanKasa = distributionData.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0);
+  const loadStatistics = (data = distributionData) => {
+    const totalKasa = data.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0);
+    const okutulanKasa = data.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0);
     const okutmaOrani = totalKasa > 0 ? Math.round((okutulanKasa / totalKasa) * 100 * 10) / 10 : 0;
 
     return { totalKasa, okutulanKasa, okutmaOrani };
@@ -340,11 +336,8 @@ const TransferDistributionAnalysis = () => {
       setFilteredData(allData);
       
       // İstatistikleri güncelle (allData kullanarak)
-      const totalKasa = allData.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0);
-      const okutulanKasa = allData.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0);
-      const okutmaOrani = totalKasa > 0 ? Math.round((okutulanKasa / totalKasa) * 100 * 10) / 10 : 0;
-      
-      setStatistics({ totalKasa, okutulanKasa, okutmaOrani });
+      const stats = loadStatistics(allData);
+      setStatistics(stats);
       
       // Ay ve bölge listelerini güncelle
       await updateAvailableFilters(allData);
@@ -536,10 +529,6 @@ const TransferDistributionAnalysis = () => {
             // Veri yüklendikten sonra verileri yenile
             setCurrentPage(1);
             await loadDistributionData(selectedMonth, selectedRegion);
-            
-            // İstatistikleri güncelle
-            const stats = loadStatistics();
-            setStatistics(stats);
           } else {
             message.error(`Hiçbir kayıt yüklenemedi! (${allData.length} kayıt işlendi, ${errorCount} batch hatası)`);
           }

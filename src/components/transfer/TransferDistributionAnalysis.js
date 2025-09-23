@@ -58,7 +58,13 @@ const TransferDistributionAnalysis = () => {
   const [statistics, setStatistics] = useState({ totalKasa: 0, okutulanKasa: 0, okutmaOrani: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(200);
-  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0, percentage: 0 });
+  const [loadingProgress, setLoadingProgress] = useState({ 
+    current: 0, 
+    total: 0, 
+    percentage: 0, 
+    startTime: null,
+    estimatedTimeRemaining: null
+  });
 
   // Aylar listesi - dinamik olarak veritabanından çek
   const [availableMonths, setAvailableMonths] = useState([]);
@@ -140,6 +146,21 @@ const TransferDistributionAnalysis = () => {
       '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
     };
     return monthNames[monthNumber] || monthNumber;
+  };
+
+  // Zamanı formatla (saniye -> dakika:saniye)
+  const formatTime = (seconds) => {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}dk ${remainingSeconds}s`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${hours}sa ${minutes}dk`;
+    }
   };
 
   useEffect(() => {
@@ -292,7 +313,14 @@ const TransferDistributionAnalysis = () => {
       }
 
       // Progress başlangıcı
-      setLoadingProgress({ current: 0, total: count, percentage: 0 });
+      const startTime = Date.now();
+      setLoadingProgress({ 
+        current: 0, 
+        total: count, 
+        percentage: 0, 
+        startTime: startTime,
+        estimatedTimeRemaining: null
+      });
 
       // Tüm verileri batch'ler halinde çek
       const batchSize = 1000;
@@ -326,10 +354,22 @@ const TransferDistributionAnalysis = () => {
         
         // Progress güncelle
         const percentage = Math.round((allData.length/count)*100);
+        
+        // Tahmini bitiş süresi hesapla
+        let estimatedTimeRemaining = null;
+        if (percentage > 5 && startTime) { // %5'ten sonra hesapla
+          const elapsedTime = Date.now() - startTime;
+          const recordsPerSecond = allData.length / (elapsedTime / 1000);
+          const remainingRecords = count - allData.length;
+          estimatedTimeRemaining = Math.round(remainingRecords / recordsPerSecond);
+        }
+        
         setLoadingProgress({ 
           current: allData.length, 
           total: count, 
-          percentage: percentage 
+          percentage: percentage,
+          startTime: startTime,
+          estimatedTimeRemaining: estimatedTimeRemaining
         });
       }
       setDistributionData(allData);
@@ -343,11 +383,23 @@ const TransferDistributionAnalysis = () => {
       await updateAvailableFilters(allData);
       
       // Yükleme tamamlandı
-      setLoadingProgress({ current: 0, total: 0, percentage: 0 });
+      setLoadingProgress({ 
+        current: 0, 
+        total: 0, 
+        percentage: 0, 
+        startTime: null,
+        estimatedTimeRemaining: null
+      });
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
       message.error('Veri yüklenirken hata oluştu!');
-      setLoadingProgress({ current: 0, total: 0, percentage: 0 });
+      setLoadingProgress({ 
+        current: 0, 
+        total: 0, 
+        percentage: 0, 
+        startTime: null,
+        estimatedTimeRemaining: null
+      });
     }
     setLoading(false);
   };
@@ -1060,8 +1112,13 @@ const TransferDistributionAnalysis = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-blue-800">{loadingProgress.percentage}%</div>
-                    <div className="text-sm text-blue-600">Tamamlandı</div>
-                      </div>
+                    <div className="text-sm text-blue-600">
+                      {loadingProgress.estimatedTimeRemaining ? 
+                        `Tahmini kalan: ${formatTime(loadingProgress.estimatedTimeRemaining)}` : 
+                        'Tamamlandı'
+                      }
+                    </div>
+                  </div>
                     </div>
                     
                 <div className="relative">

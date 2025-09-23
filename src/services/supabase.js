@@ -819,7 +819,6 @@ export const getAllUsers = async () => {
 // Kullanıcı detaylarını getir
 export const getUserDetails = async (userId, userEmail = null) => {
   try {
-    console.log('🔍 getUserDetails çağrıldı - userId:', userId, 'userEmail:', userEmail);
     
     // Önce users tablosundan ID ile dene
     let { data, error } = await supabase
@@ -830,7 +829,6 @@ export const getUserDetails = async (userId, userEmail = null) => {
     
     // ID ile bulunamazsa email ile dene
     if (error && error.code === 'PGRST116' && userEmail) {
-      console.log('🔍 getUserDetails - ID ile bulunamadı, email ile deneniyor');
       const emailQuery = await supabase
         .from('users')
         .select('id, email, full_name, role, is_active')
@@ -842,7 +840,6 @@ export const getUserDetails = async (userId, userEmail = null) => {
     }
     
     if (error) {
-      console.log('⚠️ getUserDetails - Kullanıcı bulunamadı, varsayılan değerler döndürülüyor');
       // Kullanıcı bulunamazsa varsayılan değerler döndür
       return { 
         success: true, 
@@ -856,7 +853,6 @@ export const getUserDetails = async (userId, userEmail = null) => {
       };
     }
     
-    console.log('✅ getUserDetails - Kullanıcı bulundu:', data);
     return { success: true, data };
   } catch (error) {
     console.error('❌ getUserDetails error:', error);

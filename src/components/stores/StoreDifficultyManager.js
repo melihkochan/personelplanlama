@@ -85,12 +85,19 @@ const StoreDifficultyManager = () => {
         
         setStoreData(processedData);
         setFilteredData(processedData);
+        
+        if (processedData.length === 0) {
+          message.info('Henüz mağaza verisi bulunmuyor. Excel dosyası yükleyerek başlayabilirsiniz.');
+        } else {
+          message.success(`${processedData.length} mağaza verisi yüklendi!`);
+        }
       } else {
+        console.error('❌ Supabase hatası:', result.error);
         message.error(`Veri yükleme hatası: ${result.error}`);
       }
     } catch (error) {
-      console.error('Veri yükleme hatası:', error);
-      message.error('Veriler yüklenirken hata oluştu!');
+      console.error('💥 Veri yükleme hatası:', error);
+      message.error(`Veriler yüklenirken hata oluştu: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -769,11 +776,56 @@ const StoreDifficultyManager = () => {
     <div className="p-4 bg-gray-50 min-h-screen">
       <Card className="mb-4 shadow-sm">
         <div className="flex justify-between items-center mb-3">
-          <h1 className="text-xl font-semibold text-gray-800">
-            Mağaza Zorluk Yönetimi
-          </h1>
-          <div className="flex space-x-3">
-            <AntUpload
+          {/* Sol üst - Arama */}
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Input
+                size="large"
+                placeholder="Mağaza adı, kodu veya bölge ile ara..."
+                prefix={<Search size={16} className="text-gray-400" />}
+                value={searchText}
+                onChange={(e) => handleSearch(e.target.value)}
+                allowClear
+                className="rounded-xl border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                style={{
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  border: '1px solid #e5e7eb'
+                }}
+              />
+            </div>
+          </div>
+          
+          {/* Sağ üst - Görünüm seçenekleri ve İşlem butonları */}
+          <div className="flex items-center space-x-4">
+            {/* Görünüm seçenekleri */}
+            <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm flex">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center ${
+                  viewMode === 'table'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <Search size={16} className="mr-2" />
+                Liste
+              </button>
+              <button
+                onClick={() => setViewMode('detail')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center ${
+                  viewMode === 'detail'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <ImageIcon size={16} className="mr-2" />
+                Kart
+              </button>
+            </div>
+            
+            {/* İşlem butonları */}
+            <div className="flex space-x-3">
+              <AntUpload
               beforeUpload={handleFileUpload}
               showUploadList={false}
               accept=".xlsx,.xls"
@@ -802,58 +854,19 @@ const StoreDifficultyManager = () => {
               <Download size={16} className="mr-2" />
               Excel İndir
             </button>
-          </div>
-        </div>
-
-        {/* Görünüm Seçenekleri */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
-            <div className="flex">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  viewMode === 'table'
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Eye size={16} className="mr-2" />
-                Liste
-              </button>
-              <button
-                onClick={() => setViewMode('detail')}
-                className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  viewMode === 'detail'
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <ImageIcon size={16} className="mr-2" />
-                Kart
-              </button>
             </div>
           </div>
         </div>
 
-        <Row gutter={12} className="mb-3">
-          <Col span={16}>
-            <Input
-              size="small"
-              placeholder="Mağaza adı, kodu veya bölge ile ara..."
-              prefix={<Search size={14} />}
-              value={searchText}
-              onChange={(e) => handleSearch(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col span={8}>
-            <div className="flex justify-end items-center h-8">
-              <span className="text-sm text-gray-600">
-                Toplam: <span className="font-medium text-blue-600">{filteredData.length}</span> mağaza
-              </span>
-            </div>
-          </Col>
-        </Row>
+
+        {/* Toplam bilgisi */}
+        <div className="flex justify-end mb-4">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-2">
+            <span className="text-sm font-medium text-blue-700">
+              Toplam: <span className="font-bold text-blue-800">{filteredData.length}</span> mağaza
+            </span>
+          </div>
+        </div>
 
         {viewMode === 'table' ? (
           <Table
@@ -891,12 +904,17 @@ const StoreDifficultyManager = () => {
                   <div className="w-full bg-gray-100 rounded-lg mb-3 overflow-hidden group-hover:bg-gray-200 transition-colors duration-300 cursor-pointer" onClick={() => handleViewImages(store)}>
                     {store.images && store.images.length > 0 ? (
                       <div className="relative">
-                        <Image
-                          src={store.images[0].url}
-                          alt={store.storeName}
-                          className="w-full group-hover:scale-105 transition-transform duration-300"
-                          preview={false}
-                        />
+                          <Image
+                            src={store.images[0].image_url || store.images[0].url}
+                            alt={store.storeName}
+                            className="w-full group-hover:scale-105 transition-transform duration-300"
+                            style={{
+                              height: '200px',
+                              objectFit: 'cover',
+                              objectPosition: 'center'
+                            }}
+                            preview={false}
+                          />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white text-center">
                             <ImageIcon size={24} className="mx-auto mb-1" />
@@ -1078,171 +1096,345 @@ const StoreDifficultyManager = () => {
       </Card>
 
       {/* Düzenleme Modalı */}
-      <Modal
-        title="Mağaza Bilgilerini Düzenle"
-        open={isEditModalVisible}
-        onCancel={() => setIsEditModalVisible(false)}
-        footer={null}
-        width={700}
-      >
+        <Modal
+          title={
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Edit size={16} className="text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-800">Mağaza Bilgilerini Düzenle</span>
+            </div>
+          }
+          open={isEditModalVisible}
+          onCancel={() => setIsEditModalVisible(false)}
+          footer={null}
+          width={800}
+          className="modern-modal"
+          style={{
+            borderRadius: '16px',
+            maxHeight: '85vh',
+            overflow: 'hidden'
+          }}
+        >
         {editingRecord && (
-          <Form
-            layout="vertical"
-            initialValues={editingRecord}
-            onFinish={handleSaveEdit}
-          >
-            <Row gutter={12}>
-              <Col span={8}>
-                <Form.Item
-                  label="Mağaza Kodu"
-                  name="storeCode"
-                  rules={[{ required: true, message: 'Mağaza kodu gerekli!' }]}
-                >
-                  <InputNumber style={{ width: '100%' }} size="small" />
-                </Form.Item>
-              </Col>
-              <Col span={16}>
-                <Form.Item
-                  label="Mağaza Adı"
-                  name="storeName"
-                  rules={[{ required: true, message: 'Mağaza adı gerekli!' }]}
-                >
-                  <Input size="small" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item
-                  label="Bölge"
-                  name="region"
-                  rules={[{ required: true, message: 'Bölge gerekli!' }]}
-                >
-                  <Input size="small" />
-                </Form.Item>
-              </Col>
-              <Col span={6}>
-                <Form.Item
-                  label="Ort. Kasa"
-                  name="averageCases"
-                >
-                  <InputNumber style={{ width: '100%' }} size="small" />
-                </Form.Item>
-              </Col>
-              <Col span={6}>
-                <Form.Item
-                  label="Ort. Palet"
-                  name="averagePallets"
-                >
-                  <InputNumber style={{ width: '100%' }} size="small" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={12}>
-              <Col span={6}>
-                <Form.Item
-                  label="Fiziksel Erişim"
-                  name="physicalAccessDifficulty"
-                >
-                  <Select size="small">
-                    <Option value={1}>1 - Kolay</Option>
-                    <Option value={2}>2 - Orta</Option>
-                    <Option value={3}>3 - Zor</Option>
-                    <Option value={4}>4 - Çok Zor</Option>
-                    <Option value={5}>5 - Aşırı Zor</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={6}>
-                <Form.Item
-                  label="Araç Uzaklığı"
-                  name="vehicleDistance"
-                >
-                  <Select size="small">
-                    <Option value={1}>1 - Yakın</Option>
-                    <Option value={2}>2 - Orta</Option>
-                    <Option value={3}>3 - Uzak</Option>
-                    <Option value={4}>4 - Çok Uzak</Option>
-                    <Option value={5}>5 - Aşırı Uzak</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={6}>
-                <Form.Item
-                  label="AVM Zorluğu"
-                  name="mallDifficulty"
-                >
-                  <Select size="small">
-                    <Option value={1}>1 - Yok</Option>
-                    <Option value={2}>2 - Az</Option>
-                    <Option value={3}>3 - Orta</Option>
-                    <Option value={4}>4 - Yüksek</Option>
-                    <Option value={5}>5 - Aşırı Yüksek</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={6}>
-                <Form.Item
-                  label="Bölgesel Zorluk"
-                  name="regionalDifficulty"
-                >
-                  <Select size="small">
-                    <Option value={1}>1 - Kolay</Option>
-                    <Option value={2}>2 - Orta</Option>
-                    <Option value={3}>3 - Zor</Option>
-                    <Option value={4}>4 - Çok Zor</Option>
-                    <Option value={5}>5 - Aşırı Zor</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item
-                  label="Mağaza Tipi"
-                  name="storeType"
-                >
-                  <Select size="small">
-                    <Option value="CADDE">CADDE</Option>
-                    <Option value="AVM">AVM</Option>
-                    <Option value="BEAUTY">BEAUTY</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Merdiven Basamak Sayısı"
-                  name="stairSteps"
-                >
-                  <InputNumber 
-                    style={{ width: '100%' }} 
-                    size="small" 
-                    min={0}
-                    placeholder="Basamak sayısı"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              label="Açıklama"
-              name="description"
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-4 shadow-lg max-h-[calc(85vh-100px)] overflow-y-auto">
+            <Form
+              layout="vertical"
+              initialValues={editingRecord}
+              onFinish={handleSaveEdit}
+              className="space-y-3"
             >
-              <TextArea rows={3} size="small" />
-            </Form.Item>
+            {/* Temel Bilgiler */}
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
+                <div className="w-5 h-5 bg-blue-100 rounded-lg flex items-center justify-center mr-2">
+                  <span className="text-blue-600 text-xs font-bold">1</span>
+                </div>
+                Temel Bilgiler
+              </h3>
+              <Row gutter={12}>
+                <Col span={6}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Mağaza Kodu</span>}
+                    name="storeCode"
+                    rules={[{ required: true, message: 'Mağaza kodu gerekli!' }]}
+                  >
+                    <InputNumber 
+                      style={{ 
+                        width: '100%',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        transition: 'all 0.2s'
+                      }} 
+                      size="middle"
+                      placeholder="Mağaza kodu girin"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Mağaza Adı</span>}
+                    name="storeName"
+                    rules={[{ required: true, message: 'Mağaza adı gerekli!' }]}
+                  >
+                    <Input 
+                      size="middle"
+                      placeholder="Mağaza adını girin"
+                      style={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        transition: 'all 0.2s'
+                      }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={6}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Bölge</span>}
+                    name="region"
+                    rules={[{ required: true, message: 'Bölge gerekli!' }]}
+                  >
+                    <Input 
+                      size="middle"
+                      placeholder="Bölge adını girin"
+                      style={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        transition: 'all 0.2s'
+                      }}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button size="small" onClick={() => setIsEditModalVisible(false)}>
+            {/* Sayısal Veriler */}
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
+                <div className="w-5 h-5 bg-green-100 rounded-lg flex items-center justify-center mr-2">
+                  <span className="text-green-600 text-xs font-bold">2</span>
+                </div>
+                Sayısal Veriler
+              </h3>
+              <Row gutter={12}>
+                <Col span={12}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Ort. Kasa</span>}
+                    name="averageCases"
+                  >
+                    <InputNumber 
+                      style={{ 
+                        width: '100%',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        transition: 'all 0.2s'
+                      }} 
+                      size="middle"
+                      placeholder="0"
+                      min={0}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Ort. Palet</span>}
+                    name="averagePallets"
+                  >
+                    <InputNumber 
+                      style={{ 
+                        width: '100%',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        transition: 'all 0.2s'
+                      }} 
+                      size="middle"
+                      placeholder="0"
+                      min={0}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Zorluk Seviyeleri */}
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
+                <div className="w-5 h-5 bg-orange-100 rounded-lg flex items-center justify-center mr-2">
+                  <span className="text-orange-600 text-xs font-bold">3</span>
+                </div>
+                Zorluk Seviyeleri
+              </h3>
+              <Row gutter={16}>
+                <Col span={6}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Fiziksel Erişim</span>}
+                    name="physicalAccessDifficulty"
+                  >
+                    <Select 
+                      size="middle"
+                      placeholder="Seviye seçin"
+                      style={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <Option value={1}>1 - Kolay</Option>
+                      <Option value={2}>2 - Orta</Option>
+                      <Option value={3}>3 - Zor</Option>
+                      <Option value={4}>4 - Çok Zor</Option>
+                      <Option value={5}>5 - Aşırı Zor</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={6}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Araç Uzaklığı</span>}
+                    name="vehicleDistance"
+                  >
+                    <Select 
+                      size="middle"
+                      placeholder="Seviye seçin"
+                      style={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <Option value={1}>1 - Yakın</Option>
+                      <Option value={2}>2 - Orta</Option>
+                      <Option value={3}>3 - Uzak</Option>
+                      <Option value={4}>4 - Çok Uzak</Option>
+                      <Option value={5}>5 - Aşırı Uzak</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={6}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">AVM Zorluğu</span>}
+                    name="mallDifficulty"
+                  >
+                    <Select 
+                      size="middle"
+                      placeholder="Seviye seçin"
+                      style={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <Option value={1}>1 - Yok</Option>
+                      <Option value={2}>2 - Az</Option>
+                      <Option value={3}>3 - Orta</Option>
+                      <Option value={4}>4 - Yüksek</Option>
+                      <Option value={5}>5 - Aşırı Yüksek</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={6}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Bölgesel Zorluk</span>}
+                    name="regionalDifficulty"
+                  >
+                    <Select 
+                      size="middle"
+                      placeholder="Seviye seçin"
+                      style={{
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <Option value={1}>1 - Kolay</Option>
+                      <Option value={2}>2 - Orta</Option>
+                      <Option value={3}>3 - Zor</Option>
+                      <Option value={4}>4 - Çok Zor</Option>
+                      <Option value={5}>5 - Aşırı Zor</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Ek Bilgiler */}
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+              <h3 className="text-base font-semibold text-gray-800 mb-2 flex items-center">
+                <div className="w-5 h-5 bg-purple-100 rounded-lg flex items-center justify-center mr-2">
+                  <span className="text-purple-600 text-xs font-bold">4</span>
+                </div>
+                Ek Bilgiler
+              </h3>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Mağaza Tipi</span>}
+                    name="storeType"
+                  >
+                    <Select 
+                      size="large"
+                      placeholder="Tip seçin"
+                      style={{
+                        borderRadius: '12px',
+                        border: '2px solid #e5e7eb',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <Option value="CADDE">CADDE</Option>
+                      <Option value="AVM">AVM</Option>
+                      <Option value="BEAUTY">BEAUTY</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label={<span className="text-sm font-medium text-gray-700">Merdiven Basamak Sayısı</span>}
+                    name="stairSteps"
+                  >
+                    <InputNumber 
+                      style={{ 
+                        width: '100%',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        transition: 'all 0.2s'
+                      }} 
+                      size="middle"
+                      min={0}
+                      placeholder="Basamak sayısı"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <Form.Item
+                label={<span className="text-sm font-medium text-gray-700">Açıklama</span>}
+                name="description"
+              >
+                <TextArea 
+                  rows={2} 
+                  size="middle"
+                  placeholder="Mağaza hakkında açıklama yazın..."
+                  style={{
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    transition: 'all 0.2s'
+                  }}
+                />
+              </Form.Item>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
+              <Button 
+                size="middle" 
+                onClick={() => setIsEditModalVisible(false)}
+                className="px-4 py-1.5 rounded-lg border-gray-300 text-gray-600 hover:bg-gray-50 transition-all duration-200"
+              >
                 İptal
               </Button>
-              <Button type="primary" size="small" htmlType="submit">
+              <Button 
+                type="primary" 
+                size="middle" 
+                htmlType="submit"
+                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
+              >
                 Kaydet
               </Button>
             </div>
-          </Form>
+            </Form>
+          </div>
         )}
       </Modal>
 
@@ -1269,9 +1461,14 @@ const StoreDifficultyManager = () => {
                   {selectedStoreImages.map((image, index) => (
                     <div key={image.id} className="relative">
                       <Image
-                        src={image.url}
-                        alt={image.name}
+                        src={image.image_url || image.url}
+                        alt={image.image_name || image.name}
                         className="w-full rounded-lg cursor-pointer"
+                        style={{
+                          height: '500px',
+                          objectFit: 'cover',
+                          objectPosition: 'center'
+                        }}
                         preview={{
                           mask: 'Büyüt',
                           maskClassName: 'bg-black bg-opacity-50 text-white'
@@ -1335,23 +1532,6 @@ const StoreDifficultyManager = () => {
                   <span className="text-blue-600">
                     ← → tuşları ile ilerleyin
                   </span>
-                </div>
-                <div className="flex space-x-2">
-                  <Button 
-                    size="small" 
-                    icon={<Download size={14} />}
-                    onClick={() => {
-                      // Tüm görselleri indirme fonksiyonu
-                      selectedStoreImages.forEach((image, index) => {
-                        const link = document.createElement('a');
-                        link.href = image.url;
-                        link.download = `mağaza-görsel-${index + 1}.jpg`;
-                        link.click();
-                      });
-                    }}
-                  >
-                    Tümünü İndir
-                  </Button>
                 </div>
               </div>
             </div>
@@ -1417,9 +1597,14 @@ const StoreDifficultyManager = () => {
                           {selectedStore.images.map((image, index) => (
                             <div key={image.id} className="relative">
                               <Image
-                                src={image.url}
-                                alt={image.name}
+                                src={image.image_url || image.url}
+                                alt={image.image_name || image.name}
                                 className="w-full rounded-lg cursor-pointer"
+                                style={{
+                                  height: '400px',
+                                  objectFit: 'cover',
+                                  objectPosition: 'center'
+                                }}
                                 preview={{
                                   mask: 'Büyüt',
                                   maskClassName: 'bg-black bg-opacity-50 text-white'

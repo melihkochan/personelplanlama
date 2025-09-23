@@ -53,12 +53,13 @@ const StoreDifficultyManager = () => {
   const [selectedStore, setSelectedStore] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [availableRegions, setAvailableRegions] = useState([]);
   const fileInputRef = useRef(null);
   const carouselRef = useRef(null);
   const detailCarouselRef = useRef(null);
 
   // Veritabanından mağazaları yükle
-  const loadStoresFromDatabase = async () => {
+  const loadStoresFromDatabase = async (showMessage = false) => {
     try {
       setLoading(true);
       const result = await storeDifficultyService.getAllStores();
@@ -86,9 +87,13 @@ const StoreDifficultyManager = () => {
         setStoreData(processedData);
         setFilteredData(processedData);
         
+        // Mevcut bölgeleri ayıkla ve sırala
+        const uniqueRegions = [...new Set(processedData.map(store => store.region).filter(region => region))].sort();
+        setAvailableRegions(uniqueRegions);
+        
         if (processedData.length === 0) {
           message.info('Henüz mağaza verisi bulunmuyor. Excel dosyası yükleyerek başlayabilirsiniz.');
-        } else {
+        } else if (showMessage) {
           message.success(`${processedData.length} mağaza verisi yüklendi!`);
         }
       } else {
@@ -252,6 +257,11 @@ const StoreDifficultyManager = () => {
   const handleSaveEdit = async (values) => {
     try {
       setLoading(true);
+      message.loading({
+        content: '⏳ Mağaza bilgileri güncelleniyor...',
+        duration: 0,
+        key: 'saving'
+      });
       
       // Toplam zorluk puanını hesapla
       const totalScore = values.physicalAccessDifficulty + values.vehicleDistance + 
@@ -274,20 +284,52 @@ const StoreDifficultyManager = () => {
       };
       
       // Supabase'e güncelle
+      console.log('🔄 Güncelleme başlatılıyor...', updateData);
       const result = await storeDifficultyService.updateStore(editingRecord.id, updateData);
+      console.log('📊 Güncelleme sonucu:', result);
       
       if (result.success) {
         // Başarılı güncelleme sonrası verileri tekrar getir
+        console.log('✅ Güncelleme başarılı, veriler yenileniyor...');
         await loadStoresFromDatabase();
+        message.destroy('saving');
         setIsEditModalVisible(false);
         setEditingRecord(null);
-        message.success('Mağaza bilgileri güncellendi!');
+        message.success({
+          content: '✅ Mağaza bilgileri başarıyla güncellendi!',
+          duration: 3,
+          style: {
+            marginTop: '20px',
+            fontSize: '14px',
+            fontWeight: '500'
+          }
+        });
+        console.log('🎉 Başarı mesajı gösterildi');
       } else {
-        message.error(`Güncelleme hatası: ${result.error}`);
+        console.log('❌ Güncelleme hatası:', result.error);
+        message.destroy('saving');
+        message.error({
+          content: `❌ Güncelleme hatası: ${result.error}`,
+          duration: 5,
+          style: {
+            marginTop: '20px',
+            fontSize: '14px',
+            fontWeight: '500'
+          }
+        });
       }
     } catch (error) {
       console.error('Güncelleme hatası:', error);
-      message.error('Güncelleme sırasında hata oluştu!');
+      message.destroy('saving');
+      message.error({
+        content: '❌ Güncelleme sırasında hata oluştu!',
+        duration: 5,
+        style: {
+          marginTop: '20px',
+          fontSize: '14px',
+          fontWeight: '500'
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -452,6 +494,7 @@ const StoreDifficultyManager = () => {
       dataIndex: 'region',
       key: 'region',
       width: 120,
+      sorter: (a, b) => (a.region || '').localeCompare(b.region || ''),
       filters: Array.from(new Set(storeData.map(store => store.region))).map(region => ({
         text: region,
         value: region
@@ -1178,17 +1221,25 @@ const StoreDifficultyManager = () => {
                     name="region"
                     rules={[{ required: true, message: 'Bölge gerekli!' }]}
                   >
-                    <Input 
+                    <Select 
                       size="middle"
-                      placeholder="Bölge adını girin"
+                      placeholder="Bölge seçin"
+                      showSearch
+                      filterOption={(input, option) =>
+                        (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
                       style={{
                         borderRadius: '8px',
                         border: '1px solid #e5e7eb',
-                        padding: '6px 10px',
-                        fontSize: '12px',
-                        transition: 'all 0.2s'
+                        fontSize: '12px'
                       }}
-                    />
+                    >
+                      {availableRegions.map(region => (
+                        <Option key={region} value={region}>
+                          {region}
+                        </Option>
+                      ))}
+                    </Select>
                   </Form.Item>
                 </Col>
               </Row>

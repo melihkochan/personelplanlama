@@ -105,7 +105,7 @@ const StoreDifficultyManager = () => {
           .filter(row => row[0] && row[0].toString().trim() !== '') // Kod boş olmayan satırları filtrele
           .map((row, index) => ({
             key: index,
-            storeCode: row[0] || '',
+            storeCode: row[0] || '', // Mağaza Kodu (A sütunu)
             storeName: row[1] || '',
             region: row[2] || '',
             averageCases: row[3] || 0,
@@ -116,6 +116,8 @@ const StoreDifficultyManager = () => {
             regionalDifficulty: row[8] || 1,
             totalDifficultyScore: row[9] || 0,
             description: row[10] || '',
+            storeType: row[11] || '', // Mağaza Tipi (L sütunu)
+            stairSteps: row[12] || '', // Merdiven Basamak Sayısı (M sütunu)
             images: [] // Görseller için boş array
           }));
         
@@ -315,12 +317,12 @@ const StoreDifficultyManager = () => {
       ),
     },
     {
-      title: 'Kod',
+      title: 'Mağaza Kodu',
       dataIndex: 'storeCode',
       key: 'storeCode',
-      width: 80,
+      width: 100,
       sorter: (a, b) => a.storeCode - b.storeCode,
-      render: (value) => <span className="text-sm font-medium">{value}</span>
+      render: (value) => <span className="text-sm font-medium text-blue-600">{value}</span>
     },
     {
       title: 'Mağaza Adı',
@@ -335,9 +337,10 @@ const StoreDifficultyManager = () => {
       dataIndex: 'region',
       key: 'region',
       width: 120,
-      filters: [
-        { text: 'İSTANBUL - AND', value: 'İSTANBUL - AND' },
-      ],
+      filters: Array.from(new Set(storeData.map(store => store.region))).map(region => ({
+        text: region,
+        value: region
+      })),
       onFilter: (value, record) => record.region === value,
       render: (text) => <span className="text-xs text-gray-600">{text}</span>
     },
@@ -345,17 +348,25 @@ const StoreDifficultyManager = () => {
       title: 'Kasa',
       dataIndex: 'averageCases',
       key: 'averageCases',
-      width: 70,
+      width: 80,
       sorter: (a, b) => a.averageCases - b.averageCases,
-      render: (value) => <span className="text-sm font-medium">{value}</span>
+      render: (value) => (
+        <Tag color={value >= 50 ? 'red' : value >= 30 ? 'orange' : 'green'} size="small">
+          {value}
+        </Tag>
+      )
     },
     {
       title: 'Palet',
       dataIndex: 'averagePallets',
       key: 'averagePallets',
-      width: 70,
+      width: 80,
       sorter: (a, b) => a.averagePallets - b.averagePallets,
-      render: (value) => <span className="text-sm font-medium">{value}</span>
+      render: (value) => (
+        <Tag color={value >= 5 ? 'red' : value >= 3 ? 'orange' : 'green'} size="small">
+          {value}
+        </Tag>
+      )
     },
     {
       title: 'Fiziksel',
@@ -411,7 +422,7 @@ const StoreDifficultyManager = () => {
       key: 'totalDifficultyScore',
       width: 80,
       render: (value) => (
-        <Tag color={getDifficultyColor(value)} size="small">
+        <Tag color={value >= 2 ? 'red' : getDifficultyColor(value)} size="small">
           {value}
         </Tag>
       ),
@@ -421,15 +432,48 @@ const StoreDifficultyManager = () => {
       title: 'Açıklama',
       dataIndex: 'description',
       key: 'description',
-      width: 180,
+      width: 150,
       ellipsis: true,
       render: (text) => (
         <Tooltip title={text}>
           <span className="text-xs text-gray-600">
-            {text ? text.substring(0, 40) + '...' : '-'}
+            {text ? text.substring(0, 30) + '...' : '-'}
           </span>
         </Tooltip>
       ),
+    },
+    {
+      title: 'Tip',
+      dataIndex: 'storeType',
+      key: 'storeType',
+      width: 80,
+      filters: [
+        { text: 'CADDE', value: 'CADDE' },
+        { text: 'AVM', value: 'AVM' },
+        { text: 'BEAUTY', value: 'BEAUTY' },
+      ],
+      onFilter: (value, record) => record.storeType === value,
+      render: (text) => (
+        <Tag color={text === 'AVM' ? 'purple' : text === 'BEAUTY' ? 'pink' : 'blue'} size="small">
+          {text}
+        </Tag>
+      )
+    },
+    {
+      title: 'Merdiven',
+      dataIndex: 'stairSteps',
+      key: 'stairSteps',
+      width: 80,
+      render: (text) => {
+        if (text === 'Basamak Yok' || text === '' || isNaN(parseInt(text))) {
+          return <span className="text-xs text-gray-500">Basamak Yok</span>;
+        }
+        return (
+          <Tag color={parseInt(text) <= 2 ? 'green' : parseInt(text) <= 4 ? 'orange' : 'red'} size="small">
+            {text}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Görseller',
@@ -599,7 +643,7 @@ const StoreDifficultyManager = () => {
             columns={columns}
             dataSource={currentData}
             loading={loading}
-            scroll={{ x: 1300 }}
+            scroll={{ x: 1000 }}
             pagination={{
               current: currentPage,
               pageSize: pageSize,

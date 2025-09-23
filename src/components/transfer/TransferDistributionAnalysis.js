@@ -192,6 +192,46 @@ const TransferDistributionAnalysis = () => {
     return { totalKasa, okutulanKasa, okutmaOrani };
   };
 
+  // Ay ve bölge filtrelerini güncelle (veri yüklendikten sonra)
+  const updateAvailableFilters = async (data) => {
+    try {
+      // Aylar listesi güncelle
+      const uniqueMonths = [...new Set(data?.map(item => item.ay).filter(Boolean))];
+      const monthNames = {
+        '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+        '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+        '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+      };
+
+      const monthList = [
+        { value: 'all', label: 'Tüm Aylar' },
+        ...uniqueMonths.map(month => ({
+          value: month,
+          label: `${monthNames[month]} (${data.filter(item => item.ay === month).length} kayıt)`
+        }))
+      ];
+
+      setAvailableMonths(monthList);
+
+      // Bölgeler listesi güncelle
+      const uniqueRegions = [...new Set(data?.map(item => item.bolge).filter(Boolean))];
+      
+      const regionList = [
+        { value: 'all', label: 'Tüm Bölgeler' },
+        ...uniqueRegions.map(region => ({
+          value: region,
+          label: `${region} (${data.filter(item => item.bolge === region).length} kayıt)`
+        }))
+      ];
+
+      setAvailableRegions(regionList);
+
+      console.log('Filtreler güncellendi - Aylar:', uniqueMonths, 'Bölgeler:', uniqueRegions);
+    } catch (error) {
+      console.error('Filtre güncelleme hatası:', error);
+    }
+  };
+
   // Toplam kayıt sayısını çek (istatistikler için)
   const loadTotalCount = async (month = 'all', region = 'all') => {
     try {
@@ -305,6 +345,9 @@ const TransferDistributionAnalysis = () => {
       const okutmaOrani = totalKasa > 0 ? Math.round((okutulanKasa / totalKasa) * 100 * 10) / 10 : 0;
       
       setStatistics({ totalKasa, okutulanKasa, okutmaOrani });
+      
+      // Ay ve bölge listelerini güncelle
+      await updateAvailableFilters(allData);
       
       // Yükleme tamamlandı
       setLoadingProgress({ current: 0, total: 0, percentage: 0 });
@@ -492,10 +535,6 @@ const TransferDistributionAnalysis = () => {
             }
             // Veri yüklendikten sonra verileri yenile
             setCurrentPage(1);
-            await Promise.all([
-              loadAvailableMonths(),
-              loadAvailableRegions()
-            ]);
             await loadDistributionData(selectedMonth, selectedRegion);
             
             // İstatistikleri güncelle

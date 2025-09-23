@@ -1,24 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Card, 
   Row, 
   Col, 
   Table, 
   Select, 
-  DatePicker, 
   Button, 
   Progress, 
   Statistic,
   Tag,
   Space,
   Tooltip,
-  Modal
+  Modal,
+  Upload,
+  message,
+  Alert,
+  Tabs,
+  Spin,
+  Divider
 } from 'antd';
 import { 
   BarChart3, 
   TrendingUp, 
   TrendingDown, 
-  Clock, 
   Package, 
   Truck, 
   Users,
@@ -26,457 +30,726 @@ import {
   Award,
   AlertCircle,
   CheckCircle,
-  Download
+  Download,
+  Upload as UploadIcon,
+  Calendar,
+  MapPin,
+  UserCheck,
+  FileSpreadsheet
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { supabase } from '../../services/supabase';
 
 const { Option } = Select;
-const { RangePicker } = DatePicker;
+const { Dragger } = Upload;
+const { TabPane } = Tabs;
 
 const TransferDistributionAnalysis = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('weekly');
-  const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedRegion, setSelectedRegion] = useState('all');
+  const [distributionData, setDistributionData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
 
-  // Gerçekçi performans verileri
-  const performanceData = {
-    weekly: {
-      totalDeliveries: 1247,
-      onTimeDeliveries: 1189,
-      delayedDeliveries: 58,
-      averageDeliveryTime: '2.3 saat',
-      efficiency: 95.3,
-      customerSatisfaction: 4.7,
-      topPerformer: 'Ahmet Yılmaz',
-      improvement: 2.1,
-      totalDistance: 1847.5,
-      fuelConsumption: 342.8,
-      routeOptimization: 87.2,
-      vehicleUtilization: 92.5,
-      costPerDelivery: 15.8
-    },
-    monthly: {
-      totalDeliveries: 5234,
-      onTimeDeliveries: 4987,
-      delayedDeliveries: 247,
-      averageDeliveryTime: '2.1 saat',
-      efficiency: 95.3,
-      customerSatisfaction: 4.6,
-      topPerformer: 'Fatma Demir',
-      improvement: 3.2,
-      totalDistance: 7892.3,
-      fuelConsumption: 1456.7,
-      routeOptimization: 89.1,
-      vehicleUtilization: 94.2,
-      costPerDelivery: 14.2
+  // Aylar listesi - dinamik olarak oluştur
+  const months = useMemo(() => {
+    const monthList = [
+      { value: 'all', label: 'Tüm Aylar' },
+      { value: '01', label: 'Ocak' },
+      { value: '02', label: 'Şubat' },
+      { value: '03', label: 'Mart' },
+      { value: '04', label: 'Nisan' },
+      { value: '05', label: 'Mayıs' },
+      { value: '06', label: 'Haziran' },
+      { value: '07', label: 'Temmuz' },
+      { value: '08', label: 'Ağustos' },
+      { value: '09', label: 'Eylül' },
+      { value: '10', label: 'Ekim' },
+      { value: '11', label: 'Kasım' },
+      { value: '12', label: 'Aralık' }
+    ];
+
+    // Veritabanındaki mevcut ayları kontrol et
+    const availableMonths = [...new Set(distributionData.map(item => item.ay))];
+    console.log('Mevcut aylar:', availableMonths);
+    
+    return monthList.map(month => ({
+      ...month,
+      disabled: month.value !== 'all' && !availableMonths.includes(month.value)
+    }));
+  }, [distributionData]);
+
+  // Ay adlarını döndüren fonksiyon
+  const getMonthName = (monthNumber) => {
+    const monthNames = {
+      '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+      '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+      '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+    };
+    return monthNames[monthNumber] || monthNumber;
+  };
+
+  useEffect(() => {
+    loadDistributionData();
+  }, []);
+
+  // Ay seçimi değiştiğinde o aya ait tüm verileri çek
+  const loadDataByMonth = async (month) => {
+    if (month === 'all') {
+      await loadDistributionData(); // Tüm veriler
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_dagitim_verileri')
+        .select('*')
+        .eq('ay', month)
+        .order('tarih', { ascending: true }); // İlk günden başlayarak
+
+      if (error) {
+        console.warn('Ay verisi yükleme hatası:', error);
+        setDistributionData([]);
+        setFilteredData([]);
+        return;
+      }
+      
+      console.log(`${month} ayı için ${data?.length || 0} kayıt yüklendi`);
+      setDistributionData(data || []);
+      setFilteredData(data || []);
+    } catch (error) {
+      console.error('Ay verisi yükleme hatası:', error);
+      setDistributionData([]);
+      setFilteredData([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const personnelPerformance = [
-    {
-      id: 1,
-      name: 'Ahmet Yılmaz',
-      position: 'Depo Sorumlusu',
-      deliveries: 156,
-      onTimeRate: 98.7,
-      efficiency: 96.5,
-      customerRating: 4.9,
-      status: 'excellent'
-    },
-    {
-      id: 2,
-      name: 'Fatma Demir',
-      position: 'Forklift Operatörü',
-      deliveries: 142,
-      onTimeRate: 95.8,
-      efficiency: 94.2,
-      customerRating: 4.6,
-      status: 'good'
-    },
-    {
-      id: 3,
-      name: 'Mehmet Kaya',
-      position: 'Depo Elemanı',
-      deliveries: 128,
-      onTimeRate: 92.1,
-      efficiency: 89.7,
-      customerRating: 4.2,
-      status: 'average'
-    },
-    {
-      id: 4,
-      name: 'Ayşe Özkan',
-      position: 'Kalite Kontrol',
-      deliveries: 134,
-      onTimeRate: 97.3,
-      efficiency: 95.1,
-      customerRating: 4.7,
-      status: 'excellent'
+  // Filtreleme
+  useEffect(() => {
+    let filtered = distributionData;
+
+    if (selectedRegion !== 'all') {
+      filtered = filtered.filter(item => item.bolge === selectedRegion);
     }
-  ];
 
-  const deliveryTrends = [
-    { day: 'Pazartesi', deliveries: 245, efficiency: 96.2 },
-    { day: 'Salı', deliveries: 267, efficiency: 97.1 },
-    { day: 'Çarşamba', deliveries: 289, efficiency: 95.8 },
-    { day: 'Perşembe', deliveries: 256, efficiency: 96.5 },
-    { day: 'Cuma', deliveries: 190, efficiency: 94.3 },
-    { day: 'Cumartesi', deliveries: 156, efficiency: 93.7 },
-    { day: 'Pazar', deliveries: 98, efficiency: 92.1 }
-  ];
+    setFilteredData(filtered);
+  }, [selectedRegion, distributionData]);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'excellent': return 'green';
-      case 'good': return 'blue';
-      case 'average': return 'orange';
-      case 'poor': return 'red';
-      default: return 'gray';
-    }
-  };
+  // Supabase'den veri çekme - BATCH LOADING
+  const loadDistributionData = async () => {
+    setLoading(true);
+    try {
+      // Önce toplam sayıyı al
+      const { count, error: countError } = await supabase
+        .from('aktarma_dagitim_verileri')
+        .select('*', { count: 'exact', head: true });
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'excellent': return 'Mükemmel';
-      case 'good': return 'İyi';
-      case 'average': return 'Orta';
-      case 'poor': return 'Zayıf';
-      default: return 'Değerlendirilmemiş';
+      if (countError) {
+        console.warn('Supabase tablosu bulunamadı, önce SQL dosyasını çalıştırın:', countError);
+        setDistributionData([]);
+        setFilteredData([]);
+        return;
+      }
+
+      console.log(`Veritabanında toplam ${count} kayıt var`);
+
+      // Tüm verileri batch'ler halinde çek
+      const batchSize = 1000;
+      let allData = [];
+      
+      for (let offset = 0; offset < count; offset += batchSize) {
+        const { data, error } = await supabase
+          .from('aktarma_dagitim_verileri')
+          .select('*')
+          .order('tarih', { ascending: true })
+          .range(offset, offset + batchSize - 1);
+
+        if (error) {
+          console.error(`Batch ${offset}-${offset + batchSize} hatası:`, error);
+          break;
+        }
+
+        allData = [...allData, ...(data || [])];
+        console.log(`${allData.length}/${count} kayıt yüklendi`);
+      }
+      
+      console.log(`Toplam ${allData.length} kayıt yüklendi (Veritabanında: ${count} kayıt)`);
+      setDistributionData(allData);
+      setFilteredData(allData);
+    } catch (error) {
+      console.error('Veri yükleme hatası:', error);
+      // Hata durumunda sessizce geç, kullanıcıya mesaj verme
+      setDistributionData([]);
+      setFilteredData([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const personnelColumns = [
+  // Excel yükleme fonksiyonu
+  const handleExcelUpload = async (file) => {
+    setUploadLoading(true);
+    setUploadProgress({ current: 0, total: 0 });
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        const fileData = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(fileData, { type: 'array' });
+        
+        let allData = [];
+        
+        // Tüm sheet'leri işle
+        workbook.SheetNames.forEach(sheetName => {
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          // Veri işleme - güvenli integer dönüşümü
+          const processedData = jsonData.map((row, index) => {
+            // Tarih işleme - sheet adından tarih çek (TÜM AYLAR DESTEĞİ)
+            let tarih = null;
+            try {
+              // Ay isimleri ve numaraları
+              const ayMap = {
+                'Ocak': '01', 'Şubat': '02', 'Mart': '03', 'Nisan': '04',
+                'Mayıs': '05', 'Haziran': '06', 'Temmuz': '07', 'Ağustos': '08',
+                'Eylül': '09', 'Ekim': '10', 'Kasım': '11', 'Aralık': '12'
+              };
+              
+              // Sheet adından tarih çıkarma - tüm aylar için
+              let sheetDate = null;
+              let foundMonth = null;
+              let foundDay = null;
+              
+              // Tüm ayları kontrol et
+              for (const [ayAdi, ayNumarasi] of Object.entries(ayMap)) {
+                // Farklı formatları dene: "1 Ocak", "Ocak 1", "1Ocak"
+                const patterns = [
+                  new RegExp(`(\\d+)\\s+${ayAdi}`),
+                  new RegExp(`${ayAdi}\\s+(\\d+)`),
+                  new RegExp(`(\\d+)\\s*${ayAdi}`)
+                ];
+                
+                for (const pattern of patterns) {
+                  const match = sheetName.match(pattern);
+                  if (match) {
+                    foundDay = parseInt(match[1]);
+                    foundMonth = ayNumarasi;
+                    break;
+                  }
+                }
+                if (foundMonth) break;
+              }
+              
+              if (foundMonth && foundDay) {
+                tarih = new Date(`2025-${foundMonth}-${foundDay.toString().padStart(2, '0')}`);
+                console.log(`Sheet: ${sheetName} -> Tarih: 2025-${foundMonth}-${foundDay.toString().padStart(2, '0')}`);
+              } else if (row['Çıkış Tarihi']) {
+                // Fallback: Excel'deki tarih
+                const tarihStr = row['Çıkış Tarihi'].toString();
+                if (tarihStr.includes('.')) {
+                  const parts = tarihStr.split('.');
+                  if (parts.length === 3) {
+                    tarih = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+                    console.log(`Excel tarih: ${tarihStr} -> ${tarih.toISOString().split('T')[0]}`);
+                  }
+                }
+              }
+              
+              // Eğer hala tarih yoksa, sheet adını log'la
+              if (!tarih) {
+                console.warn(`Tarih çıkarılamadı - Sheet: "${sheetName}", Excel tarih: "${row['Çıkış Tarihi']}"`);
+                tarih = new Date(); // Son çare
+              }
+            } catch (e) {
+              console.warn('Tarih işleme hatası:', e);
+              tarih = new Date(); // Son çare
+            }
+
+            // Güvenli integer dönüşümü
+            const safeParseInt = (value, defaultValue = 0) => {
+              if (!value || value === '') return defaultValue;
+              const parsed = parseInt(value.toString().replace(/[^\d]/g, ''));
+              return isNaN(parsed) || parsed > 2147483647 ? defaultValue : parsed;
+            };
+
+            const toplamKasa = safeParseInt(row['Toplam Kasa']);
+            const okutulanKasa = safeParseInt(row['Okutulan Kasa']);
+            const okutmaOrani = toplamKasa > 0 ? 
+              Math.round((okutulanKasa / toplamKasa) * 100 * 10) / 10 : 0;
+            
+            return {
+              // ID'yi kaldırıyoruz, Supabase otomatik oluşturacak
+              tarih: tarih.toISOString().split('T')[0],
+              ay: tarih.toISOString().substring(5, 7),
+              siparis_no: (row['Sipariş No'] || '').toString(),
+              st_numarasi: (row['ST NUMARASI'] || '').toString(),
+              magaza_kodu: (row['Mağaza Kodu'] || '').toString(),
+              magaza_adi: (row['Mağaza Adı'] || '').toString(),
+              bolge: (row['BÖLGE'] || '').toString(),
+              buyuk_gri_kasa: safeParseInt(row['BÜYÜK GRİ KASA']),
+              kucuk_gri_kasa: safeParseInt(row['KÜÇÜK GRİ KASA']),
+              sevk_kolisi: safeParseInt(row['Sevk Kolisi']),
+              toplam_kasa: toplamKasa,
+              dagitim: (row['Dağıtım'] || '').toString(),
+              okutulan_kasa: okutulanKasa,
+              okutulmayan_kasa: safeParseInt(row['Okutulmayan Kasa']),
+              toplam_sevk: (row['Toplam Sevk'] || '').toString(),
+              magaza_okutulan: safeParseInt(row['Mağaza Okutulan']),
+              magaza_okutulmayan: safeParseInt(row['Okutulmayan']),
+              okutma_orani: okutmaOrani,
+              aciklama: (row['Açıklama'] || '').toString(),
+              plaka: (row['Plaka'] || '').toString(),
+              sicil_no_personel1: (row['Sicil No-Personel1'] || '').toString(),
+              personel1: (row['Personel1'] || '').toString(),
+              sicil_no_personel2: (row['Sicil No-Personel2'] || '').toString(),
+              personel2: (row['Personel2'] || '').toString(),
+              sicil_no_personel3: (row['Sicil No-Personel3'] || '').toString(),
+              personel3: (row['Personel3'] || '').toString()
+            };
+          });
+          
+          allData = [...allData, ...processedData];
+        });
+
+        // Supabase'e kaydet - batch işlemi
+        if (allData.length > 0) {
+          // Önce tablo var mı kontrol et
+          const { error: checkError } = await supabase
+            .from('aktarma_dagitim_verileri')
+            .select('*')
+            .limit(1);
+
+          if (checkError) {
+            message.error('Supabase tablosu bulunamadı! Önce SQL dosyasını çalıştırın.');
+            console.error('Tablo kontrol hatası:', checkError);
+            return;
+          }
+
+          const batchSize = 25; // Batch boyutunu daha da küçültüyoruz
+          let successCount = 0;
+          let errorCount = 0;
+          const totalBatches = Math.ceil(allData.length / batchSize);
+          
+          for (let i = 0; i < allData.length; i += batchSize) {
+            const batch = allData.slice(i, i + batchSize);
+            const currentBatch = Math.floor(i / batchSize) + 1;
+            
+            // Progress güncelle
+            setUploadProgress({ current: currentBatch, total: totalBatches });
+            
+            try {
+              const { error } = await supabase
+                .from('aktarma_dagitim_verileri')
+                .insert(batch);
+
+              if (error) {
+                console.error(`Batch ${i}-${i + batch.length} hatası:`, error);
+                errorCount++;
+              } else {
+                successCount += batch.length;
+              }
+            } catch (err) {
+              console.error(`Batch ${i}-${i + batch.length} exception:`, err);
+              errorCount++;
+            }
+          }
+
+          if (successCount > 0) {
+            message.success(`${successCount} kayıt başarıyla yüklendi! (Toplam ${allData.length} kayıt işlendi)`);
+            if (errorCount > 0) {
+              message.warning(`${errorCount} batch'te hata oluştu. ${successCount}/${allData.length} kayıt başarılı.`);
+            }
+            await loadDistributionData();
+          } else {
+            message.error(`Hiçbir kayıt yüklenemedi! (${allData.length} kayıt işlendi, ${errorCount} batch hatası)`);
+          }
+        } else {
+          message.warning('İşlenecek veri bulunamadı!');
+        }
+      } catch (error) {
+        console.error('Excel yükleme hatası:', error);
+        message.error(`Excel dosyası işlenirken hata oluştu: ${error.message}`);
+      }
+      setUploadLoading(false);
+      setUploadProgress({ current: 0, total: 0 });
+    };
+    
+    reader.readAsArrayBuffer(file);
+    return false;
+  };
+
+  // Bölge renkleri
+  const getRegionColor = (region) => {
+    const regionColors = {
+      'İSTANBUL': 'blue',
+      'ANKARA': 'green',
+      'İZMİR': 'orange',
+      'BURSA': 'purple',
+      'GAZİANTEP': 'red',
+      'ANTALYA': 'lime',
+      'ADANA': 'gold',
+      'KONYA': 'volcano',
+      'TRABZON': 'magenta',
+      'ESKİŞEHİR': 'processing',
+      'MERSİN': 'success'
+    };
+    
+    const firstWord = region?.split(' ')[0] || '';
+    return regionColors[region] || regionColors[firstWord] || 'default';
+  };
+
+  // İstatistikler hesaplama - TÜM VERİLER İÇİN
+  const getStatistics = () => {
+    // Filtrelenmiş veriler için (sayfa değil, tüm veriler)
+    const dataToCalculate = selectedMonth === 'all' ? distributionData : 
+      distributionData.filter(item => item.ay === selectedMonth);
+    
+    const total = dataToCalculate.length;
+    const totalKasa = dataToCalculate.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0);
+    const totalOkutulan = dataToCalculate.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0);
+    const avgOkutmaOrani = total > 0 ? 
+      Math.round(dataToCalculate.reduce((sum, item) => sum + (item.okutma_orani || 0), 0) / total * 10) / 10 : 0;
+    
+    return { total, totalKasa, totalOkutulan, avgOkutmaOrani };
+  };
+
+  // Toplam veri sayısı (veritabanındaki tüm veriler)
+  const getTotalRecords = () => {
+    return distributionData.length;
+  };
+
+  const stats = getStatistics();
+
+  // Tablo sütunları
+  const columns = [
+    {
+      title: 'Tarih',
+      dataIndex: 'tarih',
+      key: 'tarih',
+      width: 90,
+      sorter: (a, b) => new Date(a.tarih) - new Date(b.tarih),
+      defaultSortOrder: 'ascend',
+      render: (text, record) => (
+        <div className="text-xs">
+          <div className="font-medium">
+            {new Date(text).toLocaleDateString('tr-TR')}
+          </div>
+          <div className="text-gray-500">
+            {getMonthName(record.ay)}
+          </div>
+        </div>
+      )
+    },
+    {
+      title: 'Mağaza',
+      key: 'magaza',
+      width: 140,
+      render: (_, record) => (
+        <div className="text-xs">
+          <div className="font-medium truncate">{record.magaza_adi}</div>
+          <div className="text-gray-500">{record.magaza_kodu}</div>
+        </div>
+      )
+    },
+    {
+      title: 'Bölge',
+      dataIndex: 'bolge',
+      key: 'bolge',
+      width: 100,
+      sorter: (a, b) => (a.bolge || '').localeCompare(b.bolge || ''),
+      render: (text) => (
+        <Tag color={getRegionColor(text)} className="text-xs">
+          {text || 'N/A'}
+        </Tag>
+      )
+    },
+    {
+      title: 'Kasa Dağılımı',
+      key: 'kasa_dagilimi',
+      width: 110,
+      render: (_, record) => (
+        <div className="space-y-0.5 text-xs">
+          <div className="flex justify-between">
+            <span>B:</span>
+            <span className="font-medium">{record.buyuk_gri_kasa}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>K:</span>
+            <span className="font-medium">{record.kucuk_gri_kasa}</span>
+          </div>
+          <div className="flex justify-between font-semibold">
+            <span>T:</span>
+            <span className="text-blue-600">{record.toplam_kasa}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: 'Okutma Durumu',
+      key: 'okutma_durumu',
+      width: 90,
+      render: (_, record) => (
+        <div className="text-center">
+          <Progress 
+            percent={record.okutma_orani} 
+            size="small" 
+            strokeColor={record.okutma_orani > 95 ? '#52c41a' : record.okutma_orani > 90 ? '#1890ff' : '#faad14'}
+            showInfo={false}
+          />
+          <div className="text-xs mt-0.5">
+            {record.okutulan_kasa}/{record.toplam_kasa}
+          </div>
+        </div>
+      )
+    },
     {
       title: 'Personel',
-      key: 'personnel',
+      key: 'personel',
+      width: 140,
       render: (_, record) => (
-        <div>
-          <div className="font-semibold">{record.name}</div>
-          <div className="text-sm text-gray-500">{record.position}</div>
+        <div className="space-y-0.5">
+          {record.personel1 && (
+            <div className="text-xs">
+              <span className="font-medium">{record.personel1}</span>
+              <span className="text-gray-500 ml-1">({record.sicil_no_personel1})</span>
+            </div>
+          )}
+          {record.personel2 && (
+            <div className="text-xs">
+              <span className="font-medium">{record.personel2}</span>
+              <span className="text-gray-500 ml-1">({record.sicil_no_personel2})</span>
+            </div>
+          )}
+          {record.personel3 && record.personel3 !== '0' && (
+            <div className="text-xs">
+              <span className="font-medium">{record.personel3}</span>
+              <span className="text-gray-500 ml-1">({record.sicil_no_personel3})</span>
+            </div>
+          )}
         </div>
       )
     },
     {
-      title: 'Teslimat Sayısı',
-      dataIndex: 'deliveries',
-      key: 'deliveries',
-      align: 'center',
-      render: (value) => (
-        <div className="text-lg font-bold text-blue-600">{value}</div>
+      title: 'Plaka',
+      dataIndex: 'plaka',
+      key: 'plaka',
+      width: 80,
+      render: (text) => (
+        <span className="font-mono text-xs">
+          {text || '-'}
+        </span>
       )
     },
     {
-      title: 'Zamanında Teslimat',
-      dataIndex: 'onTimeRate',
-      key: 'onTimeRate',
-      align: 'center',
-      render: (value) => (
-        <div className="text-center">
-          <Progress 
-            percent={value} 
-            size="small" 
-            strokeColor={value >= 95 ? '#52c41a' : value >= 90 ? '#1890ff' : '#faad14'}
-          />
-          <div className="text-sm text-gray-600 mt-1">{value}%</div>
-        </div>
-      )
-    },
-    {
-      title: 'Verimlilik',
-      dataIndex: 'efficiency',
-      key: 'efficiency',
-      align: 'center',
-      render: (value) => (
-        <div className="text-center">
-          <Progress 
-            percent={value} 
-            size="small" 
-            strokeColor={value >= 95 ? '#52c41a' : value >= 90 ? '#1890ff' : '#faad14'}
-          />
-          <div className="text-sm text-gray-600 mt-1">{value}%</div>
-        </div>
-      )
-    },
-    {
-      title: 'Müşteri Puanı',
-      dataIndex: 'customerRating',
-      key: 'customerRating',
-      align: 'center',
-      render: (value) => (
-        <div className="text-center">
-          <div className="text-lg font-bold text-yellow-600">{value}</div>
-          <div className="text-xs text-gray-500">/ 5.0</div>
-        </div>
-      )
-    },
-    {
-      title: 'Durum',
-      dataIndex: 'status',
-      key: 'status',
-      align: 'center',
-      render: (status) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusText(status)}
+      title: 'Dağıtım',
+      dataIndex: 'dagitim',
+      key: 'dagitim',
+      width: 70,
+      render: (text) => (
+        <Tag color={text === 'GECE' ? 'purple' : 'blue'} className="text-xs">
+          {text}
         </Tag>
       )
     }
   ];
 
-  const currentData = performanceData[selectedPeriod];
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Performans verileri yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Data kontrolü
-  if (!currentData) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Performans verileri bulunamadı</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
-      <div className="bg-white rounded-xl shadow-lg">
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-              <BarChart3 className="w-6 h-6 mr-3 text-purple-600" />
-              Aktarma Dağıtım Performans Analizi
+        <div className="p-8 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-800 flex items-center mb-2">
+                <BarChart3 className="w-8 h-8 mr-4 text-blue-600" />
+                Aktarma Dağıtım Analizi
             </h2>
+              <p className="text-gray-600 text-lg">Aylık dağıtım verilerinin analizi ve performans takibi</p>
+            </div>
+            <div className="flex space-x-3">
+              <div className="flex flex-col space-y-2">
+                <Upload
+                  accept=".xlsx,.xls"
+                  beforeUpload={handleExcelUpload}
+                  showUploadList={false}
+                >
             <Button 
-              type="primary" 
+                    icon={<UploadIcon className="w-4 h-4" />}
+                    loading={uploadLoading}
+                    className="bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600"
+                    size="large"
+                  >
+                    Aylık Excel Yükle
+            </Button>
+                </Upload>
+                {uploadLoading && uploadProgress.total > 0 && (
+                  <div className="w-full">
+                    <Progress 
+                      percent={Math.round((uploadProgress.current / uploadProgress.total) * 100)}
+                      size="small"
+                      strokeColor="#f97316"
+                    />
+                    <div className="text-xs text-gray-600 text-center mt-1">
+                      {uploadProgress.current} / {uploadProgress.total} batch işlendi
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Filtreler */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Select
+              placeholder="Ay Seçin"
+              value={selectedMonth}
+              onChange={(value) => {
+                setSelectedMonth(value);
+                loadDataByMonth(value);
+              }}
+              className="w-full h-12"
+              size="large"
+            >
+              {months.map(month => (
+                <Option 
+                  key={month.value} 
+                  value={month.value}
+                  disabled={month.disabled}
+                >
+                  {month.label} {month.disabled && '(Veri Yok)'}
+                </Option>
+              ))}
+            </Select>
+            <Select
+              placeholder="Bölge Seçin"
+              value={selectedRegion}
+              onChange={setSelectedRegion}
+              className="w-full h-12"
+              size="large"
+            >
+              <Option value="all">Tüm Bölgeler</Option>
+              {Array.from(new Set(distributionData.map(p => p.bolge).filter(Boolean)))
+                .map(bolge => (
+                  <Option key={bolge} value={bolge}>{bolge}</Option>
+                ))}
+            </Select>
+            <Button 
               icon={<Download className="w-4 h-4" />}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="h-12 bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
+              size="large"
             >
               Rapor İndir
             </Button>
           </div>
-
-          {/* Filtreler */}
-          <div className="flex space-x-4">
-            <Select
-              value={selectedPeriod}
-              onChange={setSelectedPeriod}
-              style={{ width: 150 }}
-            >
-              <Option value="weekly">Haftalık</Option>
-              <Option value="monthly">Aylık</Option>
-            </Select>
-            <RangePicker 
-              placeholder={['Başlangıç', 'Bitiş']}
-              value={selectedDateRange}
-              onChange={setSelectedDateRange}
-            />
-          </div>
         </div>
 
-        {/* Ana İstatistikler */}
-        <div className="p-6 border-b border-gray-200">
-          <Row gutter={16}>
-            <Col span={6}>
-              <Card className="text-center">
+        {/* İstatistikler */}
+        <div className="p-8 border-b border-gray-200 bg-white">
+          <Row gutter={[24, 24]}>
+            <Col xs={24} sm={12} md={6}>
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100">
                 <Statistic
-                  title="Toplam Teslimat"
-                  value={currentData.totalDeliveries}
-                  prefix={<Package className="w-5 h-5 text-blue-600" />}
-                  valueStyle={{ color: '#1890ff' }}
+                  title={<span className="text-gray-600 font-medium">Toplam Kayıt</span>}
+                  value={stats.total.toLocaleString('tr-TR')}
+                  valueStyle={{ color: '#1890ff', fontSize: '28px', fontWeight: 'bold' }}
+                  prefix={<FileSpreadsheet className="w-6 h-6 text-blue-600" />}
                 />
-                <div className="text-sm text-gray-500 mt-2">
-                  {selectedPeriod === 'week' ? 'Bu hafta' : 'Bu ay'}
+                <div className="text-xs text-gray-500 mt-2">
+                  <div>Veritabanı: {getTotalRecords().toLocaleString('tr-TR')} kayıt</div>
+                  <div>
+                    {selectedMonth === 'all' 
+                      ? 'Tüm aylar (200\'er sayfa)' 
+                      : `${getMonthName(selectedMonth)} ayı (200\'er sayfa)`
+                    }
+                  </div>
                 </div>
               </Card>
             </Col>
-            <Col span={6}>
-              <Card className="text-center">
+            <Col xs={24} sm={12} md={6}>
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100">
                 <Statistic
-                  title="Zamanında Teslimat"
-                  value={currentData.onTimeDeliveries}
-                  prefix={<CheckCircle className="w-5 h-5 text-green-600" />}
-                  valueStyle={{ color: '#52c41a' }}
+                  title={<span className="text-gray-600 font-medium">Toplam Kasa</span>}
+                  value={stats.totalKasa.toLocaleString('tr-TR')}
+                  valueStyle={{ color: '#52c41a', fontSize: '28px', fontWeight: 'bold' }}
+                  prefix={<Package className="w-6 h-6 text-green-600" />}
                 />
-                <div className="text-sm text-gray-500 mt-2">
-                  {((currentData.onTimeDeliveries / currentData.totalDeliveries) * 100).toFixed(1)}% oranında
+                <div className="text-xs text-gray-500 mt-2">
+                  {selectedMonth === 'all' ? 'Tüm aylar toplamı' : `${getMonthName(selectedMonth)} ayı toplamı`}
                 </div>
               </Card>
             </Col>
-            <Col span={6}>
-              <Card className="text-center">
+            <Col xs={24} sm={12} md={6}>
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-purple-50 to-purple-100">
                 <Statistic
-                  title="Ortalama Teslimat Süresi"
-                  value={currentData.averageDeliveryTime}
-                  prefix={<Clock className="w-5 h-5 text-orange-600" />}
-                  valueStyle={{ color: '#fa8c16' }}
+                  title={<span className="text-gray-600 font-medium">Okutulan Kasa</span>}
+                  value={stats.totalOkutulan.toLocaleString('tr-TR')}
+                  valueStyle={{ color: '#722ed1', fontSize: '28px', fontWeight: 'bold' }}
+                  prefix={<CheckCircle className="w-6 h-6 text-purple-600" />}
                 />
-                <div className="text-sm text-gray-500 mt-2">
-                  Hedef: 2.0 saat
+                <div className="text-xs text-gray-500 mt-2">
+                  {selectedMonth === 'all' ? 'Tüm aylar toplamı' : `${getMonthName(selectedMonth)} ayı toplamı`}
                 </div>
               </Card>
             </Col>
-            <Col span={6}>
-              <Card className="text-center">
+            <Col xs={24} sm={12} md={6}>
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 to-orange-100">
                 <Statistic
-                  title="Genel Verimlilik"
-                  value={currentData.efficiency}
+                  title={<span className="text-gray-600 font-medium">Ortalama Okutma Oranı</span>}
+                  value={stats.avgOkutmaOrani}
                   suffix="%"
-                  prefix={<TrendingUp className="w-5 h-5 text-purple-600" />}
-                  valueStyle={{ color: '#722ed1' }}
+                  valueStyle={{ color: '#fa8c16', fontSize: '28px', fontWeight: 'bold' }}
+                  prefix={<Target className="w-6 h-6 text-orange-600" />}
                 />
-                <div className="text-sm text-gray-500 mt-2">
-                  {currentData.improvement > 0 ? '+' : ''}{currentData.improvement}% gelişme
+                <div className="text-xs text-gray-500 mt-2">
+                  {selectedMonth === 'all' ? 'Tüm aylar ortalaması' : `${getMonthName(selectedMonth)} ayı ortalaması`}
                 </div>
               </Card>
             </Col>
           </Row>
         </div>
 
-        {/* Performans Grafikleri */}
-        <div className="p-6 border-b border-gray-200">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Card title="Günlük Teslimat Trendi" className="h-80">
-                <div className="space-y-4">
-                  {deliveryTrends.map((trend, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="w-20 text-sm font-medium">{trend.day}</div>
-                      <div className="flex-1 mx-4">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span>{trend.deliveries} teslimat</span>
-                          <span>{trend.efficiency}% verimlilik</span>
-                        </div>
-                        <Progress 
-                          percent={trend.efficiency} 
-                          size="small"
-                          strokeColor={trend.efficiency >= 95 ? '#52c41a' : trend.efficiency >= 90 ? '#1890ff' : '#faad14'}
+        {/* Tablo */}
+        <div className="p-8">
+          {filteredData.length === 0 && (
+            <div className="mb-4 space-y-2">
+              
+              <Alert
+                message="Henüz dağıtım verisi yok. Aylık Excel dosyası yükleyerek başlayın."
+                type="warning"
+                showIcon
+                className="rounded-lg"
                         />
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="Performans Dağılımı" className="h-80">
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600 mb-2">
-                      {currentData.customerSatisfaction}
-                    </div>
-                    <div className="text-sm text-gray-600">Müşteri Memnuniyeti</div>
-                    <div className="text-xs text-gray-500">5 üzerinden</div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Zamanında Teslimat</span>
-                      <div className="flex items-center">
-                        <Progress 
-                          percent={((currentData.onTimeDeliveries / currentData.totalDeliveries) * 100)} 
-                          size="small" 
-                          className="w-20 mr-2"
-                          strokeColor="#52c41a"
-                        />
-                        <span className="text-sm font-medium">
-                          {((currentData.onTimeDeliveries / currentData.totalDeliveries) * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Geciken Teslimat</span>
-                      <div className="flex items-center">
-                        <Progress 
-                          percent={((currentData.delayedDeliveries / currentData.totalDeliveries) * 100)} 
-                          size="small" 
-                          className="w-20 mr-2"
-                          strokeColor="#ff4d4f"
-                        />
-                        <span className="text-sm font-medium">
-                          {((currentData.delayedDeliveries / currentData.totalDeliveries) * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                    <Award className="w-8 h-8 mx-auto text-yellow-600 mb-2" />
-                    <div className="font-semibold text-yellow-800">En İyi Performans</div>
-                    <div className="text-sm text-yellow-700">{currentData.topPerformer}</div>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-
-        {/* Personel Performans Tablosu */}
-        <div className="p-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              Personel Performans Detayları
-            </h3>
-            <p className="text-sm text-gray-600">
-              Her personelin teslimat performansı ve verimlilik oranları
-            </p>
-          </div>
+          )}
           
+          <Spin spinning={loading}>
           <Table
-            columns={personnelColumns}
-            dataSource={personnelPerformance}
+              columns={columns}
+              dataSource={filteredData}
             rowKey="id"
-            pagination={false}
-            className="rounded-lg"
-          />
-        </div>
-
-        {/* Öneriler ve Uyarılar */}
-        <div className="p-6 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Öneriler ve Uyarılar</h3>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Card size="small" className="border-green-200 bg-green-50">
-                <div className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5" />
-                  <div>
-                    <div className="font-semibold text-green-800">Pozitif Gelişmeler</div>
-                    <ul className="text-sm text-green-700 mt-2 space-y-1">
-                      <li>• Zamanında teslimat oranı %95'in üzerinde</li>
-                      <li>• Müşteri memnuniyeti yüksek seviyede</li>
-                      <li>• Genel verimlilik hedefleri aşıldı</li>
-                    </ul>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card size="small" className="border-orange-200 bg-orange-50">
-                <div className="flex items-start">
-                  <AlertCircle className="w-5 h-5 text-orange-600 mr-3 mt-0.5" />
-                  <div>
-                    <div className="font-semibold text-orange-800">İyileştirme Alanları</div>
-                    <ul className="text-sm text-orange-700 mt-2 space-y-1">
-                      <li>• Hafta sonu verimliliği düşük</li>
-                      <li>• Bazı personellerin performansı ortalama</li>
-                      <li>• Teslimat süresi hedeften yüksek</li>
-                    </ul>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-          </Row>
+              pagination={{
+                pageSize: 200,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => 
+                  `${range[0]}-${range[1]} / ${total.toLocaleString('tr-TR')} kayıt (Toplam: ${getTotalRecords().toLocaleString('tr-TR')})`,
+                pageSizeOptions: ['50', '100', '200', '500'],
+                size: 'default'
+              }}
+              defaultSortOrder={['ascend']}
+              sortDirections={['ascend', 'descend']}
+              loading={loading}
+              scroll={{ x: 900 }}
+              size="small"
+              className="modern-table"
+            />
+          </Spin>
         </div>
       </div>
     </div>

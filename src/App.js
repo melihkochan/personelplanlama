@@ -1071,28 +1071,6 @@ function MainApp() {
                 )}
               </button>
 
-              <button
-                onClick={() => handleTabChange('store-difficulty')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                  ${activeTab === 'store-difficulty'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                  }
-                `}
-              >
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'store-difficulty' 
-                    ? 'bg-white/20' 
-                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                }`}>
-                  <AlertCircle className={`w-3 h-3 ${activeTab === 'store-difficulty' ? 'text-white' : 'text-slate-400'}`} />
-                </div>
-                <span className="flex-1 text-left">Anadolu Mağaza Zorluk Yönetimi</span>
-                {activeTab === 'store-difficulty' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                )}
-              </button>
                   </div>
                 )}
               </div>
@@ -1227,8 +1205,31 @@ function MainApp() {
                 }`}>
                   <AlertTriangle className={`w-3 h-3 ${activeTab === 'aktarma-personel-magaza-zorluk' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                      <span className="flex-1 text-left">Aktarma Personel Mağaza Zorluk Kontrol</span>
+                      <span className="flex-1 text-left">Aktarma Personel Mağaza Zorluk Verileri</span>
                 {activeTab === 'aktarma-personel-magaza-zorluk' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
+              </button>
+
+              <button
+                onClick={() => handleTabChange('store-difficulty')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                  ${activeTab === 'store-difficulty'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }
+                `}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'store-difficulty' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <AlertCircle className={`w-3 h-3 ${activeTab === 'store-difficulty' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Aktarma Mağaza Zorluk Yönetimi</span>
+                {activeTab === 'store-difficulty' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>

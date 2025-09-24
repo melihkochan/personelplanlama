@@ -43,6 +43,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import { UserOutlined, UploadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../services/supabase';
 
@@ -53,40 +54,299 @@ const TransferPersonnelList = () => {
   const [personnelData, setPersonnelData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingText, setLoadingText] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedPosition, setSelectedPosition] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [availableMonths, setAvailableMonths] = useState([]);
   const [uploadLoading, setUploadLoading] = useState(false);
 
   // Mock data kaldırıldı - sadece Excel'den gelen gerçek veriler gösterilecek
 
   useEffect(() => {
     loadPersonnelData();
+    loadAvailableMonths();
   }, []);
+
+  // Ay değiştiğinde verileri yeniden yükle
+  useEffect(() => {
+    if (selectedMonth !== 'all') {
+      loadPersonnelData();
+    }
+  }, [selectedMonth]);
+
+  // Mevcut ayları yükle
+  const loadAvailableMonths = async () => {
+    try {
+      console.log('=== AY LİSTESİ YÜKLENİYOR ===');
+      
+      // Önce benzersiz ay değerlerini çek (DISTINCT benzeri)
+      const { data: uniqueMonths, error: uniqueError } = await supabase
+        .from('aktarma_dagitim_verileri')
+        .select('ay')
+        .not('ay', 'is', null)
+        .order('ay', { ascending: true });
+
+      if (uniqueError) throw uniqueError;
+
+      console.log('Benzersiz ay değerleri:', uniqueMonths);
+
+      // Her ay için ayrı ayrı sayım yap
+      const monthCounts = {};
+      const monthNames = {
+        '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+        '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+        '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık',
+        '1': 'Ocak', '2': 'Şubat', '3': 'Mart', '4': 'Nisan',
+        '5': 'Mayıs', '6': 'Haziran', '7': 'Temmuz', '8': 'Ağustos',
+        '9': 'Eylül'
+      };
+
+      console.log('Her ay için sayım yapılıyor...');
+      for (const monthData of uniqueMonths) {
+        if (monthData.ay) {
+          const { count, error: countError } = await supabase
+            .from('aktarma_dagitim_verileri')
+            .select('*', { count: 'exact', head: true })
+            .eq('ay', monthData.ay);
+
+          if (countError) {
+            console.error(`${monthData.ay} ayı için sayım hatası:`, countError);
+            monthCounts[monthData.ay] = 0;
+          } else {
+            monthCounts[monthData.ay] = count || 0;
+            console.log(`${monthData.ay} ayı: ${count} kayıt`);
+          }
+        }
+      }
+
+      console.log('Ay bazında sayımlar:', monthCounts);
+      console.log('Benzersiz ay değerleri:', Object.keys(monthCounts));
+
+      const monthList = [
+        { value: 'all', label: 'Tüm Aylar' },
+        ...Object.keys(monthCounts).sort().map(month => ({
+          value: month,
+          label: `${monthNames[month]} (${monthCounts[month].toLocaleString('tr-TR')} kayıt)`
+        }))
+      ];
+
+      console.log('Oluşturulan ay listesi:', monthList);
+      setAvailableMonths(monthList);
+    } catch (error) {
+      console.error('Ay listesi yükleme hatası:', error);
+    }
+  };
 
   // Supabase'den personel verilerini çekme
   const loadPersonnelData = async () => {
     setLoading(true);
+    setLoadingProgress(0);
+    setLoadingText('Personel listesi çekiliyor...');
+    
     try {
+      console.log('=== PERSONEL VERİLERİ YÜKLENİYOR ===');
+      console.log('Seçilen ay:', selectedMonth);
+      
       const { data, error } = await supabase
         .from('aktarma_depo_personel')
         .select('*')
         .order('adi_soyadi', { ascending: true });
 
       if (error) throw error;
+
+      console.log('Çekilen personel sayısı:', data?.length);
+      console.log('İlk 3 personel:', data?.slice(0, 3));
+
+      if (!data || data.length === 0) {
+        console.log('❌ Personel verisi bulunamadı!');
+        setPersonnelData([]);
+        setFilteredData([]);
+        return;
+      }
       
-      setPersonnelData(data || []);
-      setFilteredData(data || []);
+      setLoadingProgress(20);
+      setLoadingText('Performans verileri çekiliyor...');
+      
+      // Performans verilerini de yükle
+      console.log('Performans verileri çekiliyor...');
+      const personnelWithPerformance = await Promise.all(
+        (data || []).map(async (person, index) => {
+          const progress = 20 + Math.round((index / data.length) * 70);
+          setLoadingProgress(progress);
+          setLoadingText(`${person.adi_soyadi} performans verisi çekiliyor... (${index + 1}/${data.length})`);
+          
+          console.log(`[${index + 1}/${data.length}] ${person.adi_soyadi} performans verisi çekiliyor...`);
+          const performanceData = await getPersonnelPerformance(person);
+          return {
+            ...person,
+            ...performanceData
+          };
+        })
+      );
+      
+      setLoadingProgress(95);
+      setLoadingText('Veriler işleniyor...');
+      
+      console.log('✅ Performans verileri ile birlikte personel sayısı:', personnelWithPerformance.length);
+      console.log('İlk personel performans örneği:', personnelWithPerformance[0]);
+      
+      setPersonnelData(personnelWithPerformance);
+      setFilteredData(personnelWithPerformance);
+      
+      setLoadingProgress(100);
+      setLoadingText('Tamamlandı!');
+      
     } catch (error) {
-      console.error('Veri yükleme hatası:', error);
+      console.error('❌ Veri yükleme hatası:', error);
       message.error('Veriler yüklenirken hata oluştu!');
       // Hata durumunda boş liste
       setPersonnelData([]);
       setFilteredData([]);
     } finally {
-      setLoading(false);
+      setTimeout(() => {
+        setLoading(false);
+        setLoadingProgress(0);
+        setLoadingText('');
+      }, 500);
+      console.log('=== PERSONEL VERİLERİ YÜKLEME TAMAMLANDI ===');
+    }
+  };
+
+  // Personel performans verilerini çek (gerçek kasa verileri ile)
+  const getPersonnelPerformance = async (person) => {
+    try {
+      console.log(`${person.adi_soyadi} (${person.sicil_no}) için performans verisi çekiliyor...`);
+
+      // Önce toplam kayıt sayısını kontrol et
+      let countQuery = supabase
+        .from('aktarma_dagitim_verileri')
+        .select('*', { count: 'exact', head: true })
+        .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`);
+      
+      if (selectedMonth !== 'all') {
+        countQuery = countQuery.eq('ay', selectedMonth);
+      }
+
+      const { count, error: countError } = await countQuery;
+      if (countError) throw countError;
+
+      console.log(`${person.adi_soyadi} için toplam kayıt sayısı:`, count);
+
+      // Tüm verileri çek - sayfa sayfa (pagination)
+      let allData = [];
+      let from = 0;
+      const pageSize = 1000;
+      
+      while (true) {
+        let query = supabase
+          .from('aktarma_dagitim_verileri')
+          .select('*')
+          .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`)
+          .range(from, from + pageSize - 1);
+        
+        // Ay filtresi uygula
+        if (selectedMonth !== 'all') {
+          query = query.eq('ay', selectedMonth);
+        }
+        
+        const { data: pageData, error } = await query;
+        
+        if (error) throw error;
+        
+        if (!pageData || pageData.length === 0) {
+          break; // Daha fazla veri yok
+        }
+        
+        allData = [...allData, ...pageData];
+        from += pageSize;
+        
+        // Eğer sayfa tam dolu değilse, son sayfa demektir
+        if (pageData.length < pageSize) {
+          break;
+        }
+      }
+      
+      const distributionData = allData;
+
+      console.log(`${person.adi_soyadi} için çekilen kayıt sayısı:`, distributionData?.length);
+
+      // Bu personelin gerçek kasa verileri
+      const totalKasa = distributionData?.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0) || 0;
+      const okutulanKasa = distributionData?.reduce((sum, item) => sum + (item.okutulan_kasa || 0), 0) || 0;
+      const okutulmayanKasa = distributionData?.reduce((sum, item) => sum + (item.okutulmayan_kasa || 0), 0) || 0;
+      
+      // Palet sayısı - toplam kasa / 10 (örnek hesaplama)
+      const totalPalet = Math.ceil(totalKasa / 10) || 0;
+      
+      // Okutma sayısı - kayıt sayısı
+      const totalOkutma = distributionData?.length || 0;
+      
+      // Hedef performans (seçilen ay veya tüm aylar için)
+      let workingDays;
+      if (selectedMonth !== 'all') {
+        // Tek ay için
+        workingDays = 30; // 1 ay × 30 gün
+      } else {
+        // Tüm aylar için - mevcut ayların sayısını kullan
+        const uniqueMonths = [...new Set(distributionData?.map(item => item.ay).filter(Boolean))];
+        workingDays = uniqueMonths.length * 30; // Ay sayısı × 30 gün
+      }
+      
+      const targetKasa = workingDays * 50; // Günde 50 kasa hedefi
+      const targetPalet = workingDays * 5; // Günde 5 palet hedefi
+      const targetOkutma = workingDays * 30; // Günde 30 okutma hedefi
+
+      // Performans yüzdesi
+      const kasaPerformance = targetKasa > 0 ? Math.round((totalKasa / targetKasa) * 100) : 0;
+      const paletPerformance = targetPalet > 0 ? Math.round((totalPalet / targetPalet) * 100) : 0;
+      const okutmaPerformance = targetOkutma > 0 ? Math.round((totalOkutma / targetOkutma) * 100) : 0;
+
+      console.log(`${person.adi_soyadi} performans:`, {
+        totalKasa,
+        okutulanKasa,
+        okutulmayanKasa,
+        totalPalet,
+        totalOkutma,
+        kasaPerformance,
+        paletPerformance,
+        okutmaPerformance
+      });
+
+      return {
+        totalKasa,
+        totalPalet,
+        totalOkutma,
+        okutulanKasa,
+        okutulmayanKasa,
+        targetKasa,
+        targetPalet,
+        targetOkutma,
+        kasaPerformance,
+        paletPerformance,
+        okutmaPerformance,
+        distributionData: distributionData || []
+      };
+    } catch (error) {
+      console.error('Performans verisi çekme hatası:', error);
+      return {
+        totalKasa: 0,
+        totalPalet: 0,
+        totalOkutma: 0,
+        okutulanKasa: 0,
+        okutulmayanKasa: 0,
+        targetKasa: 0,
+        targetPalet: 0,
+        targetOkutma: 0,
+        kasaPerformance: 0,
+        paletPerformance: 0,
+        okutmaPerformance: 0,
+        distributionData: []
+      };
     }
   };
 
@@ -335,34 +595,49 @@ const TransferPersonnelList = () => {
     {
       title: 'Dağıtılan Kasa',
       key: 'kasa',
-      width: 120,
-      sorter: (a, b) => (a.dagittigi_kasa_sayisi || 0) - (b.dagittigi_kasa_sayisi || 0),
+      width: 160,
+      sorter: (a, b) => (a.totalKasa || 0) - (b.totalKasa || 0),
       render: (_, record) => (
         <div className="text-center">
           <div className="flex items-center justify-center mb-1">
             <Package className="w-4 h-4 text-blue-600 mr-1" />
-            <span className="font-bold text-lg text-blue-600">{record.dagittigi_kasa_sayisi || 0}</span>
+            <span className="font-bold text-lg text-blue-600">{record.totalKasa || 0}</span>
+          </div>
+          <div className="text-xs text-gray-600 mb-1">
+            <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
+            <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
           </div>
           <Progress 
-            percent={record.okutma_orani || 0} 
+            percent={record.kasaPerformance || 0} 
             size="small" 
-            strokeColor={(record.okutma_orani || 0) > 95 ? '#52c41a' : (record.okutma_orani || 0) > 90 ? '#1890ff' : '#faad14'}
+            strokeColor={(record.kasaPerformance || 0) > 100 ? '#52c41a' : (record.kasaPerformance || 0) > 80 ? '#1890ff' : '#faad14'}
             showInfo={false}
           />
-          <div className="text-xs text-gray-500 mt-1">{record.okutma_orani || 0}% okutuldu</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {record.kasaPerformance || 0}% / {record.targetKasa || 0} hedef
+          </div>
         </div>
       )
     },
     {
       title: 'Palet Sayısı',
       key: 'palet',
-      width: 100,
-      sorter: (a, b) => (a.palet_sayisi || 0) - (b.palet_sayisi || 0),
+      width: 120,
+      sorter: (a, b) => (a.totalPalet || 0) - (b.totalPalet || 0),
       render: (_, record) => (
         <div className="text-center">
           <div className="flex items-center justify-center mb-1">
             <Palette className="w-4 h-4 text-green-600 mr-1" />
-            <span className="font-bold text-lg text-green-600">{record.palet_sayisi || 0}</span>
+            <span className="font-bold text-lg text-green-600">{record.totalPalet || 0}</span>
+          </div>
+          <Progress 
+            percent={record.paletPerformance || 0} 
+            size="small" 
+            strokeColor={(record.paletPerformance || 0) > 100 ? '#52c41a' : (record.paletPerformance || 0) > 80 ? '#1890ff' : '#faad14'}
+            showInfo={false}
+          />
+          <div className="text-xs text-gray-500 mt-1">
+            {record.paletPerformance || 0}% / {record.targetPalet || 0} hedef
           </div>
         </div>
       )
@@ -370,43 +645,60 @@ const TransferPersonnelList = () => {
     {
       title: 'Okutma Detayı',
       key: 'okutma',
-      width: 140,
+      width: 160,
+      sorter: (a, b) => (a.totalOkutma || 0) - (b.totalOkutma || 0),
       render: (_, record) => (
-        <div className="space-y-1">
-          <div className="flex items-center text-xs">
-            <CheckCircle className="w-3 h-3 text-green-500 mr-1" />
-            <span className="text-green-600 font-medium">{record.okuttugu_kasa_sayisi || 0} okutuldu</span>
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-1">
+            <CheckCircle className="w-4 h-4 text-purple-600 mr-1" />
+            <span className="font-bold text-lg text-purple-600">{record.totalOkutma || 0}</span>
           </div>
-          <div className="flex items-center text-xs">
-            <XCircle className="w-3 h-3 text-red-500 mr-1" />
-            <span className="text-red-500">{record.okutmadigi_kasa_sayisi || 0} okutulmadı</span>
+          <div className="text-xs text-gray-600 mb-1">
+            <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
+            <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
+          </div>
+          <Progress 
+            percent={record.okutmaPerformance || 0} 
+            size="small" 
+            strokeColor={(record.okutmaPerformance || 0) > 100 ? '#52c41a' : (record.okutmaPerformance || 0) > 80 ? '#1890ff' : '#faad14'}
+            showInfo={false}
+          />
+          <div className="text-xs text-gray-500 mt-1">
+            {record.okutmaPerformance || 0}% / {record.targetOkutma || 0} hedef
           </div>
         </div>
       )
     },
     {
-      title: 'Hedef Performansı',
-      key: 'hedef',
+      title: 'Genel Performans',
+      key: 'genel',
       width: 130,
-      sorter: (a, b) => (a.hedef_tamamlama_orani || 0) - (b.hedef_tamamlama_orani || 0),
-      render: (_, record) => (
-        <div className="text-center">
-          <div className="text-xs text-gray-500 mb-1">Hedef: {record.gunluk_hedef || 0}</div>
-          <Progress 
-            percent={record.hedef_tamamlama_orani || 0} 
-            size="small" 
-            strokeColor={(record.hedef_tamamlama_orani || 0) > 95 ? '#52c41a' : (record.hedef_tamamlama_orani || 0) > 85 ? '#1890ff' : '#faad14'}
-          />
-          <div className="text-xs mt-1">
-            {(record.hedef_tamamlama_orani || 0) > 95 ? (
-              <TrendingUp className="w-3 h-3 text-green-500 inline mr-1" />
-            ) : (
-              <TrendingDown className="w-3 h-3 text-orange-500 inline mr-1" />
-            )}
-            {record.hedef_tamamlama_orani || 0}%
+      sorter: (a, b) => {
+        const aAvg = ((a.kasaPerformance || 0) + (a.paletPerformance || 0) + (a.okutmaPerformance || 0)) / 3;
+        const bAvg = ((b.kasaPerformance || 0) + (b.paletPerformance || 0) + (b.okutmaPerformance || 0)) / 3;
+        return aAvg - bAvg;
+      },
+      render: (_, record) => {
+        const avgPerformance = Math.round(((record.kasaPerformance || 0) + (record.paletPerformance || 0) + (record.okutmaPerformance || 0)) / 3);
+        return (
+          <div className="text-center">
+            <div className="text-xs text-gray-500 mb-1">Ortalama</div>
+            <Progress 
+              percent={avgPerformance} 
+              size="small" 
+              strokeColor={avgPerformance > 100 ? '#52c41a' : avgPerformance > 80 ? '#1890ff' : '#faad14'}
+            />
+            <div className="text-xs mt-1">
+              {avgPerformance > 80 ? (
+                <TrendingUp className="w-3 h-3 text-green-500 inline mr-1" />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-orange-500 inline mr-1" />
+              )}
+              {avgPerformance}%
+            </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       title: 'İşlemler',
@@ -604,6 +896,19 @@ const TransferPersonnelList = () => {
                   <Option key={pozisyon} value={pozisyon}>{pozisyon}</Option>
                 ))}
             </Select>
+            <Select
+              placeholder="Ay Seçin"
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              className="w-full h-12"
+              size="large"
+            >
+              {availableMonths.map(month => (
+                <Option key={month.value} value={month.value}>
+                  {month.label}
+                </Option>
+              ))}
+            </Select>
             <Button 
               icon={<Download className="w-4 h-4" />}
               onClick={handleDownloadReport}
@@ -617,45 +922,69 @@ const TransferPersonnelList = () => {
 
         {/* İstatistikler */}
         <div className="p-8 border-b border-gray-200 bg-white">
-          <Row gutter={[24, 24]}>
-            <Col xs={24} sm={12} md={6}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6} lg={4}>
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Toplam Personel</span>}
                   value={personnelData.length}
-                  valueStyle={{ color: '#1890ff', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<Users className="w-6 h-6 text-blue-600" />}
+                  valueStyle={{ color: '#1890ff', fontSize: '24px', fontWeight: 'bold' }}
+                  prefix={<Users className="w-5 h-5 text-blue-600" />}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={6} lg={4}>
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Aktif Personel</span>}
                   value={personnelData.filter(p => p.durum === 'aktif').length}
-                  valueStyle={{ color: '#52c41a', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<CheckCircle className="w-6 h-6 text-green-600" />}
+                  valueStyle={{ color: '#52c41a', fontSize: '24px', fontWeight: 'bold' }}
+                  prefix={<CheckCircle className="w-5 h-5 text-green-600" />}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={6} lg={4}>
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-purple-50 to-purple-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Toplam Kasa</span>}
-                  value={personnelData.reduce((sum, p) => sum + (p.dagittigi_kasa_sayisi || 0), 0)}
-                  valueStyle={{ color: '#722ed1', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<Package className="w-6 h-6 text-purple-600" />}
+                  value={personnelData.reduce((sum, p) => sum + (p.totalKasa || 0), 0).toLocaleString('tr-TR')}
+                  valueStyle={{ color: '#722ed1', fontSize: '24px', fontWeight: 'bold' }}
+                  prefix={<Package className="w-5 h-5 text-purple-600" />}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100">
+                <Statistic
+                  title={<span className="text-gray-600 font-medium">Okutulan Kasa</span>}
+                  value={personnelData.reduce((sum, p) => sum + (p.okutulanKasa || 0), 0).toLocaleString('tr-TR')}
+                  valueStyle={{ color: '#52c41a', fontSize: '24px', fontWeight: 'bold' }}
+                  prefix={<CheckCircle className="w-5 h-5 text-green-600" />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-red-50 to-red-100">
+                <Statistic
+                  title={<span className="text-gray-600 font-medium">Okutulmayan Kasa</span>}
+                  value={personnelData.reduce((sum, p) => sum + (p.okutulmayanKasa || 0), 0).toLocaleString('tr-TR')}
+                  valueStyle={{ color: '#ff4d4f', fontSize: '24px', fontWeight: 'bold' }}
+                  prefix={<XCircle className="w-5 h-5 text-red-600" />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6} lg={4}>
               <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 to-orange-100">
                 <Statistic
                   title={<span className="text-gray-600 font-medium">Ortalama Okutma Oranı</span>}
-                  value={personnelData.length > 0 ? Math.round(personnelData.reduce((sum, p) => sum + (p.okutma_orani || 0), 0) / personnelData.length * 10) / 10 : 0}
+                  value={personnelData.length > 0 ? Math.round(personnelData.reduce((sum, p) => {
+                    const totalKasa = p.totalKasa || 0;
+                    const okutulanKasa = p.okutulanKasa || 0;
+                    return sum + (totalKasa > 0 ? (okutulanKasa / totalKasa) * 100 : 0);
+                  }, 0) / personnelData.length * 10) / 10 : 0}
                   suffix="%"
-                  valueStyle={{ color: '#fa8c16', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<BarChart3 className="w-6 h-6 text-orange-600" />}
+                  valueStyle={{ color: '#fa8c16', fontSize: '24px', fontWeight: 'bold' }}
+                  prefix={<BarChart3 className="w-5 h-5 text-orange-600" />}
                 />
               </Card>
             </Col>
@@ -664,36 +993,91 @@ const TransferPersonnelList = () => {
 
         {/* Tablo */}
         <div className="p-8">
-          {filteredData.length === 0 && (
-            <div className="mb-4">
-              <Alert
-                message="Henüz personel verisi yok. Excel dosyası yükleyerek başlayın."
-                type="warning"
-                showIcon
-                className="rounded-lg"
-              />
+          {loading && (
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto">
+                <div className="mb-6">
+                  <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
+                    <Spin size="large" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                    Veriler Yükleniyor...
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    {loadingText || 'Personel performans verileri çekiliyor. Lütfen bekleyin.'}
+                  </p>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${loadingProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {loadingProgress}% tamamlandı
+                  </p>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700">
+                    <strong>İşlem:</strong> Veritabanından personel verileri ve performans metrikleri çekiliyor...
+                  </p>
+                </div>
+              </div>
             </div>
           )}
-          <Table
-            columns={columns}
-            dataSource={filteredData}
-            rowKey="id"
-            pagination={{
-              pageSize: 50,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => 
-                `${range[0]}-${range[1]} / ${total} personel`,
-              pageSizeOptions: ['25', '50', '100', '200'],
-              size: 'default'
-            }}
-            loading={loading}
-            scroll={{ x: 1200 }}
-            className="modern-table"
-            rowClassName={(record) => 
-              record.durum === 'aktif' ? 'active-row' : 'inactive-row'
-            }
-          />
+
+          {filteredData.length === 0 && !loading && (
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto">
+                <div className="mb-6">
+                  <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center">
+                    <UserOutlined className="text-4xl text-orange-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                    Personel Verisi Bulunamadı
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Henüz personel verisi yüklenmemiş. Excel dosyası yükleyerek başlayabilirsiniz.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <Button 
+                    type="primary" 
+                    size="large" 
+                    icon={<UploadOutlined />}
+                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-600 border-0 hover:from-blue-600 hover:to-purple-700"
+                  >
+                    Excel Dosyası Yükle
+                  </Button>
+                  <p className="text-sm text-gray-500">
+                    Desteklenen formatlar: .xlsx, .xls, .csv
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          {!loading && (
+            <Table
+              columns={columns}
+              dataSource={filteredData}
+              rowKey="id"
+              pagination={{
+                pageSize: 50,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => 
+                  `${range[0]}-${range[1]} / ${total} personel`,
+                pageSizeOptions: ['25', '50', '100', '200'],
+                size: 'default'
+              }}
+              scroll={{ x: 1600 }}
+              className="modern-table"
+              rowClassName={(record) => 
+                record.durum === 'aktif' ? 'active-row' : 'inactive-row'
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -701,60 +1085,57 @@ const TransferPersonnelList = () => {
       <Modal
         title={
           <div className="flex items-center">
-            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-              <UserCheck className="w-5 h-5 text-gray-600" />
+            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+              <UserCheck className="w-4 h-4 text-gray-600" />
             </div>
             <div>
-              <span className="text-lg font-semibold text-gray-900">
+              <span className="text-base font-semibold text-gray-900">
                 {editingRecord ? 'Personel Düzenle' : 'Yeni Personel Ekle'}
               </span>
-              <div className="text-sm text-gray-500">
-                {editingRecord ? 'Personel bilgilerini güncelleyin' : 'Yeni personel ekleyin'}
-              </div>
             </div>
           </div>
         }
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
-        width={700}
+        width={500}
         className="modern-modal"
       >
         <Form
           layout="vertical"
           initialValues={editingRecord || {}}
           onFinish={handleModalOk}
-          className="space-y-4"
+          className="space-y-3"
         >
-          <Row gutter={16}>
+          <Row gutter={12}>
             <Col span={12}>
               <Form.Item
                 name="sicil_no"
-                label={<span className="font-semibold text-gray-700">Sicil No</span>}
+                label={<span className="font-medium text-gray-700">Sicil No</span>}
                 rules={[{ required: true, message: 'Sicil no gerekli!' }]}
               >
-                <Input placeholder="TR001" size="large" />
+                <Input placeholder="TR001" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 name="adi_soyadi"
-                label={<span className="font-semibold text-gray-700">Ad Soyad</span>}
+                label={<span className="font-medium text-gray-700">Ad Soyad</span>}
                 rules={[{ required: true, message: 'Ad soyad gerekli!' }]}
               >
-                <Input placeholder="Ahmet Yılmaz" size="large" />
+                <Input placeholder="Ahmet Yılmaz" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={16}>
+          <Row gutter={12}>
             <Col span={12}>
               <Form.Item
                 name="bolge"
-                label={<span className="font-semibold text-gray-700">Bölge</span>}
+                label={<span className="font-medium text-gray-700">Bölge</span>}
                 rules={[{ required: true, message: 'Bölge gerekli!' }]}
               >
-                <Select placeholder="Bölge seçin" size="large">
+                <Select placeholder="Bölge seçin">
                   {Array.from(new Set(personnelData.map(p => p.bolge).filter(Boolean)))
                     .map(bolge => (
                       <Option key={bolge} value={bolge}>{bolge}</Option>
@@ -765,10 +1146,10 @@ const TransferPersonnelList = () => {
             <Col span={12}>
               <Form.Item
                 name="pozisyon"
-                label={<span className="font-semibold text-gray-700">Pozisyon</span>}
+                label={<span className="font-medium text-gray-700">Pozisyon</span>}
                 rules={[{ required: true, message: 'Pozisyon gerekli!' }]}
               >
-                <Select placeholder="Pozisyon seçin" size="large">
+                <Select placeholder="Pozisyon seçin">
                   {Array.from(new Set(personnelData.map(p => p.pozisyon).filter(Boolean)))
                     .map(pozisyon => (
                       <Option key={pozisyon} value={pozisyon}>{pozisyon}</Option>
@@ -778,53 +1159,18 @@ const TransferPersonnelList = () => {
             </Col>
           </Row>
 
-          <Divider className="my-6" />
-          
-          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-            <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
-              <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
-                <BarChart3 className="w-4 h-4 text-gray-600" />
-              </div>
-              Performans Hedefleri
-            </h4>
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="gunluk_hedef"
-                  label={<span className="font-medium text-gray-700">Günlük Hedef (Kasa)</span>}
-                  rules={[{ required: true, message: 'Günlük hedef gerekli!' }]}
-                >
-                  <Input placeholder="250" size="large" type="number" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="durum"
-                  label={<span className="font-medium text-gray-700">Durum</span>}
-                  rules={[{ required: true, message: 'Durum gerekli!' }]}
-                >
-                  <Select placeholder="Durum seçin" size="large">
-                    <Option value="aktif">Aktif</Option>
-                    <Option value="pasif">Pasif</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-          </div>
 
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+          <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
             <Button 
               onClick={() => setIsModalVisible(false)}
-              size="large"
-              className="px-6 h-10 border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="px-4 h-8 border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               İptal
             </Button>
             <Button 
               type="primary" 
               htmlType="submit"
-              size="large"
-              className="px-6 h-10 bg-gray-900 hover:bg-gray-800 border-gray-900 hover:border-gray-800"
+              className="px-4 h-8 bg-blue-600 hover:bg-blue-700 border-0"
             >
               {editingRecord ? 'Güncelle' : 'Ekle'}
             </Button>

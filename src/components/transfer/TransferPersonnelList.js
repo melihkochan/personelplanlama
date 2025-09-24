@@ -79,24 +79,31 @@ const TransferPersonnelList = () => {
     }
   }, [selectedMonth]);
 
-  // Mevcut ayları yükle
+  // Mevcut ayları yükle - OPTIMIZED
   const loadAvailableMonths = async () => {
     try {
       console.log('=== AY LİSTESİ YÜKLENİYOR ===');
       
-      // Önce benzersiz ay değerlerini çek (DISTINCT benzeri)
-      const { data: uniqueMonths, error: uniqueError } = await supabase
+      // Tek sorguda tüm ay verilerini çek
+      const { data: monthData, error } = await supabase
         .from('aktarma_dagitim_verileri')
         .select('ay')
-        .not('ay', 'is', null)
-        .order('ay', { ascending: true });
+        .not('ay', 'is', null);
 
-      if (uniqueError) throw uniqueError;
+      if (error) throw error;
 
-      console.log('Benzersiz ay değerleri:', uniqueMonths);
+      console.log('Çekilen ay verileri:', monthData?.length, 'kayıt');
 
-      // Her ay için ayrı ayrı sayım yap
+      // Client-side'da benzersiz ayları ve sayımları hesapla
       const monthCounts = {};
+      monthData?.forEach(item => {
+        if (item.ay) {
+          monthCounts[item.ay] = (monthCounts[item.ay] || 0) + 1;
+        }
+      });
+
+      console.log('Ay bazında sayımlar:', monthCounts);
+
       const monthNames = {
         '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
         '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
@@ -106,32 +113,11 @@ const TransferPersonnelList = () => {
         '9': 'Eylül'
       };
 
-      console.log('Her ay için sayım yapılıyor...');
-      for (const monthData of uniqueMonths) {
-        if (monthData.ay) {
-          const { count, error: countError } = await supabase
-            .from('aktarma_dagitim_verileri')
-            .select('*', { count: 'exact', head: true })
-            .eq('ay', monthData.ay);
-
-          if (countError) {
-            console.error(`${monthData.ay} ayı için sayım hatası:`, countError);
-            monthCounts[monthData.ay] = 0;
-          } else {
-            monthCounts[monthData.ay] = count || 0;
-            console.log(`${monthData.ay} ayı: ${count} kayıt`);
-          }
-        }
-      }
-
-      console.log('Ay bazında sayımlar:', monthCounts);
-      console.log('Benzersiz ay değerleri:', Object.keys(monthCounts));
-
       const monthList = [
         { value: 'all', label: 'Tüm Aylar' },
         ...Object.keys(monthCounts).sort().map(month => ({
           value: month,
-          label: `${monthNames[month]} (${monthCounts[month].toLocaleString('tr-TR')} kayıt)`
+          label: `${monthNames[month] || month} (${monthCounts[month].toLocaleString('tr-TR')} kayıt)`
         }))
       ];
 

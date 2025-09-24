@@ -338,13 +338,73 @@ function MainApp() {
     }
   }, [isAuthenticated, user]);
 
-  // Veri yenileme fonksiyonu
-  const refreshData = async () => {
-    await loadData();
-    await loadDailyNotes();
-    await loadCurrentShiftData(); // Güncel vardiya verilerini de yenile
+  // Periyodik olarak tüm verileri yenile (her 5 dakikada bir)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const interval = setInterval(async () => {
+        try {
+          await loadData();
+          await loadDailyNotes();
+        } catch (error) {
+          console.error('❌ Periyodik veri yenileme hatası:', error);
+        }
+      }, 300000); // 5 dakika
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, user]);
 
-    showNotification('Veriler yenilendi!', 'success');
+  // Sayfa görünürlük kontrolü - kullanıcı sekmeye geri döndüğünde veri yenile
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && isAuthenticated && user) {
+        // Kullanıcı sekmeye geri döndü, verileri yenile
+        try {
+          await loadData();
+          await loadDailyNotes();
+          await loadCurrentShiftData();
+        } catch (error) {
+          console.error('❌ Sayfa görünürlük veri yenileme hatası:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isAuthenticated, user]);
+
+  // Veri yenileme fonksiyonu - Cache temizleme ile
+  const refreshData = async () => {
+    try {
+      // Cache temizleme
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames.map(cacheName => caches.delete(cacheName))
+        );
+      }
+      
+      // localStorage temizleme (performans verileri hariç)
+      const keysToKeep = ['performanceSummary', 'userPreferences'];
+      const allKeys = Object.keys(localStorage);
+      allKeys.forEach(key => {
+        if (!keysToKeep.includes(key)) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Verileri yeniden yükle
+      await loadData();
+      await loadDailyNotes();
+      await loadCurrentShiftData();
+      
+      // Sayfayı yenile (cache bypass için)
+      window.location.reload();
+      
+      showNotification('Veriler yenilendi ve cache temizlendi!', 'success');
+    } catch (error) {
+      console.error('❌ Veri yenileme hatası:', error);
+      showNotification('Veri yenileme sırasında hata oluştu!', 'error');
+    }
   };
 
   // Güncel vardiya verilerini yükle
@@ -1896,14 +1956,17 @@ function MainApp() {
                     </div>
                     
                     <div className="relative z-10">
-                      <div className="flex items-center gap-4 mb-10">
-                        <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl">
-                          <Sparkles className="w-7 h-7 text-white" />
+                      <div className="flex items-center justify-between mb-10">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl">
+                            <Sparkles className="w-7 h-7 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-3xl font-bold text-gray-900">Hızlı İşlemler</h3>
+                            <p className="text-base text-gray-600">En sık kullanılan özellikler</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-3xl font-bold text-gray-900">Hızlı İşlemler</h3>
-                          <p className="text-base text-gray-600">En sık kullanılan özellikler</p>
-                        </div>
+                       
                       </div>
 
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">

@@ -297,7 +297,13 @@ const TransferPersonnelList = () => {
       // Performans yüzdesi
       const kasaPerformance = targetKasa > 0 ? Math.round((totalKasa / targetKasa) * 100) : 0;
       const paletPerformance = targetPalet > 0 ? Math.round((totalPalet / targetPalet) * 100) : 0;
-      const okutmaPerformance = targetOkutma > 0 ? Math.round((totalOkutma / targetOkutma) * 100) : 0;
+      
+      // OKUTMA PERFORMANSI - Gerçek dağıtılan kasa sayısına göre hesapla
+      // Okutulan kasa / Toplam dağıtılan kasa * 100 (maksimum %100)
+      const okutmaPerformance = totalKasa > 0 ? Math.min(Math.round((okutulanKasa / totalKasa) * 100), 100) : 0;
+
+      // GENEL PERFORMANS - Kasa ve Palet performansının ortalaması
+      const generalPerformance = Math.round((kasaPerformance + paletPerformance) / 2);
 
       // Console log kaldırıldı - performans için
 
@@ -313,6 +319,7 @@ const TransferPersonnelList = () => {
         kasaPerformance,
         paletPerformance,
         okutmaPerformance,
+        generalPerformance,
         distributionData: distributionData || []
       };
     } catch (error) {
@@ -329,6 +336,7 @@ const TransferPersonnelList = () => {
         kasaPerformance: 0,
         paletPerformance: 0,
         okutmaPerformance: 0,
+        generalPerformance: 0,
         distributionData: []
       };
     }
@@ -653,28 +661,26 @@ const TransferPersonnelList = () => {
       title: 'Genel Performans',
       key: 'genel',
       width: 110,
-      sorter: (a, b) => {
-        const aAvg = ((a.kasaPerformance || 0) + (a.paletPerformance || 0) + (a.okutmaPerformance || 0)) / 3;
-        const bAvg = ((b.kasaPerformance || 0) + (b.paletPerformance || 0) + (b.okutmaPerformance || 0)) / 3;
-        return aAvg - bAvg;
-      },
+      sorter: (a, b) => (a.generalPerformance || 0) - (b.generalPerformance || 0),
       render: (_, record) => {
-        const avgPerformance = Math.round(((record.kasaPerformance || 0) + (record.paletPerformance || 0) + (record.okutmaPerformance || 0)) / 3);
+        const generalPerformance = record.generalPerformance || 0;
         return (
           <div className="text-center">
             <div className="text-xs text-gray-500 mb-1">Ortalama</div>
             <Progress 
-              percent={avgPerformance} 
+              percent={generalPerformance} 
               size="small" 
-              strokeColor={avgPerformance > 100 ? '#52c41a' : avgPerformance > 80 ? '#1890ff' : '#faad14'}
+              strokeColor={generalPerformance > 100 ? '#52c41a' : generalPerformance > 80 ? '#1890ff' : '#faad14'}
             />
             <div className="text-xs mt-1">
-              {avgPerformance > 80 ? (
+              {generalPerformance > 80 ? (
                 <TrendingUp className="w-3 h-3 text-green-500 inline mr-1" />
               ) : (
                 <TrendingDown className="w-3 h-3 text-orange-500 inline mr-1" />
               )}
-              {avgPerformance}%
+              <span className={generalPerformance > 80 ? 'text-green-500' : 'text-orange-500'}>
+                {generalPerformance}%
+              </span>
             </div>
           </div>
         );

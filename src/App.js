@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
@@ -81,6 +81,13 @@ function MainApp() {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
+  
+  // Açılır-kapanır menü state'leri
+  const [expandedGroups, setExpandedGroups] = useState({
+    personnel: false,
+    stores: false,
+    vehicles: false
+  });
 
 
   // Bildirim sayısına göre renk belirleme fonksiyonu
@@ -101,6 +108,14 @@ function MainApp() {
     } else {
       navigate(`/${tabId}`);
     }
+  };
+
+  // Grup açma/kapama fonksiyonu
+  const toggleGroup = (groupName) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
   };
 
   // URL değişikliklerini dinle
@@ -791,29 +806,6 @@ function MainApp() {
               )}
             </button>
 
-            {/* İstatistikler */}
-            <button
-              onClick={() => handleTabChange('statistics')}
-              className={`
-                w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                ${activeTab === 'statistics'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }
-              `}
-            >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                activeTab === 'statistics' 
-                  ? 'bg-white/20' 
-                  : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-              }`}>
-                <BarChart3 className={`w-3 h-3 ${activeTab === 'statistics' ? 'text-white' : 'text-slate-400'}`} />
-              </div>
-              <span className="flex-1 text-left">İstatistikler</span>
-              {activeTab === 'statistics' && (
-                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-              )}
-            </button>
 
             {/* Chat */}
             <button
@@ -846,13 +838,54 @@ function MainApp() {
 
 
 
-            {/* Personel Yönetimi Grubu */}
+            {/* Anadolu Grubu */}
             <div className="space-y-1 mt-4">
               <div className="flex items-center px-2 py-1">
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
-                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Personel Yönetimi</span>
+                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Anadolu</span>
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
+
+              {/* Personel Yönetimi Alt Grubu */}
+              <div className="ml-2">
+                <button
+                  onClick={() => toggleGroup('personnel')}
+                  className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                >
+                  {expandedGroups.personnel ? (
+                    <ChevronDown className="w-3 h-3 mr-1" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3 mr-1" />
+                  )}
+                  <span className="text-xs font-medium text-slate-400">Personel Yönetimi</span>
+                </button>
+                
+                {expandedGroups.personnel && (
+                  <div className="ml-4 space-y-1 mt-1">
+
+              {/* İstatistikler */}
+              <button
+                onClick={() => handleTabChange('statistics')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                  ${activeTab === 'statistics'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }
+                `}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'statistics' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <BarChart3 className={`w-3 h-3 ${activeTab === 'statistics' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                <span className="flex-1 text-left">Anadolu İstatistikler</span>
+                {activeTab === 'statistics' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
+              </button>
 
               <button
                 onClick={() => handleTabChange('vardiya-kontrol')}
@@ -871,7 +904,7 @@ function MainApp() {
                 }`}>
                   <Clock className={`w-3 h-3 ${activeTab === 'vardiya-kontrol' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Personel Kontrol</span>
+                <span className="flex-1 text-left">Anadolu Personel Kontrol</span>
                 {activeTab === 'vardiya-kontrol' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
@@ -894,7 +927,7 @@ function MainApp() {
                 }`}>
                   <BarChart3 className={`w-3 h-3 ${activeTab === 'performance' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Performans Analizi</span>
+                <span className="flex-1 text-left">Anadolu Performans Analizi</span>
                 {activeTab === 'performance' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
@@ -917,7 +950,7 @@ function MainApp() {
                 }`}>
                   <MapPin className={`w-3 h-3 ${activeTab === 'store-distribution' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Personel Konum Dağılımı</span>
+                <span className="flex-1 text-left">Anadolu Personel Konum Dağılımı</span>
                 {activeTab === 'store-distribution' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
@@ -940,7 +973,7 @@ function MainApp() {
                 }`}>
                   <Car className={`w-3 h-3 ${activeTab === 'vehicle-distribution' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Personel Araç Dağılımı</span>
+                <span className="flex-1 text-left">Anadolu Personel Araç Dağılımı</span>
                 {activeTab === 'vehicle-distribution' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
@@ -963,20 +996,31 @@ function MainApp() {
                 }`}>
                   <Users className={`w-3 h-3 ${activeTab === 'personnel' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Personel Listesi</span>
+                <span className="flex-1 text-left">Anadolu Personel Listesi</span>
                 {activeTab === 'personnel' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
-            </div>
-
-            {/* Mağaza Yönetimi Grubu */}
-            <div className="space-y-1 mt-4">
-              <div className="flex items-center px-2 py-1">
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
-                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Mağaza Yönetimi</span>
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                  </div>
+                )}
               </div>
+
+              {/* Mağaza Yönetimi Alt Grubu */}
+              <div className="ml-2 mt-2">
+                <button
+                  onClick={() => toggleGroup('stores')}
+                  className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                >
+                  {expandedGroups.stores ? (
+                    <ChevronDown className="w-3 h-3 mr-1" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3 mr-1" />
+                  )}
+                  <span className="text-xs font-medium text-slate-400">Mağaza Yönetimi</span>
+                </button>
+                
+                {expandedGroups.stores && (
+                  <div className="ml-4 space-y-1 mt-1">
 
               <button
                 onClick={() => handleTabChange('stores')}
@@ -995,7 +1039,7 @@ function MainApp() {
                 }`}>
                   <Store className={`w-3 h-3 ${activeTab === 'stores' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Mağaza Listesi</span>
+                <span className="flex-1 text-left">Anadolu Mağaza Listesi</span>
                 {activeTab === 'stores' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
@@ -1018,7 +1062,7 @@ function MainApp() {
                 }`}>
                   <MapPin className={`w-3 h-3 ${activeTab === 'store-distance' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Mağaza Uzaklık Ölçer</span>
+                <span className="flex-1 text-left">Anadolu Mağaza Uzaklık Ölçer</span>
                 {activeTab === 'store-distance' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
@@ -1041,11 +1085,56 @@ function MainApp() {
                 }`}>
                   <AlertCircle className={`w-3 h-3 ${activeTab === 'store-difficulty' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Mağaza Zorluk Yönetimi</span>
+                <span className="flex-1 text-left">Anadolu Mağaza Zorluk Yönetimi</span>
                 {activeTab === 'store-difficulty' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Araç Yönetimi Alt Grubu */}
+              <div className="ml-2 mt-2">
+                <button
+                  onClick={() => toggleGroup('vehicles')}
+                  className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                >
+                  {expandedGroups.vehicles ? (
+                    <ChevronDown className="w-3 h-3 mr-1" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3 mr-1" />
+                  )}
+                  <span className="text-xs font-medium text-slate-400">Araç Yönetimi</span>
+                </button>
+                
+                {expandedGroups.vehicles && (
+                  <div className="ml-4 space-y-1 mt-1">
+                    <button
+                      onClick={() => handleTabChange('vehicles')}
+                      className={`
+                        w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                        ${activeTab === 'vehicles'
+                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                        }
+                      `}
+                    >
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                        activeTab === 'vehicles' 
+                          ? 'bg-white/20' 
+                          : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                      }`}>
+                        <Car className={`w-3 h-3 ${activeTab === 'vehicles' ? 'text-white' : 'text-slate-400'}`} />
+                      </div>
+                      <span className="flex-1 text-left">Anadolu Araç Listesi</span>
+                      {activeTab === 'vehicles' && (
+                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Aktarma Depo Grubu */}
@@ -1055,7 +1144,6 @@ function MainApp() {
                 <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Aktarma Depo</span>
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
-
 
               <button
                 onClick={() => handleTabChange('aktarma-personel-list')}
@@ -1074,7 +1162,7 @@ function MainApp() {
                 }`}>
                   <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
-                <span className="flex-1 text-left">Aktarma Depo Personel Kontrol</span>
+                <span className="flex-1 text-left">Aktarma Personel Listesi</span>
                 {activeTab === 'aktarma-personel-list' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
@@ -1099,38 +1187,6 @@ function MainApp() {
                 </div>
                 <span className="flex-1 text-left">Aktarma Dağıtım Analizi</span>
                 {activeTab === 'aktarma-dagitim-analizi' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                )}
-              </button>
-            </div>
-
-            {/* Araç Yönetimi Grubu */}
-            <div className="space-y-1 mt-4">
-              <div className="flex items-center px-2 py-1">
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
-                <span className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Araç Yönetimi</span>
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
-              </div>
-
-              <button
-                onClick={() => handleTabChange('vehicles')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                  ${activeTab === 'vehicles'
-                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                  }
-                `}
-              >
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'vehicles' 
-                    ? 'bg-white/20' 
-                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                }`}>
-                  <Car className={`w-3 h-3 ${activeTab === 'vehicles' ? 'text-white' : 'text-slate-400'}`} />
-                </div>
-                <span className="flex-1 text-left">Araç Listesi</span>
-                {activeTab === 'vehicles' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
@@ -1513,13 +1569,31 @@ function MainApp() {
                     )}
                   </button>
 
-                  {/* Personel Yönetimi Grubu */}
+                  {/* Anadolu Grubu */}
                   <div className="space-y-2">
                     <div className="flex items-center px-4 py-2">
                       <div className="flex-1 h-px bg-gray-300"></div>
-                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Personel Yönetimi</span>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Anadolu</span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
+
+                    {/* İstatistikler */}
+                    <button
+                      onClick={() => {
+                        handleTabChange('statistics');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'statistics'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <BarChart3 className="w-5 h-5 mr-3" />
+                      Anadolu İstatistikler
+                    </button>
 
                     <button
                       onClick={() => {
@@ -1535,7 +1609,7 @@ function MainApp() {
                       `}
                     >
                       <Users className="w-5 h-5 mr-3" />
-                      Personel Listesi
+                      Anadolu Personel Listesi
                     </button>
 
                     <button
@@ -1552,7 +1626,7 @@ function MainApp() {
                       `}
                     >
                       <Clock className="w-5 h-5 mr-3" />
-                      Personel Kontrol
+                      Anadolu Personel Kontrol
                     </button>
 
                     <button
@@ -1569,7 +1643,7 @@ function MainApp() {
                       `}
                     >
                       <BarChart3 className="w-5 h-5 mr-3" />
-                      Performans Analizi
+                      Anadolu Performans Analizi
                     </button>
 
                     <button
@@ -1586,7 +1660,7 @@ function MainApp() {
                       `}
                     >
                       <MapPin className="w-5 h-5 mr-3" />
-                      Personel Konum Dağılımı
+                      Anadolu Personel Konum Dağılımı
                     </button>
 
                     <button
@@ -1603,11 +1677,43 @@ function MainApp() {
                       `}
                     >
                       <Car className="w-5 h-5 mr-3" />
-                      Personel Araç Dağılımı
+                      Anadolu Personel Araç Dağılımı
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('stores');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'stores'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Store className="w-5 h-5 mr-3" />
+                      Anadolu Mağaza Listesi
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('store-difficulty');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'store-difficulty'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <AlertCircle className="w-5 h-5 mr-3" />
+                      Anadolu Mağaza Zorluk Yönetimi
                     </button>
                   </div>
-
-
 
                   {/* Sistem Yönetimi Grubu */}
                   <div className="space-y-2">
@@ -1633,39 +1739,48 @@ function MainApp() {
                       <Car className="w-5 h-5 mr-3" />
                       Araç Listesi
                     </button>
+                  </div>
+
+                  {/* Aktarma Depo Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Aktarma Depo</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
 
                     <button
                       onClick={() => {
-                        handleTabChange('stores');
+                        handleTabChange('aktarma-personel-list');
                         setMobileMenuOpen(false);
                       }}
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'stores'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                        ${activeTab === 'aktarma-personel-list'
+                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
                       `}
                     >
-                      <Store className="w-5 h-5 mr-3" />
-                      Mağaza Listesi
+                      <Users className="w-5 h-5 mr-3" />
+                      Aktarma Personel Listesi
                     </button>
 
                     <button
                       onClick={() => {
-                        handleTabChange('store-difficulty');
+                        handleTabChange('aktarma-dagitim-analizi');
                         setMobileMenuOpen(false);
                       }}
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'store-difficulty'
-                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                        ${activeTab === 'aktarma-dagitim-analizi'
+                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
                       `}
                     >
-                      <AlertCircle className="w-5 h-5 mr-3" />
-                      Mağaza Zorluk Yönetimi
+                      <BarChart3 className="w-5 h-5 mr-3" />
+                      Aktarma Dağıtım Analizi
                     </button>
                   </div>
 
@@ -1787,22 +1902,6 @@ function MainApp() {
                       </span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        handleTabChange('statistics');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'statistics'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <BarChart3 className="w-5 h-5 mr-3" />
-                      İstatistikler
-                    </button>
 
                   </div>
 
@@ -1980,7 +2079,7 @@ function MainApp() {
                             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
                               <Users className="w-8 h-8 text-white" />
                             </div>
-                            <p className="text-lg font-semibold text-gray-900">Personel</p>
+                            <p className="text-lg font-semibold text-gray-900">Anadolu Personel</p>
                             <p className="text-sm text-blue-600 mt-2">Yönetim Paneli</p>
                           </div>
                         </button>
@@ -1995,7 +2094,7 @@ function MainApp() {
                             <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
                               <Store className="w-8 h-8 text-white" />
                             </div>
-                            <p className="text-lg font-semibold text-gray-900">Mağaza Listesi</p>
+                            <p className="text-lg font-semibold text-gray-900">Anadolu Mağaza Listesi</p>
                             <p className="text-sm text-emerald-600 mt-2">Lokasyon Yönetimi</p>
                           </div>
                         </button>
@@ -2010,7 +2109,7 @@ function MainApp() {
                             <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
                               <Shield className="w-8 h-8 text-white" />
                             </div>
-                            <p className="text-lg font-semibold text-gray-900">Personel Kontrol</p>
+                            <p className="text-lg font-semibold text-gray-900">Anadolu Personel Kontrol</p>
                             <p className="text-sm text-purple-600 mt-2">Vardiya Takibi</p>
                           </div>
                         </button>
@@ -2025,7 +2124,7 @@ function MainApp() {
                             <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
                               <MapPin className="w-8 h-8 text-white" />
                             </div>
-                            <p className="text-lg font-semibold text-gray-900">Konum Dağılımı</p>
+                            <p className="text-lg font-semibold text-gray-900">Anadolu Konum Dağılımı</p>
                             <p className="text-sm text-orange-600 mt-2">Harita Görünümü</p>
                           </div>
                         </button>
@@ -2040,7 +2139,7 @@ function MainApp() {
                             <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
                               <BarChart3 className="w-8 h-8 text-white" />
                             </div>
-                            <p className="text-lg font-semibold text-gray-900">İstatistikler</p>
+                            <p className="text-lg font-semibold text-gray-900">Anadolu İstatistikler</p>
                             <p className="text-sm text-indigo-600 mt-2">Analiz Raporları</p>
                           </div>
                         </button>
@@ -2055,7 +2154,7 @@ function MainApp() {
                             <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
                               <Truck className="w-8 h-8 text-white" />
                             </div>
-                            <p className="text-lg font-semibold text-gray-900">Araç Dağılımı</p>
+                            <p className="text-lg font-semibold text-gray-900">Anadolu Araç Dağılımı</p>
                             <p className="text-sm text-teal-600 mt-2">Filo Yönetimi</p>
                           </div>
                         </button>

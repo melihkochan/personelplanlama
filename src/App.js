@@ -84,9 +84,9 @@ function MainApp() {
   
   // Açılır-kapanır menü state'leri
   const [expandedGroups, setExpandedGroups] = useState({
-    personnel: false,
-    stores: false,
-    vehicles: false
+    personnel: true,
+    stores: true,
+    vehicles: true
   });
 
 

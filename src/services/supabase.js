@@ -989,10 +989,7 @@ export const deleteUser = async (id) => {
 
 export const getUserRole = async (userId, userEmail = null) => {
   try {
-    console.log('🔍 getUserRole çağrıldı - userId:', userId, 'userEmail:', userEmail);
-    
     if (!userId) {
-      console.log('⚠️ getUserRole - userId boş, user döndürülüyor');
       return 'user';
     }
 
@@ -1009,7 +1006,6 @@ export const getUserRole = async (userId, userEmail = null) => {
     }
 
     if (user) {
-      console.log('✅ getUserRole - users\'dan rol bulundu:', user.role);
       return user.role || 'user';
     }
 
@@ -1027,7 +1023,6 @@ export const getUserRole = async (userId, userEmail = null) => {
       }
 
       if (emailUser) {
-        console.log('✅ getUserRole - email ile rol bulundu:', emailUser.role);
         return emailUser.role || 'user';
       }
     }

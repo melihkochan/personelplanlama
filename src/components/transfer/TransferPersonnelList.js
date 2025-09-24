@@ -41,7 +41,8 @@ import {
   UserCheck,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Truck
 } from 'lucide-react';
 import { UserOutlined, UploadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -509,10 +510,10 @@ const TransferPersonnelList = () => {
       title: 'Sicil No',
       dataIndex: 'sicil_no',
       key: 'sicil_no',
-      width: 100,
+      width: 80,
       sorter: (a, b) => (a.sicil_no || '').localeCompare(b.sicil_no || ''),
       render: (text) => (
-        <span className="font-mono text-sm font-semibold text-gray-800">
+        <span className="font-mono text-xs font-semibold text-gray-800">
           {text || 'N/A'}
         </span>
       )
@@ -521,17 +522,17 @@ const TransferPersonnelList = () => {
       title: 'Ad Soyad',
       dataIndex: 'adi_soyadi',
       key: 'adi_soyadi',
-      width: 180,
+      width: 140,
       sorter: (a, b) => (a.adi_soyadi || '').localeCompare(b.adi_soyadi || ''),
       render: (text, record) => (
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           <Avatar 
-            size={40} 
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold"
+            size={24} 
+            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-xs"
           >
             {text ? text.split(' ').map(n => n[0]).join('') : '??'}
           </Avatar>
-          <span className="font-semibold text-gray-800">{text || 'Bilinmeyen'}</span>
+          <span className="font-semibold text-xs text-gray-800">{text || 'Bilinmeyen'}</span>
         </div>
       )
     },
@@ -539,7 +540,7 @@ const TransferPersonnelList = () => {
       title: 'Pozisyon',
       dataIndex: 'pozisyon',
       key: 'pozisyon',
-      width: 140,
+      width: 120,
       sorter: (a, b) => (a.pozisyon || '').localeCompare(b.pozisyon || ''),
       filters: Array.from(new Set(personnelData.map(p => p.pozisyon).filter(Boolean)))
         .map(pozisyon => ({ text: pozisyon, value: pozisyon })),
@@ -548,7 +549,7 @@ const TransferPersonnelList = () => {
         const colors = getPositionColor(text);
         return (
           <span 
-            className="text-sm font-medium px-3 py-1 rounded-full border"
+            className="text-xs font-medium px-2 py-1 rounded-full border"
             style={{ 
               backgroundColor: colors.bg, 
               color: colors.text, 
@@ -564,77 +565,73 @@ const TransferPersonnelList = () => {
       title: 'Bölge',
       dataIndex: 'bolge',
       key: 'bolge',
-      width: 120,
+      width: 100,
       sorter: (a, b) => (a.bolge || '').localeCompare(b.bolge || ''),
       filters: Array.from(new Set(personnelData.map(p => p.bolge).filter(Boolean)))
         .map(bolge => ({ text: bolge, value: bolge })),
       onFilter: (value, record) => record.bolge === value,
       render: (text) => (
-        <Tag color={getRegionColor(text)} className="font-medium">
+        <Tag color={getRegionColor(text)} className="font-medium text-xs">
           {text || 'Bilinmeyen'}
         </Tag>
       )
     },
     {
-      title: 'Dağıtılan Kasa',
+      title: 'Toplam Dağıtılan Kasa',
       key: 'kasa',
-      width: 160,
+      width: 140,
       sorter: (a, b) => (a.totalKasa || 0) - (b.totalKasa || 0),
-      render: (_, record) => (
-        <div className="text-center">
-          <div className="flex items-center justify-center mb-1">
-            <Package className="w-4 h-4 text-blue-600 mr-1" />
-            <span className="font-bold text-lg text-blue-600">{record.totalKasa || 0}</span>
+      render: (_, record) => {
+        const totalKasa = record.totalKasa || 0;
+        const isGood = totalKasa >= 50000;
+        const color = isGood ? 'text-green-600' : 'text-orange-600';
+        const iconColor = isGood ? 'text-green-600' : 'text-orange-600';
+        
+        return (
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-1">
+              <Package className={`w-4 h-4 ${iconColor} mr-2`} />
+              <span className={`font-bold text-lg ${color}`}>{totalKasa.toLocaleString('tr-TR')}</span>
+            </div>
+            <div className="text-xs text-gray-600">
+              <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
+              <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
+            </div>
           </div>
-          <div className="text-xs text-gray-600 mb-1">
-            <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
-            <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
-          </div>
-          <Progress 
-            percent={record.kasaPerformance || 0} 
-            size="small" 
-            strokeColor={(record.kasaPerformance || 0) > 100 ? '#52c41a' : (record.kasaPerformance || 0) > 80 ? '#1890ff' : '#faad14'}
-            showInfo={false}
-          />
-          <div className="text-xs text-gray-500 mt-1">
-            {record.kasaPerformance || 0}% / {record.targetKasa || 0} hedef
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       title: 'Palet Sayısı',
       key: 'palet',
-      width: 120,
+      width: 100,
       sorter: (a, b) => (a.totalPalet || 0) - (b.totalPalet || 0),
-      render: (_, record) => (
-        <div className="text-center">
-          <div className="flex items-center justify-center mb-1">
-            <Palette className="w-4 h-4 text-green-600 mr-1" />
-            <span className="font-bold text-lg text-green-600">{record.totalPalet || 0}</span>
+      render: (_, record) => {
+        const totalPalet = record.totalPalet || 0;
+        const isGood = totalPalet >= 5000; // 50k kasa / 10 = 5k palet
+        const color = isGood ? 'text-green-600' : 'text-orange-600';
+        const iconColor = isGood ? 'text-green-600' : 'text-orange-600';
+        
+        return (
+          <div className="text-center">
+            <div className="flex items-center justify-center">
+              <Truck className={`w-4 h-4 ${iconColor} mr-2`} />
+              <span className={`font-bold text-lg ${color}`}>{totalPalet.toLocaleString('tr-TR')}</span>
+            </div>
           </div>
-          <Progress 
-            percent={record.paletPerformance || 0} 
-            size="small" 
-            strokeColor={(record.paletPerformance || 0) > 100 ? '#52c41a' : (record.paletPerformance || 0) > 80 ? '#1890ff' : '#faad14'}
-            showInfo={false}
-          />
-          <div className="text-xs text-gray-500 mt-1">
-            {record.paletPerformance || 0}% / {record.targetPalet || 0} hedef
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       title: 'Okutma Detayı',
       key: 'okutma',
-      width: 160,
+      width: 140,
       sorter: (a, b) => (a.totalOkutma || 0) - (b.totalOkutma || 0),
       render: (_, record) => (
         <div className="text-center">
           <div className="flex items-center justify-center mb-1">
-            <CheckCircle className="w-4 h-4 text-purple-600 mr-1" />
-            <span className="font-bold text-lg text-purple-600">{record.totalOkutma || 0}</span>
+            <CheckCircle className="w-3 h-3 text-purple-600 mr-1" />
+            <span className="font-bold text-sm text-purple-600">{record.totalOkutma || 0}</span>
           </div>
           <div className="text-xs text-gray-600 mb-1">
             <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
@@ -655,7 +652,7 @@ const TransferPersonnelList = () => {
     {
       title: 'Genel Performans',
       key: 'genel',
-      width: 130,
+      width: 110,
       sorter: (a, b) => {
         const aAvg = ((a.kasaPerformance || 0) + (a.paletPerformance || 0) + (a.okutmaPerformance || 0)) / 3;
         const bAvg = ((b.kasaPerformance || 0) + (b.paletPerformance || 0) + (b.okutmaPerformance || 0)) / 3;
@@ -686,7 +683,7 @@ const TransferPersonnelList = () => {
     {
       title: 'İşlemler',
       key: 'actions',
-      width: 120,
+      width: 100,
       fixed: 'right',
       render: (_, record) => (
         <Space>

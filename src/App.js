@@ -410,8 +410,8 @@ function MainApp() {
       });
       
       // Verileri yeniden yükle
-      await loadData();
-      await loadDailyNotes();
+    await loadData();
+    await loadDailyNotes();
       await loadCurrentShiftData();
       
       // Sayfayı yenile (cache bypass için)
@@ -1003,7 +1003,7 @@ function MainApp() {
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
-                  </div>
+            </div>
                 )}
               </div>
 
@@ -1163,51 +1163,51 @@ function MainApp() {
                 
                 {expandedGroups.personnel && (
                   <div className="ml-4 space-y-1 mt-1">
-                    <button
-                      onClick={() => handleTabChange('aktarma-personel-list')}
-                      className={`
-                        w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                        ${activeTab === 'aktarma-personel-list'
-                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                        }
-                      `}
-                    >
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                        activeTab === 'aktarma-personel-list' 
-                          ? 'bg-white/20' 
-                          : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                      }`}>
-                        <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-slate-400'}`} />
-                      </div>
-                      <span className="flex-1 text-left">Personel Listesi</span>
-                      {activeTab === 'aktarma-personel-list' && (
-                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                      )}
-                    </button>
+              <button
+                onClick={() => handleTabChange('aktarma-personel-list')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                  ${activeTab === 'aktarma-personel-list'
+                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }
+                `}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'aktarma-personel-list' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                      <span className="flex-1 text-left">Personel Performans Analizi</span>
+                {activeTab === 'aktarma-personel-list' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
+              </button>
 
-                    <button
-                      onClick={() => handleTabChange('aktarma-dagitim-analizi')}
-                      className={`
-                        w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                        ${activeTab === 'aktarma-dagitim-analizi'
-                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                        }
-                      `}
-                    >
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                        activeTab === 'aktarma-dagitim-analizi' 
-                          ? 'bg-white/20' 
-                          : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                      }`}>
-                        <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-slate-400'}`} />
-                      </div>
-                      <span className="flex-1 text-left">Aktarma Dağıtım Analizi</span>
-                      {activeTab === 'aktarma-dagitim-analizi' && (
-                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                      )}
-                    </button>
+              <button
+                onClick={() => handleTabChange('aktarma-dagitim-analizi')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                  ${activeTab === 'aktarma-dagitim-analizi'
+                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }
+                `}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'aktarma-dagitim-analizi' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                      <span className="flex-1 text-left">Mağaza Detaylı Dağıtım Analizi</span>
+                {activeTab === 'aktarma-dagitim-analizi' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
+              </button>
 
                   </div>
                 )}
@@ -1215,7 +1215,7 @@ function MainApp() {
 
               {/* Araç Yönetimi Alt Grubu */}
               <div className="ml-2">
-                <button
+              <button
                   onClick={() => toggleGroup('vehicles')}
                   className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
                 >
@@ -1231,26 +1231,26 @@ function MainApp() {
                   <div className="ml-4 space-y-1 mt-1">
                     <button
                       onClick={() => handleTabChange('aktarma-vehicle-list')}
-                      className={`
-                        w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                         ${activeTab === 'aktarma-vehicle-list'
                           ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/25'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                        }
-                      `}
-                    >
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }
+                `}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
                         activeTab === 'aktarma-vehicle-list' 
-                          ? 'bg-white/20' 
-                          : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                      }`}>
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
                         <Car className={`w-3 h-3 ${activeTab === 'aktarma-vehicle-list' ? 'text-white' : 'text-slate-400'}`} />
-                      </div>
+                </div>
                       <span className="flex-1 text-left">Aktarma Depo Araç Listesi</span>
                       {activeTab === 'aktarma-vehicle-list' && (
-                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                      )}
-                    </button>
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
+              </button>
                   </div>
                 )}
               </div>
@@ -1827,7 +1827,7 @@ function MainApp() {
                       `}
                     >
                       <Users className="w-5 h-5 mr-3" />
-                      Aktarma Personel Listesi
+                      Aktarma Personel Performans Analizi
                     </button>
 
                     <button
@@ -1844,7 +1844,7 @@ function MainApp() {
                       `}
                     >
                       <BarChart3 className="w-5 h-5 mr-3" />
-                      Aktarma Dağıtım Analizi
+                      Mağaza Detaylı Dağıtım Analizi
                     </button>
                   </div>
 
@@ -2120,17 +2120,17 @@ function MainApp() {
                     
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-10">
-                        <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-4">
                           <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl">
                             <Sparkles className="w-7 h-7 text-white" />
-                          </div>
-                          <div>
+                                </div>
+                                <div>
                             <h3 className="text-3xl font-bold text-gray-900">Hızlı İşlemler</h3>
                             <p className="text-base text-gray-600">En sık kullanılan özellikler</p>
                           </div>
                         </div>
-                       
-                      </div>
+
+                        </div>
 
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Modern Personnel Button */}

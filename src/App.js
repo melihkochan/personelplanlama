@@ -11,6 +11,7 @@ import StoreDistanceCalculator from './components/stores/StoreDistanceCalculator
 import StoreDifficultyManager from './components/stores/StoreDifficultyManager';
 import TransferPersonnelList from './components/transfer/TransferPersonnelList';
 import TransferDistributionAnalysis from './components/transfer/TransferDistributionAnalysis';
+import TransferVehicleList from './components/transfer/TransferVehicleList';
 import VardiyaPlanlama from './components/timesheet/VardiyaPlanlama';
 import AkilliDagitim from './components/timesheet/AkilliDagitim';
 import PerformanceAnalysis from './components/personnel/PerformanceAnalysis';
@@ -86,7 +87,8 @@ function MainApp() {
   const [expandedGroups, setExpandedGroups] = useState({
     personnel: true,
     stores: true,
-    vehicles: true
+    vehicles: true,
+    aktarma: true
   });
 
 
@@ -1145,28 +1147,70 @@ function MainApp() {
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
-              <button
-                onClick={() => handleTabChange('aktarma-personel-list')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                  ${activeTab === 'aktarma-personel-list'
-                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                  }
-                `}
-              >
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'aktarma-personel-list' 
-                    ? 'bg-white/20' 
-                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                }`}>
-                  <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-slate-400'}`} />
-                </div>
-                <span className="flex-1 text-left">Aktarma Personel Listesi</span>
-                {activeTab === 'aktarma-personel-list' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+              {/* Aktarma Depo Alt Grubu */}
+              <div className="ml-2">
+                <button
+                  onClick={() => toggleGroup('aktarma')}
+                  className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                >
+                  {expandedGroups.aktarma ? (
+                    <ChevronDown className="w-3 h-3 mr-1" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3 mr-1" />
+                  )}
+                  <span className="text-xs font-medium text-slate-400">Aktarma İşlemleri</span>
+                </button>
+                
+                {expandedGroups.aktarma && (
+                  <div className="ml-4 space-y-1 mt-1">
+                    <button
+                      onClick={() => handleTabChange('aktarma-personel-list')}
+                      className={`
+                        w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                        ${activeTab === 'aktarma-personel-list'
+                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                        }
+                      `}
+                    >
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                        activeTab === 'aktarma-personel-list' 
+                          ? 'bg-white/20' 
+                          : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                      }`}>
+                        <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-slate-400'}`} />
+                      </div>
+                      <span className="flex-1 text-left">Aktarma Personel Listesi</span>
+                      {activeTab === 'aktarma-personel-list' && (
+                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleTabChange('aktarma-vehicle-list')}
+                      className={`
+                        w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                        ${activeTab === 'aktarma-vehicle-list'
+                          ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/25'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                        }
+                      `}
+                    >
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                        activeTab === 'aktarma-vehicle-list' 
+                          ? 'bg-white/20' 
+                          : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                      }`}>
+                        <Car className={`w-3 h-3 ${activeTab === 'aktarma-vehicle-list' ? 'text-white' : 'text-slate-400'}`} />
+                      </div>
+                      <span className="flex-1 text-left">Aktarma Depo Araç Listesi</span>
+                      {activeTab === 'aktarma-vehicle-list' && (
+                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                      )}
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
 
               <button
                 onClick={() => handleTabChange('aktarma-dagitim-analizi')}
@@ -2419,6 +2463,11 @@ function MainApp() {
             {/* Aktarma Depo Personel Kontrol */}
             {activeTab === 'aktarma-personel-list' && (
               <TransferPersonnelList />
+            )}
+
+            {/* Aktarma Depo Araç Listesi */}
+            {activeTab === 'aktarma-vehicle-list' && (
+              <TransferVehicleList />
             )}
 
             {/* Aktarma Dağıtım Analizi */}

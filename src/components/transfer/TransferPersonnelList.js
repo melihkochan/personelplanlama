@@ -229,19 +229,43 @@ const TransferPersonnelList = () => {
   // Personel performans verilerini çek (gerçek kasa verileri ile)
   const getPersonnelPerformance = async (person) => {
     try {
-      // Sadece gerekli alanları çek - TÜM VERİLERİ ÇEK!
-      let query = supabase
-        .from('aktarma_dagitim_verileri')
-        .select('toplam_kasa, okutulan_kasa, okutulmayan_kasa, ay')
-        .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`)
-        .limit(1000000); // Tüm verileri çek
+      // TÜM VERİLERİ ÇEK - sayfa sayfa (tüm aylar için)
+      let allData = [];
+      let from = 0;
+      const pageSize = 1000;
       
-      if (selectedMonth !== 'all') {
-        query = query.eq('ay', selectedMonth);
-      }
+      while (true) {
+        let query = supabase
+          .from('aktarma_dagitim_verileri')
+          .select('toplam_kasa, okutulan_kasa, okutulmayan_kasa, ay')
+          .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`)
+          .range(from, from + pageSize - 1);
+        
+        if (selectedMonth !== 'all') {
+          query = query.eq('ay', selectedMonth);
+        }
 
-      const { data: distributionData, error } = await query;
-      if (error) throw error;
+        const { data: pageData, error } = await query;
+        
+        if (error) {
+          console.error(`${person.adi_soyadi} için sayfa yükleme hatası:`, error);
+          break;
+        }
+        
+        if (!pageData || pageData.length === 0) {
+          break; // Daha fazla veri yok
+        }
+        
+        allData = [...allData, ...pageData];
+        from += pageSize;
+        
+        // Eğer sayfa tam dolu değilse, son sayfa demektir
+        if (pageData.length < pageSize) {
+          break;
+        }
+      }
+      
+      const distributionData = allData;
 
       // Bu personelin gerçek kasa verileri
       const totalKasa = distributionData?.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0) || 0;

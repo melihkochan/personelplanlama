@@ -742,20 +742,21 @@ const TransferPersonnelList = () => {
   // Rapor indirme fonksiyonu
   const handleDownloadReport = async () => {
     try {
-      // Excel raporu oluştur
+      // Excel raporu oluştur - GERÇEK VERİLERLE
       const worksheet = XLSX.utils.json_to_sheet(
         filteredData.map(person => ({
           'Sicil No': person.sicil_no,
           'Ad Soyad': person.adi_soyadi,
           'Bölge': person.bolge,
           'Pozisyon': person.pozisyon,
-          'Dağıtılan Kasa': person.dagittigi_kasa_sayisi,
-          'Palet Sayısı': person.palet_sayisi,
-          'Okutulan Kasa': person.okuttugu_kasa_sayisi,
-          'Okutulmayan Kasa': person.okutmadigi_kasa_sayisi,
-          'Okutma Oranı (%)': person.okutma_orani,
-          'Günlük Hedef': person.gunluk_hedef,
-          'Hedef Tamamlama (%)': person.hedef_tamamlama_orani,
+          'Toplam Dağıtılan Kasa': person.totalKasa || 0,
+          'Okutulan Kasa': person.okutulanKasa || 0,
+          'Okutulmayan Kasa': person.okutulmayanKasa || 0,
+          'Palet Sayısı': person.totalPalet || 0,
+          'Okutma Sayısı': person.totalOkutma || 0,
+          'Kasa Performansı (%)': person.kasaPerformance || 0,
+          'Palet Performansı (%)': person.paletPerformance || 0,
+          'Okutma Performansı (%)': person.okutmaPerformance || 0,
           'Durum': person.durum === 'aktif' ? 'Aktif' : 'Pasif'
         }))
       );
@@ -764,7 +765,9 @@ const TransferPersonnelList = () => {
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Aktarma Depo Personel');
 
       // Dosyayı indir
-      const fileName = `aktarma_depo_personel_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const monthText = selectedMonth === 'all' ? 'tum_aylar' : 
+        availableMonths.find(m => m.value === selectedMonth)?.label?.split(' ')[0] || selectedMonth;
+      const fileName = `aktarma_depo_personel_${monthText}_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
 
       message.success('Rapor başarıyla indirildi!');
@@ -823,6 +826,14 @@ const TransferPersonnelList = () => {
               <p className="text-gray-600 text-lg">Personel performans takibi ve yönetimi</p>
             </div>
             <div className="flex space-x-3">
+              <Button 
+                icon={<Download className="w-4 h-4" />}
+                onClick={handleDownloadReport}
+                className="bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 text-white"
+                size="large"
+              >
+                Rapor İndir
+              </Button>
               <Upload
                 accept=".xlsx,.xls"
                 beforeUpload={handleExcelUpload}
@@ -831,7 +842,7 @@ const TransferPersonnelList = () => {
                 <Button 
                   icon={<UploadIcon className="w-4 h-4" />}
                   loading={uploadLoading}
-                  className="bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600"
+                  className="bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600 text-white"
                   size="large"
                 >
                   Excel Yükle
@@ -889,14 +900,6 @@ const TransferPersonnelList = () => {
                 </Option>
               ))}
             </Select>
-            <Button 
-              icon={<Download className="w-4 h-4" />}
-              onClick={handleDownloadReport}
-              className="h-12 bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
-              size="large"
-            >
-              Rapor İndir
-            </Button>
           </div>
         </div>
 

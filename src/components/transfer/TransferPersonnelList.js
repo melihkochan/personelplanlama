@@ -302,8 +302,8 @@ const TransferPersonnelList = () => {
       // Okutulan kasa / Toplam dağıtılan kasa * 100 (maksimum %100)
       const okutmaPerformance = totalKasa > 0 ? Math.min(Math.round((okutulanKasa / totalKasa) * 100), 100) : 0;
 
-      // GENEL PERFORMANS - Kasa ve Palet performansının ortalaması
-      const generalPerformance = Math.round((kasaPerformance + paletPerformance) / 2);
+      // GENEL PERFORMANS - Kasa, Palet ve Okutma performansının ortalaması (maksimum %100)
+      const generalPerformance = Math.min(Math.round((kasaPerformance + paletPerformance + okutmaPerformance) / 3), 100);
 
       // Console log kaldırıldı - performans için
 
@@ -652,7 +652,7 @@ const TransferPersonnelList = () => {
             showInfo={false}
           />
           <div className="text-xs text-gray-500 mt-1">
-            {record.okutmaPerformance || 0}% / {record.targetOkutma || 0} hedef
+            {record.okutmaPerformance || 0}%
           </div>
         </div>
       )

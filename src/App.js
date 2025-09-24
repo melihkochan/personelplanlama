@@ -1147,21 +1147,21 @@ function MainApp() {
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               </div>
 
-              {/* Aktarma Depo Alt Grubu */}
+              {/* Personel Yönetimi Alt Grubu */}
               <div className="ml-2">
                 <button
-                  onClick={() => toggleGroup('aktarma')}
+                  onClick={() => toggleGroup('personnel')}
                   className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
                 >
-                  {expandedGroups.aktarma ? (
+                  {expandedGroups.personnel ? (
                     <ChevronDown className="w-3 h-3 mr-1" />
                   ) : (
                     <ChevronRight className="w-3 h-3 mr-1" />
                   )}
-                  <span className="text-xs font-medium text-slate-400">Aktarma İşlemleri</span>
+                  <span className="text-xs font-medium text-slate-400">Personel Yönetimi</span>
                 </button>
                 
-                {expandedGroups.aktarma && (
+                {expandedGroups.personnel && (
                   <div className="ml-4 space-y-1 mt-1">
                     <button
                       onClick={() => handleTabChange('aktarma-personel-list')}
@@ -1180,12 +1180,55 @@ function MainApp() {
                       }`}>
                         <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-slate-400'}`} />
                       </div>
-                      <span className="flex-1 text-left">Aktarma Personel Listesi</span>
+                      <span className="flex-1 text-left">Personel Listesi</span>
                       {activeTab === 'aktarma-personel-list' && (
                         <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                       )}
                     </button>
 
+                    <button
+                      onClick={() => handleTabChange('aktarma-dagitim-analizi')}
+                      className={`
+                        w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                        ${activeTab === 'aktarma-dagitim-analizi'
+                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                        }
+                      `}
+                    >
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                        activeTab === 'aktarma-dagitim-analizi' 
+                          ? 'bg-white/20' 
+                          : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                      }`}>
+                        <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-slate-400'}`} />
+                      </div>
+                      <span className="flex-1 text-left">Aktarma Dağıtım Analizi</span>
+                      {activeTab === 'aktarma-dagitim-analizi' && (
+                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                      )}
+                    </button>
+
+                  </div>
+                )}
+              </div>
+
+              {/* Araç Yönetimi Alt Grubu */}
+              <div className="ml-2">
+                <button
+                  onClick={() => toggleGroup('vehicles')}
+                  className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                >
+                  {expandedGroups.vehicles ? (
+                    <ChevronDown className="w-3 h-3 mr-1" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3 mr-1" />
+                  )}
+                  <span className="text-xs font-medium text-slate-400">Araç Yönetimi</span>
+                </button>
+                
+                {expandedGroups.vehicles && (
+                  <div className="ml-4 space-y-1 mt-1">
                     <button
                       onClick={() => handleTabChange('aktarma-vehicle-list')}
                       className={`
@@ -1211,29 +1254,6 @@ function MainApp() {
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={() => handleTabChange('aktarma-dagitim-analizi')}
-                className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
-                  ${activeTab === 'aktarma-dagitim-analizi'
-                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                  }
-                `}
-              >
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'aktarma-dagitim-analizi' 
-                    ? 'bg-white/20' 
-                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
-                }`}>
-                  <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-slate-400'}`} />
-                </div>
-                <span className="flex-1 text-left">Aktarma Dağıtım Analizi</span>
-                {activeTab === 'aktarma-dagitim-analizi' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                )}
-              </button>
             </div>
 
             {/* TUZLA EKİP BİLGİLERİ Grubu */}

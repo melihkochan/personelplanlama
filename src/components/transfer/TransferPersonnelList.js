@@ -174,20 +174,28 @@ const TransferPersonnelList = () => {
       
       // Performans verilerini de yükle
       console.log('Performans verileri çekiliyor...');
-      const personnelWithPerformance = await Promise.all(
-        (data || []).map(async (person, index) => {
-          const progress = 20 + Math.round((index / data.length) * 70);
-          setLoadingProgress(progress);
-          setLoadingText(`${person.adi_soyadi} performans verisi çekiliyor... (${index + 1}/${data.length})`);
-          
-          console.log(`[${index + 1}/${data.length}] ${person.adi_soyadi} performans verisi çekiliyor...`);
-          const performanceData = await getPersonnelPerformance(person);
-          return {
-            ...person,
-            ...performanceData
-          };
-        })
-      );
+      const personnelWithPerformance = [];
+      
+      for (let index = 0; index < data.length; index++) {
+        const person = data[index];
+        const progress = 20 + Math.round((index / data.length) * 70);
+        setLoadingProgress(progress);
+        setLoadingText(`${person.adi_soyadi} performans verisi çekiliyor... (${index + 1}/${data.length})`);
+        
+        console.log(`[${index + 1}/${data.length}] ${person.adi_soyadi} performans verisi çekiliyor...`);
+        const performanceData = await getPersonnelPerformance(person);
+        
+        personnelWithPerformance.push({
+          ...person,
+          ...performanceData
+        });
+        
+        // Her 10 personel sonrası state'i güncelle
+        if ((index + 1) % 10 === 0 || index === data.length - 1) {
+          setPersonnelData([...personnelWithPerformance]);
+          setFilteredData([...personnelWithPerformance]);
+        }
+      }
       
       setLoadingProgress(95);
       setLoadingText('Veriler işleniyor...');

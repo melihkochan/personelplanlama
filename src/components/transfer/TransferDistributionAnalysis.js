@@ -99,7 +99,6 @@ const TransferDistributionAnalysis = () => {
       ];
 
       setAvailableMonths(monthList);
-      console.log('Mevcut aylar:', uniqueMonths);
     } catch (error) {
       console.error('Ay listesi yükleme hatası:', error);
     }
@@ -130,7 +129,6 @@ const TransferDistributionAnalysis = () => {
       ];
 
       setAvailableRegions(regionList);
-      console.log('Mevcut bölgeler:', uniqueRegions);
     } catch (error) {
       console.error('Bölge listesi yükleme hatası:', error);
     }
@@ -243,7 +241,6 @@ const TransferDistributionAnalysis = () => {
 
       setAvailableRegions(regionList);
 
-      console.log('Filtreler güncellendi - Aylar:', uniqueMonths, 'Bölgeler:', uniqueRegions);
     } catch (error) {
       console.error('Filtre güncelleme hatası:', error);
     }
@@ -461,7 +458,6 @@ const TransferDistributionAnalysis = () => {
               
               if (foundMonth && foundDay) {
                 tarih = new Date(`2025-${foundMonth}-${foundDay.toString().padStart(2, '0')}`);
-                console.log(`Sheet: ${sheetName} -> Tarih: 2025-${foundMonth}-${foundDay.toString().padStart(2, '0')}`);
               } else if (row['Çıkış Tarihi']) {
                 // Fallback: Excel'deki tarih
                 const tarihStr = row['Çıkış Tarihi'].toString();
@@ -469,7 +465,6 @@ const TransferDistributionAnalysis = () => {
                   const parts = tarihStr.split('.');
                   if (parts.length === 3) {
                     tarih = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
-                    console.log(`Excel tarih: ${tarihStr} -> ${tarih.toISOString().split('T')[0]}`);
                   }
                 }
               }
@@ -597,6 +592,49 @@ const TransferDistributionAnalysis = () => {
     
     reader.readAsArrayBuffer(file);
     return false;
+  };
+
+  // Rapor indirme fonksiyonu
+  const handleDownloadReport = async () => {
+    try {
+      if (!filteredData || filteredData.length === 0) {
+        message.warning('İndirilecek veri bulunamadı!');
+        return;
+      }
+
+      // Excel raporu oluştur
+      const worksheet = XLSX.utils.json_to_sheet(
+        filteredData.map(record => ({
+          'Tarih': record.tarih,
+          'Mağaza Kodu': record.magaza_kodu,
+          'Mağaza Adı': record.magaza_adi,
+          'Bölge': record.bolge,
+          'Toplam Kasa': record.toplam_kasa,
+          'Okutulan Kasa': record.okutulan_kasa,
+          'Okutulmayan Kasa': record.okutulmayan_kasa,
+          'Personel 1': record.sicil_no_personel1,
+          'Personel 2': record.sicil_no_personel2,
+          'Personel 3': record.sicil_no_personel3,
+          'Plaka': record.plaka,
+          'Ay': record.ay
+        }))
+      );
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Aktarma Dağıtım Analizi');
+
+      // Dosyayı indir
+      const monthText = selectedMonth === 'all' ? 'tum_aylar' : 
+        availableMonths.find(m => m.value === selectedMonth)?.label?.split(' ')[0] || selectedMonth;
+      const regionText = selectedRegion === 'all' ? 'tum_bolgeler' : selectedRegion;
+      const fileName = `aktarma_dagitim_analizi_${monthText}_${regionText}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      message.success('Rapor başarıyla indirildi!');
+    } catch (error) {
+      console.error('Rapor indirme hatası:', error);
+      message.error('Rapor indirilirken hata oluştu!');
+    }
   };
 
   // Bölge renkleri
@@ -1020,7 +1058,8 @@ const TransferDistributionAnalysis = () => {
             </Select>
             <Button 
               icon={<Download className="w-4 h-4" />}
-              className="h-12 bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
+              onClick={handleDownloadReport}
+              className="h-12 bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 text-white"
               size="large"
             >
               Rapor İndir

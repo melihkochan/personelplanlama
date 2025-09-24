@@ -81,7 +81,6 @@ const TransferPersonnelList = () => {
   // Mevcut ayları yükle - MANUEL + AKILLI
   const loadAvailableMonths = async () => {
     try {
-      console.log('=== AY LİSTESİ YÜKLENİYOR ===');
       
       // Manuel ay listesi - hızlı başlangıç
       const monthNames = {
@@ -110,7 +109,6 @@ const TransferPersonnelList = () => {
           return { month, count: 0 };
         }
         
-        console.log(`${month} ayı: ${count} kayıt`);
         return { month, count: count || 0 };
       });
       
@@ -121,7 +119,6 @@ const TransferPersonnelList = () => {
         monthCounts[month] = count;
       });
 
-      console.log('Ay bazında sayımlar:', monthCounts);
 
       const monthList = [
         { value: 'all', label: 'Tüm Aylar' },
@@ -131,7 +128,6 @@ const TransferPersonnelList = () => {
         }))
       ];
 
-      console.log('Oluşturulan ay listesi:', monthList);
       setAvailableMonths(monthList);
     } catch (error) {
       console.error('Ay listesi yükleme hatası:', error);
@@ -145,8 +141,6 @@ const TransferPersonnelList = () => {
     setLoadingText('Personel listesi çekiliyor...');
     
     try {
-      console.log('=== PERSONEL VERİLERİ YÜKLENİYOR ===');
-      console.log('Seçilen ay:', selectedMonth);
       
       const { data, error } = await supabase
         .from('aktarma_depo_personel')
@@ -155,11 +149,7 @@ const TransferPersonnelList = () => {
 
       if (error) throw error;
 
-      console.log('Çekilen personel sayısı:', data?.length);
-      console.log('İlk 3 personel:', data?.slice(0, 3));
-
       if (!data || data.length === 0) {
-        console.log('❌ Personel verisi bulunamadı!');
         setPersonnelData([]);
         setFilteredData([]);
         return;
@@ -202,8 +192,6 @@ const TransferPersonnelList = () => {
       setLoadingProgress(95);
       setLoadingText('Veriler işleniyor...');
       
-      console.log('✅ Performans verileri ile birlikte personel sayısı:', personnelWithPerformance.length);
-      console.log('İlk personel performans örneği:', personnelWithPerformance[0]);
       
       setPersonnelData(personnelWithPerformance);
       setFilteredData(personnelWithPerformance);
@@ -223,7 +211,6 @@ const TransferPersonnelList = () => {
         setLoadingProgress(0);
         setLoadingText('');
       }, 500);
-      console.log('=== PERSONEL VERİLERİ YÜKLEME TAMAMLANDI ===');
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
@@ -10,6 +10,7 @@ import StoreList from './components/stores/StoreList';
 import StoreDistanceCalculator from './components/stores/StoreDistanceCalculator';
 import StoreDifficultyManager from './components/stores/StoreDifficultyManager';
 import TransferPersonnelList from './components/transfer/TransferPersonnelList';
+import TransferPersonnelMagazaZorluk from './components/transfer/TransferPersonnelMagazaZorluk';
 import TransferDistributionAnalysis from './components/transfer/TransferDistributionAnalysis';
 import TransferVehicleList from './components/transfer/TransferVehicleList';
 import VardiyaPlanlama from './components/timesheet/VardiyaPlanlama';
@@ -1205,6 +1206,29 @@ function MainApp() {
                 </div>
                       <span className="flex-1 text-left">Mağaza Detaylı Dağıtım Analizi</span>
                 {activeTab === 'aktarma-dagitim-analizi' && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
+                )}
+              </button>
+
+              <button
+                onClick={() => handleTabChange('aktarma-personel-magaza-zorluk')}
+                className={`
+                  w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
+                  ${activeTab === 'aktarma-personel-magaza-zorluk'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }
+                `}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'aktarma-personel-magaza-zorluk' 
+                    ? 'bg-white/20' 
+                    : 'bg-slate-700/50 group-hover:bg-slate-600/50'
+                }`}>
+                  <AlertTriangle className={`w-3 h-3 ${activeTab === 'aktarma-personel-magaza-zorluk' ? 'text-white' : 'text-slate-400'}`} />
+                </div>
+                      <span className="flex-1 text-left">Aktarma Personel Mağaza Zorluk Kontrol</span>
+                {activeTab === 'aktarma-personel-magaza-zorluk' && (
                   <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
                 )}
               </button>
@@ -2493,6 +2517,11 @@ function MainApp() {
             {/* Aktarma Dağıtım Analizi */}
             {activeTab === 'aktarma-dagitim-analizi' && (
               <TransferDistributionAnalysis />
+            )}
+
+            {/* Aktarma Personel Mağaza Zorluk Kontrol */}
+            {activeTab === 'aktarma-personel-magaza-zorluk' && (
+              <TransferPersonnelMagazaZorluk />
             )}
 
             {/* Araç Listesi */}

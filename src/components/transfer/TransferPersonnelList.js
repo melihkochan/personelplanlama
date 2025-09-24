@@ -74,36 +74,15 @@ const TransferPersonnelList = () => {
 
   // Ay değiştiğinde verileri yeniden yükle
   useEffect(() => {
-    if (selectedMonth !== 'all') {
-      loadPersonnelData();
-    }
+    loadPersonnelData(); // Tüm aylar dahil her durumda yükle
   }, [selectedMonth]);
 
-  // Mevcut ayları yükle - OPTIMIZED
+  // Mevcut ayları yükle - MANUEL + AKILLI
   const loadAvailableMonths = async () => {
     try {
       console.log('=== AY LİSTESİ YÜKLENİYOR ===');
       
-      // Tek sorguda tüm ay verilerini çek
-      const { data: monthData, error } = await supabase
-        .from('aktarma_dagitim_verileri')
-        .select('ay')
-        .not('ay', 'is', null);
-
-      if (error) throw error;
-
-      console.log('Çekilen ay verileri:', monthData?.length, 'kayıt');
-
-      // Client-side'da benzersiz ayları ve sayımları hesapla
-      const monthCounts = {};
-      monthData?.forEach(item => {
-        if (item.ay) {
-          monthCounts[item.ay] = (monthCounts[item.ay] || 0) + 1;
-        }
-      });
-
-      console.log('Ay bazında sayımlar:', monthCounts);
-
+      // Manuel ay listesi - hızlı başlangıç
       const monthNames = {
         '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
         '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
@@ -113,11 +92,41 @@ const TransferPersonnelList = () => {
         '9': 'Eylül'
       };
 
+      // Mevcut aylar (veritabanında olan aylar)
+      const availableMonths = ['01', '02', '03', '04', '05', '06', '07', '08', '09'];
+      
+      // Her ay için sayım yap - paralel olarak
+      const monthCounts = {};
+      
+      const countPromises = availableMonths.map(async (month) => {
+        const { count, error } = await supabase
+          .from('aktarma_dagitim_verileri')
+          .select('*', { count: 'exact', head: true })
+          .eq('ay', month);
+        
+        if (error) {
+          console.error(`${month} ayı için sayım hatası:`, error);
+          return { month, count: 0 };
+        }
+        
+        console.log(`${month} ayı: ${count} kayıt`);
+        return { month, count: count || 0 };
+      });
+      
+      const results = await Promise.all(countPromises);
+      
+      // Sonuçları işle
+      results.forEach(({ month, count }) => {
+        monthCounts[month] = count;
+      });
+
+      console.log('Ay bazında sayımlar:', monthCounts);
+
       const monthList = [
         { value: 'all', label: 'Tüm Aylar' },
-        ...Object.keys(monthCounts).sort().map(month => ({
+        ...availableMonths.map(month => ({
           value: month,
-          label: `${monthNames[month] || month} (${monthCounts[month].toLocaleString('tr-TR')} kayıt)`
+          label: `${monthNames[month]} (${monthCounts[month]?.toLocaleString('tr-TR') || 0} kayıt)`
         }))
       ];
 
@@ -220,11 +229,12 @@ const TransferPersonnelList = () => {
   // Personel performans verilerini çek (gerçek kasa verileri ile)
   const getPersonnelPerformance = async (person) => {
     try {
-      // Sadece gerekli alanları çek - ÇOK DAHA HIZLI!
+      // Sadece gerekli alanları çek - TÜM VERİLERİ ÇEK!
       let query = supabase
         .from('aktarma_dagitim_verileri')
         .select('toplam_kasa, okutulan_kasa, okutulmayan_kasa, ay')
-        .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`);
+        .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`)
+        .limit(1000000); // Tüm verileri çek
       
       if (selectedMonth !== 'all') {
         query = query.eq('ay', selectedMonth);

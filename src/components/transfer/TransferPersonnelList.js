@@ -172,29 +172,35 @@ const TransferPersonnelList = () => {
       setLoadingProgress(20);
       setLoadingText('Performans verileri çekiliyor...');
       
-      // Performans verilerini de yükle
-      console.log('Performans verileri çekiliyor...');
+      // Performans verilerini PARALEL yükle - ÇOK DAHA HIZLI!
+      setLoadingText('Performans verileri paralel olarak çekiliyor...');
+      
+      // 10'lu gruplar halinde paralel işle
+      const batchSize = 10;
       const personnelWithPerformance = [];
       
-      for (let index = 0; index < data.length; index++) {
-        const person = data[index];
-        const progress = 20 + Math.round((index / data.length) * 70);
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        const progress = 20 + Math.round((i / data.length) * 70);
         setLoadingProgress(progress);
-        setLoadingText(`${person.adi_soyadi} performans verisi çekiliyor... (${index + 1}/${data.length})`);
+        setLoadingText(`Performans verileri çekiliyor... (${i + 1}-${Math.min(i + batchSize, data.length)}/${data.length})`);
         
-        console.log(`[${index + 1}/${data.length}] ${person.adi_soyadi} performans verisi çekiliyor...`);
-        const performanceData = await getPersonnelPerformance(person);
+        // Bu batch'i paralel işle
+        const batchResults = await Promise.all(
+          batch.map(person => getPersonnelPerformance(person))
+        );
         
-        personnelWithPerformance.push({
-          ...person,
-          ...performanceData
+        // Sonuçları birleştir
+        batch.forEach((person, index) => {
+          personnelWithPerformance.push({
+            ...person,
+            ...batchResults[index]
+          });
         });
         
-        // Her 10 personel sonrası state'i güncelle
-        if ((index + 1) % 10 === 0 || index === data.length - 1) {
-          setPersonnelData([...personnelWithPerformance]);
-          setFilteredData([...personnelWithPerformance]);
-        }
+        // State'i güncelle
+        setPersonnelData([...personnelWithPerformance]);
+        setFilteredData([...personnelWithPerformance]);
       }
       
       setLoadingProgress(95);
@@ -228,60 +234,18 @@ const TransferPersonnelList = () => {
   // Personel performans verilerini çek (gerçek kasa verileri ile)
   const getPersonnelPerformance = async (person) => {
     try {
-      console.log(`${person.adi_soyadi} (${person.sicil_no}) için performans verisi çekiliyor...`);
-
-      // Önce toplam kayıt sayısını kontrol et
-      let countQuery = supabase
+      // Sadece gerekli alanları çek - ÇOK DAHA HIZLI!
+      let query = supabase
         .from('aktarma_dagitim_verileri')
-        .select('*', { count: 'exact', head: true })
+        .select('toplam_kasa, okutulan_kasa, okutulmayan_kasa, ay')
         .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`);
       
       if (selectedMonth !== 'all') {
-        countQuery = countQuery.eq('ay', selectedMonth);
+        query = query.eq('ay', selectedMonth);
       }
 
-      const { count, error: countError } = await countQuery;
-      if (countError) throw countError;
-
-      console.log(`${person.adi_soyadi} için toplam kayıt sayısı:`, count);
-
-      // Tüm verileri çek - sayfa sayfa (pagination)
-      let allData = [];
-      let from = 0;
-      const pageSize = 1000;
-      
-      while (true) {
-        let query = supabase
-          .from('aktarma_dagitim_verileri')
-          .select('*')
-          .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`)
-          .range(from, from + pageSize - 1);
-        
-        // Ay filtresi uygula
-        if (selectedMonth !== 'all') {
-          query = query.eq('ay', selectedMonth);
-        }
-        
-        const { data: pageData, error } = await query;
-        
-        if (error) throw error;
-        
-        if (!pageData || pageData.length === 0) {
-          break; // Daha fazla veri yok
-        }
-        
-        allData = [...allData, ...pageData];
-        from += pageSize;
-        
-        // Eğer sayfa tam dolu değilse, son sayfa demektir
-        if (pageData.length < pageSize) {
-          break;
-        }
-      }
-      
-      const distributionData = allData;
-
-      console.log(`${person.adi_soyadi} için çekilen kayıt sayısı:`, distributionData?.length);
+      const { data: distributionData, error } = await query;
+      if (error) throw error;
 
       // Bu personelin gerçek kasa verileri
       const totalKasa = distributionData?.reduce((sum, item) => sum + (item.toplam_kasa || 0), 0) || 0;
@@ -314,16 +278,7 @@ const TransferPersonnelList = () => {
       const paletPerformance = targetPalet > 0 ? Math.round((totalPalet / targetPalet) * 100) : 0;
       const okutmaPerformance = targetOkutma > 0 ? Math.round((totalOkutma / targetOkutma) * 100) : 0;
 
-      console.log(`${person.adi_soyadi} performans:`, {
-        totalKasa,
-        okutulanKasa,
-        okutulmayanKasa,
-        totalPalet,
-        totalOkutma,
-        kasaPerformance,
-        paletPerformance,
-        okutmaPerformance
-      });
+      // Console log kaldırıldı - performans için
 
       return {
         totalKasa,

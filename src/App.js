@@ -1158,7 +1158,7 @@ function MainApp() {
                   ) : (
                     <ChevronRight className="w-3 h-3 mr-1" />
                   )}
-                  <span className="text-xs font-medium text-slate-400">Personel Yönetimi</span>
+                  <span className="text-xs font-medium text-slate-400">Personel ve Mağaza Yönetimi</span>
                 </button>
                 
                 {expandedGroups.personnel && (

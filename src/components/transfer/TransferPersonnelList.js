@@ -266,31 +266,12 @@ const TransferPersonnelList = () => {
       // Okutma sayısı - kayıt sayısı
       const totalOkutma = distributionData?.length || 0;
       
-      // Hedef performans (seçilen ay veya tüm aylar için)
-      let workingDays;
-      if (selectedMonth !== 'all') {
-        // Tek ay için
-        workingDays = 30; // 1 ay × 30 gün
-      } else {
-        // Tüm aylar için - mevcut ayların sayısını kullan
-        const uniqueMonths = [...new Set(distributionData?.map(item => item.ay).filter(Boolean))];
-        workingDays = uniqueMonths.length * 30; // Ay sayısı × 30 gün
-      }
-      
-      const targetKasa = workingDays * 50; // Günde 50 kasa hedefi
-      const targetPalet = workingDays * 5; // Günde 5 palet hedefi
-      const targetOkutma = workingDays * 30; // Günde 30 okutma hedefi
-
-      // Performans yüzdesi
-      const kasaPerformance = targetKasa > 0 ? Math.round((totalKasa / targetKasa) * 100) : 0;
-      const paletPerformance = targetPalet > 0 ? Math.round((totalPalet / targetPalet) * 100) : 0;
-      
-      // OKUTMA PERFORMANSI - Gerçek dağıtılan kasa sayısına göre hesapla
+      // OKUTMA PERFORMANSI - Sadece okutma oranına göre hesapla
       // Okutulan kasa / Toplam dağıtılan kasa * 100 (maksimum %100)
       const okutmaPerformance = totalKasa > 0 ? Math.min(Math.round((okutulanKasa / totalKasa) * 100), 100) : 0;
 
-      // GENEL PERFORMANS - Kasa, Palet ve Okutma performansının ortalaması (maksimum %100)
-      const generalPerformance = Math.min(Math.round((kasaPerformance + paletPerformance + okutmaPerformance) / 3), 100);
+      // GENEL PERFORMANS - Sadece okutma performansı (hedef yok, sadece kalite)
+      const generalPerformance = okutmaPerformance;
 
       // Console log kaldırıldı - performans için
 
@@ -300,11 +281,6 @@ const TransferPersonnelList = () => {
         totalOkutma,
         okutulanKasa,
         okutulmayanKasa,
-        targetKasa,
-        targetPalet,
-        targetOkutma,
-        kasaPerformance,
-        paletPerformance,
         okutmaPerformance,
         generalPerformance,
         distributionData: distributionData || []
@@ -317,11 +293,6 @@ const TransferPersonnelList = () => {
         totalOkutma: 0,
         okutulanKasa: 0,
         okutulmayanKasa: 0,
-        targetKasa: 0,
-        targetPalet: 0,
-        targetOkutma: 0,
-        kasaPerformance: 0,
-        paletPerformance: 0,
         okutmaPerformance: 0,
         generalPerformance: 0,
         distributionData: []
@@ -508,7 +479,7 @@ const TransferPersonnelList = () => {
       width: 80,
       sorter: (a, b) => (a.sicil_no || '').localeCompare(b.sicil_no || ''),
       render: (text) => (
-        <span className="font-mono text-xs font-semibold text-gray-800">
+        <span className="font-mono text-sm font-bold text-gray-800">
           {text || 'N/A'}
         </span>
       )
@@ -522,12 +493,12 @@ const TransferPersonnelList = () => {
       render: (text, record) => (
         <div className="flex items-center space-x-2">
           <Avatar 
-            size={24} 
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-xs"
+            size={28} 
+            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-sm"
           >
             {text ? text.split(' ').map(n => n[0]).join('') : '??'}
           </Avatar>
-          <span className="font-semibold text-xs text-gray-800">{text || 'Bilinmeyen'}</span>
+          <span className="font-bold text-base text-gray-800">{text || 'Bilinmeyen'}</span>
         </div>
       )
     },
@@ -544,7 +515,7 @@ const TransferPersonnelList = () => {
         const colors = getPositionColor(text);
         return (
           <span 
-            className="text-xs font-medium px-2 py-1 rounded-full border"
+            className="text-sm font-bold px-3 py-1.5 rounded-full border"
             style={{ 
               backgroundColor: colors.bg, 
               color: colors.text, 
@@ -566,7 +537,7 @@ const TransferPersonnelList = () => {
         .map(bolge => ({ text: bolge, value: bolge })),
       onFilter: (value, record) => record.bolge === value,
       render: (text) => (
-        <Tag color={getRegionColor(text)} className="font-medium text-xs">
+        <Tag color={getRegionColor(text)} className="font-bold text-sm">
           {text || 'Bilinmeyen'}
         </Tag>
       )
@@ -585,10 +556,10 @@ const TransferPersonnelList = () => {
         return (
           <div className="text-center">
             <div className="flex items-center justify-center mb-1">
-              <Package className={`w-4 h-4 ${iconColor} mr-2`} />
-              <span className={`font-bold text-lg ${color}`}>{totalKasa.toLocaleString('tr-TR')}</span>
+              <Package className={`w-5 h-5 ${iconColor} mr-2`} />
+              <span className={`font-bold text-xl ${color}`}>{totalKasa.toLocaleString('tr-TR')}</span>
             </div>
-            <div className="text-xs text-gray-600">
+            <div className="text-sm text-gray-600">
               <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
               <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
             </div>
@@ -610,8 +581,8 @@ const TransferPersonnelList = () => {
         return (
           <div className="text-center">
             <div className="flex items-center justify-center">
-              <Truck className={`w-4 h-4 ${iconColor} mr-2`} />
-              <span className={`font-bold text-lg ${color}`}>{totalPalet.toLocaleString('tr-TR')}</span>
+              <Truck className={`w-5 h-5 ${iconColor} mr-2`} />
+              <span className={`font-bold text-xl ${color}`}>{totalPalet.toLocaleString('tr-TR')}</span>
             </div>
           </div>
         );
@@ -625,10 +596,10 @@ const TransferPersonnelList = () => {
       render: (_, record) => (
         <div className="text-center">
           <div className="flex items-center justify-center mb-1">
-            <CheckCircle className="w-3 h-3 text-purple-600 mr-1" />
-            <span className="font-bold text-sm text-purple-600">{record.totalOkutma || 0}</span>
+            <CheckCircle className="w-4 h-4 text-purple-600 mr-1" />
+            <span className="font-bold text-base text-purple-600">{record.totalOkutma || 0}</span>
           </div>
-          <div className="text-xs text-gray-600 mb-1">
+          <div className="text-sm text-gray-600 mb-1">
             <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
             <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
           </div>
@@ -638,7 +609,7 @@ const TransferPersonnelList = () => {
             strokeColor={(record.okutmaPerformance || 0) > 100 ? '#52c41a' : (record.okutmaPerformance || 0) > 80 ? '#1890ff' : '#faad14'}
             showInfo={false}
           />
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-sm text-gray-500 mt-1">
             {record.okutmaPerformance || 0}%
           </div>
         </div>
@@ -653,17 +624,17 @@ const TransferPersonnelList = () => {
         const generalPerformance = record.generalPerformance || 0;
         return (
           <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">Ortalama</div>
+            <div className="text-sm text-gray-500 mb-1">Ortalama</div>
             <Progress 
               percent={generalPerformance} 
               size="small" 
               strokeColor={generalPerformance > 100 ? '#52c41a' : generalPerformance > 80 ? '#1890ff' : '#faad14'}
             />
-            <div className="text-xs mt-1">
+            <div className="text-sm mt-1">
               {generalPerformance > 80 ? (
-                <TrendingUp className="w-3 h-3 text-green-500 inline mr-1" />
+                <TrendingUp className="w-4 h-4 text-green-500 inline mr-1" />
               ) : (
-                <TrendingDown className="w-3 h-3 text-orange-500 inline mr-1" />
+                <TrendingDown className="w-4 h-4 text-orange-500 inline mr-1" />
               )}
               <span className={generalPerformance > 80 ? 'text-green-500' : 'text-orange-500'}>
                 {generalPerformance}%
@@ -683,7 +654,7 @@ const TransferPersonnelList = () => {
           <Tooltip title="Düzenle">
             <Button 
               type="text" 
-              icon={<Edit className="w-4 h-4" />}
+              icon={<Edit className="w-5 h-5" />}
               onClick={() => handleEdit(record)}
               className="text-blue-600 hover:bg-blue-50"
             />
@@ -692,7 +663,7 @@ const TransferPersonnelList = () => {
             <Button 
               type="text" 
               danger
-              icon={<Trash2 className="w-4 h-4" />}
+              icon={<Trash2 className="w-5 h-5" />}
               onClick={() => handleDelete(record.id)}
               className="hover:bg-red-50"
             />
@@ -1164,11 +1135,11 @@ const styles = `
   .modern-table .ant-table-thead > tr > th {
     background: #ffffff;
     color: #374151;
-    font-weight: 600;
+    font-weight: 700;
     border: 1px solid #e5e7eb;
     text-align: center;
-    font-size: 14px;
-    padding: 16px 12px;
+    font-size: 16px;
+    padding: 12px 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
@@ -1179,6 +1150,11 @@ const styles = `
   
   .modern-table .ant-table-tbody > tr:hover > td {
     background-color: #f8fafc !important;
+  }
+  
+  .modern-table .ant-table-tbody > tr > td {
+    padding: 8px 12px !important;
+    vertical-align: middle;
   }
   
   .active-row {

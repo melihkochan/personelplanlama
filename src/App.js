@@ -35,8 +35,9 @@ import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { getVersionInfo } from './config/version';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, supabase } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, supabase, avatarService, getUserProfile, updateUserProfile } from './services/supabase';
 import { getPendingRegistrationsCount } from './services/supabase';
+import ModernAvatarUpload from './components/ui/ModernAvatarUpload';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -59,8 +60,48 @@ function MainApp() {
   const [currentShiftData, setCurrentShiftData] = useState([]);
   const [userRole, setUserRole] = useState('user');
   const [userDetails, setUserDetails] = useState(null);
+  const [userAvatar, setUserAvatar] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [userRoleLoading, setUserRoleLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Avatar yükleme fonksiyonu
+  const handleAvatarUpload = async (file) => {
+    if (!file || !user) return;
+    
+    setUploadingAvatar(true);
+    try {
+      const result = await avatarService.uploadAvatar(file, user.id);
+      if (result.success) {
+        // Avatar URL'ini güncelle
+        setUserAvatar(result.url);
+        
+        // Veritabanında avatar_url'i güncelle
+        await updateUserProfile(user.id, { avatar_url: result.path });
+        
+        // User details'i güncelle
+        setUserDetails(prev => ({
+          ...prev,
+          avatar_url: result.path
+        }));
+        
+        alert('Avatar başarıyla yüklendi!');
+        
+        // Sayfayı yenile (avatar'ın görünmesi için)
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        alert('Avatar yüklenirken hata oluştu: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      alert('Avatar yüklenirken hata oluştu!');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
   
   // Güncel veriler için state'ler
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -79,9 +120,9 @@ function MainApp() {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        // OpenWeatherMap API kullanarak İstanbul hava durumu
+        // Open-Meteo API kullanarak İstanbul hava durumu
         const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/forecast?q=Istanbul,TR&appid=demo&units=metric&lang=tr&cnt=40`
+          `https://api.open-meteo.com/v1/forecast?latitude=41.0138&longitude=28.9497&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe/Istanbul&forecast_days=7`
         );
         if (response.ok) {
           const data = await response.json();
@@ -91,15 +132,35 @@ function MainApp() {
         console.log('Hava durumu API hatası:', error);
         // Fallback veri
         setWeatherData({
-          list: [
-            { main: { temp: 22, humidity: 65 }, wind: { speed: 8 }, weather: [{ description: 'güneşli', icon: '01d' }], dt_txt: new Date().toISOString() },
-            { main: { temp: 21, humidity: 70 }, wind: { speed: 10 }, weather: [{ description: 'parçalı bulutlu', icon: '02d' }], dt_txt: new Date(Date.now() + 86400000).toISOString() },
-            { main: { temp: 20, humidity: 75 }, wind: { speed: 12 }, weather: [{ description: 'bulutlu', icon: '03d' }], dt_txt: new Date(Date.now() + 172800000).toISOString() },
-            { main: { temp: 19, humidity: 80 }, wind: { speed: 15 }, weather: [{ description: 'yağmurlu', icon: '10d' }], dt_txt: new Date(Date.now() + 259200000).toISOString() },
-            { main: { temp: 20, humidity: 70 }, wind: { speed: 10 }, weather: [{ description: 'güneşli', icon: '01d' }], dt_txt: new Date(Date.now() + 345600000).toISOString() },
-            { main: { temp: 20, humidity: 75 }, wind: { speed: 12 }, weather: [{ description: 'yağmurlu', icon: '10d' }], dt_txt: new Date(Date.now() + 432000000).toISOString() },
-            { main: { temp: 20, humidity: 70 }, wind: { speed: 10 }, weather: [{ description: 'yağmurlu', icon: '10d' }], dt_txt: new Date(Date.now() + 518400000).toISOString() }
-          ]
+          hourly: {
+            time: [
+              new Date().toISOString(),
+              new Date(Date.now() + 3600000).toISOString(),
+              new Date(Date.now() + 7200000).toISOString(),
+              new Date(Date.now() + 10800000).toISOString(),
+              new Date(Date.now() + 14400000).toISOString(),
+              new Date(Date.now() + 18000000).toISOString(),
+              new Date(Date.now() + 21600000).toISOString()
+            ],
+            temperature_2m: [22, 21, 20, 19, 18, 17, 16],
+            relative_humidity_2m: [65, 70, 75, 80, 85, 90, 95],
+            wind_speed_10m: [8, 10, 12, 15, 18, 20, 22],
+            weather_code: [0, 1, 2, 3, 45, 48, 51]
+          },
+          daily: {
+            time: [
+              new Date().toISOString().split('T')[0],
+              new Date(Date.now() + 86400000).toISOString().split('T')[0],
+              new Date(Date.now() + 172800000).toISOString().split('T')[0],
+              new Date(Date.now() + 259200000).toISOString().split('T')[0],
+              new Date(Date.now() + 345600000).toISOString().split('T')[0],
+              new Date(Date.now() + 432000000).toISOString().split('T')[0],
+              new Date(Date.now() + 518400000).toISOString().split('T')[0]
+            ],
+            weather_code: [0, 1, 2, 3, 45, 48, 51],
+            temperature_2m_max: [25, 24, 23, 22, 21, 20, 19],
+            temperature_2m_min: [18, 17, 16, 15, 14, 13, 12]
+          }
         });
       }
     };
@@ -207,6 +268,12 @@ function MainApp() {
           const userDetailsResult = await getUserDetails(user.id, user.email);
           if (userDetailsResult.success && userDetailsResult.data) {
             setUserDetails(userDetailsResult.data);
+            
+            // Avatar URL'ini ayarla
+            if (userDetailsResult.data.avatar_url) {
+              const avatarUrl = avatarService.getAvatarUrl(userDetailsResult.data.avatar_url);
+              setUserAvatar(avatarUrl);
+            }
           } else {
             // Eğer veritabanında bulunamazsa, user metadata'sını kullan
             setUserDetails({
@@ -2235,8 +2302,8 @@ function MainApp() {
                               <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
                                 <span className="text-2xl font-bold text-white">
                                   {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                                </span>
-                              </div>
+                          </span>
+                        </div>
                               {/* Online indicator */}
                               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
                                 <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
@@ -2260,10 +2327,10 @@ function MainApp() {
                                 })()}
                                 ,{' '}
                                 <span className="bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
-                                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
-                                </span>
-                                !
-                              </h1>
+                            {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
+                          </span>
+                          !
+                        </h1>
                             </div>
                           </div>
                           
@@ -2283,7 +2350,7 @@ function MainApp() {
                                 }
                               })()}
                             </p>
-                          </div>
+                      </div>
                         </div>
                         
                       </div>
@@ -3080,6 +3147,69 @@ function MainApp() {
             </div>
             <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
               <RulesApp currentUser={user} />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Profil Ayarları Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4 relative">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Profil Ayarları</h3>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Modern Avatar Yükleme */}
+              <ModernAvatarUpload
+                currentAvatar={userAvatar}
+                onUpload={handleAvatarUpload}
+                onCancel={() => {}} // Modal'ı kapatma, sadece dosya seçimini iptal et
+                uploading={uploadingAvatar}
+                maxSize={5 * 1024 * 1024} // 5MB
+                acceptedTypes={['image/jpeg', 'image/png', 'image/webp', 'image/gif']}
+              />
+
+              {/* Kullanıcı Bilgileri */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label>
+                  <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900">
+                    {userDetails?.full_name || user?.user_metadata?.full_name || 'Bilgi yok'}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900">
+                    {user?.email || 'Bilgi yok'}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                  <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900">
+                    {userDetails?.role === 'admin' ? '👑 Admin' : 
+                     userDetails?.role === 'yönetici' ? '⭐ Yönetici' : 
+                     '👤 Kullanıcı'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Kapat
+              </button>
             </div>
           </div>
         </div>

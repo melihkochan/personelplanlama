@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText, RefreshCw, UserPlus, MessageCircle, UserCheck } from 'lucide-react';
-import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, deletePuantajData, getAuditLogs, getAuditLogStats, getPendingRegistrations, getPendingRegistrationsCount, approveRegistration, rejectRegistration, supabase } from '../../services/supabase';
+import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, deletePuantajData, getAuditLogs, getAuditLogStats, getPendingRegistrations, getPendingRegistrationsCount, approveRegistration, rejectRegistration, supabase, avatarService, updateUserProfile } from '../../services/supabase';
+import ModernAvatarUpload from '../ui/ModernAvatarUpload';
 import * as XLSX from 'xlsx';
 
 const AdminPanel = ({ userRole, currentUser }) => {
@@ -52,6 +53,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
   const [pendingRegistrations, setPendingRegistrations] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loadingPendingRegistrations, setLoadingPendingRegistrations] = useState(false);
+
+  // Avatar modal state'i - global
+  const [anyAvatarModalOpen, setAnyAvatarModalOpen] = useState(false);
 
 
   // Mevcut kullanıcının email'ini al
@@ -129,9 +133,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
     }
   }, [activeSection]);
 
-  // Real-time users güncelleme
+  // Real-time users güncelleme - sadece "Kullanıcılar" tab'ında aktif ve modal açık değilse
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id || activeSection !== 'users') return;
 
     const subscription = supabase
       .channel('users_updates')
@@ -142,9 +146,10 @@ const AdminPanel = ({ userRole, currentUser }) => {
           table: 'users'
         },
         (payload) => {
-          // Sadece online status değişikliklerini dinle
-          if (payload.new.is_online !== payload.old.is_online || 
-              payload.new.last_seen !== payload.old.last_seen) {
+          // Sadece online status değişikliklerini dinle ve modal açık değilse
+          if ((payload.new.is_online !== payload.old.is_online || 
+              payload.new.last_seen !== payload.old.last_seen) &&
+              !anyAvatarModalOpen) {
             loadUsers(); // Kullanıcı listesini yenile
           }
         }
@@ -156,7 +161,10 @@ const AdminPanel = ({ userRole, currentUser }) => {
           table: 'users'
         },
         (payload) => {
-          loadUsers(); // Kullanıcı listesini yenile
+          // Modal açık değilse yenile
+          if (!anyAvatarModalOpen) {
+            loadUsers(); // Kullanıcı listesini yenile
+          }
         }
       )
       .subscribe();
@@ -164,7 +172,7 @@ const AdminPanel = ({ userRole, currentUser }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, activeSection, anyAvatarModalOpen]);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -595,6 +603,16 @@ Devam etmek istediğinizden emin misiniz?`;
   };
 
   const UserCard = ({ user }) => {
+    const [userAvatar, setUserAvatar] = useState(null);
+
+    // Avatar URL'ini al
+    useEffect(() => {
+      if (user.avatar_url) {
+        const avatarUrl = avatarService.getAvatarUrl(user.avatar_url);
+        setUserAvatar(avatarUrl);
+      }
+    }, [user.avatar_url]);
+
     const getInitials = (name) => {
       if (!name) return 'K';
       const words = name.split(' ');
@@ -630,8 +648,27 @@ Devam etmek istediğinizden emin misiniz?`;
       <div className={`group bg-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col ${getCardBorder(user.role)}`}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base shadow-md ${getAvatarColor(user.role)}`}>
-              {getInitials(user.full_name || user.username)}
+            <div className="relative">
+              {userAvatar ? (
+                <div className="w-12 h-12 rounded-full overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <img 
+                    src={userAvatar} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                  <div className={`w-full h-full flex items-center justify-center text-white font-bold text-base ${getAvatarColor(user.role)}`} style={{display: 'none'}}>
+                    {getInitials(user.full_name || user.username)}
+                  </div>
+                </div>
+              ) : (
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 ${getAvatarColor(user.role)}`}>
+                  {getInitials(user.full_name || user.username)}
+                </div>
+              )}
             </div>
             <div>
               <h3 className="font-bold text-gray-900 text-base">{user.full_name || user.username || 'Kullanıcı'}</h3>
@@ -695,9 +732,11 @@ Devam etmek istediğinizden emin misiniz?`;
             </button>
           )}
         </div>
+        
       </div>
     );
   };
+
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
@@ -1481,6 +1520,13 @@ Devam etmek istediğinizden emin misiniz?`;
                 onClick={setActiveSection}
               />
               <MenuButton
+                id="avatar-management"
+                icon={Upload}
+                label="Görsel Düzenleme"
+                active={activeSection === 'avatar-management'}
+                onClick={setActiveSection}
+              />
+              <MenuButton
                 id="settings"
                 icon={Settings}
                 label="Ayarlar"
@@ -1559,6 +1605,7 @@ Devam etmek istediğinizden emin misiniz?`;
                   )}
                 </div>
               )}
+              {activeSection === 'avatar-management' && <AvatarManagementSection />}
               {activeSection === 'settings' && <SettingsSection />}
               {activeSection === 'database' && <DatabaseSection />}
               {activeSection === 'audit_logs' && <AuditLogsSection />}
@@ -1833,6 +1880,262 @@ Devam etmek istediğinizden emin misiniz?`;
 
 
 
+    </div>
+  );
+};
+
+
+// Avatar Yönetimi Section Component
+const AvatarManagementSection = () => {
+  const [userSettings, setUserSettings] = useState([]);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [userAvatar, setUserAvatar] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Kullanıcı ayarlarını yükle - sadece bir kez
+  const loadUserSettings = async () => {
+    if (userSettings.length > 0) return; // Zaten yüklenmişse tekrar yükleme
+    
+    setLoadingSettings(true);
+    try {
+      const result = await getAllUsers();
+      if (result.success) {
+        setUserSettings(result.data);
+      } else {
+        console.error('Kullanıcı ayarları yüklenemedi:', result.error);
+      }
+    } catch (error) {
+      console.error('Kullanıcı ayarları yükleme hatası:', error);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  // Avatar yükleme fonksiyonu
+  const handleAvatarUpload = async (file) => {
+    if (!file || !selectedUser) return;
+    
+    setUploadingAvatar(true);
+    try {
+      const result = await avatarService.uploadAvatar(file, selectedUser.id);
+      if (result.success) {
+        // Avatar URL'ini güncelle
+        setUserAvatar(result.url);
+        
+        // Veritabanında avatar_url'i güncelle
+        await updateUserProfile(selectedUser.id, { avatar_url: result.path });
+        
+        alert('Avatar başarıyla yüklendi!');
+        
+        // Modal'ı kapat
+        setShowAvatarModal(false);
+        setSelectedUser(null);
+        
+        // Kullanıcı listesini yenile
+        loadUserSettings();
+        
+        // Sayfayı yenile (avatar'ın görünmesi için)
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        alert('Avatar yüklenirken hata oluştu: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      alert('Avatar yüklenirken hata oluştu!');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // Avatar modal'ını aç
+  const openAvatarModal = (user) => {
+    setSelectedUser(user);
+    if (user.avatar_url) {
+      const avatarUrl = avatarService.getAvatarUrl(user.avatar_url);
+      setUserAvatar(avatarUrl);
+    } else {
+      setUserAvatar(null);
+    }
+    setShowAvatarModal(true);
+  };
+
+  useEffect(() => {
+    loadUserSettings();
+  }, []); // Sadece component mount olduğunda çalışır
+
+  const getInitials = (name) => {
+    if (!name) return 'K';
+    const words = name.split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name[0].toUpperCase();
+  };
+
+  const getAvatarColor = (role) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-gradient-to-br from-red-500 to-red-600';
+      case 'yönetici':
+        return 'bg-gradient-to-br from-purple-500 to-purple-600';
+      case 'kullanıcı':
+        return 'bg-gradient-to-br from-blue-500 to-blue-600';
+      default:
+        return 'bg-gradient-to-br from-gray-500 to-gray-600';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-gray-900">Görsel Düzenleme</h3>
+        <p className="text-sm text-gray-600">Kullanıcı avatar'larını yönetin</p>
+      </div>
+
+      {loadingSettings ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Yükleniyor...</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kullanıcı</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durum</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {userSettings
+                  .sort((a, b) => {
+                    // Role göre sıralama: admin > yönetici > kullanıcı
+                    const roleOrder = { 'admin': 0, 'yönetici': 1, 'kullanıcı': 2 };
+                    return roleOrder[a.role] - roleOrder[b.role];
+                  })
+                  .map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <button 
+                          onClick={() => openAvatarModal(user)}
+                          className="relative group mr-4"
+                        >
+                          {user.avatar_url ? (
+                            <div className="w-12 h-12 rounded-full overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
+                              <img 
+                                src={avatarService.getAvatarUrl(user.avatar_url)} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                              <div className={`w-full h-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(user.role)}`} style={{display: 'none'}}>
+                                {getInitials(user.full_name || user.username)}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 ${getAvatarColor(user.role)}`}>
+                              {getInitials(user.full_name || user.username)}
+                            </div>
+                          )}
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <Upload className="w-2 h-2 text-white" />
+                          </div>
+                        </button>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{user.full_name || user.username || 'Kullanıcı'}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                          {user.full_name && <div className="text-xs text-gray-400">@{user.username}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        user.role === 'admin' ? 'bg-red-100 text-red-800' :
+                        user.role === 'yönetici' ? 'bg-purple-100 text-purple-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {user.role === 'admin' ? 'Admin' : user.role === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className={`w-2 h-2 rounded-full ${user.is_online ? 'bg-green-500' : 'bg-gray-400'} mr-2`}></div>
+                        <span className={`text-sm font-medium ${user.is_online ? 'text-green-600' : 'text-gray-500'}`}>
+                          {user.is_online ? 'Çevrimiçi' : 'Çevrimdışı'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => openAvatarModal(user)}
+                        className="flex items-center gap-2 px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
+                      >
+                        <Upload className="w-3 h-3" />
+                        Avatar Değiştir
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Avatar Yükleme Modal */}
+      {showAvatarModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4 relative">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">
+                {selectedUser.full_name || selectedUser.username} - Avatar Yükle
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAvatarModal(false);
+                  setSelectedUser(null);
+                }}
+                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            
+            <ModernAvatarUpload
+              currentAvatar={userAvatar}
+              onUpload={handleAvatarUpload}
+              onCancel={() => {}} // Modal'ı kapatma, sadece dosya seçimini iptal et
+              uploading={uploadingAvatar}
+              maxSize={5 * 1024 * 1024} // 5MB
+              acceptedTypes={['image/jpeg', 'image/png', 'image/webp', 'image/gif']}
+              autoOpen={false} // Otomatik açma kapalı
+            />
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAvatarModal(false);
+                  setSelectedUser(null);
+                }}
+                className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

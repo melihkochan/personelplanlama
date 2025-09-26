@@ -4849,3 +4849,121 @@ export const updatePerformanceDataSchema = async () => {
     return { success: false, error: error.message };
   }
 };
+
+// Avatar ve Profil Yönetimi
+export const avatarService = {
+  // Avatar yükleme
+  async uploadAvatar(file, userId) {
+    try {
+      // Dosya boyutu kontrolü (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Dosya boyutu 5MB\'dan büyük olamaz');
+      }
+      
+      // Dosya tipi kontrolü
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Sadece resim dosyaları yüklenebilir');
+      }
+      
+      // Dosya adını oluştur
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/avatar.${fileExt}`;
+      
+      // Eski avatar'ı sil (varsa)
+      await this.deleteAvatar(userId);
+      
+      // Yeni avatar'ı yükle
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (error) {
+        console.error('Supabase Storage upload error:', error);
+        throw error;
+      }
+      
+      // Public URL'i al
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+      
+      console.log('Avatar uploaded successfully:', { fileName, publicUrl });
+      return { success: true, url: publicUrl, path: fileName };
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+  
+  // Avatar silme
+  async deleteAvatar(userId) {
+    try {
+      // Kullanıcının avatar dosyalarını listele
+      const { data: files, error: listError } = await supabase.storage
+        .from('avatars')
+        .list(userId);
+      
+      if (listError && listError.message !== 'The resource was not found') {
+        throw listError;
+      }
+      
+      if (files && files.length > 0) {
+        // Tüm avatar dosyalarını sil
+        const filePaths = files.map(file => `${userId}/${file.name}`);
+        const { error: deleteError } = await supabase.storage
+          .from('avatars')
+          .remove(filePaths);
+        
+        if (deleteError) throw deleteError;
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+  
+  // Avatar URL'ini al
+  getAvatarUrl(avatarPath) {
+    if (!avatarPath) return null;
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(avatarPath);
+    return publicUrl;
+  }
+};
+
+// Kullanıcı profil güncelleme
+export const updateUserProfile = async (userId, profileData) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update(profileData)
+      .eq('id', userId)
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Kullanıcı profil bilgilerini al
+export const getUserProfile = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};

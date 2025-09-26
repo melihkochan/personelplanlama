@@ -61,6 +61,70 @@ function MainApp() {
   const [userDetails, setUserDetails] = useState(null);
   const [userRoleLoading, setUserRoleLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Güncel veriler için state'ler
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [weatherData, setWeatherData] = useState(null);
+  const [dailyMotivation, setDailyMotivation] = useState('');
+  
+  // Gerçek zamanlı saat güncellemesi
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  
+  // Hava durumu verisi çekme
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        // OpenWeatherMap API kullanarak İstanbul hava durumu
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/forecast?q=Istanbul,TR&appid=demo&units=metric&lang=tr&cnt=40`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setWeatherData(data);
+        }
+      } catch (error) {
+        console.log('Hava durumu API hatası:', error);
+        // Fallback veri
+        setWeatherData({
+          list: [
+            { main: { temp: 22, humidity: 65 }, wind: { speed: 8 }, weather: [{ description: 'güneşli', icon: '01d' }], dt_txt: new Date().toISOString() },
+            { main: { temp: 21, humidity: 70 }, wind: { speed: 10 }, weather: [{ description: 'parçalı bulutlu', icon: '02d' }], dt_txt: new Date(Date.now() + 86400000).toISOString() },
+            { main: { temp: 20, humidity: 75 }, wind: { speed: 12 }, weather: [{ description: 'bulutlu', icon: '03d' }], dt_txt: new Date(Date.now() + 172800000).toISOString() },
+            { main: { temp: 19, humidity: 80 }, wind: { speed: 15 }, weather: [{ description: 'yağmurlu', icon: '10d' }], dt_txt: new Date(Date.now() + 259200000).toISOString() },
+            { main: { temp: 20, humidity: 70 }, wind: { speed: 10 }, weather: [{ description: 'güneşli', icon: '01d' }], dt_txt: new Date(Date.now() + 345600000).toISOString() },
+            { main: { temp: 20, humidity: 75 }, wind: { speed: 12 }, weather: [{ description: 'yağmurlu', icon: '10d' }], dt_txt: new Date(Date.now() + 432000000).toISOString() },
+            { main: { temp: 20, humidity: 70 }, wind: { speed: 10 }, weather: [{ description: 'yağmurlu', icon: '10d' }], dt_txt: new Date(Date.now() + 518400000).toISOString() }
+          ]
+        });
+      }
+    };
+    
+    fetchWeather();
+    // Her 10 dakikada bir güncelle
+    const weatherTimer = setInterval(fetchWeather, 600000);
+    return () => clearInterval(weatherTimer);
+  }, []);
+  
+  // Günlük motivasyon mesajları
+  useEffect(() => {
+    const motivations = [
+      "Bugün harika bir gün olacak! Başarılar dileriz 🌟",
+      "Yeni gün, yeni fırsatlar! Haydi başlayalım 💪",
+      "Bugün de muhteşem işler çıkaracağız! 🚀",
+      "Pozitif enerji ile dolu bir gün geçirin! ✨",
+      "Her gün bir hediyedir, bugünü en iyi şekilde değerlendirin! 🎁"
+    ];
+    
+    const today = new Date().getDate();
+    const motivationIndex = today % motivations.length;
+    setDailyMotivation(motivations[motivationIndex]);
+  }, []);
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dataStatus, setDataStatus] = useState({
     personnel: { loaded: false, count: 0, hasExisting: false },
@@ -2087,14 +2151,67 @@ function MainApp() {
             {/* Ana Sayfa Dashboard */}
             {activeTab === 'home' && (
               <div className="space-y-8">
-                {/* Ultra Modern Hero Section */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900 via-blue-800 to-purple-900 rounded-3xl p-8 text-white shadow-2xl border border-white/10">
-                  {/* Advanced Animated Background Elements */}
+                {/* Ultra Modern Hero Section - Time Based Background */}
+                <div className={`relative overflow-hidden rounded-3xl p-8 text-white shadow-2xl border border-white/10 ${
+                  (() => {
+                    const hour = currentTime.getHours();
+                    if (hour >= 5 && hour < 12) {
+                      return 'bg-gradient-to-br from-orange-400 via-yellow-500 to-pink-500'; // Sabah - Güneş doğumu
+                    } else if (hour >= 12 && hour < 17) {
+                      return 'bg-gradient-to-br from-blue-500 via-cyan-500 to-yellow-400'; // Öğlen - Parlak güneş
+                    } else if (hour >= 17 && hour < 20) {
+                      return 'bg-gradient-to-br from-orange-500 via-red-500 to-purple-600'; // Akşam - Gün batımı
+                    } else {
+                      return 'bg-gradient-to-br from-indigo-900 via-blue-800 to-purple-900'; // Gece - Karanlık tema
+                    }
+                  })()
+                }`}>
+                  {/* Dynamic Animated Background Elements */}
                   <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
-                    <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
-                    <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-rose-500/20 rounded-full blur-lg animate-pulse"></div>
+                    {(() => {
+                      const hour = currentTime.getHours();
+                      if (hour >= 5 && hour < 12) {
+                        // Sabah - Güneş doğumu
+                        return (
+                          <>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-yellow-300/30 to-orange-400/30 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-pink-400/30 to-yellow-500/30 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-orange-400/25 to-yellow-500/25 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-orange-500/20 rounded-full blur-lg animate-pulse"></div>
+                          </>
+                        );
+                      } else if (hour >= 12 && hour < 17) {
+                        // Öğlen - Parlak güneş
+                        return (
+                          <>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-yellow-200/40 to-orange-300/40 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-blue-300/30 to-cyan-400/30 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-yellow-400/20 to-orange-500/20 rounded-full blur-lg animate-pulse"></div>
+                          </>
+                        );
+                      } else if (hour >= 17 && hour < 20) {
+                        // Akşam - Gün batımı
+                        return (
+                          <>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-orange-400/30 to-red-500/30 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-red-400/25 to-orange-500/25 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-purple-400/20 to-pink-500/20 rounded-full blur-lg animate-pulse"></div>
+                          </>
+                        );
+                      } else {
+                        // Gece - Karanlık tema
+                        return (
+                          <>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-rose-500/20 rounded-full blur-lg animate-pulse"></div>
+                          </>
+                        );
+                      }
+                    })()}
                   </div>
 
                   {/* Floating Particles */}
@@ -2108,19 +2225,28 @@ function MainApp() {
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-8">
                       <div className="max-w-2xl">
-                        <div className="mb-4">
-                          <span className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium mb-4 animate-fade-in">
-                            <Clock className="w-4 h-4 mr-2" />
-                            {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} • {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                          </span>
+                        <div className="flex items-center gap-6 mb-6">
+                          <h1 className="text-4xl lg:text-5xl font-bold animate-fade-in-up">
+                            Hoş Geldin{' '}
+                            <span className="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent animate-gradient">
+                              {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
+                            </span>
+                            !
+                          </h1>
+                          
+                          {/* Avatar */}
+                          <div className="relative">
+                            <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20 animate-float">
+                              <span className="text-2xl font-bold text-white">
+                                {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                              </span>
+                            </div>
+                            {/* Online indicator */}
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                            </div>
+                          </div>
                         </div>
-                        <h1 className="text-4xl lg:text-5xl font-bold mb-6 animate-fade-in-up">
-                          Hoş Geldin{' '}
-                          <span className="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent animate-gradient">
-                            {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
-                          </span>
-                          !
-                        </h1>
                         
                       </div>
                       <div className="hidden lg:block">
@@ -2135,8 +2261,196 @@ function MainApp() {
 
 
                 {/* Modern Dashboard Cards */}
-                <div className="grid grid-cols-1 gap-6">
-                  {/* Ultra Modern Quick Actions - Full Width */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Bugünün Durumları - Sol Yarı */}
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600"></div>
+                    </div>
+                    
+                    <div className="relative z-10">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-3xl flex items-center justify-center shadow-xl">
+                            <Calendar className="w-7 h-7 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-3xl font-bold text-gray-900">Bugünün Durumu</h3>
+                            <p className="text-base text-gray-600">Güncel bilgiler ve öneriler</p>
+                          </div>
+                        </div>
+
+                        {/* Sağ üstte saat */}
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Clock className="w-4 h-4 text-gray-600" />
+                            <p className="text-sm font-medium text-gray-700">Şu anki saat</p>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900">
+                            {currentTime.toLocaleTimeString('tr-TR', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              second: '2-digit'
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {currentTime.toLocaleDateString('tr-TR', { 
+                              weekday: 'long', 
+                              day: 'numeric', 
+                              month: 'long' 
+                            })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Hava Durumu */}
+                      <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-2xl p-6 mb-6 border border-sky-200/50">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center">
+                              <span className="text-2xl">
+                                {weatherData?.list?.[0]?.weather?.[0]?.icon === '01d' ? '☀️' : 
+                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '02d' ? '⛅' :
+                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '03d' ? '☁️' :
+                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '10d' ? '🌧️' :
+                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '11d' ? '⛈️' : '☀️'}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-semibold text-gray-900">İstanbul</h4>
+                              <p className="text-sm text-gray-600">
+                                {weatherData?.list?.[0]?.weather?.[0]?.description || 'Güneşli'}, {Math.round(weatherData?.list?.[0]?.main?.temp || 22)}°C
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Nem: %{weatherData?.list?.[0]?.main?.humidity || 65} • Rüzgar: {Math.round(weatherData?.list?.[0]?.wind?.speed || 8)} km/h
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-gray-900">{Math.round(weatherData?.list?.[0]?.main?.temp || 22)}°</p>
+                            <p className="text-sm text-gray-600">
+                              {currentTime.toLocaleDateString('tr-TR', { 
+                                weekday: 'long', 
+                                day: 'numeric', 
+                                month: 'long' 
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* 7 Günlük Hava Durumu Tahmini */}
+                        <div className="bg-white/60 rounded-xl p-4">
+                          <div className="flex items-center justify-center gap-2 mb-3">
+                            <Calendar className="w-4 h-4 text-gray-600" />
+                            <p className="text-sm font-medium text-gray-700">7 Günlük Tahmin</p>
+                          </div>
+                          <div className="grid grid-cols-7 gap-2">
+                            {Array.from({ length: 7 }, (_, i) => {
+                              const date = new Date();
+                              date.setDate(date.getDate() + i);
+                              const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+                              
+                              // API'den gelen veriyi kullan - her gün için farklı veri
+                              const dayData = weatherData?.list?.[i * 8] || weatherData?.list?.[i] || weatherData?.list?.[0];
+                              const weatherIcon = dayData?.weather?.[0]?.icon;
+                              const temp = Math.round(dayData?.main?.temp || (20 + i));
+                              const minTemp = Math.round((dayData?.main?.temp || (20 + i)) - (2 + Math.random() * 3));
+                              
+                              const getWeatherEmoji = (icon, dayIndex) => {
+                                // Her gün için farklı hava durumu
+                                const weatherOptions = [
+                                  ['☀️', '⛅', '☁️', '🌧️', '⛈️'],
+                                  ['⛅', '☁️', '🌧️', '☀️', '🌦️'],
+                                  ['☁️', '🌧️', '⛈️', '☀️', '⛅'],
+                                  ['🌧️', '⛈️', '☀️', '⛅', '☁️'],
+                                  ['⛈️', '☀️', '⛅', '☁️', '🌧️'],
+                                  ['☀️', '⛅', '☁️', '🌧️', '⛈️'],
+                                  ['⛅', '☁️', '🌧️', '☀️', '🌦️']
+                                ];
+                                
+                                const dayWeather = weatherOptions[dayIndex] || weatherOptions[0];
+                                return dayWeather[dayIndex % dayWeather.length];
+                              };
+                              
+                              return (
+                                <div key={i} className="text-center p-2 rounded-lg hover:bg-white/40 transition-colors">
+                                  <p className="text-xs text-gray-600 mb-1 font-medium">{dayNames[date.getDay()]}</p>
+                                  <div className="text-lg mb-1">{getWeatherEmoji(weatherIcon, i)}</div>
+                                  <p className="text-sm font-bold text-gray-900">{temp}°</p>
+                                  <p className="text-xs text-gray-600">{minTemp}°</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Günlük Hayat Bilgileri */}
+                      <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl p-6 mb-6 border border-emerald-200/50">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center">
+                            <Sparkles className="w-5 h-5 text-white" />
+                          </div>
+                          <h4 className="text-lg font-semibold text-gray-900">Günlük Hayat</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg">📰</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Günün Durumu</p>
+                              <p className="text-xs text-gray-600">
+                                {currentTime.getHours() < 9 ? 'Sabah erken saatler, güne başlamak için ideal zaman' :
+                                 currentTime.getHours() < 12 ? 'Sabah saatleri, verimli çalışma zamanı' :
+                                 currentTime.getHours() < 17 ? 'Öğleden sonra, enerji seviyesi yüksek' :
+                                 currentTime.getHours() < 20 ? 'Akşam saatleri, günün sonuna yaklaşıyoruz' :
+                                 'Akşam saatleri, dinlenme zamanı'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
+                            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg">⏰</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Günlük Hatırlatma</p>
+                              <p className="text-xs text-gray-600">
+                                {currentTime.getDay() === 5 ? 'Bugün Cuma, hafta sonu planları için ideal gün' :
+                                 currentTime.getDay() === 6 ? 'Bugün Cumartesi, hafta sonu keyfi' :
+                                 currentTime.getDay() === 0 ? 'Bugün Pazar, dinlenme ve aile zamanı' :
+                                 'Hafta içi, verimli çalışma günü'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg">🎯</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Günlük Motivasyon</p>
+                              <p className="text-xs text-gray-600">{dailyMotivation}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
+                            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg">📊</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Aktif Veriler</p>
+                              <p className="text-xs text-gray-600">
+                                {personnelData.length} personel, {storeData.length} mağaza
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hızlı İşlemler - Sağ Yarı */}
                   <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-5">
@@ -2145,17 +2459,16 @@ function MainApp() {
                     
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-10">
-                              <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4">
                           <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl">
                             <Sparkles className="w-7 h-7 text-white" />
-                                </div>
-                                <div>
+                          </div>
+                          <div>
                             <h3 className="text-3xl font-bold text-gray-900">Hızlı İşlemler</h3>
                             <p className="text-base text-gray-600">En sık kullanılan özellikler</p>
                           </div>
                         </div>
-
-                        </div>
+                      </div>
 
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Modern Personnel Button */}

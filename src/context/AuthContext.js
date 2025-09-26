@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { supabase, logAuditEvent, updateUserOnlineStatus, checkPendingRegistration } from '../services/supabase';
+import { supabase, logAuditEvent, updateUserOnlineStatus, checkPendingRegistration, cleanupOldSessions } from '../services/supabase';
 
 const AuthContext = createContext();
 
@@ -26,15 +26,18 @@ export const AuthProvider = ({ children }) => {
   const sessionTimeoutRef = useRef(null);
   const warningTimeoutRef = useRef(null);
   const countdownRef = useRef(null);
+  const heartbeatRef = useRef(null);
   
   // Oturum zaman aşımı ayarları (dakika cinsinden)
-  const SESSION_TIMEOUT_MINUTES = 15; // 15 dakika hareketsizlik
-  const WARNING_BEFORE_TIMEOUT_MINUTES = 3; // 3 dakika önce uyarı
-  const COUNTDOWN_SECONDS = 30; // 30 saniye geri sayım
+  const SESSION_TIMEOUT_MINUTES = 5; // 5 dakika hareketsizlik
+  const WARNING_BEFORE_TIMEOUT_MINUTES = 1; // 1 dakika önce uyarı
+  const COUNTDOWN_SECONDS = 60; // 60 saniye geri sayım
 
   // Kullanıcı aktivitesini takip eden fonksiyon
   const resetSessionTimeout = () => {
     if (!user) return;
+    
+    console.log('🔄 Oturum süresi sıfırlanıyor:', new Date().toLocaleTimeString());
     
     // Mevcut timeout'ları temizle
     if (sessionTimeoutRef.current) {
@@ -49,6 +52,7 @@ export const AuthProvider = ({ children }) => {
     
     // Uyarı ve oturum kapatma timeout'larını ayarla
     warningTimeoutRef.current = setTimeout(() => {
+      console.log('⚠️ Uyarı modalı açılıyor:', new Date().toLocaleTimeString());
       setShowSessionTimeout(true);
       setSessionTimeoutCountdown(COUNTDOWN_SECONDS);
       
@@ -66,6 +70,7 @@ export const AuthProvider = ({ children }) => {
     }, (SESSION_TIMEOUT_MINUTES - WARNING_BEFORE_TIMEOUT_MINUTES) * 60 * 1000);
     
     sessionTimeoutRef.current = setTimeout(() => {
+      console.log('⏰ Oturum zaman aşımı:', new Date().toLocaleTimeString());
       handleSessionExpired();
     }, SESSION_TIMEOUT_MINUTES * 60 * 1000);
   };
@@ -126,6 +131,40 @@ export const AuthProvider = ({ children }) => {
     resetSessionTimeout();
   };
 
+  // Heartbeat - periyodik online durum güncelleme
+  const startHeartbeat = () => {
+    if (!user) return;
+    
+    heartbeatRef.current = setInterval(async () => {
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', user?.email)
+          .single();
+        
+        if (!userError && userData) {
+          await updateUserOnlineStatus(userData.id, true);
+          console.log('💓 Heartbeat - online durumu güncellendi:', new Date().toLocaleTimeString());
+        }
+        
+        // Her 2 dakikada bir eski oturumları temizle
+        if (Math.random() < 0.1) { // %10 ihtimalle
+          await cleanupOldSessions();
+        }
+      } catch (error) {
+        console.error('❌ Heartbeat hatası:', error);
+      }
+    }, 30000); // Her 30 saniyede bir
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  };
+
   // Aktivite event listener'ları
   useEffect(() => {
     if (!user) return;
@@ -136,17 +175,87 @@ export const AuthProvider = ({ children }) => {
       resetSessionTimeout();
     };
     
+    // Tarayıcı kapatma olayları
+    const handleBeforeUnload = async (event) => {
+      console.log('🚪 Tarayıcı kapatılıyor, online durumu güncelleniyor...');
+      
+      // Online durumunu false yap
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', user?.email)
+          .single();
+        
+        if (!userError && userData) {
+          await updateUserOnlineStatus(userData.id, false);
+        }
+      } catch (error) {
+        console.error('❌ Tarayıcı kapatma sırasında online durumu güncelleme hatası:', error);
+      }
+    };
+    
+    const handleVisibilityChange = async () => {
+      if (document.hidden) {
+        console.log('👁️ Sayfa gizlendi, online durumu güncelleniyor...');
+        
+        // Online durumunu false yap
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', user?.email)
+            .single();
+          
+          if (!userError && userData) {
+            await updateUserOnlineStatus(userData.id, false);
+          }
+        } catch (error) {
+          console.error('❌ Sayfa gizleme sırasında online durumu güncelleme hatası:', error);
+        }
+      } else {
+        console.log('👁️ Sayfa görünür oldu, online durumu güncelleniyor...');
+        
+        // Online durumunu true yap
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', user?.email)
+            .single();
+          
+          if (!userError && userData) {
+            await updateUserOnlineStatus(userData.id, true);
+          }
+        } catch (error) {
+          console.error('❌ Sayfa görünür olma sırasında online durumu güncelleme hatası:', error);
+        }
+      }
+    };
+    
     activityEvents.forEach(event => {
       document.addEventListener(event, handleActivity, true);
     });
     
+    // Tarayıcı kapatma olayları
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     // İlk timeout'u başlat
     resetSessionTimeout();
+    
+    // Heartbeat'i başlat
+    startHeartbeat();
     
     return () => {
       activityEvents.forEach(event => {
         document.removeEventListener(event, handleActivity, true);
       });
+      
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       
       if (sessionTimeoutRef.current) {
         clearTimeout(sessionTimeoutRef.current);
@@ -156,6 +265,9 @@ export const AuthProvider = ({ children }) => {
       }
       if (countdownRef.current) {
         clearInterval(countdownRef.current);
+      }
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
       }
     };
   }, [user]);
@@ -257,6 +369,9 @@ export const AuthProvider = ({ children }) => {
 
       // Online durumunu güncelle
       try {
+        // Önce eski oturumları temizle
+        await cleanupOldSessions();
+        
         // Önce users tablosundan kullanıcıyı bul
         const { data: userData, error: userError } = await supabase
           .from('users')

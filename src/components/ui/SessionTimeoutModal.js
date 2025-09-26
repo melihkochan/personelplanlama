@@ -84,7 +84,7 @@ const SessionTimeoutModal = () => {
         {/* Footer */}
         <div className="text-center mt-6">
           <p className="text-xs text-gray-500">
-            Güvenlik için oturumunuz 30 dakika hareketsizlik sonrası sonlanır
+            Güvenlik için oturumunuz 5 dakika hareketsizlik sonrası sonlanır
           </p>
         </div>
       </div>

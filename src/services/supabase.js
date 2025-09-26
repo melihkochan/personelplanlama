@@ -3990,7 +3990,7 @@ export const cleanDuplicateProfiles = async () => {
 // Online durumu fonksiyonları
 export const updateUserOnlineStatus = async (userId, isOnline) => {
   try {
-    console.log('🔄 Online durumu güncelleniyor:', { userId, isOnline });
+    // console.log('🔄 Online durumu güncelleniyor:', { userId, isOnline });
     
     const { data, error } = await supabase
       .from('users')
@@ -4006,7 +4006,7 @@ export const updateUserOnlineStatus = async (userId, isOnline) => {
       return { success: false, error };
     }
 
-    console.log('✅ Online durumu güncellendi:', data);
+    // console.log('✅ Online durumu güncellendi:', data);
     return { success: true, data };
   } catch (error) {
     console.error('❌ Online durumu güncelleme hatası:', error);
@@ -4037,7 +4037,7 @@ export const getUserOnlineStatus = async (userId) => {
 // Eski oturumları temizleme fonksiyonu
 export const cleanupOldSessions = async () => {
   try {
-    console.log('🧹 Eski oturumlar temizleniyor...');
+    // console.log('🧹 Eski oturumlar temizleniyor...');
     
     // 5 dakikadan eski last_seen değerlerine sahip kullanıcıları offline yap
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -4057,7 +4057,7 @@ export const cleanupOldSessions = async () => {
     }
 
     if (data && data.length > 0) {
-      console.log(`✅ ${data.length} kullanıcının eski oturumu temizlendi:`, data.map(u => u.email));
+      // console.log(`✅ ${data.length} kullanıcının eski oturumu temizlendi:`, data.map(u => u.email));
     }
 
     return { success: true, data };

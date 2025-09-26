@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
   const resetSessionTimeout = () => {
     if (!user) return;
     
-    console.log('🔄 Oturum süresi sıfırlanıyor:', new Date().toLocaleTimeString());
+    // console.log('🔄 Oturum süresi sıfırlanıyor:', new Date().toLocaleTimeString());
     
     // Mevcut timeout'ları temizle
     if (sessionTimeoutRef.current) {
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     
     // Uyarı ve oturum kapatma timeout'larını ayarla
     warningTimeoutRef.current = setTimeout(() => {
-      console.log('⚠️ Uyarı modalı açılıyor:', new Date().toLocaleTimeString());
+      // console.log('⚠️ Uyarı modalı açılıyor:', new Date().toLocaleTimeString());
       setShowSessionTimeout(true);
       setSessionTimeoutCountdown(COUNTDOWN_SECONDS);
       
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     }, (SESSION_TIMEOUT_MINUTES - WARNING_BEFORE_TIMEOUT_MINUTES) * 60 * 1000);
     
     sessionTimeoutRef.current = setTimeout(() => {
-      console.log('⏰ Oturum zaman aşımı:', new Date().toLocaleTimeString());
+      // console.log('⏰ Oturum zaman aşımı:', new Date().toLocaleTimeString());
       handleSessionExpired();
     }, SESSION_TIMEOUT_MINUTES * 60 * 1000);
   };
@@ -145,7 +145,7 @@ export const AuthProvider = ({ children }) => {
         
         if (!userError && userData) {
           await updateUserOnlineStatus(userData.id, true);
-          console.log('💓 Heartbeat - online durumu güncellendi:', new Date().toLocaleTimeString());
+          // console.log('💓 Heartbeat - online durumu güncellendi:', new Date().toLocaleTimeString());
         }
         
         // Her 2 dakikada bir eski oturumları temizle
@@ -177,7 +177,7 @@ export const AuthProvider = ({ children }) => {
     
     // Tarayıcı kapatma olayları
     const handleBeforeUnload = async (event) => {
-      console.log('🚪 Tarayıcı kapatılıyor, online durumu güncelleniyor...');
+      // console.log('🚪 Tarayıcı kapatılıyor, online durumu güncelleniyor...');
       
       // Online durumunu false yap
       try {
@@ -197,7 +197,7 @@ export const AuthProvider = ({ children }) => {
     
     const handleVisibilityChange = async () => {
       if (document.hidden) {
-        console.log('👁️ Sayfa gizlendi, online durumu güncelleniyor...');
+        // console.log('👁️ Sayfa gizlendi, online durumu güncelleniyor...');
         
         // Online durumunu false yap
         try {
@@ -214,7 +214,7 @@ export const AuthProvider = ({ children }) => {
           console.error('❌ Sayfa gizleme sırasında online durumu güncelleme hatası:', error);
         }
       } else {
-        console.log('👁️ Sayfa görünür oldu, online durumu güncelleniyor...');
+        // console.log('👁️ Sayfa görünür oldu, online durumu güncelleniyor...');
         
         // Online durumunu true yap
         try {

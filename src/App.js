@@ -66,6 +66,7 @@ function MainApp() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [weatherData, setWeatherData] = useState(null);
   const [dailyMotivation, setDailyMotivation] = useState('');
+  const [testMode, setTestMode] = useState('auto'); // auto, morning, noon, evening, night
   
   // Gerçek zamanlı saat güncellemesi
   useEffect(() => {
@@ -124,6 +125,18 @@ function MainApp() {
     const motivationIndex = today % motivations.length;
     setDailyMotivation(motivations[motivationIndex]);
   }, []);
+
+  // Test modu için saat hesaplama
+  const getTestHour = () => {
+    if (testMode === 'auto') return currentTime.getHours();
+    const hourMap = {
+      'morning': 8,
+      'noon': 14,
+      'evening': 18,
+      'night': 23
+    };
+    return hourMap[testMode] || currentTime.getHours();
+  };
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dataStatus, setDataStatus] = useState({
@@ -2154,13 +2167,13 @@ function MainApp() {
                 {/* Ultra Modern Hero Section - Time Based Background */}
                 <div className={`relative overflow-hidden rounded-3xl p-6 text-white shadow-2xl border border-white/10 ${
                   (() => {
-                    const hour = currentTime.getHours();
+                    const hour = getTestHour();
                     if (hour >= 5 && hour < 12) {
                       return 'bg-gradient-to-br from-yellow-400 via-orange-500 to-pink-500'; // Sabah - Parlak güneş doğumu
                     } else if (hour >= 12 && hour < 17) {
                       return 'bg-gradient-to-br from-cyan-400 via-blue-500 to-yellow-300'; // Öğlen - Çok parlak güneş
                     } else if (hour >= 17 && hour < 20) {
-                      return 'bg-gradient-to-br from-orange-500 via-red-500 to-purple-600'; // Akşam - Gün batımı
+                      return 'bg-gradient-to-br from-slate-700 via-purple-800 to-indigo-900'; // Akşam - Karanlık atmosfer
                     } else {
                       return 'bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-800'; // Gece - Yıldızlı gece
                     }
@@ -2169,7 +2182,7 @@ function MainApp() {
                   {/* Dynamic Animated Background Elements */}
                   <div className="absolute inset-0 overflow-hidden">
                     {(() => {
-                      const hour = currentTime.getHours();
+                      const hour = getTestHour();
                       if (hour >= 5 && hour < 12) {
                         // Sabah - Parlak güneş doğumu
                         return (
@@ -2191,13 +2204,13 @@ function MainApp() {
                           </>
                         );
                       } else if (hour >= 17 && hour < 20) {
-                        // Akşam - Gün batımı
+                        // Akşam - Karanlık atmosfer
                         return (
                           <>
-                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-orange-400/30 to-red-500/30 rounded-full blur-3xl animate-pulse"></div>
-                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
-                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-red-400/25 to-orange-500/25 rounded-full blur-xl animate-spin"></div>
-                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-purple-400/20 to-pink-500/20 rounded-full blur-lg animate-pulse"></div>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-purple-600/25 to-indigo-700/25 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-slate-600/20 to-purple-700/20 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-indigo-600/15 to-purple-700/15 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-slate-600/10 to-indigo-700/10 rounded-full blur-lg animate-pulse"></div>
                           </>
                         );
                       } else {
@@ -2223,6 +2236,52 @@ function MainApp() {
                   </div>
 
                   <div className="relative z-10">
+                    {/* Test Modu Seçici */}
+                    <div className="mb-4 flex justify-center">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 flex gap-2">
+                        <button 
+                          onClick={() => setTestMode('auto')}
+                          className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                            testMode === 'auto' ? 'bg-white/30 text-white' : 'text-white/70 hover:text-white'
+                          }`}
+                        >
+                          Otomatik
+                        </button>
+                        <button 
+                          onClick={() => setTestMode('morning')}
+                          className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                            testMode === 'morning' ? 'bg-white/30 text-white' : 'text-white/70 hover:text-white'
+                          }`}
+                        >
+                          Sabah (8:00)
+                        </button>
+                        <button 
+                          onClick={() => setTestMode('noon')}
+                          className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                            testMode === 'noon' ? 'bg-white/30 text-white' : 'text-white/70 hover:text-white'
+                          }`}
+                        >
+                          Öğlen (14:00)
+                        </button>
+                        <button 
+                          onClick={() => setTestMode('evening')}
+                          className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                            testMode === 'evening' ? 'bg-white/30 text-white' : 'text-white/70 hover:text-white'
+                          }`}
+                        >
+                          Akşam (18:00)
+                        </button>
+                        <button 
+                          onClick={() => setTestMode('night')}
+                          className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                            testMode === 'night' ? 'bg-white/30 text-white' : 'text-white/70 hover:text-white'
+                          }`}
+                        >
+                          Gece (23:00)
+                        </button>
+                      </div>
+                    </div>
+                    
                     <div className="flex items-center justify-between mb-8">
                       <div className="w-full">
                         <div className="w-full h-full relative">
@@ -2245,7 +2304,7 @@ function MainApp() {
                             <div>
                               <h1 className="text-4xl lg:text-5xl font-bold text-white whitespace-nowrap">
                                 {(() => {
-                                  const hour = currentTime.getHours();
+                                  const hour = getTestHour();
                                   if (hour >= 5 && hour < 12) {
                                     return 'Günaydın';
                                   } else if (hour >= 12 && hour < 17) {
@@ -2269,7 +2328,7 @@ function MainApp() {
                           <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
                             <p className="text-white/90 text-lg font-medium">
                               {(() => {
-                                const hour = currentTime.getHours();
+                                const hour = getTestHour();
                                 if (hour >= 5 && hour < 12) {
                                   return '🌅 Güneş doğuyor, yeni başlangıçlar!';
                                 } else if (hour >= 12 && hour < 17) {
@@ -2434,10 +2493,10 @@ function MainApp() {
                             <div>
                               <p className="text-sm font-medium text-gray-900">Günün Durumu</p>
                               <p className="text-xs text-gray-600">
-                                {currentTime.getHours() < 9 ? 'Sabah erken saatler, güne başlamak için ideal zaman' :
-                                 currentTime.getHours() < 12 ? 'Sabah saatleri, verimli çalışma zamanı' :
-                                 currentTime.getHours() < 17 ? 'Öğleden sonra, enerji seviyesi yüksek' :
-                                 currentTime.getHours() < 20 ? 'Akşam saatleri, günün sonuna yaklaşıyoruz' :
+                                {getTestHour() < 9 ? 'Sabah erken saatler, güne başlamak için ideal zaman' :
+                                 getTestHour() < 12 ? 'Sabah saatleri, verimli çalışma zamanı' :
+                                 getTestHour() < 17 ? 'Öğleden sonra, enerji seviyesi yüksek' :
+                                 getTestHour() < 20 ? 'Akşam saatleri, günün sonuna yaklaşıyoruz' :
                                  'Akşam saatleri, dinlenme zamanı'}
                               </p>
                             </div>

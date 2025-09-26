@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
@@ -65,6 +65,64 @@ function MainApp() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [userRoleLoading, setUserRoleLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Mağaza arama için state'ler
+  const [storeSearchTerm, setStoreSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [allStores, setAllStores] = useState([]);
+
+  // Mağaza verilerini yükle
+  useEffect(() => {
+    const loadStores = async () => {
+      try {
+        console.log('🔄 Mağaza verileri yükleniyor...');
+        const result = await getAllStores();
+        console.log('📊 Mağaza verileri sonucu:', result);
+        
+        if (result.success) {
+          console.log('✅ Mağaza verileri başarıyla yüklendi:', result.data);
+          setAllStores(result.data || []);
+        } else {
+          console.error('❌ Mağaza verileri yüklenemedi:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ Mağaza verileri yüklenirken hata:', error);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadStores();
+    }
+  }, [isAuthenticated]);
+
+  // Mağaza arama fonksiyonu
+  const handleStoreSearch = (term) => {
+    setStoreSearchTerm(term);
+    if (term.length >= 2) {
+      setIsSearching(true);
+      console.log('🔍 Arama terimi:', term);
+      console.log('🔍 Tüm mağazalar:', allStores);
+      
+      const filtered = allStores.filter(store => {
+        // Sadece isim ve kod ile ara
+        const nameMatch = store.name?.toLowerCase().includes(term.toLowerCase());
+        const storeCodeMatch = store.store_code?.toLowerCase().includes(term.toLowerCase());
+        const storeNameMatch = store.store_name?.toLowerCase().includes(term.toLowerCase());
+        const mağazaAdıMatch = store.mağaza_adı?.toLowerCase().includes(term.toLowerCase());
+        
+        console.log('🔍 Mağaza:', store.name || store.store_name || store.mağaza_adı, 'Eşleşme:', nameMatch || storeCodeMatch || storeNameMatch || mağazaAdıMatch);
+        
+        return nameMatch || storeCodeMatch || storeNameMatch || mağazaAdıMatch;
+      });
+      
+      console.log('🔍 Filtrelenmiş sonuçlar:', filtered);
+      setSearchResults(filtered.slice(0, 5)); // İlk 5 sonucu göster
+      setIsSearching(false);
+    } else {
+      setSearchResults([]);
+    }
+  };
   
   // Avatar yükleme fonksiyonu
   const handleAvatarUpload = async (file) => {
@@ -1622,15 +1680,15 @@ function MainApp() {
                     </div>
                   </div>
                 ) : (
-                  <div className={`w-8 h-8 bg-gradient-to-r ${
-                    userRole === 'admin' ? 'from-red-500 to-pink-500' : 
-                    userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
-                    'from-blue-500 to-cyan-500'
-                  } rounded-lg flex items-center justify-center shadow-lg`}>
-                    <span className="text-white font-bold text-sm">
-                      {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                <div className={`w-8 h-8 bg-gradient-to-r ${
+                  userRole === 'admin' ? 'from-red-500 to-pink-500' : 
+                  userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
+                  'from-blue-500 to-cyan-500'
+                } rounded-lg flex items-center justify-center shadow-lg`}>
+                  <span className="text-white font-bold text-sm">
+                    {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                  </span>
+                </div>
                 )}
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border border-slate-800 flex items-center justify-center">
                   <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
@@ -2341,8 +2399,8 @@ function MainApp() {
                                   <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20" style={{display: 'none'}}>
                                     <span className="text-2xl font-bold text-white">
                                       {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                                    </span>
-                                  </div>
+                          </span>
+                        </div>
                                 </div>
                               ) : (
                                 <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
@@ -2419,11 +2477,11 @@ function MainApp() {
                     <div className="relative z-10">
                       {/* Header */}
                       <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-4">
                           <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-3xl flex items-center justify-center shadow-xl">
                             <Calendar className="w-7 h-7 text-white" />
-                          </div>
-                          <div>
+                                </div>
+                                <div>
                             <h3 className="text-3xl font-bold text-gray-900">Bugünün Durumu</h3>
                             <p className="text-base text-gray-600">Güncel bilgiler ve öneriler</p>
                           </div>
@@ -2450,7 +2508,7 @@ function MainApp() {
                             })}
                           </p>
                         </div>
-                      </div>
+                        </div>
 
                       {/* Hava Durumu */}
                       <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-2xl p-6 mb-6 border border-sky-200/50">
@@ -2473,7 +2531,7 @@ function MainApp() {
                               <p className="text-xs text-gray-500">
                                 Nem: %{weatherData?.list?.[0]?.main?.humidity || 65} • Rüzgar: {Math.round(weatherData?.list?.[0]?.wind?.speed || 8)} km/h
                               </p>
-                            </div>
+                          </div>
                           </div>
                           <div className="text-right">
                             <p className="text-2xl font-bold text-gray-900">{Math.round(weatherData?.list?.[0]?.main?.temp || 22)}°</p>
@@ -2492,7 +2550,7 @@ function MainApp() {
                           <div className="flex items-center justify-center gap-2 mb-3">
                             <Calendar className="w-4 h-4 text-gray-600" />
                             <p className="text-sm font-medium text-gray-700">7 Günlük Tahmin</p>
-                          </div>
+                            </div>
                           <div className="grid grid-cols-7 gap-2">
                             {Array.from({ length: 7 }, (_, i) => {
                               const date = new Date();
@@ -2527,7 +2585,7 @@ function MainApp() {
                                   <div className="text-lg mb-1">{getWeatherEmoji(weatherIcon, i)}</div>
                                   <p className="text-sm font-bold text-gray-900">{temp}°</p>
                                   <p className="text-xs text-gray-600">{minTemp}°</p>
-                                </div>
+                          </div>
                               );
                             })}
                           </div>
@@ -2539,9 +2597,9 @@ function MainApp() {
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-white" />
-                          </div>
+                            </div>
                           <h4 className="text-lg font-semibold text-gray-900">Günlük Hayat</h4>
-                        </div>
+                          </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
                             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -2597,117 +2655,145 @@ function MainApp() {
                     </div>
                   </div>
 
-                  {/* Hızlı İşlemler - Sağ Yarı */}
+                  {/* Hızlı Mağaza Arama - Sağ Yarı */}
                   <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-5">
                       <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600"></div>
                     </div>
                     
-                    <div className="relative z-10">
+                          <div className="relative z-10">
                       <div className="flex items-center justify-between mb-10">
-                              <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4">
                           <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl">
-                            <Sparkles className="w-7 h-7 text-white" />
-                                </div>
-                                <div>
-                            <h3 className="text-3xl font-bold text-gray-900">Hızlı İşlemler</h3>
-                            <p className="text-base text-gray-600">En sık kullanılan özellikler</p>
+                            <Search className="w-7 h-7 text-white" />
+                            </div>
+                          <div>
+                            <h3 className="text-3xl font-bold text-gray-900">Hızlı Mağaza Arama (İSTANBUL - AND)</h3>
+                            <p className="text-base text-gray-600">Mağaza adı veya kod ile arayın</p>
                           </div>
                         </div>
-                        </div>
-
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Modern Personnel Button */}
-                        <button
-                          onClick={() => handleTabChange('personnel')}
-                          className="group relative bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-3xl p-8 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-blue-200/50 overflow-hidden"
-                        >
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
-                          <div className="relative z-10">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <Users className="w-8 h-8 text-white" />
-                            </div>
-                            <p className="text-lg font-semibold text-gray-900">Anadolu Personel</p>
-                            <p className="text-sm text-blue-600 mt-2">Yönetim Paneli</p>
-                          </div>
-                        </button>
-
-                        {/* Modern Stores Button */}
-                        <button
-                          onClick={() => handleTabChange('stores')}
-                          className="group relative bg-gradient-to-br from-emerald-50 to-emerald-100 hover:from-emerald-100 hover:to-emerald-200 rounded-3xl p-8 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-emerald-200/50 overflow-hidden"
-                        >
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
-                          <div className="relative z-10">
-                            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <Store className="w-8 h-8 text-white" />
-                            </div>
-                            <p className="text-lg font-semibold text-gray-900">Anadolu Mağaza Listesi</p>
-                            <p className="text-sm text-emerald-600 mt-2">Lokasyon Yönetimi</p>
-                          </div>
-                        </button>
-
-                        {/* Modern Personnel Control Button */}
-                        <button
-                          onClick={() => handleTabChange('vardiya-kontrol')}
-                          className="group relative bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-3xl p-8 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-purple-200/50 overflow-hidden"
-                        >
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
-                          <div className="relative z-10">
-                            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <Shield className="w-8 h-8 text-white" />
-                            </div>
-                            <p className="text-lg font-semibold text-gray-900">Anadolu Personel Kontrol</p>
-                            <p className="text-sm text-purple-600 mt-2">Vardiya Takibi</p>
-                          </div>
-                        </button>
-
-                        {/* Modern Location Distribution Button */}
-                        <button
-                          onClick={() => handleTabChange('store-distribution')}
-                          className="group relative bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-3xl p-8 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-orange-200/50 overflow-hidden"
-                        >
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
-                          <div className="relative z-10">
-                            <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <MapPin className="w-8 h-8 text-white" />
-                            </div>
-                            <p className="text-lg font-semibold text-gray-900">Anadolu Konum Dağılımı</p>
-                            <p className="text-sm text-orange-600 mt-2">Harita Görünümü</p>
-                          </div>
-                        </button>
-
-                        {/* Modern Statistics Button */}
-                        <button
-                          onClick={() => handleTabChange('statistics')}
-                          className="group relative bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 rounded-3xl p-8 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-indigo-200/50 overflow-hidden"
-                        >
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
-                          <div className="relative z-10">
-                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <BarChart3 className="w-8 h-8 text-white" />
-                            </div>
-                            <p className="text-lg font-semibold text-gray-900">Anadolu İstatistikler</p>
-                            <p className="text-sm text-indigo-600 mt-2">Analiz Raporları</p>
-                          </div>
-                        </button>
-
-                        {/* Modern Vehicle Distribution Button */}
-                        <button
-                          onClick={() => handleTabChange('vehicle-distribution')}
-                          className="group relative bg-gradient-to-br from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200 rounded-3xl p-8 text-center transition-all duration-500 hover:scale-105 hover:shadow-xl border border-teal-200/50 overflow-hidden"
-                        >
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
-                          <div className="relative z-10">
-                            <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <Truck className="w-8 h-8 text-white" />
-                            </div>
-                            <p className="text-lg font-semibold text-gray-900">Anadolu Araç Dağılımı</p>
-                            <p className="text-sm text-teal-600 mt-2">Filo Yönetimi</p>
-                          </div>
-                        </button>
                       </div>
+
+                      {/* Arama Kutusu */}
+                      <div className="relative mb-6">
+                        <div className="relative">
+                          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Mağaza adı veya kod yazın..."
+                          value={storeSearchTerm}
+                          onChange={(e) => handleStoreSearch(e.target.value)}
+                          className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent shadow-lg"
+                        />
+                          {isSearching && (
+                            <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                              <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Arama Sonuçları */}
+                      {searchResults.length > 0 ? (
+                        <div className="space-y-3 mb-6">
+                          <h4 className="text-lg font-semibold text-gray-900">Arama Sonuçları ({searchResults.length})</h4>
+                          <div className="max-h-96 overflow-y-auto space-y-3">
+                            {searchResults.map((store, index) => (
+                            <div key={store.id || index} className="bg-white rounded-xl p-4 border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200 cursor-pointer">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h5 className="font-semibold text-gray-900 mb-1">
+                                    {store.name || store.store_name || store.mağaza_adı || 'İsimsiz Mağaza'}
+                                  </h5>
+                                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    {store.store_code && (
+                                      <span className="flex items-center gap-1">
+                                        <span className="w-3 h-3 text-center text-xs">#</span>
+                                        {store.store_code}
+                                      </span>
+                                    )}
+                                    {store.phone && (
+                                      <span className="flex items-center gap-1">
+                                        <Phone className="w-3 h-3" />
+                                        {store.phone}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ml-4">
+                        <button
+                                    onClick={() => {
+                                      // Mağaza listesine git ve seçili mağazayı aç
+                                      console.log('Mağaza listesine gidiliyor:', store);
+                                      const storeId = store.id || store.store_code;
+                                      navigate(`/stores?selected=${storeId}`);
+                                    }}
+                                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 transition-colors"
+                                  >
+                                    Detay Gör
+                                  </button>
+                            </div>
+                          </div>
+                            </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 mb-6">
+                          <h4 className="text-lg font-semibold text-gray-900">Tüm Mağazalar ({allStores.length})</h4>
+                          <div className="max-h-96 overflow-y-auto space-y-3">
+                            {allStores
+                              .sort((a, b) => {
+                                const nameA = (a.name || a.store_name || a.mağaza_adı || '').toLowerCase();
+                                const nameB = (b.name || b.store_name || b.mağaza_adı || '').toLowerCase();
+                                return nameA.localeCompare(nameB, 'tr');
+                              })
+                              .map((store, index) => (
+                            <div key={store.id || index} className="bg-white rounded-xl p-4 border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200 cursor-pointer">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h5 className="font-semibold text-gray-900 mb-1">
+                                    {store.name || store.store_name || store.mağaza_adı || 'İsimsiz Mağaza'}
+                                  </h5>
+                                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    {store.store_code && (
+                                      <span className="flex items-center gap-1">
+                                        <span className="w-3 h-3 text-center text-xs">#</span>
+                                        {store.store_code}
+                                      </span>
+                                    )}
+                                    {store.phone && (
+                                      <span className="flex items-center gap-1">
+                                        <Phone className="w-3 h-3" />
+                                        {store.phone}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ml-4">
+                                  <button
+                                    onClick={() => {
+                                      // Mağaza listesine git ve seçili mağazayı aç
+                                      console.log('Mağaza listesine gidiliyor:', store);
+                                      const storeId = store.id || store.store_code;
+                                      navigate(`/stores?selected=${storeId}`);
+                                    }}
+                                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 transition-colors"
+                                  >
+                                    Detay Gör
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+
+
+
                     </div>
                   </div>
                 </div>
@@ -2815,6 +2901,7 @@ function MainApp() {
                                       </div>
                                     </div>
                                   </div>
+
                                 </div>
                               );
                             })}

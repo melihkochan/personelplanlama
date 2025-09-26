@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Store, Plus, Edit3, Trash2, MapPin, User, UserCheck, Building, Phone, Mail, Users, SortAsc, SortDesc, Map } from 'lucide-react';
 import { getAllStores, addStoreWithAudit, updateStoreWithAudit, deleteStoreWithAudit } from '../../services/supabase';
 import StoreMap from './StoreMap';
 
 const StoreList = ({ storeData: propStoreData, currentUser }) => {
+  const location = useLocation();
   const [storeData, setStoreData] = useState(propStoreData || []);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,6 +46,23 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
 
     loadStoreData();
   }, [propStoreData]);
+
+  // URL'den seçili mağaza ID'sini al ve otomatik seç
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const selectedId = urlParams.get('selected');
+    
+    if (selectedId && storeData.length > 0) {
+      const foundStore = storeData.find(store => 
+        store.id === selectedId || store.store_code === selectedId
+      );
+      
+      if (foundStore) {
+        setSelectedStore(foundStore);
+        console.log('🔍 Seçili mağaza bulundu:', foundStore);
+      }
+    }
+  }, [location.search, storeData]);
 
   // Veri yenileme
   const refreshStoreData = async () => {

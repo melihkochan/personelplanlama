@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const SimpleStoreMap = ({ storeData }) => {
+const SimpleStoreMap = ({ storeData, mapType = 'osm', showPopup = true, centerOnStore = false }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const [mapType, setMapType] = useState('osm');
+  const [currentMapType, setCurrentMapType] = useState(mapType);
   const [isMapReady, setIsMapReady] = useState(false);
 
   // Belirtilen koordinat (40.926761, 29.308891)
@@ -15,6 +15,12 @@ const SimpleStoreMap = ({ storeData }) => {
   useEffect(() => {
     // Sadece storeData değiştiğinde haritayı yeniden oluştur
     if (!storeData || storeData.length === 0) return;
+    
+    // Harita container'ının boyutlarını kontrol et
+    if (!mapRef.current || mapRef.current.offsetWidth === 0 || mapRef.current.offsetHeight === 0) {
+      console.log('⚠️ Harita container hazır değil, tekrar denenecek...');
+      return;
+    }
 
     // Harita zaten varsa temizle
     if (mapInstanceRef.current) {
@@ -25,7 +31,7 @@ const SimpleStoreMap = ({ storeData }) => {
 
     // DOM element'inin hazır olmasını bekle
     const timer = setTimeout(() => {
-      if (mapRef.current) {
+      if (mapRef.current && mapRef.current.offsetWidth > 0 && mapRef.current.offsetHeight > 0) {
         try {
           // Yeni harita oluştur
           const map = L.map(mapRef.current, {
@@ -41,7 +47,7 @@ const SimpleStoreMap = ({ storeData }) => {
 
           // Harita türüne göre tile layer seç
           let tileLayer;
-          switch (mapType) {
+          switch (currentMapType) {
             case 'satellite':
               tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 attribution: '© Esri',
@@ -118,6 +124,8 @@ const SimpleStoreMap = ({ storeData }) => {
           });
 
           // Mağaza marker'larını ekle
+          const bounds = L.latLngBounds();
+          
           storesWithCoords.forEach(store => {
             const lat = parseFloat(store.latitude);
             const lng = parseFloat(store.longitude);
@@ -126,11 +134,11 @@ const SimpleStoreMap = ({ storeData }) => {
             
             // Popup içeriği
             const storeName = store.name || store.store_name || store.mağaza_adı || 'Mağaza';
-            const storeAddress = store.address || store.adres || store.mağaza_adresi || 'Adres bilgisi yok';
-            const storeRegion = store.region || store.bölge || store.mağaza_bölgesi || 'Belirtilmemiş';
+            const storeCity = store.city || store.şehir || 'Şehir bilgisi yok';
+            const storeCode = store.store_code || '';
             const storePhone = store.phone || store.telefon || store.mağaza_telefonu;
             
-            console.log('🏪 Mağaza popup verisi:', { storeName, storeAddress, storeRegion, storePhone });
+            console.log('🏪 Mağaza popup verisi:', { storeName, storeCity, storeCode, storePhone });
             
             const popupContent = `
               <div style="font-family: 'Inter', sans-serif; min-width: 200px;">
@@ -147,13 +155,15 @@ const SimpleStoreMap = ({ storeData }) => {
                 </div>
                 <div style="padding: 8px 0;">
                   <div style="margin-bottom: 8px;">
-                    <strong style="color: #374151;">📍 Adres:</strong><br>
-                    <span style="color: #6b7280; font-size: 13px;">${storeAddress}</span>
+                    <strong style="color: #374151;">🏢 Şehir:</strong><br>
+                    <span style="color: #6b7280; font-size: 13px;">${storeCity}</span>
                   </div>
-                  <div style="margin-bottom: 8px;">
-                    <strong style="color: #374151;">🏢 Bölge:</strong><br>
-                    <span style="color: #6b7280; font-size: 13px;">${storeRegion}</span>
-                  </div>
+                  ${storeCode ? `
+                    <div style="margin-bottom: 8px;">
+                      <strong style="color: #374151;"># Kod:</strong><br>
+                      <span style="color: #6b7280; font-size: 13px;">${storeCode}</span>
+                    </div>
+                  ` : ''}
                   ${storePhone ? `
                     <div style="margin-bottom: 8px;">
                       <strong style="color: #374151;">📞 Telefon:</strong><br>
@@ -174,40 +184,34 @@ const SimpleStoreMap = ({ storeData }) => {
               </div>
             `;
             
-            marker.bindPopup(popupContent);
+            if (showPopup) {
+              marker.bindPopup(popupContent);
+            }
+            
+            // Bounds'a ekle
+            bounds.extend([lat, lng]);
           });
 
           // Haritayı mağazalara odakla
           if (storesWithCoords.length > 0) {
-            const bounds = L.latLngBounds();
-            storesWithCoords.forEach(store => {
-              const lat = parseFloat(store.latitude);
-              const lng = parseFloat(store.longitude);
-              bounds.extend([lat, lng]);
-            });
-            
-            // Bounds'ı biraz genişlet ki mağazalar tam görünsün
-            const sw = bounds.getSouthWest();
-            const ne = bounds.getNorthEast();
-            const latDiff = ne.lat - sw.lat;
-            const lngDiff = ne.lng - sw.lng;
-            
-            // Bounds'ı %20 genişlet
-            const expandedBounds = L.latLngBounds(
-              [sw.lat - latDiff * 0.2, sw.lng - lngDiff * 0.2],
-              [ne.lat + latDiff * 0.2, ne.lng + lngDiff * 0.2]
-            );
-            
-            map.fitBounds(expandedBounds, {
-              padding: [20, 20],
-              maxZoom: 12
-            });
-            
-            console.log('📍 Harita mağazalara odaklandı:', storesWithCoords.length, 'mağaza');
-            console.log('📍 Bounds:', bounds.getNorthEast(), bounds.getSouthWest());
+            if (centerOnStore && storesWithCoords.length === 1) {
+              // Tek mağaza seçildiyse merkeze al
+              const singleStore = storesWithCoords[0];
+              map.setView([parseFloat(singleStore.latitude), parseFloat(singleStore.longitude)], 15);
+            } else if (storesWithCoords.length > 1) {
+              // Birden fazla mağaza varsa bounds kullan
+              map.fitBounds(bounds, { 
+                padding: [50, 50],
+                maxZoom: 11
+              });
+            } else {
+              // Tek mağaza varsa merkeze al
+              const singleStore = storesWithCoords[0];
+              map.setView([parseFloat(singleStore.latitude), parseFloat(singleStore.longitude)], 12);
+            }
           } else {
             // Mağaza yoksa belirtilen koordinata odakla
-            map.setView(FOCUS_CENTER, 10);
+            map.setView(FOCUS_CENTER, DEFAULT_ZOOM);
             console.log('📍 Harita belirtilen koordinata odaklandı - mağaza bulunamadı');
           }
 

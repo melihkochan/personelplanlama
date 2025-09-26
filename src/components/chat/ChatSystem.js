@@ -153,7 +153,7 @@ const ChatSystem = ({ currentUser }) => {
           for (const participant of participants || []) {
             const { data: userData, error: userError } = await supabase
               .from('users')
-              .select('id, email, full_name, username, last_seen, is_online')
+              .select('id, email, full_name, username, last_seen, is_online, avatar_url')
               .eq('id', participant.user_id)
               .single();
 
@@ -164,7 +164,8 @@ const ChatSystem = ({ currentUser }) => {
                 full_name: userData.full_name || userData.username || 'Kullanıcı',
                 username: userData.username,
                 last_seen: userData.last_seen,
-                is_online: userData.is_online || false
+                is_online: userData.is_online || false,
+                avatar_url: userData.avatar_url // Avatar URL'ini ekle
               });
             }
           }

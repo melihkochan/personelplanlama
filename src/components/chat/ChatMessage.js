@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check, CheckCheck, Clock } from 'lucide-react';
+import { avatarService } from '../../services/supabase';
 
 const ChatMessage = ({ message, isOwn, currentUser, conversation }) => {
   const formatTime = (timestamp) => {
@@ -70,9 +71,35 @@ const ChatMessage = ({ message, isOwn, currentUser, conversation }) => {
         {/* Avatar */}
         {!isOwn && (
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white text-sm font-semibold shadow-lg">
-              {getSenderInitials() || '?'}
-            </div>
+            {(() => {
+              const otherUser = conversation?.chat_participants?.find(p => p.user_id !== currentUser?.id);
+              const avatarUrl = otherUser?.avatar_url;
+              
+              if (avatarUrl) {
+                return (
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg">
+                    <img 
+                      src={avatarService.getAvatarUrl(avatarUrl)} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white text-sm font-semibold shadow-lg" style={{display: 'none'}}>
+                      {getSenderInitials() || '?'}
+                    </div>
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white text-sm font-semibold shadow-lg">
+                    {getSenderInitials() || '?'}
+                  </div>
+                );
+              }
+            })()}
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, MessageCircle, X, Check, CheckCheck } from 'lucide-react';
-import { supabase, getChatUsers } from '../../services/supabase';
+import { supabase, getChatUsers, avatarService } from '../../services/supabase';
 
 const ChatSidebar = ({ 
   conversations, 
@@ -211,9 +211,26 @@ const ChatSidebar = ({
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="relative">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-lg ${getAvatarColor(user.email)}`}>
-                      {getInitials(user.user_metadata?.full_name)}
-                    </div>
+                    {user.avatar_url ? (
+                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg">
+                        <img 
+                          src={avatarService.getAvatarUrl(user.avatar_url)} 
+                          alt="Avatar" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div className={`w-full h-full rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-lg ${getAvatarColor(user.email)}`} style={{display: 'none'}}>
+                          {getInitials(user.user_metadata?.full_name)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-lg ${getAvatarColor(user.email)}`}>
+                        {getInitials(user.user_metadata?.full_name)}
+                      </div>
+                    )}
                     {isOnline(user) && (
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-3 border-white rounded-full animate-pulse"></div>
                     )}
@@ -286,9 +303,26 @@ const ChatSidebar = ({
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <div className="relative">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(otherUser?.email || '')}`}>
-                      {getInitials(otherUserName)}
-                    </div>
+                    {otherUser?.avatar_url ? (
+                      <div className="w-10 h-10 rounded-full overflow-hidden">
+                        <img 
+                          src={avatarService.getAvatarUrl(otherUser.avatar_url)} 
+                          alt="Avatar" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div className={`w-full h-full rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(otherUser?.email || '')}`} style={{display: 'none'}}>
+                          {getInitials(otherUserName)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(otherUser?.email || '')}`}>
+                        {getInitials(otherUserName)}
+                      </div>
+                    )}
                     {isOnline(otherUser) && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                     )}

@@ -823,7 +823,7 @@ export const getUserDetails = async (userId, userEmail = null) => {
     // Önce users tablosundan ID ile dene
     let { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, role, is_active')
+      .select('id, email, full_name, role, is_active, avatar_url')
       .eq('id', userId)
       .single();
     
@@ -831,7 +831,7 @@ export const getUserDetails = async (userId, userEmail = null) => {
     if (error && error.code === 'PGRST116' && userEmail) {
       const emailQuery = await supabase
         .from('users')
-        .select('id, email, full_name, role, is_active')
+        .select('id, email, full_name, role, is_active, avatar_url')
         .eq('email', userEmail)
         .single();
       
@@ -3724,7 +3724,7 @@ export const getChatUsers = async (currentUserId) => {
     // Users tablosundan gerçek kullanıcıları al
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, email, full_name, username, is_online, last_seen, role')
+      .select('id, email, full_name, username, is_online, last_seen, role, avatar_url')
       .neq('id', currentUserId)
       .order('full_name');
 
@@ -3739,6 +3739,7 @@ export const getChatUsers = async (currentUserId) => {
       full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı',
       is_online: user.is_online,
       last_seen: user.last_seen,
+      avatar_url: user.avatar_url, // Avatar URL'ini ekle
       user_metadata: { 
         full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı',
         role: user.role || 'Kullanıcı' // Gerçek rolü kullan

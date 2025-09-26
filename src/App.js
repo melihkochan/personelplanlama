@@ -270,9 +270,14 @@ function MainApp() {
             setUserDetails(userDetailsResult.data);
             
             // Avatar URL'ini ayarla
+            console.log('🔍 User details:', userDetailsResult.data);
+            console.log('🔍 Avatar URL from DB:', userDetailsResult.data.avatar_url);
             if (userDetailsResult.data.avatar_url) {
               const avatarUrl = avatarService.getAvatarUrl(userDetailsResult.data.avatar_url);
+              console.log('🔍 Generated avatar URL:', avatarUrl);
               setUserAvatar(avatarUrl);
+            } else {
+              console.log('❌ No avatar_url found in user details');
             }
           } else {
             // Eğer veritabanında bulunamazsa, user metadata'sını kullan
@@ -1595,15 +1600,38 @@ function MainApp() {
             {/* User Profile */}
             <div className="flex items-center p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all duration-300 group">
               <div className="relative">
-                <div className={`w-8 h-8 bg-gradient-to-r ${
-                  userRole === 'admin' ? 'from-red-500 to-pink-500' : 
-                  userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
-                  'from-blue-500 to-cyan-500'
-                } rounded-lg flex items-center justify-center shadow-lg`}>
-                  <span className="text-white font-bold text-sm">
-                    {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {userAvatar ? (
+                  <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg">
+                    <img 
+                      src={userAvatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className={`w-full h-full bg-gradient-to-r ${
+                      userRole === 'admin' ? 'from-red-500 to-pink-500' : 
+                      userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
+                      'from-blue-500 to-cyan-500'
+                    } rounded-lg flex items-center justify-center shadow-lg`} style={{display: 'none'}}>
+                      <span className="text-white font-bold text-sm">
+                        {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`w-8 h-8 bg-gradient-to-r ${
+                    userRole === 'admin' ? 'from-red-500 to-pink-500' : 
+                    userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
+                    'from-blue-500 to-cyan-500'
+                  } rounded-lg flex items-center justify-center shadow-lg`}>
+                    <span className="text-white font-bold text-sm">
+                      {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border border-slate-800 flex items-center justify-center">
                   <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                 </div>
@@ -2299,11 +2327,30 @@ function MainApp() {
                           <div className="flex items-center gap-6">
                             {/* Avatar */}
                             <div className="relative">
-                              <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
-                                <span className="text-2xl font-bold text-white">
-                                  {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                          </span>
-                        </div>
+                              {userAvatar ? (
+                                <div className="w-20 h-20 rounded-full overflow-hidden shadow-2xl border-4 border-white/20">
+                                  <img 
+                                    src={userAvatar} 
+                                    alt="Avatar" 
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      e.target.nextSibling.style.display = 'flex';
+                                    }}
+                                  />
+                                  <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20" style={{display: 'none'}}>
+                                    <span className="text-2xl font-bold text-white">
+                                      {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
+                                  <span className="text-2xl font-bold text-white">
+                                    {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                                  </span>
+                                </div>
+                              )}
                               {/* Online indicator */}
                               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
                                 <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>

@@ -2162,7 +2162,7 @@ function MainApp() {
                     } else if (hour >= 17 && hour < 20) {
                       return 'bg-gradient-to-br from-orange-500 via-red-500 to-purple-600'; // Akşam - Gün batımı
                     } else {
-                      return 'bg-gradient-to-br from-indigo-900 via-blue-800 to-purple-900'; // Gece - Karanlık tema
+                      return 'bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-800'; // Gece - Yıldızlı gece
                     }
                   })()
                 }`}>
@@ -2201,13 +2201,13 @@ function MainApp() {
                           </>
                         );
                       } else {
-                        // Gece - Karanlık tema
+                        // Gece - Yıldızlı gece
                         return (
                           <>
-                    <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
-                    <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
-                    <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-rose-500/20 rounded-full blur-lg animate-pulse"></div>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-indigo-400/30 to-purple-600/30 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/25 to-indigo-500/25 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-blue-400/20 to-indigo-500/20 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-purple-400/15 to-indigo-500/15 rounded-full blur-lg animate-pulse"></div>
                           </>
                         );
                       }
@@ -2265,19 +2265,19 @@ function MainApp() {
                             </div>
                           </div>
                           
-                          {/* En sağ dip taraf - Mesaj */}
-                          <div className="absolute bottom-0 right-0">
-                            <p className="text-white/80 text-lg font-medium">
+                          {/* Biraz sollu orta - Mesaj */}
+                          <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
+                            <p className="text-white/90 text-lg font-medium">
                               {(() => {
                                 const hour = currentTime.getHours();
                                 if (hour >= 5 && hour < 12) {
-                                  return '🌅 Yeni bir gün, yeni fırsatlar!';
+                                  return '🌅 Güneş doğuyor, yeni başlangıçlar!';
                                 } else if (hour >= 12 && hour < 17) {
-                                  return '☀️ Verimli çalışma zamanı!';
+                                  return '☀️ Parlak gün, enerji dolu saatler!';
                                 } else if (hour >= 17 && hour < 20) {
-                                  return '🌇 Günün sonuna yaklaşıyoruz!';
+                                  return '🌇 Gün batımı, huzurlu akşam!';
                                 } else {
-                                  return '🌙 Dinlenme zamanı!';
+                                  return '🌙 Yıldızlı gece, dinlenme vakti!';
                                 }
                               })()}
                             </p>

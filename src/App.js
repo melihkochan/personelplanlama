@@ -34,7 +34,6 @@ import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getVersionInfo } from './config/version';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, supabase, avatarService, getUserProfile, updateUserProfile } from './services/supabase';
 import { getPendingRegistrationsCount } from './services/supabase';
 import ModernAvatarUpload from './components/ui/ModernAvatarUpload';
@@ -172,6 +171,38 @@ function MainApp() {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Hava durumu verilerini çek
+  useEffect(() => {
+    const fetchWeatherData = async () => {
+      try {
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=41.0138&longitude=28.9497&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Europe%2FIstanbul&forecast_days=7');
+        const data = await response.json();
+        
+        if (data.hourly && data.daily) {
+          setWeatherData(data);
+          console.log('🌤️ Hava durumu verisi yüklendi:', data);
+        }
+      } catch (error) {
+        console.error('❌ Hava durumu verisi yüklenirken hata:', error);
+        // Fallback veri
+        setWeatherData({
+          hourly: {
+            time: [],
+            temperature_2m: [22, 23, 24, 25, 26, 27, 28]
+          },
+          daily: {
+            time: [],
+            temperature_2m_max: [24, 25, 26, 27, 28, 29, 30],
+            temperature_2m_min: [18, 19, 20, 21, 22, 23, 24],
+            weather_code: [0, 1, 2, 3, 0, 1, 2]
+          }
+        });
+      }
+    };
+
+    fetchWeatherData();
   }, []);
   
   // Hava durumu verisi çekme
@@ -966,16 +997,6 @@ function MainApp() {
               </button>
             </div>
             
-            {/* Version Info */}
-            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-slate-300">{getVersionInfo().version}</span>
-                </div>
-                <span className="text-xs text-slate-400">{getVersionInfo().lastUpdate}</span>
-              </div>
-            </div>
           </div>
 
           {/* Modern Navigation */}
@@ -2516,25 +2537,60 @@ function MainApp() {
                           <div className="flex items-center gap-4">
                             <div className="w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center">
                               <span className="text-2xl">
-                                {weatherData?.list?.[0]?.weather?.[0]?.icon === '01d' ? '☀️' : 
-                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '02d' ? '⛅' :
-                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '03d' ? '☁️' :
-                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '10d' ? '🌧️' :
-                                 weatherData?.list?.[0]?.weather?.[0]?.icon === '11d' ? '⛈️' : '☀️'}
+                                {(() => {
+                                  const currentHour = new Date().getHours();
+                                  const weatherCode = weatherData?.daily?.weather_code?.[0] || 0;
+                                  
+                                  if (weatherCode === 0) return '☀️';
+                                  if (weatherCode === 1 || weatherCode === 2) return '⛅';
+                                  if (weatherCode === 3) return '☁️';
+                                  if (weatherCode >= 45 && weatherCode <= 48) return '🌫️';
+                                  if (weatherCode >= 51 && weatherCode <= 67) return '🌧️';
+                                  if (weatherCode >= 71 && weatherCode <= 77) return '❄️';
+                                  if (weatherCode >= 80 && weatherCode <= 86) return '⛈️';
+                                  if (weatherCode >= 95 && weatherCode <= 99) return '⛈️';
+                                  return '☀️';
+                                })()}
                               </span>
                             </div>
                             <div>
                               <h4 className="text-lg font-semibold text-gray-900">İstanbul</h4>
                               <p className="text-sm text-gray-600">
-                                {weatherData?.list?.[0]?.weather?.[0]?.description || 'Güneşli'}, {Math.round(weatherData?.list?.[0]?.main?.temp || 22)}°C
+                                {(() => {
+                                  const weatherCode = weatherData?.daily?.weather_code?.[0] || 0;
+                                  const descriptions = {
+                                    0: 'Güneşli',
+                                    1: 'Az bulutlu',
+                                    2: 'Parçalı bulutlu',
+                                    3: 'Bulutlu',
+                                    45: 'Sisli',
+                                    48: 'Sisli',
+                                    51: 'Hafif yağmurlu',
+                                    53: 'Orta yağmurlu',
+                                    55: 'Yoğun yağmurlu',
+                                    61: 'Hafif yağmurlu',
+                                    63: 'Orta yağmurlu',
+                                    65: 'Yoğun yağmurlu',
+                                    71: 'Hafif kar',
+                                    73: 'Orta kar',
+                                    75: 'Yoğun kar',
+                                    80: 'Hafif sağanak',
+                                    81: 'Orta sağanak',
+                                    82: 'Yoğun sağanak',
+                                    95: 'Fırtınalı',
+                                    96: 'Fırtınalı',
+                                    99: 'Şiddetli fırtınalı'
+                                  };
+                                  return descriptions[weatherCode] || 'Güneşli';
+                                })()}, {Math.round(weatherData?.daily?.temperature_2m_max?.[0] || 22)}°C
                               </p>
                               <p className="text-xs text-gray-500">
-                                Nem: %{weatherData?.list?.[0]?.main?.humidity || 65} • Rüzgar: {Math.round(weatherData?.list?.[0]?.wind?.speed || 8)} km/h
+                                En yüksek: {Math.round(weatherData?.daily?.temperature_2m_max?.[0] || 22)}° • En düşük: {Math.round(weatherData?.daily?.temperature_2m_min?.[0] || 18)}°
                               </p>
                           </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold text-gray-900">{Math.round(weatherData?.list?.[0]?.main?.temp || 22)}°</p>
+                            <p className="text-2xl font-bold text-gray-900">{Math.round(weatherData?.daily?.temperature_2m_max?.[0] || 22)}°</p>
                             <p className="text-sm text-gray-600">
                               {currentTime.toLocaleDateString('tr-TR', { 
                                 weekday: 'long', 
@@ -2557,33 +2613,28 @@ function MainApp() {
                               date.setDate(date.getDate() + i);
                               const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
                               
-                              // API'den gelen veriyi kullan - her gün için farklı veri
-                              const dayData = weatherData?.list?.[i * 8] || weatherData?.list?.[i] || weatherData?.list?.[0];
-                              const weatherIcon = dayData?.weather?.[0]?.icon;
-                              const temp = Math.round(dayData?.main?.temp || (20 + i));
-                              const minTemp = Math.round((dayData?.main?.temp || (20 + i)) - (2 + Math.random() * 3));
+                              // Open-Meteo API'den gelen veriyi kullan
+                              const maxTemp = Math.round(weatherData?.daily?.temperature_2m_max?.[i] || (20 + i));
+                              const minTemp = Math.round(weatherData?.daily?.temperature_2m_min?.[i] || (18 + i));
+                              const weatherCode = weatherData?.daily?.weather_code?.[i] || 0;
                               
-                              const getWeatherEmoji = (icon, dayIndex) => {
-                                // Her gün için farklı hava durumu
-                                const weatherOptions = [
-                                  ['☀️', '⛅', '☁️', '🌧️', '⛈️'],
-                                  ['⛅', '☁️', '🌧️', '☀️', '🌦️'],
-                                  ['☁️', '🌧️', '⛈️', '☀️', '⛅'],
-                                  ['🌧️', '⛈️', '☀️', '⛅', '☁️'],
-                                  ['⛈️', '☀️', '⛅', '☁️', '🌧️'],
-                                  ['☀️', '⛅', '☁️', '🌧️', '⛈️'],
-                                  ['⛅', '☁️', '🌧️', '☀️', '🌦️']
-                                ];
-                                
-                                const dayWeather = weatherOptions[dayIndex] || weatherOptions[0];
-                                return dayWeather[dayIndex % dayWeather.length];
+                              const getWeatherEmoji = (code) => {
+                                if (code === 0) return '☀️';
+                                if (code === 1 || code === 2) return '⛅';
+                                if (code === 3) return '☁️';
+                                if (code >= 45 && code <= 48) return '🌫️';
+                                if (code >= 51 && code <= 67) return '🌧️';
+                                if (code >= 71 && code <= 77) return '❄️';
+                                if (code >= 80 && code <= 86) return '⛈️';
+                                if (code >= 95 && code <= 99) return '⛈️';
+                                return '☀️';
                               };
                               
                               return (
                                 <div key={i} className="text-center p-2 rounded-lg hover:bg-white/40 transition-colors">
                                   <p className="text-xs text-gray-600 mb-1 font-medium">{dayNames[date.getDay()]}</p>
-                                  <div className="text-lg mb-1">{getWeatherEmoji(weatherIcon, i)}</div>
-                                  <p className="text-sm font-bold text-gray-900">{temp}°</p>
+                                  <div className="text-lg mb-1">{getWeatherEmoji(weatherCode)}</div>
+                                  <p className="text-sm font-bold text-gray-900">{maxTemp}°</p>
                                   <p className="text-xs text-gray-600">{minTemp}°</p>
                           </div>
                               );
@@ -2592,63 +2643,59 @@ function MainApp() {
                         </div>
                       </div>
 
-                      {/* Günlük Hayat Bilgileri */}
-                      <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl p-6 mb-6 border border-emerald-200/50">
+
+                      {/* Günlük Sıcaklık Grafiği */}
+                      <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 mb-6 border border-orange-200/50">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center">
-                            <Sparkles className="w-5 h-5 text-white" />
+                          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5 text-white" />
                             </div>
-                          <h4 className="text-lg font-semibold text-gray-900">Günlük Hayat</h4>
+                          <h4 className="text-lg font-semibold text-gray-900">Günlük Sıcaklık Değişimi</h4>
                           </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg">📰</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Günün Durumu</p>
-                              <p className="text-xs text-gray-600">
-                                {currentTime.getHours() < 9 ? 'Sabah erken saatler, güne başlamak için ideal zaman' :
-                                 currentTime.getHours() < 12 ? 'Sabah saatleri, verimli çalışma zamanı' :
-                                 currentTime.getHours() < 17 ? 'Öğleden sonra, enerji seviyesi yüksek' :
-                                 currentTime.getHours() < 20 ? 'Akşam saatleri, günün sonuna yaklaşıyoruz' :
-                                 'Akşam saatleri, dinlenme zamanı'}
-                              </p>
-                            </div>
+                        <div className="bg-white/60 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm text-gray-600">24 Saatlik Sıcaklık Trendi</span>
+                            <span className="text-xs text-gray-500">İstanbul</span>
                           </div>
-                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
-                            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg">⏰</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Günlük Hatırlatma</p>
-                              <p className="text-xs text-gray-600">
-                                {currentTime.getDay() === 5 ? 'Bugün Cuma, hafta sonu planları için ideal gün' :
-                                 currentTime.getDay() === 6 ? 'Bugün Cumartesi, hafta sonu keyfi' :
-                                 currentTime.getDay() === 0 ? 'Bugün Pazar, dinlenme ve aile zamanı' :
-                                 'Hafta içi, verimli çalışma günü'}
-                              </p>
-                            </div>
+                          <div className="h-32 flex items-end justify-between gap-1">
+                            {weatherData?.hourly?.temperature_2m?.slice(0, 24).map((temp, index) => {
+                              const maxTemp = Math.max(...weatherData.hourly.temperature_2m.slice(0, 24));
+                              const minTemp = Math.min(...weatherData.hourly.temperature_2m.slice(0, 24));
+                              const height = ((temp - minTemp) / (maxTemp - minTemp)) * 100;
+                              const isCurrentHour = index === new Date().getHours();
+                              
+                              return (
+                                <div key={index} className="flex flex-col items-center">
+                                  <div 
+                                    className={`w-3 rounded-t transition-all duration-300 ${
+                                      isCurrentHour 
+                                        ? 'bg-gradient-to-t from-red-500 to-orange-400' 
+                                        : 'bg-gradient-to-t from-blue-400 to-cyan-300'
+                                    }`}
+                                    style={{ height: `${Math.max(height, 10)}px` }}
+                                    title={`${new Date().getHours() + index}:00 - ${Math.round(temp)}°C`}
+                                  ></div>
+                                  {index % 6 === 0 && (
+                                    <span className="text-xs text-gray-500 mt-1">
+                                      {new Date().getHours() + index}:00
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            }) || Array.from({length: 24}, (_, i) => (
+                              <div key={i} className="flex flex-col items-center">
+                                <div 
+                                  className="w-3 bg-gradient-to-t from-gray-300 to-gray-400 rounded-t"
+                                  style={{ height: `${20 + (i % 3) * 10}px` }}
+                                ></div>
+                              </div>
+                            ))}
                           </div>
-                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
-                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg">🎯</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Günlük Motivasyon</p>
-                              <p className="text-xs text-gray-600">{dailyMotivation}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 bg-white/60 rounded-xl">
-                            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg">📊</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Aktif Veriler</p>
-                              <p className="text-xs text-gray-600">
-                                {personnelData.length} personel, {storeData.length} mağaza
-                              </p>
-                            </div>
+                          <div className="flex justify-between text-xs text-gray-500 mt-2">
+                            <span>Gece</span>
+                            <span>Sabah</span>
+                            <span>Öğle</span>
+                            <span>Akşam</span>
                           </div>
                         </div>
                       </div>
@@ -2742,12 +2789,16 @@ function MainApp() {
                       ) : (
                         <div className="space-y-3 mb-6">
                           <h4 className="text-lg font-semibold text-gray-900">Tüm Mağazalar ({allStores.length})</h4>
-                          <div className="max-h-96 overflow-y-auto space-y-3">
+                          <div className="max-h-[500px] overflow-y-auto space-y-3">
                             {allStores
                               .sort((a, b) => {
                                 const nameA = (a.name || a.store_name || a.mağaza_adı || '').toLowerCase();
                                 const nameB = (b.name || b.store_name || b.mağaza_adı || '').toLowerCase();
                                 return nameA.localeCompare(nameB, 'tr');
+                              })
+                              .filter(store => {
+                                const storeName = (store.name || store.store_name || store.mağaza_adı || '').toLowerCase();
+                                return !storeName.includes('altıntepe');
                               })
                               .map((store, index) => (
                             <div key={store.id || index} className="bg-white rounded-xl p-4 border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200 cursor-pointer">

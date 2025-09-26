@@ -2152,13 +2152,13 @@ function MainApp() {
             {activeTab === 'home' && (
               <div className="space-y-8">
                 {/* Ultra Modern Hero Section - Time Based Background */}
-                <div className={`relative overflow-hidden rounded-3xl p-8 text-white shadow-2xl border border-white/10 ${
+                <div className={`relative overflow-hidden rounded-3xl p-6 text-white shadow-2xl border border-white/10 ${
                   (() => {
                     const hour = currentTime.getHours();
                     if (hour >= 5 && hour < 12) {
-                      return 'bg-gradient-to-br from-orange-400 via-yellow-500 to-pink-500'; // Sabah - Güneş doğumu
+                      return 'bg-gradient-to-br from-yellow-400 via-orange-500 to-pink-500'; // Sabah - Parlak güneş doğumu
                     } else if (hour >= 12 && hour < 17) {
-                      return 'bg-gradient-to-br from-blue-500 via-cyan-500 to-yellow-400'; // Öğlen - Parlak güneş
+                      return 'bg-gradient-to-br from-cyan-400 via-blue-500 to-yellow-300'; // Öğlen - Çok parlak güneş
                     } else if (hour >= 17 && hour < 20) {
                       return 'bg-gradient-to-br from-orange-500 via-red-500 to-purple-600'; // Akşam - Gün batımı
                     } else {
@@ -2171,23 +2171,23 @@ function MainApp() {
                     {(() => {
                       const hour = currentTime.getHours();
                       if (hour >= 5 && hour < 12) {
-                        // Sabah - Güneş doğumu
+                        // Sabah - Parlak güneş doğumu
                         return (
                           <>
-                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-yellow-300/30 to-orange-400/30 rounded-full blur-3xl animate-pulse"></div>
-                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-pink-400/30 to-yellow-500/30 rounded-full blur-2xl animate-bounce"></div>
-                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-orange-400/25 to-yellow-500/25 rounded-full blur-xl animate-spin"></div>
-                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-orange-500/20 rounded-full blur-lg animate-pulse"></div>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-yellow-200/50 to-orange-300/50 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-pink-300/40 to-yellow-400/40 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-orange-300/35 to-yellow-400/35 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-300/30 to-orange-400/30 rounded-full blur-lg animate-pulse"></div>
                           </>
                         );
                       } else if (hour >= 12 && hour < 17) {
-                        // Öğlen - Parlak güneş
+                        // Öğlen - Çok parlak güneş
                         return (
                           <>
-                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-yellow-200/40 to-orange-300/40 rounded-full blur-3xl animate-pulse"></div>
-                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-blue-300/30 to-cyan-400/30 rounded-full blur-2xl animate-bounce"></div>
-                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
-                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-yellow-400/20 to-orange-500/20 rounded-full blur-lg animate-pulse"></div>
+                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-yellow-100/60 to-orange-200/60 rounded-full blur-3xl animate-pulse"></div>
+                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-cyan-200/50 to-blue-300/50 rounded-full blur-2xl animate-bounce"></div>
+                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-300/40 to-blue-400/40 rounded-full blur-xl animate-spin"></div>
+                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-yellow-300/35 to-orange-400/35 rounded-full blur-lg animate-pulse"></div>
                           </>
                         );
                       } else if (hour >= 17 && hour < 20) {
@@ -2204,10 +2204,10 @@ function MainApp() {
                         // Gece - Karanlık tema
                         return (
                           <>
-                            <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-                            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
-                            <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
-                            <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-rose-500/20 rounded-full blur-lg animate-pulse"></div>
+                    <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+                    <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-purple-400/30 to-pink-500/30 rounded-full blur-2xl animate-bounce"></div>
+                    <div className="absolute top-1/3 left-1/3 w-48 h-48 bg-gradient-to-r from-cyan-400/25 to-blue-500/25 rounded-full blur-xl animate-spin"></div>
+                    <div className="absolute top-2/3 right-1/4 w-32 h-32 bg-gradient-to-l from-pink-400/20 to-rose-500/20 rounded-full blur-lg animate-pulse"></div>
                           </>
                         );
                       }
@@ -2224,35 +2224,66 @@ function MainApp() {
 
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-8">
-                      <div className="max-w-2xl">
-                        <div className="flex items-center gap-6 mb-6">
-                          <h1 className="text-4xl lg:text-5xl font-bold animate-fade-in-up">
-                            Hoş Geldin{' '}
-                            <span className="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent animate-gradient">
-                              {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
-                            </span>
-                            !
-                          </h1>
+                      <div className="w-full">
+                        <div className="w-full h-full relative">
+                          {/* Sol taraf - Avatar ve Selamlama */}
+                          <div className="flex items-center gap-6">
+                            {/* Avatar */}
+                            <div className="relative">
+                              <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
+                                <span className="text-2xl font-bold text-white">
+                                  {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                                </span>
+                              </div>
+                              {/* Online indicator */}
+                              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                              </div>
+                            </div>
+                            
+                            {/* Greeting Message */}
+                            <div>
+                              <h1 className="text-4xl lg:text-5xl font-bold text-white whitespace-nowrap">
+                                {(() => {
+                                  const hour = currentTime.getHours();
+                                  if (hour >= 5 && hour < 12) {
+                                    return 'Günaydın';
+                                  } else if (hour >= 12 && hour < 17) {
+                                    return 'İyi günler';
+                                  } else if (hour >= 17 && hour < 20) {
+                                    return 'İyi akşamlar';
+                                  } else {
+                                    return 'İyi geceler';
+                                  }
+                                })()}
+                                ,{' '}
+                                <span className="bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
+                                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
+                                </span>
+                                !
+                              </h1>
+                            </div>
+                          </div>
                           
-                          {/* Avatar */}
-                          <div className="relative">
-                            <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20 animate-float">
-                              <span className="text-2xl font-bold text-white">
-                                {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                              </span>
-                            </div>
-                            {/* Online indicator */}
-                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
-                              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                            </div>
+                          {/* En sağ dip taraf - Mesaj */}
+                          <div className="absolute bottom-0 right-0">
+                            <p className="text-white/80 text-lg font-medium">
+                              {(() => {
+                                const hour = currentTime.getHours();
+                                if (hour >= 5 && hour < 12) {
+                                  return '🌅 Yeni bir gün, yeni fırsatlar!';
+                                } else if (hour >= 12 && hour < 17) {
+                                  return '☀️ Verimli çalışma zamanı!';
+                                } else if (hour >= 17 && hour < 20) {
+                                  return '🌇 Günün sonuna yaklaşıyoruz!';
+                                } else {
+                                  return '🌙 Dinlenme zamanı!';
+                                }
+                              })()}
+                            </p>
                           </div>
                         </div>
                         
-                      </div>
-                      <div className="hidden lg:block">
-                        <div className="w-32 h-32 bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg rounded-full flex items-center justify-center border border-white/20 animate-float">
-                          <Sparkles className="w-16 h-16 text-white animate-pulse" />
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -2459,16 +2490,16 @@ function MainApp() {
                     
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-10">
-                        <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-4">
                           <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl">
                             <Sparkles className="w-7 h-7 text-white" />
-                          </div>
-                          <div>
+                                </div>
+                                <div>
                             <h3 className="text-3xl font-bold text-gray-900">Hızlı İşlemler</h3>
                             <p className="text-base text-gray-600">En sık kullanılan özellikler</p>
                           </div>
                         </div>
-                      </div>
+                        </div>
 
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Modern Personnel Button */}

@@ -570,10 +570,10 @@ const TransferPersonnelList = () => {
       title: 'Sicil No',
       dataIndex: 'sicil_no',
       key: 'sicil_no',
-      width: 80,
+      width: 70,
       sorter: (a, b) => (a.sicil_no || '').localeCompare(b.sicil_no || ''),
       render: (text) => (
-        <span className="font-mono text-sm font-bold text-gray-800">
+        <span className="font-mono text-xs font-bold text-gray-800">
           {text || 'N/A'}
         </span>
       )
@@ -582,17 +582,17 @@ const TransferPersonnelList = () => {
       title: 'Ad Soyad',
       dataIndex: 'adi_soyadi',
       key: 'adi_soyadi',
-      width: 140,
+      width: 120,
       sorter: (a, b) => (a.adi_soyadi || '').localeCompare(b.adi_soyadi || ''),
       render: (text, record) => (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           <Avatar 
-            size={28} 
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-sm"
+            size={24} 
+            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-xs"
           >
             {text ? text.split(' ').map(n => n[0]).join('') : '??'}
           </Avatar>
-          <span className="font-bold text-base text-gray-800">{text || 'Bilinmeyen'}</span>
+          <span className="font-bold text-sm text-gray-800 truncate">{text || 'Bilinmeyen'}</span>
         </div>
       )
     },
@@ -600,7 +600,7 @@ const TransferPersonnelList = () => {
       title: 'Pozisyon',
       dataIndex: 'pozisyon',
       key: 'pozisyon',
-      width: 120,
+      width: 100,
       sorter: (a, b) => (a.pozisyon || '').localeCompare(b.pozisyon || ''),
       filters: Array.from(new Set(personnelData.map(p => p.pozisyon).filter(Boolean)))
         .map(pozisyon => ({ text: pozisyon, value: pozisyon })),
@@ -609,7 +609,7 @@ const TransferPersonnelList = () => {
         const colors = getPositionColor(text);
         return (
           <span 
-            className="text-sm font-bold px-3 py-1.5 rounded-full border"
+            className="text-xs font-bold px-2 py-1 rounded-full border"
             style={{ 
               backgroundColor: colors.bg, 
               color: colors.text, 
@@ -625,77 +625,67 @@ const TransferPersonnelList = () => {
       title: 'Bölge',
       dataIndex: 'bolge',
       key: 'bolge',
-      width: 100,
+      width: 80,
       sorter: (a, b) => (a.bolge || '').localeCompare(b.bolge || ''),
       filters: Array.from(new Set(personnelData.map(p => p.bolge).filter(Boolean)))
         .map(bolge => ({ text: bolge, value: bolge })),
       onFilter: (value, record) => record.bolge === value,
       render: (text) => (
-        <Tag color={getRegionColor(text)} className="font-bold text-sm">
+        <Tag color={getRegionColor(text)} className="font-bold text-xs">
           {text || 'Bilinmeyen'}
         </Tag>
       )
     },
     {
-      title: 'Toplam Dağıtılan Kasa',
+      title: 'Kasa',
       key: 'kasa',
-      width: 140,
+      width: 60,
       sorter: (a, b) => (a.totalKasa || 0) - (b.totalKasa || 0),
       render: (_, record) => {
         const totalKasa = record.totalKasa || 0;
         const isGood = totalKasa >= 50000;
         const color = isGood ? 'text-green-600' : 'text-orange-600';
-        const iconColor = isGood ? 'text-green-600' : 'text-orange-600';
-        
-        return (
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-1">
-              <Package className={`w-5 h-5 ${iconColor} mr-2`} />
-              <span className={`font-bold text-xl ${color}`}>{totalKasa.toLocaleString('tr-TR')}</span>
-            </div>
-            <div className="text-sm text-gray-600">
-              <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
-              <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
-            </div>
-          </div>
-        );
-      }
-    },
-    {
-      title: 'Palet Sayısı',
-      key: 'palet',
-      width: 100,
-      sorter: (a, b) => (a.totalPalet || 0) - (b.totalPalet || 0),
-      render: (_, record) => {
-        const totalPalet = record.totalPalet || 0;
-        const isGood = totalPalet >= 5000; // 50k kasa / 10 = 5k palet
-        const color = isGood ? 'text-green-600' : 'text-orange-600';
-        const iconColor = isGood ? 'text-green-600' : 'text-orange-600';
         
         return (
           <div className="text-center">
             <div className="flex items-center justify-center">
-              <Truck className={`w-5 h-5 ${iconColor} mr-2`} />
-              <span className={`font-bold text-xl ${color}`}>{totalPalet.toLocaleString('tr-TR')}</span>
+              <Package className={`w-4 h-4 ${color} mr-1`} />
+              <span className={`font-bold text-sm ${color}`}>{totalKasa.toLocaleString('tr-TR')}</span>
             </div>
           </div>
         );
       }
     },
     {
-      title: 'Okutma Detayı',
+      title: 'Palet',
+      key: 'palet',
+      width: 60,
+      sorter: (a, b) => (a.totalPalet || 0) - (b.totalPalet || 0),
+      render: (_, record) => {
+        const totalPalet = record.totalPalet || 0;
+        const isGood = totalPalet >= 5000;
+        const color = isGood ? 'text-green-600' : 'text-orange-600';
+        
+        return (
+          <div className="text-center">
+            <div className="flex items-center justify-center">
+              <Truck className={`w-4 h-4 ${color} mr-1`} />
+              <span className={`font-bold text-sm ${color}`}>{totalPalet.toLocaleString('tr-TR')}</span>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      title: 'Okutma',
       key: 'okutma',
-      width: 140,
+      width: 80,
       sorter: (a, b) => (a.totalOkutma || 0) - (b.totalOkutma || 0),
       render: (_, record) => (
         <div className="text-center">
-          <div className="flex items-center justify-center mb-1">
-            <CheckCircle className="w-4 h-4 text-purple-600 mr-1" />
-            <span className="font-bold text-base text-purple-600">{record.totalOkutma || 0}</span>
-          </div>
-          <div className="text-sm text-gray-600 mb-1">
-            <span className="text-green-600">✓ {record.okutulanKasa || 0}</span> / 
-            <span className="text-red-500"> ✗ {record.okutulmayanKasa || 0}</span>
+          <div className="text-xs text-gray-600 mb-1">
+            <span className="text-green-600">✓{record.okutulanKasa || 0}</span> / 
+            <span className="text-red-500"> ✗{record.okutulmayanKasa || 0}</span>
           </div>
           <Progress 
             percent={record.okutmaPerformance || 0} 
@@ -703,35 +693,39 @@ const TransferPersonnelList = () => {
             strokeColor={(record.okutmaPerformance || 0) > 100 ? '#52c41a' : (record.okutmaPerformance || 0) > 80 ? '#1890ff' : '#faad14'}
             showInfo={false}
           />
-          <div className="text-sm text-gray-500 mt-1">
+          <div className="text-xs text-gray-500 mt-1">
             {record.okutmaPerformance || 0}%
           </div>
         </div>
       )
     },
     {
-      title: 'Genel Performans',
+      title: 'Performans',
       key: 'genel',
-      width: 110,
+      width: 80,
       sorter: (a, b) => (a.generalPerformance || 0) - (b.generalPerformance || 0),
       render: (_, record) => {
         const generalPerformance = record.generalPerformance || 0;
         return (
           <div className="text-center">
-            <div className="text-sm text-gray-500 mb-1">Ortalama</div>
+            <div className="flex items-center justify-center mb-1">
+              <BarChart3 className="w-3 h-3 text-blue-600 mr-1" />
+              <span className="font-bold text-sm text-blue-600">{generalPerformance}%</span>
+            </div>
             <Progress 
               percent={generalPerformance} 
               size="small" 
               strokeColor={generalPerformance > 100 ? '#52c41a' : generalPerformance > 80 ? '#1890ff' : '#faad14'}
+              showInfo={false}
             />
-            <div className="text-sm mt-1">
+            <div className="text-xs text-gray-500 mt-1">
               {generalPerformance > 80 ? (
-                <TrendingUp className="w-4 h-4 text-green-500 inline mr-1" />
+                <TrendingUp className="w-3 h-3 text-green-500 inline mr-1" />
               ) : (
-                <TrendingDown className="w-4 h-4 text-orange-500 inline mr-1" />
+                <TrendingDown className="w-3 h-3 text-orange-500 inline mr-1" />
               )}
               <span className={generalPerformance > 80 ? 'text-green-500' : 'text-orange-500'}>
-                {generalPerformance}%
+                {generalPerformance > 80 ? 'İyi' : 'Düşük'}
               </span>
             </div>
           </div>
@@ -741,14 +735,15 @@ const TransferPersonnelList = () => {
     {
       title: 'İşlemler',
       key: 'actions',
-      width: 100,
+      width: 80,
       fixed: 'right',
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Tooltip title="Düzenle">
             <Button 
               type="text" 
-              icon={<Edit className="w-5 h-5" />}
+              size="small"
+              icon={<Edit className="w-4 h-4" />}
               onClick={() => handleEdit(record)}
               className="text-blue-600 hover:bg-blue-50"
             />
@@ -756,8 +751,9 @@ const TransferPersonnelList = () => {
           <Tooltip title="Sil">
             <Button 
               type="text" 
+              size="small"
               danger
-              icon={<Trash2 className="w-5 h-5" />}
+              icon={<Trash2 className="w-4 h-4" />}
               onClick={() => handleDelete(record.id)}
               className="hover:bg-red-50"
             />
@@ -874,21 +870,21 @@ const TransferPersonnelList = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
         {/* Header */}
-        <div className="p-8 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex justify-between items-center mb-6">
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+          <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-3xl font-bold text-gray-800 flex items-center mb-2">
-                <Users className="w-8 h-8 mr-4 text-blue-600" />
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center mb-1">
+                <Users className="w-6 h-6 mr-3 text-blue-600" />
                 Aktarma Depo Personel Yönetimi
               </h2>
-              <p className="text-gray-600 text-lg">Personel performans takibi ve yönetimi</p>
+              <p className="text-gray-600 text-sm">Personel performans takibi ve yönetimi</p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex space-x-2">
               <Button 
                 icon={<Download className="w-4 h-4" />}
                 onClick={handleDownloadReport}
                 className="bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 text-white"
-                size="large"
+                size="default"
               >
                 Rapor İndir
               </Button>
@@ -901,7 +897,7 @@ const TransferPersonnelList = () => {
                   icon={<UploadIcon className="w-4 h-4" />}
                   loading={uploadLoading}
                   className="bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600 text-white"
-                  size="large"
+                  size="default"
                 >
                   Excel Yükle
                 </Button>
@@ -910,21 +906,21 @@ const TransferPersonnelList = () => {
           </div>
 
           {/* Filtreler */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <Input
               placeholder="Ad, sicil no, pozisyon veya bölge ile ara..."
               prefix={<Search className="w-4 h-4 text-gray-400" />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="rounded-lg h-12 text-lg"
-              size="large"
+              className="rounded-lg h-10 text-sm"
+              size="default"
             />
             <Select
               placeholder="Bölge Seçin"
               value={selectedRegion}
               onChange={setSelectedRegion}
-              className="w-full h-12"
-              size="large"
+              className="w-full h-10"
+              size="default"
             >
               <Option value="all">Tüm Bölgeler</Option>
               {Array.from(new Set(personnelData.map(p => p.bolge).filter(Boolean)))
@@ -936,8 +932,8 @@ const TransferPersonnelList = () => {
               placeholder="Pozisyon Seçin"
               value={selectedPosition}
               onChange={setSelectedPosition}
-              className="w-full h-12"
-              size="large"
+              className="w-full h-10"
+              size="default"
             >
               <Option value="all">Tüm Pozisyonlar</Option>
               {Array.from(new Set(personnelData.map(p => p.pozisyon).filter(Boolean)))
@@ -949,8 +945,8 @@ const TransferPersonnelList = () => {
               placeholder="Ay Seçin"
               value={selectedMonth}
               onChange={setSelectedMonth}
-              className="w-full h-12"
-              size="large"
+              className="w-full h-10"
+              size="default"
             >
               {availableMonths.map(month => (
                 <Option key={month.value} value={month.value}>
@@ -962,70 +958,70 @@ const TransferPersonnelList = () => {
         </div>
 
         {/* İstatistikler */}
-        <div className="p-8 border-b border-gray-200 bg-white">
-          <Row gutter={[16, 16]}>
+        <div className="p-4 border-b border-gray-200 bg-white">
+          <Row gutter={[12, 12]}>
             <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Toplam Personel</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Toplam Personel</span>}
                   value={personnelData.length}
-                  valueStyle={{ color: '#1890ff', fontSize: '24px', fontWeight: 'bold' }}
-                  prefix={<Users className="w-5 h-5 text-blue-600" />}
+                  valueStyle={{ color: '#1890ff', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<Users className="w-4 h-4 text-blue-600" />}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Aktif Personel</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Aktif Personel</span>}
                   value={personnelData.filter(p => p.durum === 'aktif').length}
-                  valueStyle={{ color: '#52c41a', fontSize: '24px', fontWeight: 'bold' }}
-                  prefix={<CheckCircle className="w-5 h-5 text-green-600" />}
+                  valueStyle={{ color: '#52c41a', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<CheckCircle className="w-4 h-4 text-green-600" />}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-purple-50 to-purple-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-purple-50 to-purple-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Toplam Kasa</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Toplam Kasa</span>}
                   value={personnelData.reduce((sum, p) => sum + (p.totalKasa || 0), 0).toLocaleString('tr-TR')}
-                  valueStyle={{ color: '#722ed1', fontSize: '24px', fontWeight: 'bold' }}
-                  prefix={<Package className="w-5 h-5 text-purple-600" />}
+                  valueStyle={{ color: '#722ed1', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<Package className="w-4 h-4 text-purple-600" />}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Okutulan Kasa</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Okutulan Kasa</span>}
                   value={personnelData.reduce((sum, p) => sum + (p.okutulanKasa || 0), 0).toLocaleString('tr-TR')}
-                  valueStyle={{ color: '#52c41a', fontSize: '24px', fontWeight: 'bold' }}
-                  prefix={<CheckCircle className="w-5 h-5 text-green-600" />}
+                  valueStyle={{ color: '#52c41a', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<CheckCircle className="w-4 h-4 text-green-600" />}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-red-50 to-red-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-red-50 to-red-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Okutulmayan Kasa</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Okutulmayan Kasa</span>}
                   value={personnelData.reduce((sum, p) => sum + (p.okutulmayanKasa || 0), 0).toLocaleString('tr-TR')}
-                  valueStyle={{ color: '#ff4d4f', fontSize: '24px', fontWeight: 'bold' }}
-                  prefix={<XCircle className="w-5 h-5 text-red-600" />}
+                  valueStyle={{ color: '#ff4d4f', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<XCircle className="w-4 h-4 text-red-600" />}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 to-orange-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-orange-50 to-orange-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Ortalama Okutma Oranı</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Ortalama Okutma Oranı</span>}
                   value={personnelData.length > 0 ? Math.round(personnelData.reduce((sum, p) => {
                     const totalKasa = p.totalKasa || 0;
                     const okutulanKasa = p.okutulanKasa || 0;
                     return sum + (totalKasa > 0 ? (okutulanKasa / totalKasa) * 100 : 0);
                   }, 0) / personnelData.length * 10) / 10 : 0}
                   suffix="%"
-                  valueStyle={{ color: '#fa8c16', fontSize: '24px', fontWeight: 'bold' }}
-                  prefix={<BarChart3 className="w-5 h-5 text-orange-600" />}
+                  valueStyle={{ color: '#fa8c16', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<BarChart3 className="w-4 h-4 text-orange-600" />}
                 />
               </Card>
             </Col>
@@ -1033,7 +1029,7 @@ const TransferPersonnelList = () => {
         </div>
 
         {/* Tablo */}
-        <div className="p-8">
+        <div className="p-4">
           {loading && (
             <div className="text-center py-16">
               <div className="max-w-md mx-auto">
@@ -1119,7 +1115,7 @@ const TransferPersonnelList = () => {
                 pageSizeOptions: ['25', '50', '100', '200'],
                 size: 'default'
               }}
-              scroll={{ x: 1600 }}
+              scroll={{ x: 800 }}
               className="modern-table"
               rowClassName={(record) => 
                 record.durum === 'aktif' ? 'active-row' : 'inactive-row'
@@ -1239,8 +1235,8 @@ const styles = `
     font-weight: 700;
     border: 1px solid #e5e7eb;
     text-align: center;
-    font-size: 16px;
-    padding: 12px 12px;
+    font-size: 12px;
+    padding: 8px 6px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
@@ -1254,7 +1250,7 @@ const styles = `
   }
   
   .modern-table .ant-table-tbody > tr > td {
-    padding: 8px 12px !important;
+    padding: 6px 6px !important;
     vertical-align: middle;
   }
   

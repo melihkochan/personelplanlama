@@ -18,7 +18,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
     store_code: '',
     store_name: '',
     region: '',
-    store_type: 'Standart',
+    store_type: '',
     location: '',
     region_manager: '',
     sales_manager: '',
@@ -130,7 +130,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
           store_code: '',
           store_name: '',
           region: '',
-          store_type: 'Standart',
+          store_type: '',
           location: '',
           region_manager: '',
           sales_manager: '',
@@ -365,7 +365,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
                 </div>
                 <div>
                   <p className="text-purple-200">Tür</p>
-                  <p className="font-semibold">{selectedStore.store_type || selectedStore.tip || 'Standart'}</p>
+                  <p className="font-semibold">{selectedStore.store_type || selectedStore.tip || 'Belirtilmemiş'}</p>
                 </div>
                 <div>
                   <p className="text-purple-200">Konum</p>
@@ -490,7 +490,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
                   onChange={(e) => setNewStore({...newStore, store_type: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
-                  <option value="Standart">Standart</option>
+                  <option value="">Mağaza tipi seçin</option>
                   <option value="AVM">AVM</option>
                   <option value="Cadde">Cadde</option>
                   <option value="Beauty">Beauty</option>
@@ -617,7 +617,7 @@ const StoreList = ({ storeData: propStoreData, currentUser }) => {
                   onChange={(e) => setEditingStore({...editingStore, store_type: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
-                  <option value="Standart">Standart</option>
+                  <option value="">Mağaza tipi seçin</option>
                   <option value="AVM">AVM</option>
                   <option value="Cadde">Cadde</option>
                   <option value="Beauty">Beauty</option>

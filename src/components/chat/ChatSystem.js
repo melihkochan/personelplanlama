@@ -713,12 +713,16 @@ const ChatSystem = ({ currentUser }) => {
         </div>
 
         {/* Mesaj Alanı */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+        <div className="flex-1 overflow-y-auto p-4 bg-gray-50" style={{ maxHeight: 'calc(100vh - 140px)' }}>
           {currentConversation ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {messages.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">Henüz mesaj yok</p>
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MessageCircle className="w-8 h-8 text-green-500" />
+                  </div>
+                  <p className="text-gray-500 text-sm">Henüz mesaj yok</p>
+                  <p className="text-gray-400 text-xs mt-1">İlk mesajı siz gönderin</p>
                 </div>
               ) : (
                 <>
@@ -736,13 +740,15 @@ const ChatSystem = ({ currentUser }) => {
               )}
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex items-center justify-center bg-gray-50">
               <div className="text-center">
-                <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <MessageCircle className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   Sohbet Seçin
                 </h3>
-                <p className="text-gray-500">
+                <p className="text-gray-500 text-sm">
                   Mesajlaşmaya başlamak için bir sohbet seçin
                 </p>
               </div>
@@ -752,15 +758,15 @@ const ChatSystem = ({ currentUser }) => {
 
         {/* Mesaj Gönderme Alanı */}
         {currentConversation && (
-          <div className="bg-white border-t border-gray-200 p-4">
+          <div className="bg-white border-t border-gray-100 p-4">
             <div className="flex items-end space-x-3">
-              <div className="flex-1 bg-gray-50 rounded-2xl px-4 py-3">
+              <div className="flex-1 bg-gray-50 rounded-full px-4 py-3 border border-gray-200 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
                 <textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Mesajınızı yazın..."
-                  className="w-full bg-transparent border-none outline-none resize-none text-sm"
+                  className="w-full bg-transparent border-none outline-none resize-none text-sm placeholder-gray-500"
                   rows="1"
                 />
               </div>
@@ -768,7 +774,7 @@ const ChatSystem = ({ currentUser }) => {
               <div className="flex items-center space-x-2">
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-2 rounded-lg hover:bg-gray-100 relative"
+                  className="p-2.5 rounded-full hover:bg-gray-100 relative transition-colors"
                 >
                   <Smile className="w-5 h-5 text-gray-500" />
                   
@@ -804,7 +810,7 @@ const ChatSystem = ({ currentUser }) => {
                 <button
                   onClick={sendMessage}
                   disabled={isLoading || !newMessage.trim()}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-transform"
+                  className="bg-green-500 text-white p-3 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-600 transition-colors shadow-sm hover:shadow-md"
                 >
                   <Send className="w-5 h-5" />
                 </button>

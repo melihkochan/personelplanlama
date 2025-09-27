@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MessageCircle, X, Check, CheckCheck } from 'lucide-react';
+import { Plus, MessageCircle, X, Check, CheckCheck, Search, Loader2 } from 'lucide-react';
 import { supabase, getChatUsers, avatarService } from '../../services/supabase';
 
 const ChatSidebar = ({ 
@@ -12,9 +12,11 @@ const ChatSidebar = ({
   onClose 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [conversationSearchTerm, setConversationSearchTerm] = useState('');
   const [allUsers, setAllUsers] = useState([]);
   const [showUserList, setShowUserList] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (currentUser?.id) {
@@ -63,8 +65,8 @@ const ChatSidebar = ({
 
   const loadAllUsers = async () => {
     try {
+      setIsLoading(true);
       const result = await getChatUsers(currentUser.id);
-      
       
       if (result.success && result.data.length > 0) {
         // Duplicate'leri kaldır ve current user'ı filtrele
@@ -81,6 +83,8 @@ const ChatSidebar = ({
     } catch (error) {
       console.error('❌ Kullanıcılar yüklenirken hata:', error);
       setAllUsers([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -160,25 +164,25 @@ const ChatSidebar = ({
     });
 
   return (
-    <div className="w-80 bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 flex flex-col h-full shadow-lg">
+    <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full shadow-sm">
       {/* Header */}
       <div className="p-4 border-b border-gray-100 bg-white">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <MessageCircle className="w-4 h-4 text-white" />
+            <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-sm">
+              <MessageCircle className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Sohbetler</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Sohbetler</h2>
               <div className="flex items-center gap-1">
-                <p className="text-xs text-gray-500">{conversations.length} sohbet</p>
+                <p className="text-sm text-gray-500">{conversations.length} sohbet</p>
                 {conversations.reduce((total, conv) => {
                   const unreadMessages = conv.messages?.filter(msg => 
                     msg.is_read === false && msg.sender_id !== currentUser.id
                   ) || [];
                   return total + unreadMessages.length;
                 }, 0) > 0 && (
-                  <span className="text-xs text-red-500 font-medium">
+                  <span className="text-sm text-green-600 font-medium">
                     • {conversations.reduce((total, conv) => {
                       const unreadMessages = conv.messages?.filter(msg => 
                         msg.is_read === false && msg.sender_id !== currentUser.id
@@ -192,12 +196,28 @@ const ChatSidebar = ({
           </div>
           <button
             onClick={() => setShowUserList(!showUserList)}
-            className="p-2 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-md"
+            className="p-2.5 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all duration-200 shadow-sm hover:shadow-md"
             title="Yeni Sohbet"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5" />
           </button>
         </div>
+        
+        {/* Sohbet Arama Kutusu */}
+        {!showUserList && (
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={conversationSearchTerm}
+              onChange={(e) => setConversationSearchTerm(e.target.value)}
+              placeholder="Sohbet ara..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 focus:bg-white transition-colors"
+            />
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -205,89 +225,121 @@ const ChatSidebar = ({
         {showUserList ? (
           /* User Selection */
           <div className="p-4">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-sm">
+                  <MessageCircle className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-base font-semibold text-gray-900">Yeni Sohbet</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Yeni Sohbet</h3>
               </div>
               <button
                 onClick={() => setShowUserList(false)}
-                className="text-sm text-purple-600 hover:text-purple-700 font-medium hover:bg-purple-50 px-3 py-1 rounded-lg transition-colors"
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
               >
                 İptal
               </button>
             </div>
             
-            <div className="space-y-3">
-              {filteredUsers.map((user, index) => (
-                <div
-                  key={user.id}
-                  onClick={() => handleUserSelect(user)}
-                  className="group flex items-center p-4 rounded-xl cursor-pointer hover:bg-white hover:shadow-md border border-transparent hover:border-gray-200 transition-all duration-300 transform hover:scale-[1.02]"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="relative">
-                    {user.avatar_url ? (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg">
-                        <img 
-                          src={avatarService.getAvatarUrl(user.avatar_url)} 
-                          alt="Avatar" 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                        <div className={`w-full h-full rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-lg ${getAvatarColor(user.email)}`} style={{display: 'none'}}>
+            {/* Arama Kutusu */}
+            <div className="relative mb-4">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Kullanıcı ara..."
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 focus:bg-white transition-colors"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Search className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-sm text-gray-500">Kullanıcı bulunamadı</p>
+                  <p className="text-xs text-gray-400 mt-1">Farklı bir arama terimi deneyin</p>
+                </div>
+              ) : (
+                filteredUsers.map((user, index) => (
+                  <div
+                    key={user.id}
+                    onClick={() => handleUserSelect(user)}
+                    className="group flex items-center p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 border border-transparent hover:border-gray-200"
+                  >
+                    <div className="relative">
+                      {user.avatar_url ? (
+                        <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm">
+                          <img 
+                            src={avatarService.getAvatarUrl(user.avatar_url)} 
+                            alt="Avatar" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className={`w-full h-full rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(user.email)}`} style={{display: 'none'}}>
+                            {getInitials(user.user_metadata?.full_name)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(user.email)}`}>
                           {getInitials(user.user_metadata?.full_name)}
                         </div>
-                      </div>
-                    ) : (
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-lg ${getAvatarColor(user.email)}`}>
-                        {getInitials(user.user_metadata?.full_name)}
-                      </div>
-                    )}
-                    {isOnline(user) && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-3 border-white rounded-full animate-pulse"></div>
-                    )}
-                  </div>
-                  
-                  <div className="ml-3 flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-sm font-medium text-gray-900 group-hover:text-purple-600 transition-colors truncate">
-                        {user.full_name || user.user_metadata?.full_name || 'Kullanıcı'}
-                      </h4>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        isOnline(user) 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {isOnline(user) ? 'Çevrimiçi' : 'Çevrimdışı'}
-                      </span>
+                      )}
+                      {isOnline(user) && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-500 truncate">
-                      {(() => {
-                        const role = user.user_metadata?.role || user.role || 'kullanıcı';
-                        const roleNames = {
-                          'admin': 'Admin',
-                          'yönetici': 'Yönetici',
-                          'kullanıcı': 'Kullanıcı'
-                        };
-                        return roleNames[role] || 'Kullanıcı';
-                      })()}
-                    </p>
+                  
+                    <div className="ml-3 flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="text-sm font-medium text-gray-900 group-hover:text-green-600 transition-colors truncate">
+                          {user.full_name || user.user_metadata?.full_name || 'Kullanıcı'}
+                        </h4>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          isOnline(user) 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {isOnline(user) ? 'Çevrimiçi' : 'Çevrimdışı'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">
+                        {(() => {
+                          const role = user.user_metadata?.role || user.role || 'kullanıcı';
+                          const roleNames = {
+                            'admin': 'Admin',
+                            'yönetici': 'Yönetici',
+                            'kullanıcı': 'Kullanıcı'
+                          };
+                          return roleNames[role] || 'Kullanıcı';
+                        })()}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
+          </div>
+        ) : isLoading ? (
+          /* Loading State */
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Sohbetler yükleniyor...</h3>
+            <p className="text-sm text-gray-500">Lütfen bekleyin</p>
           </div>
         ) : conversations.length === 0 ? (
           /* Empty State */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-20 h-20 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
-              <MessageCircle className="w-10 h-10 text-purple-500" />
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+              <MessageCircle className="w-10 h-10 text-green-500" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Henüz sohbet yok</h3>
             <p className="text-sm text-gray-600 mb-6 max-w-sm">
@@ -295,7 +347,7 @@ const ChatSidebar = ({
             </p>
             <button
               onClick={() => setShowUserList(true)}
-              className="bg-gradient-to-r from-purple-500 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-purple-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg font-medium"
+              className="bg-green-500 text-white px-6 py-3 rounded-full hover:bg-green-600 transition-all duration-200 shadow-sm hover:shadow-md font-medium"
             >
               Yeni Sohbet Başlat
             </button>
@@ -303,19 +355,47 @@ const ChatSidebar = ({
         ) : (
           /* Conversation List */
           <div className="p-2 space-y-1">
-            {conversations.map((conversation, index) => {
-              // Diğer kullanıcıyı bul
-              const otherUser = conversation.chat_participants?.find(p => p.user_id !== currentUser.id);
-              const otherUserName = otherUser?.full_name || 'Bilinmeyen Kullanıcı';
-              
-              // Son mesajı bul
-              const lastMessage = conversation.messages?.[conversation.messages.length - 1];
-              const isLastMessageFromMe = lastMessage?.sender_id === currentUser.id;
-              
-              // Okunmamış mesaj sayısı
-              const unreadCount = conversation.messages?.filter(msg => 
-                msg.is_read === false && msg.sender_id !== currentUser.id
-              ).length || 0;
+            {(() => {
+              const filteredConversations = conversations.filter(conversation => {
+                if (!conversationSearchTerm) return true;
+                
+                const otherUser = conversation.chat_participants?.find(p => p.user_id !== currentUser.id);
+                const otherUserName = otherUser?.full_name || 'Bilinmeyen Kullanıcı';
+                const lastMessage = conversation.messages?.[conversation.messages.length - 1];
+                const messageContent = lastMessage?.content || '';
+                
+                const searchLower = conversationSearchTerm.toLowerCase();
+                return (
+                  otherUserName.toLowerCase().includes(searchLower) ||
+                  messageContent.toLowerCase().includes(searchLower)
+                );
+              });
+
+              if (conversationSearchTerm && filteredConversations.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Search className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500">Sohbet bulunamadı</p>
+                    <p className="text-xs text-gray-400 mt-1">"{conversationSearchTerm}" için sonuç yok</p>
+                  </div>
+                );
+              }
+
+              return filteredConversations.map((conversation, index) => {
+                // Diğer kullanıcıyı bul
+                const otherUser = conversation.chat_participants?.find(p => p.user_id !== currentUser.id);
+                const otherUserName = otherUser?.full_name || 'Bilinmeyen Kullanıcı';
+                
+                // Son mesajı bul
+                const lastMessage = conversation.messages?.[conversation.messages.length - 1];
+                const isLastMessageFromMe = lastMessage?.sender_id === currentUser.id;
+                
+                // Okunmamış mesaj sayısı
+                const unreadCount = conversation.messages?.filter(msg => 
+                  msg.is_read === false && msg.sender_id !== currentUser.id
+                ).length || 0;
 
               return (
                 <div
@@ -323,8 +403,8 @@ const ChatSidebar = ({
                   onClick={() => onSelectConversation(conversation)}
                   className={`group flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
                     currentConversation?.id === conversation.id 
-                      ? 'bg-green-50 border border-green-200' 
-                      : 'border-b border-gray-100'
+                      ? 'bg-green-50 border-l-4 border-l-green-500' 
+                      : 'hover:bg-gray-50'
                   }`}
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
@@ -350,7 +430,7 @@ const ChatSidebar = ({
                       </div>
                     )}
                     {isOnline(otherUser) && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
                     )}
                   </div>
                   
@@ -387,7 +467,7 @@ const ChatSidebar = ({
                         )}
                       </div>
                       {unreadCount > 0 && (
-                        <span className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full text-xs font-bold bg-green-500 text-white">
+                        <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-green-500 text-white shadow-sm">
                           {unreadCount}
                         </span>
                       )}
@@ -395,7 +475,8 @@ const ChatSidebar = ({
                   </div>
                 </div>
               );
-            })}
+              });
+            })()}
           </div>
         )}
       </div>

@@ -62,9 +62,10 @@ const TransferPersonnelList = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedPosition, setSelectedPosition] = useState('all');
-  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('current'); // İlk yüklemede güncel ay
   const [availableMonths, setAvailableMonths] = useState([]);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
 
   // Mock data kaldırıldı - sadece Excel'den gelen gerçek veriler gösterilecek
 
@@ -75,7 +76,13 @@ const TransferPersonnelList = () => {
 
   // Ay değiştiğinde verileri yeniden yükle
   useEffect(() => {
-    loadPersonnelData(); // Tüm aylar dahil her durumda yükle
+    if (selectedMonth === 'all') {
+      // Tüm aylar seçildiğinde arka planda yükle
+      loadAllMonthsData();
+    } else {
+      // Belirli bir ay seçildiğinde hızlı yükle
+      loadPersonnelData();
+    }
   }, [selectedMonth]);
 
   // Mevcut ayları yükle - MANUEL + AKILLI
@@ -120,8 +127,13 @@ const TransferPersonnelList = () => {
       });
 
 
+      // Güncel ayı hesapla
+      const currentMonth = new Date().getMonth() + 1;
+      const currentMonthStr = String(currentMonth).padStart(2, '0');
+      
       const monthList = [
-        { value: 'all', label: 'Tüm Aylar' },
+        { value: 'current', label: `Güncel Ay (${monthNames[currentMonthStr] || 'Bilinmeyen'})` },
+        { value: 'all', label: 'Tüm Aylar (Yavaş Yükleme)' },
         ...availableMonths.map(month => ({
           value: month,
           label: `${monthNames[month]} (${monthCounts[month]?.toLocaleString('tr-TR') || 0} kayıt)`
@@ -134,7 +146,7 @@ const TransferPersonnelList = () => {
     }
   };
 
-  // Supabase'den personel verilerini çekme
+  // Supabase'den personel verilerini çekme (hızlı - sadece seçilen ay)
   const loadPersonnelData = async () => {
     setLoading(true);
     setLoadingProgress(0);
@@ -158,8 +170,12 @@ const TransferPersonnelList = () => {
       setLoadingProgress(20);
       setLoadingText('Performans verileri çekiliyor...');
       
-      // Performans verilerini PARALEL yükle - ÇOK DAHA HIZLI!
-      setLoadingText('Performans verileri paralel olarak çekiliyor...');
+      // Performans verilerini PARALEL yükle - SADECE SEÇİLEN AY
+      const targetMonth = selectedMonth === 'current' ? 
+        String(new Date().getMonth() + 1).padStart(2, '0') : 
+        selectedMonth;
+      
+      setLoadingText(`Performans verileri çekiliyor... (${targetMonth === 'current' ? 'Güncel Ay' : targetMonth})`);
       
       // 10'lu gruplar halinde paralel işle
       const batchSize = 10;
@@ -173,7 +189,7 @@ const TransferPersonnelList = () => {
         
         // Bu batch'i paralel işle
         const batchResults = await Promise.all(
-          batch.map(person => getPersonnelPerformance(person))
+          batch.map(person => getPersonnelPerformance(person, targetMonth))
         );
         
         // Sonuçları birleştir
@@ -214,10 +230,10 @@ const TransferPersonnelList = () => {
     }
   };
 
-  // Personel performans verilerini çek (gerçek kasa verileri ile)
-  const getPersonnelPerformance = async (person) => {
+  // Personel performans verilerini çek (belirli ay için)
+  const getPersonnelPerformance = async (person, targetMonth = null) => {
     try {
-      // TÜM VERİLERİ ÇEK - sayfa sayfa (tüm aylar için)
+      // Belirli ay için veri çek - çok daha hızlı!
       let allData = [];
       let from = 0;
       const pageSize = 1000;
@@ -229,8 +245,9 @@ const TransferPersonnelList = () => {
           .or(`sicil_no_personel1.eq.${person.sicil_no},sicil_no_personel2.eq.${person.sicil_no},sicil_no_personel3.eq.${person.sicil_no}`)
           .range(from, from + pageSize - 1);
         
-        if (selectedMonth !== 'all') {
-          query = query.eq('ay', selectedMonth);
+        // Belirli ay filtresi uygula (null ise tüm aylar)
+        if (targetMonth !== null) {
+          query = query.eq('ay', targetMonth);
         }
 
         const { data: pageData, error } = await query;
@@ -297,6 +314,83 @@ const TransferPersonnelList = () => {
         generalPerformance: 0,
         distributionData: []
       };
+    }
+  };
+
+  // Tüm ayları yükle (arka planda - yavaş)
+  const loadAllMonthsData = async () => {
+    setLoading(true);
+    setLoadingProgress(0);
+    setLoadingText('Tüm ayların verileri yükleniyor...');
+    
+    try {
+      
+      const { data, error } = await supabase
+        .from('aktarma_depo_personel')
+        .select('*')
+        .order('adi_soyadi', { ascending: true });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        setPersonnelData([]);
+        setFilteredData([]);
+        return;
+      }
+      
+      setLoadingProgress(20);
+      setLoadingText('Tüm ayların performans verileri çekiliyor...');
+      
+      // TÜM AYLAR İÇİN performans verilerini yükle
+      const batchSize = 5; // Daha küçük batch - tüm aylar için
+      const personnelWithPerformance = [];
+      
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        const progress = 20 + Math.round((i / data.length) * 70);
+        setLoadingProgress(progress);
+        setLoadingText(`Tüm ayların performans verileri çekiliyor... (${i + 1}-${Math.min(i + batchSize, data.length)}/${data.length})`);
+        
+        // Bu batch'i paralel işle - TÜM AYLAR
+        const batchResults = await Promise.all(
+          batch.map(person => getPersonnelPerformance(person, null)) // null = tüm aylar
+        );
+        
+        // Sonuçları birleştir
+        batch.forEach((person, index) => {
+          personnelWithPerformance.push({
+            ...person,
+            ...batchResults[index]
+          });
+        });
+        
+        // State'i güncelle
+        setPersonnelData([...personnelWithPerformance]);
+        setFilteredData([...personnelWithPerformance]);
+      }
+      
+      setLoadingProgress(95);
+      setLoadingText('Veriler işleniyor...');
+      
+      
+      setPersonnelData(personnelWithPerformance);
+      setFilteredData(personnelWithPerformance);
+      
+      setLoadingProgress(100);
+      setLoadingText('Tüm aylar yüklendi!');
+      
+    } catch (error) {
+      console.error('❌ Tüm aylar yükleme hatası:', error);
+      message.error('Tüm ayların verileri yüklenirken hata oluştu!');
+      // Hata durumunda boş liste
+      setPersonnelData([]);
+      setFilteredData([]);
+    } finally {
+      setTimeout(() => {
+        setLoading(false);
+        setLoadingProgress(0);
+        setLoadingText('');
+      }, 500);
     }
   };
 
@@ -953,6 +1047,13 @@ const TransferPersonnelList = () => {
                   <p className="text-gray-600 mb-4">
                     {loadingText || 'Personel performans verileri çekiliyor. Lütfen bekleyin.'}
                   </p>
+                  {selectedMonth === 'all' && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <p className="text-yellow-800 text-sm">
+                        <strong>Uyarı:</strong> Tüm ayların verileri yükleniyor. Bu işlem biraz zaman alabilir.
+                      </p>
+                    </div>
+                  )}
                   
                   {/* Progress Bar */}
                   <div className="w-full bg-gray-200 rounded-full h-3 mb-2">

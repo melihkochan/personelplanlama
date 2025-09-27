@@ -2910,13 +2910,15 @@ function MainApp() {
 
 
                       {/* Günlük Sıcaklık Grafiği - 7 günlük takvimin üstünde */}
-                      <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 mb-4 border border-orange-200/50">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-4 border border-blue-200/50">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
-                            <TrendingUp className="w-5 h-5 text-white" />
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
                             </div>
                           <h4 className="text-lg font-semibold text-gray-900">
-                            {selectedDay === 0 ? 'Bugün' : selectedDay === 1 ? 'Yarın' : `${selectedDay} Gün Sonra`} - Hava Durumu
+                            Hava Grafiği
                           </h4>
                           </div>
                         <div className="bg-white/60 rounded-xl p-4">
@@ -3368,7 +3370,7 @@ function MainApp() {
                       ) : (
                         <div className="space-y-3 mb-6">
                           <h4 className="text-lg font-semibold text-gray-900">Tüm Mağazalar ({allStores.length})</h4>
-                          <div className="max-h-[500px] overflow-y-auto space-y-3">
+                          <div className="max-h-[620px] overflow-y-auto space-y-3">
                             {allStores
                               .sort((a, b) => {
                                 const nameA = (a.name || a.store_name || a.mağaza_adı || '').toLowerCase();
@@ -3420,9 +3422,6 @@ function MainApp() {
                           </div>
                         </div>
                       )}
-
-
-
 
                     </div>
                   </div>

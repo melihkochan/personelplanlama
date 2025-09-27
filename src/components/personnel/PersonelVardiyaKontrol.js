@@ -206,6 +206,9 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   
   // Aylık detay görev filtreleme state'i
   const [selectedMonthlyPosition, setSelectedMonthlyPosition] = useState('all_positions');
+  
+  // Aylık detay durum filtreleme state'i
+  const [selectedMonthlyStatus, setSelectedMonthlyStatus] = useState('dinlenme');
 
   const [todayStatusLoading, setTodayStatusLoading] = useState(false);
   const [todayStatus, setTodayStatus] = useState({
@@ -245,6 +248,19 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   const [currentShiftData, setCurrentShiftData] = useState([]);
   const [currentShiftLoading, setCurrentShiftLoading] = useState(false);
   const [currentPeriod, setCurrentPeriod] = useState(null);
+
+  // Günlük takip veri ekleme state'leri
+  const [showDailyDataModal, setShowDailyDataModal] = useState(false);
+  const [dailyDataForm, setDailyDataForm] = useState({
+    addType: 'single',
+    employee_code: '',
+    date: '',
+    startDate: '',
+    endDate: '',
+    status: '',
+    note: ''
+  });
+  const [dailyDataLoading, setDailyDataLoading] = useState(false);
   
   // Infinite scroll state'leri
   const [currentShiftPage, setCurrentShiftPage] = useState(1);
@@ -2250,6 +2266,111 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     }
   };
 
+  // Günlük takip veri ekleme fonksiyonu
+  const handleAddDailyData = async () => {
+    if (!dailyDataForm.employee_code || !dailyDataForm.status) {
+      alert('Lütfen personel ve durum seçiniz.');
+      return;
+    }
+
+    if (dailyDataForm.addType === 'single' && !dailyDataForm.date) {
+      alert('Lütfen tarih seçiniz.');
+      return;
+    }
+
+    if (dailyDataForm.addType === 'range' && (!dailyDataForm.startDate || !dailyDataForm.endDate)) {
+      alert('Lütfen başlangıç ve bitiş tarihlerini seçiniz.');
+      return;
+    }
+
+    setDailyDataLoading(true);
+
+    try {
+      const dataToInsert = [];
+
+      if (dailyDataForm.addType === 'single') {
+        // Tek gün ekleme
+        dataToInsert.push({
+          employee_code: dailyDataForm.employee_code,
+          date: dailyDataForm.date,
+          status: dailyDataForm.status,
+          notes: dailyDataForm.note || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        // Tarih aralığı ekleme
+        const startDate = new Date(dailyDataForm.startDate);
+        const endDate = new Date(dailyDataForm.endDate);
+        
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          dataToInsert.push({
+            employee_code: dailyDataForm.employee_code,
+            date: d.toISOString().split('T')[0],
+            status: dailyDataForm.status,
+            notes: dailyDataForm.note || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      // Veritabanına ekleme
+      const { data, error } = await supabase
+        .from('daily_notes')
+        .upsert(dataToInsert, { 
+          onConflict: 'employee_code,date',
+          ignoreDuplicates: false 
+        })
+        .select();
+
+      if (error) {
+        console.error('❌ Günlük takip verisi eklenemedi:', error);
+        alert('Veri eklenirken hata oluştu: ' + error.message);
+        return;
+      }
+
+      // Audit log kaydet
+      await logAuditEvent({
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
+        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        action: 'INSERT',
+        tableName: 'daily_notes',
+        recordId: null,
+        oldValues: null,
+        newValues: dataToInsert,
+        ipAddress: null,
+        userAgent: navigator.userAgent,
+        details: `Günlük takip verisi eklendi: ${dailyDataForm.employee_code} - ${dailyDataForm.status} (${dataToInsert.length} kayıt)`
+      });
+
+      // Verileri yenile
+      loadDailyNotes();
+      loadTodayStatus();
+
+      // Modal'ı kapat ve formu temizle
+      setShowDailyDataModal(false);
+      setDailyDataForm({
+        addType: 'single',
+        employee_code: '',
+        date: '',
+        startDate: '',
+        endDate: '',
+        status: '',
+        note: ''
+      });
+
+      alert(`✅ ${dataToInsert.length} günlük takip kaydı başarıyla eklendi.`);
+
+    } catch (error) {
+      console.error('❌ Günlük takip veri ekleme hatası:', error);
+      alert('Veri eklenirken hata oluştu: ' + error.message);
+    } finally {
+      setDailyDataLoading(false);
+    }
+  };
+
   // Günlük notlar yüklendiğinde bugünkü durumu da güncelle
   useEffect(() => {
     if (dailyNotes.length > 0) {
@@ -2346,6 +2467,13 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         const noteYear = noteDate.getFullYear();
         const noteMonth = noteDate.getMonth() + 1;
         
+        // Durum filtresi uygula
+        if (selectedMonthlyStatus !== 'all_statuses') {
+          if (note.status !== selectedMonthlyStatus) {
+            return false;
+          }
+        }
+        
         // Eğer "Tüm Aylar" seçilmişse sadece yıla göre filtrele
         if (selectedMonthlyMonth === 'all') {
           return noteYear === selectedMonthlyYear && 
@@ -2369,6 +2497,13 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       const noteDate = new Date(note.date);
       const noteYear = noteDate.getFullYear();
       const noteMonth = noteDate.getMonth() + 1;
+      
+      // Durum filtresi uygula
+      if (selectedMonthlyStatus !== 'all_statuses') {
+        if (note.status !== selectedMonthlyStatus) {
+          return false;
+        }
+      }
       
       return noteYear === selectedMonthlyYear && 
              noteMonth === month && 
@@ -2969,6 +3104,21 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                         <option value="all_positions">👥 Tümü</option>
                         <option value="SEVKİYAT ELEMANI">🚚 SEVKİYAT ELEMANI</option>
                         <option value="ŞOFÖR">🚗 ŞOFÖR</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium text-gray-700">Durum:</label>
+                      <select 
+                        value={selectedMonthlyStatus} 
+                        onChange={(e) => setSelectedMonthlyStatus(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      >
+                        <option value="all_statuses">📊 Tümü</option>
+                        <option value="dinlenme">😴 Dinlenme</option>
+                        <option value="yillik_izin">🏖️ Yıllık İzin</option>
+                        <option value="raporlu">🏥 Raporlu</option>
+                        <option value="habersiz">❌ Habersiz</option>
+                        <option value="gecici_gorev">🔄 Geçici Görev</option>
                       </select>
                     </div>
                   </div>
@@ -3836,8 +3986,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                     </select>
                   </div>
                   <button
-                    onClick={() => setShowAbsenceModal(true)}
-                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    onClick={() => setShowDailyDataModal(true)}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl shadow-lg hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-300 border-0 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                   >
                     <Plus className="w-5 h-5 mr-2" />
                     + Veri Ekle
@@ -5037,6 +5187,209 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Günlük Takip Veri Ekleme Modal */}
+      {showDailyDataModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 rounded-t-xl">
+              <h3 className="text-lg font-bold text-white flex items-center">
+                <Plus className="w-5 h-5 mr-2" />
+                Günlük Takip Veri Ekleme
+              </h3>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-6">
+                {/* Ekleme Türü Seçimi */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-blue-900 mb-3">📋 Ekleme Türü Seçin</h4>
+                  <div className="flex space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="addType"
+                        value="single"
+                        checked={dailyDataForm.addType === 'single'}
+                        onChange={(e) => setDailyDataForm({...dailyDataForm, addType: e.target.value})}
+                        className="mr-2"
+                      />
+                      <span className="text-sm font-medium">Tek Gün Ekleme</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="addType"
+                        value="range"
+                        checked={dailyDataForm.addType === 'range'}
+                        onChange={(e) => setDailyDataForm({...dailyDataForm, addType: e.target.value})}
+                        className="mr-2"
+                      />
+                      <span className="text-sm font-medium">Tarih Aralığı Ekleme</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Personel Seçimi */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Personel Seçin
+                  </label>
+                  <select
+                    value={dailyDataForm.employee_code}
+                    onChange={(e) => setDailyDataForm({...dailyDataForm, employee_code: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required
+                  >
+                    <option value="">Personel seçin</option>
+                    {personnelList.map((personnel) => (
+                      <option key={personnel.employee_code} value={personnel.employee_code}>
+                        {personnel.full_name} - {personnel.employee_code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tarih Seçimi */}
+                {dailyDataForm.addType === 'single' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tarih
+                    </label>
+                    <input
+                      type="date"
+                      value={dailyDataForm.date}
+                      onChange={(e) => setDailyDataForm({...dailyDataForm, date: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Başlangıç Tarihi
+                      </label>
+                      <input
+                        type="date"
+                        value={dailyDataForm.startDate}
+                        onChange={(e) => setDailyDataForm({...dailyDataForm, startDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bitiş Tarihi
+                      </label>
+                      <input
+                        type="date"
+                        value={dailyDataForm.endDate}
+                        onChange={(e) => setDailyDataForm({...dailyDataForm, endDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Durum Seçimi */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Durum
+                  </label>
+                  <select
+                    value={dailyDataForm.status}
+                    onChange={(e) => setDailyDataForm({...dailyDataForm, status: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required
+                  >
+                    <option value="">Durum seçin</option>
+                    <option value="dinlenme">😴 Dinlenme</option>
+                    <option value="yillik_izin">🏖️ Yıllık İzin</option>
+                    <option value="raporlu">🏥 Raporlu</option>
+                    <option value="habersiz">❌ Habersiz</option>
+                    <option value="gecici_gorev">🔄 Geçici Görev</option>
+                  </select>
+                </div>
+
+                {/* Not Alanı */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Not (İsteğe bağlı)
+                  </label>
+                  <textarea
+                    value={dailyDataForm.note}
+                    onChange={(e) => setDailyDataForm({...dailyDataForm, note: e.target.value})}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Ek notlarınızı buraya yazabilirsiniz..."
+                  />
+                </div>
+
+                {/* Önizleme */}
+                {dailyDataForm.addType === 'range' && dailyDataForm.startDate && dailyDataForm.endDate && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h5 className="font-semibold text-yellow-800 mb-2">📅 Eklenecek Tarihler:</h5>
+                    <div className="text-sm text-yellow-700">
+                      {(() => {
+                        const start = new Date(dailyDataForm.startDate);
+                        const end = new Date(dailyDataForm.endDate);
+                        const dates = [];
+                        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                          dates.push(new Date(d).toLocaleDateString('tr-TR'));
+                        }
+                        return dates.join(', ');
+                      })()}
+                    </div>
+                    <div className="text-xs text-yellow-600 mt-1">
+                      Toplam {Math.ceil((new Date(dailyDataForm.endDate) - new Date(dailyDataForm.startDate)) / (1000 * 60 * 60 * 24)) + 1} gün
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDailyDataModal(false);
+                    setDailyDataForm({
+                      addType: 'single',
+                      employee_code: '',
+                      date: '',
+                      startDate: '',
+                      endDate: '',
+                      status: '',
+                      note: ''
+                    });
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleAddDailyData}
+                  disabled={dailyDataLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                >
+                  {dailyDataLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                      Ekleniyor...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2 inline" />
+                      Veri Ekle
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

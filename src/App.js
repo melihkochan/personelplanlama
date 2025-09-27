@@ -1729,8 +1729,8 @@ function MainApp() {
             <div className="space-y-2 mt-6">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
-                <h3 className="text-base font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <div className="w-1 h-4 bg-gradient-to-b from-green-500 to-teal-600 rounded-full"></div>
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-1 h-3 bg-gradient-to-b from-green-500 to-teal-600 rounded-full"></div>
                   <span className="border-b-2 border-green-500">Tuzla Ekip Bilgileri</span>
                 </h3>
               </div>
@@ -1738,19 +1738,19 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('team-shifts')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'team-shifts'
                     ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
                   activeTab === 'team-shifts' 
                     ? 'bg-white/20' 
                     : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <Clock className={`w-3 h-3 ${activeTab === 'team-shifts' ? 'text-white' : 'text-gray-700'}`} />
+                  <Clock className={`w-2 h-2 ${activeTab === 'team-shifts' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Ekip Vardiyaları</span>
               </button>
@@ -1758,19 +1758,19 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('team-personnel')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'team-personnel'
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
                   activeTab === 'team-personnel' 
                     ? 'bg-white/20' 
                     : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <Users className={`w-3 h-3 ${activeTab === 'team-personnel' ? 'text-white' : 'text-gray-700'}`} />
+                  <Users className={`w-2 h-2 ${activeTab === 'team-personnel' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Ekip Personel Bilgileri</span>
               </button>
@@ -1781,8 +1781,8 @@ function MainApp() {
             <div className="space-y-2 mt-6">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
-                <h3 className="text-base font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <div className="w-1 h-4 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full"></div>
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-1 h-3 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full"></div>
                   <span className="border-b-2 border-indigo-500">Puantaj Takip</span>
                 </h3>
               </div>
@@ -1790,19 +1790,19 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('puantaj-takip')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'puantaj-takip'
                     ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
                   activeTab === 'puantaj-takip' 
                     ? 'bg-white/20' 
                     : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <FileExcelOutlined className={`w-3 h-3 ${activeTab === 'puantaj-takip' ? 'text-white' : 'text-gray-700'}`} />
+                  <FileExcelOutlined className={`w-2 h-2 ${activeTab === 'puantaj-takip' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Puantaj Takip</span>
               </button>
@@ -1810,19 +1810,19 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('puantaj-takvim')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'puantaj-takvim'
                     ? 'bg-gradient-to-r from-lime-500 to-green-600 text-white shadow-lg shadow-lime-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
                   activeTab === 'puantaj-takvim' 
                     ? 'bg-white/20' 
                     : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <Package className={`w-3 h-3 ${activeTab === 'puantaj-takvim' ? 'text-white' : 'text-gray-700'}`} />
+                  <Package className={`w-2 h-2 ${activeTab === 'puantaj-takvim' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Puantaj Takvim</span>
               </button>
@@ -1833,8 +1833,8 @@ function MainApp() {
             <div className="space-y-2 mt-6">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
-                <h3 className="text-base font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <div className="w-1 h-4 bg-gradient-to-b from-pink-500 to-rose-600 rounded-full"></div>
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-1 h-3 bg-gradient-to-b from-pink-500 to-rose-600 rounded-full"></div>
                   <span className="border-b-2 border-pink-500">Vardiya Planlama</span>
                 </h3>
               </div>
@@ -1842,22 +1842,22 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('planning')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'planning'
                     ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
                   activeTab === 'planning' 
                     ? 'bg-white/20' 
                     : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <Calendar className={`w-3 h-3 ${activeTab === 'planning' ? 'text-white' : 'text-gray-700'}`} />
+                  <Calendar className={`w-2 h-2 ${activeTab === 'planning' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Vardiya Planlama</span>
-                <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">
                   Geliştirme
                 </span>
               </button>
@@ -1867,22 +1867,22 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('akilli-dagitim')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'akilli-dagitim'
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-lg shadow-yellow-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
                   activeTab === 'akilli-dagitim' 
                     ? 'bg-white/20' 
                     : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <Users className={`w-3 h-3 ${activeTab === 'akilli-dagitim' ? 'text-white' : 'text-gray-700'}`} />
+                  <Users className={`w-2 h-2 ${activeTab === 'akilli-dagitim' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Akıllı Dağıtım</span>
-                <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 shadow-sm">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-300 shadow-sm">
                   Geliştirme
                 </span>
               </button>

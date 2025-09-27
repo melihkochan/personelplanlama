@@ -939,7 +939,7 @@ const StoreDifficultyManager = () => {
               size: 'small',
               pageSizeOptions: ['25', '50', '100', '200'],
               onChange: handlePageChange,
-              onShowSizeChange: handlePageSizeChange
+              onShowSizeChange: handlePageSizeChange 
             }}
             size="small"
             className="compact-table"

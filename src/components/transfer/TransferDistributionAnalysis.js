@@ -50,7 +50,7 @@ const TransferDistributionAnalysis = () => {
   const [loading, setLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
-  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('current'); // İlk yüklemede güncel ay
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [distributionData, setDistributionData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -90,8 +90,13 @@ const TransferDistributionAnalysis = () => {
         '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
       };
 
+      // Güncel ayı hesapla
+      const currentMonth = new Date().getMonth() + 1;
+      const currentMonthStr = String(currentMonth).padStart(2, '0');
+      
       const monthList = [
-        { value: 'all', label: 'Tüm Aylar' },
+        { value: 'current', label: `Güncel Ay (${monthNames[currentMonthStr] || 'Bilinmeyen'})` },
+        { value: 'all', label: 'Tüm Aylar (Yavaş Yükleme)' },
         ...uniqueMonths.map(month => ({
           value: month,
           label: `${monthNames[month]} (${data.filter(item => item.ay === month).length} kayıt)`
@@ -276,8 +281,8 @@ const TransferDistributionAnalysis = () => {
 
   // Eski loadStatistics fonksiyonu kaldırıldı - artık loadStatistics() kullanıyoruz
 
-  // Tüm verileri yükle (batch loading ile)
-  const loadDistributionData = async (month = 'all', region = 'all') => {
+  // Verileri yükle (hızlı - sadece seçilen ay)
+  const loadDistributionData = async (month = 'current', region = 'all') => {
     setLoading(true);
     try {
       // Supabase tablosunun varlığını kontrol et
@@ -291,13 +296,18 @@ const TransferDistributionAnalysis = () => {
         return;
       }
 
+      // Güncel ay için hedef ayı belirle
+      const targetMonth = month === 'current' ? 
+        String(new Date().getMonth() + 1).padStart(2, '0') : 
+        month;
+
       // Önce toplam sayıyı al
       let countQuery = supabase
         .from('aktarma_dagitim_verileri')
         .select('*', { count: 'exact', head: true });
 
       if (month !== 'all') {
-        countQuery = countQuery.eq('ay', month);
+        countQuery = countQuery.eq('ay', targetMonth);
       }
       if (region !== 'all') {
         countQuery = countQuery.eq('bolge', region);
@@ -319,8 +329,8 @@ const TransferDistributionAnalysis = () => {
         estimatedTimeRemaining: null
       });
 
-      // Tüm verileri batch'ler halinde çek
-      const batchSize = 1000;
+      // Verileri batch'ler halinde çek - SADECE SEÇİLEN AY
+      const batchSize = month === 'all' ? 1000 : 2000; // Tüm aylar için daha küçük batch
       let allData = [];
       
       for (let offset = 0; offset < count; offset += batchSize) {
@@ -331,7 +341,7 @@ const TransferDistributionAnalysis = () => {
 
         // Filtreleme uygula
         if (month !== 'all') {
-          query = query.eq('ay', month);
+          query = query.eq('ay', targetMonth);
         }
         if (region !== 'all') {
           query = query.eq('bolge', region);
@@ -985,55 +995,62 @@ const TransferDistributionAnalysis = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
         {/* Header */}
-        <div className="p-8 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex justify-between items-center mb-6">
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+          <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-3xl font-bold text-gray-800 flex items-center mb-2">
-                <BarChart3 className="w-8 h-8 mr-4 text-blue-600" />
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center mb-1">
+                <BarChart3 className="w-6 h-6 mr-3 text-blue-600" />
                 Aktarma Dağıtım Analizi
-            </h2>
-              <p className="text-gray-600 text-lg">Aylık dağıtım verilerinin analizi ve performans takibi</p>
+              </h2>
+              <p className="text-gray-600 text-sm">Aylık dağıtım verilerinin analizi ve performans takibi</p>
             </div>
-            <div className="flex space-x-3">
-              <div className="flex flex-col space-y-2">
-                <Upload
-                  accept=".xlsx,.xls"
-                  beforeUpload={handleExcelUpload}
-                  showUploadList={false}
+            <div className="flex space-x-2">
+              <Button 
+                icon={<Download className="w-4 h-4" />}
+                onClick={handleDownloadReport}
+                className="bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 text-white"
+                size="default"
+              >
+                Rapor İndir
+              </Button>
+              <Upload
+                accept=".xlsx,.xls"
+                beforeUpload={handleExcelUpload}
+                showUploadList={false}
+              >
+                <Button 
+                  icon={<UploadIcon className="w-4 h-4" />}
+                  loading={uploadLoading}
+                  className="bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600 text-white"
+                  size="default"
                 >
-            <Button 
-                    icon={<UploadIcon className="w-4 h-4" />}
-                    loading={uploadLoading}
-                    className="bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600"
-                    size="large"
-                  >
-                    Aylık Excel Yükle
-            </Button>
-                </Upload>
-                {uploadLoading && uploadProgress.total > 0 && (
-                  <div className="w-full">
-                    <Progress 
-                      percent={Math.round((uploadProgress.current / uploadProgress.total) * 100)}
-                      size="small"
-                      strokeColor="#f97316"
-                    />
-                    <div className="text-xs text-gray-600 text-center mt-1">
-                      {uploadProgress.current} / {uploadProgress.total} batch işlendi
-                    </div>
-                  </div>
-                )}
-              </div>
+                  Excel Yükle
+                </Button>
+              </Upload>
             </div>
           </div>
+          
+          {uploadLoading && uploadProgress.total > 0 && (
+            <div className="mb-4">
+              <Progress 
+                percent={Math.round((uploadProgress.current / uploadProgress.total) * 100)}
+                size="small"
+                strokeColor="#f97316"
+              />
+              <div className="text-xs text-gray-600 text-center mt-1">
+                {uploadProgress.current} / {uploadProgress.total} batch işlendi
+              </div>
+            </div>
+          )}
 
           {/* Filtreler */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
               placeholder="Ay Seçin"
               value={selectedMonth}
               onChange={handleMonthChange}
-              className="w-full h-12"
-              size="large"
+              className="w-full h-10"
+              size="default"
             >
               {months.map(month => (
                 <Option 
@@ -1049,82 +1066,68 @@ const TransferDistributionAnalysis = () => {
               placeholder="Bölge Seçin"
               value={selectedRegion}
               onChange={handleRegionChange}
-              className="w-full h-12"
-              size="large"
+              className="w-full h-10"
+              size="default"
             >
               {regions.map(region => (
                 <Option key={region.value} value={region.value}>{region.label}</Option>
               ))}
             </Select>
-            <Button 
-              icon={<Download className="w-4 h-4" />}
-              onClick={handleDownloadReport}
-              className="h-12 bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 text-white"
-              size="large"
-            >
-              Rapor İndir
-            </Button>
           </div>
         </div>
 
         {/* İstatistikler */}
-        <div className="p-8 border-b border-gray-200 bg-white">
-          <Row gutter={[24, 24]}>
+        <div className="p-4 border-b border-gray-200 bg-white">
+          <Row gutter={[12, 12]}>
             <Col xs={24} sm={12} md={6}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-blue-50 to-blue-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Toplam Kayıt</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Toplam Kayıt</span>}
                   value={distributionData.length.toLocaleString('tr-TR')}
-                  valueStyle={{ color: '#1890ff', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<FileSpreadsheet className="w-6 h-6 text-blue-600" />}
+                  valueStyle={{ color: '#1890ff', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<FileSpreadsheet className="w-4 h-4 text-blue-600" />}
                 />
-                <div className="text-xs text-gray-500 mt-2">
-                  <div>Veritabanı: {distributionData.length.toLocaleString('tr-TR')} kayıt</div>
-                  <div>
-                    {selectedMonth === 'all' 
-                      ? 'Tüm aylar (200\'er sayfa)' 
-                      : `${getMonthName(selectedMonth)} ayı (200\'er sayfa)`
-                    }
-                  </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {selectedMonth === 'all' ? 'Tüm aylar' : `${getMonthName(selectedMonth)} ayı`}
                 </div>
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-green-50 to-green-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Toplam Kasa</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Toplam Kasa</span>}
                   value={statistics.totalKasa.toLocaleString('tr-TR')}
-                  valueStyle={{ color: '#52c41a', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<Package className="w-6 h-6 text-green-600" />}
+                  valueStyle={{ color: '#52c41a', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<Package className="w-4 h-4 text-green-600" />}
                 />
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-xs text-gray-500 mt-1">
                   {selectedMonth === 'all' ? 'Tüm aylar toplamı' : `${getMonthName(selectedMonth)} ayı toplamı`}
                 </div>
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-purple-50 to-purple-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-purple-50 to-purple-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Okutulan Kasa</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Okutulan Kasa</span>}
                   value={statistics.okutulanKasa.toLocaleString('tr-TR')}
-                  valueStyle={{ color: '#722ed1', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<CheckCircle className="w-6 h-6 text-purple-600" />}
+                  valueStyle={{ color: '#722ed1', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<CheckCircle className="w-4 h-4 text-purple-600" />}
                 />
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-xs text-gray-500 mt-1">
                   {selectedMonth === 'all' ? 'Tüm aylar toplamı' : `${getMonthName(selectedMonth)} ayı toplamı`}
                 </div>
               </Card>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 to-orange-100">
+              <Card className="text-center border-0 shadow-md hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-orange-50 to-orange-100" bodyStyle={{ padding: '12px' }}>
                 <Statistic
-                  title={<span className="text-gray-600 font-medium">Ortalama Okutma Oranı</span>}
+                  title={<span className="text-gray-600 font-medium text-xs">Ortalama Okutma Oranı</span>}
                   value={statistics.okutmaOrani}
                   suffix="%"
-                  valueStyle={{ color: '#fa8c16', fontSize: '28px', fontWeight: 'bold' }}
-                  prefix={<Target className="w-6 h-6 text-orange-600" />}
+                  valueStyle={{ color: '#fa8c16', fontSize: '18px', fontWeight: 'bold' }}
+                  prefix={<Target className="w-4 h-4 text-orange-600" />}
                 />
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-xs text-gray-500 mt-1">
                   {selectedMonth === 'all' ? 'Tüm aylar ortalaması' : `${getMonthName(selectedMonth)} ayı ortalaması`}
                 </div>
               </Card>
@@ -1133,7 +1136,7 @@ const TransferDistributionAnalysis = () => {
         </div>
 
           {/* Tablo */}
-          <div className="p-8">
+          <div className="p-4">
             {/* Yükleme Progress Bar */}
             {loading && loadingProgress.total > 0 && (
               <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
@@ -1172,6 +1175,13 @@ const TransferDistributionAnalysis = () => {
 
                 <div className="mt-3 text-center">
                   <div className="text-sm text-blue-700">
+                    {selectedMonth === 'all' && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2">
+                        <p className="text-yellow-800 text-xs">
+                          <strong>Uyarı:</strong> Tüm ayların verileri yükleniyor. Bu işlem biraz zaman alabilir.
+                        </p>
+                      </div>
+                    )}
                     {loadingProgress.percentage < 25 && "Veriler hazırlanıyor..."}
                     {loadingProgress.percentage >= 25 && loadingProgress.percentage < 50 && "Veriler yükleniyor..."}
                     {loadingProgress.percentage >= 50 && loadingProgress.percentage < 75 && "Neredeyse tamamlandı..."}

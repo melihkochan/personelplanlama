@@ -39,55 +39,83 @@ const TransferPersonnelMagazaZorluk = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
-  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('current');
   const [availableMonths, setAvailableMonths] = useState([]);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0, percentage: 0, startTime: null, estimatedTimeRemaining: null });
   const [loadingText, setLoadingText] = useState('');
 
   // Mevcut ayları yükle - pagination ile
   const loadAvailableMonths = async () => {
     try {
-      // Tüm ay verilerini pagination ile çek
-      let allMonthData = [];
-      let from = 0;
-      const pageSize = 1000;
-      let hasMore = true;
+      const { data, error } = await supabase
+        .from('aktarma_personel_magaza_zorluk')
+        .select('ay')
+        .order('ay', { ascending: true });
 
-      while (hasMore) {
-        const { data: monthData, error } = await supabase
-          .from('aktarma_personel_magaza_zorluk')
-          .select('ay')
-          .not('ay', 'is', null)
-          .range(from, from + pageSize - 1);
-
-        if (error) throw error;
-
-        if (!monthData || monthData.length === 0) {
-          hasMore = false;
-        } else {
-          allMonthData = [...allMonthData, ...monthData];
-          from += pageSize;
-          
-          if (monthData.length < pageSize) {
-            hasMore = false;
-          }
-        }
+      if (error) {
+        console.error('Ay listesi yükleme hatası:', error);
+        return;
       }
 
-      // Benzersiz ayları al ve sırala
-      const uniqueMonths = [...new Set(allMonthData.map(item => item.ay))].sort();
-      setAvailableMonths(uniqueMonths);
+      const uniqueMonths = [...new Set(data?.map(item => item.ay).filter(Boolean))];
+      const monthNames = {
+        '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+        '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+        '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+      };
+
+      // Güncel ayı hesapla
+      const currentMonth = new Date().getMonth() + 1;
+      const currentMonthStr = String(currentMonth).padStart(2, '0');
+      
+      const monthList = [
+        { value: 'current', label: `Güncel Ay (${monthNames[currentMonthStr] || 'Bilinmeyen'})` },
+        { value: 'all', label: 'Tüm Aylar (Yavaş Yükleme)' },
+        ...uniqueMonths.map(month => ({
+          value: month,
+          label: `${monthNames[month]} (${data.filter(item => item.ay === month).length} kayıt)`
+        }))
+      ];
+
+      setAvailableMonths(monthList);
     } catch (error) {
-      console.error('Ay verileri yüklenirken hata:', error);
+      console.error('Ay listesi yükleme hatası:', error);
     }
   };
 
   // Veri yükleme fonksiyonu - Personelleri ve zorluk verilerini çek
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setLoadingProgress(0);
-      setLoadingText('Aktarma personelleri yükleniyor...');
+      // Güncel ay için hedef ayı belirle
+      const targetMonth = selectedMonth === 'current' ? 
+        String(new Date().getMonth() + 1).padStart(2, '0') : 
+        selectedMonth;
+
+      // Önce toplam sayıyı al
+      let countQuery = supabase
+        .from('aktarma_personel_magaza_zorluk')
+        .select('*', { count: 'exact', head: true });
+
+      if (selectedMonth !== 'all') { // Sadece 'all' değilse filtrele
+        countQuery = countQuery.eq('ay', targetMonth);
+      }
+
+      const { count, error: countError } = await countQuery;
+      if (countError) {
+        console.error('Toplam sayı alma hatası:', countError);
+        return;
+      }
+
+      // Progress başlangıcı
+      const startTime = Date.now();
+      setLoadingProgress({ 
+        current: 0, 
+        total: count, 
+        percentage: 0, 
+        startTime: startTime,
+        estimatedTimeRemaining: null
+      });
 
       // Aktarma personellerini çek
       const { data: personnel, error: personnelError } = await supabase
@@ -99,90 +127,62 @@ const TransferPersonnelMagazaZorluk = () => {
         throw personnelError;
       }
 
-      setLoadingProgress(30);
-      setLoadingText('Zorluk verileri yükleniyor...');
-
-      // Tüm zorluk verilerini çek - pagination ile (1000 kayıt limitini aş)
+      // Verileri batch'ler halinde çek - SADECE SEÇİLEN AY
+      const batchSize = selectedMonth === 'all' ? 1000 : 2000; // Tüm aylar için daha küçük batch
       let allZorlukData = [];
-      let from = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      setLoadingProgress(35);
-      setLoadingText('Zorluk verileri yükleniyor (pagination)...');
-
-      while (hasMore) {
-        let zorlukQuery = supabase
+      
+      for (let offset = 0; offset < count; offset += batchSize) {
+        let query = supabase
           .from('aktarma_personel_magaza_zorluk')
           .select('sicil_no_personel1, sicil_no_personel2, sicil_no_personel3, zorluk_seviyesi, magaza_adi, ay')
-          .range(from, from + pageSize - 1);
-        
-        if (selectedMonth !== 'all') {
-          zorlukQuery = zorlukQuery.eq('ay', selectedMonth);
-        }
-        
-        const { data: pageData, error: zorlukError } = await zorlukQuery;
+          .order('ay', { ascending: true });
 
-        if (zorlukError) {
-          throw zorlukError;
+        // Filtreleme uygula
+        if (selectedMonth !== 'all') { // Sadece 'all' değilse filtrele
+          query = query.eq('ay', targetMonth);
         }
 
-        if (!pageData || pageData.length === 0) {
-          hasMore = false;
-        } else {
-          allZorlukData = [...allZorlukData, ...pageData];
-          from += pageSize;
-          
-          setLoadingProgress(35 + (allZorlukData.length / 100000) * 20); // Tahmini progress
-          setLoadingText(`Zorluk verileri yükleniyor... ${allZorlukData.length} kayıt`);
-          
-          if (pageData.length < pageSize) {
-            hasMore = false;
-          }
+        // Batch aralığı uygula
+        query = query.range(offset, offset + batchSize - 1);
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error(`Batch ${offset}-${offset + batchSize} hatası:`, error);
+          break;
         }
+
+        allZorlukData = [...allZorlukData, ...(data || [])];
+        
+        // Progress güncelle
+        const percentage = Math.round((allZorlukData.length/count)*100);
+        
+        // Tahmini bitiş süresi hesapla
+        let estimatedTimeRemaining = null;
+        if (percentage > 5 && startTime) { // %5'ten sonra hesapla
+          const elapsedTime = Date.now() - startTime;
+          const recordsPerSecond = allZorlukData.length / (elapsedTime / 1000);
+          const remainingRecords = count - allZorlukData.length;
+          estimatedTimeRemaining = Math.round(remainingRecords / recordsPerSecond);
+        }
+        
+        setLoadingProgress({ 
+          current: allZorlukData.length, 
+          total: count, 
+          percentage: percentage,
+          startTime: startTime,
+          estimatedTimeRemaining: estimatedTimeRemaining
+        });
       }
 
       const zorlukData = allZorlukData;
-
-      setLoadingProgress(60);
-      setLoadingText('Veriler işleniyor...');
-
-      // Debug: Veritabanındaki sicil numaralarını ve zorluk verilerini kontrol et
-      console.log('Aktarma personelleri (ilk 10):', personnel.slice(0, 10).map(p => p.sicil_no));
-      console.log('Zorluk verileri (ilk 10):', zorlukData?.slice(0, 10));
-      console.log('Toplam zorluk verisi:', zorlukData?.length);
-      
-      // Zorluk verilerindeki tüm sicil numaralarını topla
-      const allSicilsInZorluk = new Set();
-      zorlukData?.forEach(record => {
-        if (record.sicil_no_personel1) allSicilsInZorluk.add(record.sicil_no_personel1.toString().trim());
-        if (record.sicil_no_personel2) allSicilsInZorluk.add(record.sicil_no_personel2.toString().trim());
-        if (record.sicil_no_personel3) allSicilsInZorluk.add(record.sicil_no_personel3.toString().trim());
-      });
-      
-      console.log('Zorluk verilerindeki tüm sicil numaraları:', Array.from(allSicilsInZorluk).slice(0, 20));
-      console.log('Toplam farklı sicil sayısı (zorluk verilerinde):', allSicilsInZorluk.size);
-      
-      // Aktarma personellerindeki sicil numaraları
-      const aktarmaSicils = new Set(personnel.map(p => p.sicil_no.toString().trim()));
-      console.log('Aktarma personellerindeki sicil numaraları (ilk 20):', Array.from(aktarmaSicils).slice(0, 20));
-      console.log('Toplam aktarma personel sayısı:', aktarmaSicils.size);
-      
-      // Eşleşmeyen sicil numaralarını bul
-      const notInAktarma = Array.from(allSicilsInZorluk).filter(sicil => !aktarmaSicils.has(sicil));
-      const notInZorluk = Array.from(aktarmaSicils).filter(sicil => !allSicilsInZorluk.has(sicil));
-      
-      console.log('Zorluk verilerinde var ama aktarma personellerinde yok:', notInAktarma.slice(0, 10));
-      console.log('Aktarma personellerinde var ama zorluk verilerinde yok:', notInZorluk.slice(0, 10));
 
       // Her personel için zorluk istatistiklerini hesapla
       const personnelWithDifficulty = [];
       
       for (let i = 0; i < personnel.length; i++) {
         const person = personnel[i];
-        setLoadingProgress(60 + (i / personnel.length) * 35);
-        setLoadingText(`${person.adi_soyadi} için zorluk analizi yapılıyor...`);
-
+        
         // Bu personelin zorluk verilerini bul - 3 sütunda da ara
         const personZorlukData = zorlukData?.filter(record => {
           const sicil1 = record.sicil_no_personel1?.toString().trim();
@@ -192,26 +192,6 @@ const TransferPersonnelMagazaZorluk = () => {
           
           return sicil1 === personSicil || sicil2 === personSicil || sicil3 === personSicil;
         }) || [];
-
-        // Debug için - eşleşen veri var mı kontrol et
-        if (personZorlukData.length > 0) {
-          console.log(`${person.adi_soyadi} (${person.sicil_no}) için ${personZorlukData.length} zorluk verisi bulundu:`, personZorlukData);
-          
-          // Hangi sütunda bulunduğunu göster
-          personZorlukData.forEach((record, index) => {
-            const sicil1 = record.sicil_no_personel1?.toString().trim();
-            const sicil2 = record.sicil_no_personel2?.toString().trim();
-            const sicil3 = record.sicil_no_personel3?.toString().trim();
-            const personSicil = person.sicil_no.toString().trim();
-            
-            let foundIn = [];
-            if (sicil1 === personSicil) foundIn.push('Personel1');
-            if (sicil2 === personSicil) foundIn.push('Personel2');
-            if (sicil3 === personSicil) foundIn.push('Personel3');
-            
-            console.log(`  Kayıt ${index + 1}: ${record.magaza_adi} (Zorluk: ${record.zorluk_seviyesi}) - Bulundu: ${foundIn.join(', ')}`);
-          });
-        }
 
         // Zorluk seviyelerine göre mağaza ziyaretlerini say
         const difficultyStats = {
@@ -235,11 +215,6 @@ const TransferPersonnelMagazaZorluk = () => {
           }
         });
 
-        // Debug: Hesaplanan zorluk istatistiklerini göster
-        if (personZorlukData.length > 0) {
-          console.log(`${person.adi_soyadi} zorluk istatistikleri:`, difficultyStats);
-        }
-
         // Toplam zorluklu mağaza ziyareti
         const totalDifficultVisits = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0);
         
@@ -259,21 +234,30 @@ const TransferPersonnelMagazaZorluk = () => {
         });
       }
 
-      setLoadingProgress(100);
-      setLoadingText('Tamamlandı!');
-
       setPersonnelData(personnelWithDifficulty);
       setFilteredData(personnelWithDifficulty);
+      
+      // Yükleme tamamlandı
+      setLoadingProgress({ 
+        current: 0, 
+        total: 0, 
+        percentage: 0, 
+        startTime: null,
+        estimatedTimeRemaining: null
+      });
 
     } catch (error) {
-      message.error(`Veriler yüklenirken hata oluştu: ${error.message}`);
-    } finally {
-      setTimeout(() => {
-        setLoading(false);
-        setLoadingProgress(0);
-        setLoadingText('');
-      }, 500);
+      console.error('Veri yükleme hatası:', error);
+      message.error('Veri yüklenirken hata oluştu!');
+      setLoadingProgress({ 
+        current: 0, 
+        total: 0, 
+        percentage: 0, 
+        startTime: null,
+        estimatedTimeRemaining: null
+      });
     }
+    setLoading(false);
   };
 
   // Filtreleme fonksiyonu
@@ -541,7 +525,11 @@ const TransferPersonnelMagazaZorluk = () => {
 
   // Ay filtresi değiştiğinde verileri yeniden yükle
   useEffect(() => {
-    loadData();
+    if (selectedMonth === 'all') {
+      loadData();
+    } else {
+      loadData();
+    }
   }, [selectedMonth]);
 
   // Component mount olduğunda veri yükle
@@ -767,18 +755,26 @@ const TransferPersonnelMagazaZorluk = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-              <AlertTriangle className="w-8 h-8 mr-4 text-purple-600" />
+            <h2 className="text-xl font-bold text-gray-800 flex items-center">
+              <AlertTriangle className="w-6 h-6 mr-3 text-purple-600" />
               Aktarma Personel Mağaza Zorluk Kontrol
             </h2>
-            <p className="text-gray-600 text-lg">Personel zorluklu mağaza ziyaret analizi</p>
+            <p className="text-gray-600 text-sm">Personel zorluklu mağaza ziyaret analizi</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex space-x-2">
+            <Button 
+              icon={<Download className="w-4 h-4" />}
+              onClick={handleDownloadReport}
+              className="bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 text-white"
+              size="default"
+            >
+              Rapor İndir
+            </Button>
             <Upload
               accept=".xlsx,.xls"
               beforeUpload={handleExcelUpload}
@@ -787,38 +783,30 @@ const TransferPersonnelMagazaZorluk = () => {
               <Button 
                 icon={<UploadIcon className="w-4 h-4" />}
                 className="bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600 text-white"
-                size="large"
+                size="default"
               >
                 Excel Yükle
               </Button>
             </Upload>
-            <Button 
-              icon={<Download className="w-4 h-4" />}
-              onClick={handleDownloadReport}
-              className="bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 text-white"
-              size="large"
-            >
-              Rapor İndir
-            </Button>
           </div>
         </div>
 
         {/* Filtreler */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Input
             placeholder="Ad, sicil no veya bölge ile ara..."
             prefix={<Search className="w-4 h-4 text-gray-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="rounded-lg h-12 text-lg"
-            size="large"
+            className="rounded-lg h-10 text-sm"
+            size="default"
           />
           <Select
             placeholder="Bölge Seçin"
             value={selectedRegion}
             onChange={setSelectedRegion}
-            className="w-full h-12"
-            size="large"
+            className="w-full h-10"
+            size="default"
           >
             <Option value="all">Tüm Bölgeler</Option>
             {Array.from(new Set(personnelData.map(p => p.bolge).filter(Boolean)))
@@ -831,29 +819,21 @@ const TransferPersonnelMagazaZorluk = () => {
             placeholder="Ay Seçin"
             value={selectedMonth}
             onChange={setSelectedMonth}
-            className="w-full h-12"
-            size="large"
+            className="w-full h-10"
+            size="default"
           >
-            <Option value="all">Tüm Aylar</Option>
-            {availableMonths.map(month => {
-              const monthNames = {
-                '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
-                '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
-                '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
-              };
-              return (
-                <Option key={month} value={month}>
-                  {monthNames[month] || month}
-                </Option>
-              );
-            })}
+            {availableMonths.map(month => (
+              <Option key={month.value} value={month.value}>
+                {month.label}
+              </Option>
+            ))}
           </Select>
           <Select
             placeholder="Zorluk Seviyesi"
             value={selectedDifficulty}
             onChange={setSelectedDifficulty}
-            className="w-full h-12"
-            size="large"
+            className="w-full h-10"
+            size="default"
           >
             <Option value="all">Tüm Zorluk Seviyeleri</Option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map(level => (
@@ -864,45 +844,45 @@ const TransferPersonnelMagazaZorluk = () => {
       </div>
 
       {/* İstatistikler */}
-      <div className="mb-6">
-        <Row gutter={16}>
+      <div className="mb-4">
+        <Row gutter={[12, 12]}>
           <Col span={6}>
-            <Card>
+            <Card bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="Toplam Personel"
+                title={<span className="text-gray-600 font-medium text-xs">Toplam Personel</span>}
                 value={stats.totalPersonnel}
                 prefix={<Users className="w-4 h-4 text-blue-600" />}
-                valueStyle={{ color: '#1890ff' }}
+                valueStyle={{ color: '#1890ff', fontSize: '18px', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card>
+            <Card bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="Toplam Zorluklu Ziyaret"
+                title={<span className="text-gray-600 font-medium text-xs">Toplam Zorluklu Ziyaret</span>}
                 value={stats.totalDifficultVisits}
                 prefix={<AlertTriangle className="w-4 h-4 text-orange-600" />}
-                valueStyle={{ color: '#fa8c16' }}
+                valueStyle={{ color: '#fa8c16', fontSize: '18px', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card>
+            <Card bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="Ortalama Zorluklu Ziyaret"
+                title={<span className="text-gray-600 font-medium text-xs">Ortalama Zorluklu Ziyaret</span>}
                 value={stats.avgDifficultVisits}
                 prefix={<BarChart3 className="w-4 h-4 text-green-600" />}
-                valueStyle={{ color: '#52c41a' }}
+                valueStyle={{ color: '#52c41a', fontSize: '18px', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card>
+            <Card bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="En Yüksek Zorluklu Ziyaret"
+                title={<span className="text-gray-600 font-medium text-xs">En Yüksek Zorluklu Ziyaret</span>}
                 value={stats.maxDifficultVisits}
                 prefix={<TrendingUp className="w-4 h-4 text-red-600" />}
-                valueStyle={{ color: '#f5222d' }}
+                valueStyle={{ color: '#f5222d', fontSize: '18px', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
@@ -912,9 +892,56 @@ const TransferPersonnelMagazaZorluk = () => {
       {/* Tablo */}
       <Card className="shadow-sm">
         <Spin spinning={loading} tip={loadingText}>
-          {loading && (
-            <div className="mb-4">
-              <Progress percent={loadingProgress} status="active" />
+          {loading && loadingProgress.total > 0 && (
+            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-800">Veriler Yükleniyor</h3>
+                    <p className="text-sm text-blue-600">
+                      {loadingProgress.current.toLocaleString('tr-TR')} / {loadingProgress.total.toLocaleString('tr-TR')} kayıt
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-800">{loadingProgress.percentage}%</div>
+                  <div className="text-sm text-blue-600">
+                    {loadingProgress.estimatedTimeRemaining ? 
+                      `Tahmini kalan: ${Math.floor(loadingProgress.estimatedTimeRemaining / 60)}:${(loadingProgress.estimatedTimeRemaining % 60).toString().padStart(2, '0')}` : 
+                      'Tamamlandı'
+                    }
+                  </div>
+                </div>
+              </div>
+              
+              <div className="relative">
+                <div className="w-full bg-blue-200 rounded-full h-3 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${loadingProgress.percentage}%` }}
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+              </div>
+
+              <div className="mt-3 text-center">
+                <div className="text-sm text-blue-700">
+                  {selectedMonth === 'all' && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2">
+                      <p className="text-yellow-800 text-xs">
+                        <strong>Uyarı:</strong> Tüm ayların verileri yükleniyor. Bu işlem biraz zaman alabilir.
+                      </p>
+                    </div>
+                  )}
+                  {loadingProgress.percentage < 25 && "Veriler hazırlanıyor..."}
+                  {loadingProgress.percentage >= 25 && loadingProgress.percentage < 50 && "Veriler yükleniyor..."}
+                  {loadingProgress.percentage >= 50 && loadingProgress.percentage < 75 && "Neredeyse tamamlandı..."}
+                  {loadingProgress.percentage >= 75 && "Son kontroller yapılıyor..."}
+                </div>
+              </div>
             </div>
           )}
           

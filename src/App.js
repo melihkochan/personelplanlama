@@ -63,6 +63,16 @@ function MainApp() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [userRoleLoading, setUserRoleLoading] = useState(true);
+  
+  // Şifre değiştirme state'leri
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  
+  // Modal içi validation state'leri
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [modalNotification, setModalNotification] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   
   // Mağaza arama için state'ler
@@ -427,6 +437,7 @@ function MainApp() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [calendarAnimation, setCalendarAnimation] = useState('');
   const [notification, setNotification] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [showSimpleNotification, setShowSimpleNotification] = useState(false);
@@ -528,9 +539,26 @@ function MainApp() {
   }, [user, isAuthenticated, loading]);
 
   // Notification gösterme fonksiyonu
-  const showNotification = (message, type = 'info') => {
+  const showNotification = (message, type = 'info', saveToStorage = true) => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 7000); // 7 saniye göster
+    
+    // Eğer saveToStorage false ise localStorage'a kaydetme
+    if (saveToStorage) {
+      const newNotification = {
+        id: Date.now(),
+        message,
+        type,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      
+      setNotifications(prev => {
+        const updated = [newNotification, ...prev];
+        localStorage.setItem('notifications', JSON.stringify(updated));
+        return updated;
+      });
+    }
   };
 
   // Okunmamış bildirim sayısını yükle
@@ -1032,14 +1060,108 @@ function MainApp() {
 
   const handleLogout = async () => {
     try {
+      // Önce notification'ları temizle
+      localStorage.removeItem('notifications');
+      setNotifications([]);
+      
       await signOut();
       // Çıkış yaptıktan sonra ana sayfaya yönlendir
       navigate('/');
       setActiveTab('home');
-      showNotification('Başarıyla çıkış yapıldı!', 'success');
+      
+      // Başarı mesajını göster ama localStorage'a kaydetme
+      showNotification('Başarıyla çıkış yapıldı!', 'success', false);
     } catch (error) {
       console.error('❌ Logout error:', error);
       showNotification('Çıkış yapılırken hata oluştu!', 'error');
+    }
+  };
+
+  // Modal içi notification gösterme
+  const showModalNotification = (message, type = 'error') => {
+    setModalNotification({ message, type });
+    setTimeout(() => setModalNotification(null), 5000);
+  };
+
+  // Şifre güncelleme fonksiyonu
+  const handlePasswordUpdate = async () => {
+    // Hataları temizle
+    setPasswordErrors({});
+    
+    const errors = {};
+
+    // Mevcut şifre kontrolü
+    if (!currentPassword) {
+      errors.currentPassword = 'Mevcut şifre gereklidir';
+    }
+
+    // Yeni şifre kontrolleri
+    if (!newPassword) {
+      errors.newPassword = 'Yeni şifre gereklidir';
+    } else if (newPassword.length < 6) {
+      errors.newPassword = 'Yeni şifre en az 6 karakter olmalıdır';
+    }
+
+    // Şifre tekrar kontrolü
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Şifre tekrarı gereklidir';
+    } else if (newPassword !== confirmPassword) {
+      errors.confirmPassword = 'Şifreler eşleşmiyor';
+    }
+
+    // Aynı şifre kontrolü
+    if (currentPassword && newPassword && currentPassword === newPassword) {
+      errors.newPassword = 'Yeni şifre mevcut şifre ile aynı olamaz';
+    }
+
+    // Hata varsa göster
+    if (Object.keys(errors).length > 0) {
+      setPasswordErrors(errors);
+      showModalNotification('Lütfen tüm hataları düzeltin!', 'error');
+      return;
+    }
+
+    setUpdatingPassword(true);
+    
+    try {
+      // Önce mevcut şifre ile kullanıcıyı tekrar authenticate et
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      });
+
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
+          setPasswordErrors({ currentPassword: 'Mevcut şifre yanlış' });
+          showModalNotification('Mevcut şifre yanlış!', 'error');
+          return;
+        }
+        throw signInError;
+      }
+
+      // Mevcut şifre doğru, şimdi yeni şifre ile güncelle
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Başarılı güncelleme
+      showModalNotification('Şifre başarıyla güncellendi!', 'success');
+      
+      // Form alanlarını temizle
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordErrors({});
+      
+    } catch (error) {
+      console.error('❌ Password update error:', error);
+      showModalNotification('Şifre güncellenirken hata oluştu!', 'error');
+    } finally {
+      setUpdatingPassword(false);
     }
   };
 
@@ -1802,74 +1924,74 @@ function MainApp() {
           <div className="p-3 border-t border-gray-200 space-y-2 flex-shrink-0">
             {/* User Profile with Notification */}
             <div className="flex items-center gap-2">
-              {/* User Profile */}
-              <div 
-                onClick={() => setShowProfileModal(true)}
+            {/* User Profile */}
+            <div 
+              onClick={() => setShowProfileModal(true)}
                 className="flex-1 flex items-center p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-300 group cursor-pointer"
-              >
-                <div className="relative">
-                  {userAvatar ? (
+            >
+              <div className="relative">
+                {userAvatar ? (
                     <div className="w-7 h-7 rounded-lg overflow-hidden shadow-lg">
-                      <img 
-                        src={userAvatar} 
-                        alt="Avatar" 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                      <div className={`w-full h-full bg-gradient-to-r ${
-                        userRole === 'admin' ? 'from-red-500 to-pink-500' : 
-                        userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
-                        'from-blue-500 to-cyan-500'
-                      } rounded-lg flex items-center justify-center shadow-lg`} style={{display: 'none'}}>
+                    <img 
+                      src={userAvatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className={`w-full h-full bg-gradient-to-r ${
+                      userRole === 'admin' ? 'from-red-500 to-pink-500' : 
+                      userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
+                      'from-blue-500 to-cyan-500'
+                    } rounded-lg flex items-center justify-center shadow-lg`} style={{display: 'none'}}>
                         <span className="text-white font-bold text-xs">
-                          {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
+                        {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                      </span>
                     </div>
-                  ) : (
-                  <div className={`w-7 h-7 bg-gradient-to-r ${
-                    userRole === 'admin' ? 'from-red-500 to-pink-500' : 
-                    userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
-                    'from-blue-500 to-cyan-500'
-                  } rounded-lg flex items-center justify-center shadow-lg`}>
-                    <span className="text-white font-bold text-xs">
-                      {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
-                    </span>
                   </div>
-                  )}
+                ) : (
+                  <div className={`w-7 h-7 bg-gradient-to-r ${
+                  userRole === 'admin' ? 'from-red-500 to-pink-500' : 
+                  userRole === 'yönetici' ? 'from-purple-500 to-indigo-500' : 
+                  'from-blue-500 to-cyan-500'
+                } rounded-lg flex items-center justify-center shadow-lg`}>
+                    <span className="text-white font-bold text-xs">
+                    {(userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                )}
                   <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-white flex items-center justify-center">
                     <div className="w-1 h-1 bg-white rounded-full"></div>
-                  </div>
                 </div>
-                
+              </div>
+              
                 <div className="flex-1 ml-2 min-w-0">
                   <p className="text-xs font-semibold text-gray-900 truncate">
-                    {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
-                  </p>
-                  <div className="flex items-center gap-1">
+                  {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
+                </p>
+                <div className="flex items-center gap-1">
                     <span className="text-[10px] text-gray-600">
-                      {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
-                    </span>
+                    {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
+                  </span>
                     <span className={`px-1 py-0.5 rounded-full text-[9px] font-bold ${
                       userRole === 'admin' ? 'bg-red-100 text-red-700' : 
                       userRole === 'yönetici' ? 'bg-purple-100 text-purple-700' : 
                       'bg-blue-100 text-blue-700'
-                    }`}>
-                      {userRole === 'admin' ? 'Yönetici' : userRole === 'yönetici' ? 'Moderatör' : 'Üye'}
-                    </span>
-                  </div>
+                  }`}>
+                    {userRole === 'admin' ? 'Yönetici' : userRole === 'yönetici' ? 'Moderatör' : 'Üye'}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              {/* Notification Button */}
-              <button
-                onClick={() => setShowNotificationPanel(true)}
+            {/* Notification Button */}
+            <button
+              onClick={() => setShowNotificationPanel(true)}
                 className={`relative p-2 rounded-lg transition-all duration-300 ${
-                  unreadNotificationCount > 0
-                    ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/30'
+                unreadNotificationCount > 0
+                  ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/30'
                     : 'bg-gray-100 hover:bg-gray-200'
                 }`}
               >
@@ -1877,33 +1999,33 @@ function MainApp() {
                 <span className={`absolute -top-1 -right-1 px-1 py-0.5 text-white text-[10px] font-bold rounded-full ${unreadNotificationCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-gray-500'}`}>
                   {unreadNotificationCount}
                 </span>
-              </button>
+            </button>
             </div>
 
             {/* Action Buttons */}
             <div className={`flex gap-2 ${(userRole === 'admin' || userRole === 'yönetici') ? 'flex-row' : 'flex-col'}`}>
-              {(userRole === 'admin' || userRole === 'yönetici') && (
-                <button
-                  onClick={() => handleTabChange('admin')}
+            {(userRole === 'admin' || userRole === 'yönetici') && (
+              <button
+                onClick={() => handleTabChange('admin')}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-md hover:shadow-green-500/25 group text-xs font-medium"
-                >
+              >
                   <Shield className="w-3 h-3" />
                   <span>Admin</span>
-                  {pendingApprovalCount > 0 && (
+                {pendingApprovalCount > 0 && (
                     <span className="px-1 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded-full animate-pulse">
-                      {pendingApprovalCount}
-                    </span>
-                  )}
-                </button>
-              )}
-              
-              <button
-                onClick={handleLogout}
+                    {pendingApprovalCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={handleLogout}
                 className={`flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-md hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-md hover:shadow-red-500/25 group text-xs font-medium ${(userRole === 'admin' || userRole === 'yönetici') ? 'flex-1' : 'w-full'}`}
-              >
+            >
                 <LogOut className="w-3 h-3" />
                 <span>Çıkış</span>
-              </button>
+            </button>
             </div>
           </div>
         </div>
@@ -1935,8 +2057,8 @@ function MainApp() {
                 >
                   <Bell className="w-5 h-5 text-gray-600" />
                   <span className={`absolute -top-1 -right-1 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center shadow-lg border-2 border-white ${unreadNotificationCount > 0 ? `${getNotificationColor(unreadNotificationCount)} animate-pulse` : 'bg-gray-500'}`}>
-                    {unreadNotificationCount}
-                  </span>
+                      {unreadNotificationCount}
+                    </span>
                 </button>
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -3919,62 +4041,187 @@ function MainApp() {
       )}
       {/* Profil Ayarları Modal */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4 relative">
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[85vh] flex flex-col relative shadow-2xl">
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h3 className="text-2xl font-bold text-gray-900">Profil Ayarları</h3>
               <button
                 onClick={() => setShowProfileModal(false)}
                 className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-6 h-6 text-gray-600" />
               </button>
             </div>
             
-            <div className="space-y-6">
-              {/* Modern Avatar Yükleme */}
+            {/* Content */}
+            <div className="flex flex-1 min-h-0">
+              {/* Sol Taraf - Avatar İşlemleri */}
+              <div className="w-1/2 p-6 border-r border-gray-200 bg-gradient-to-br from-blue-50 to-purple-50 overflow-y-auto">
+                <div className="flex flex-col h-full">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-6">Avatar Düzenleme</h4>
+                  
+                  {/* Avatar Yükleme */}
+                  <div className="flex-1">
               <ModernAvatarUpload
                 currentAvatar={userAvatar}
                 onUpload={handleAvatarUpload}
-                onCancel={() => {}} // Modal'ı kapatma, sadece dosya seçimini iptal et
+                      onCancel={() => {}}
                 uploading={uploadingAvatar}
-                maxSize={5 * 1024 * 1024} // 5MB
+                      maxSize={5 * 1024 * 1024}
                 acceptedTypes={['image/jpeg', 'image/png', 'image/webp', 'image/gif']}
               />
+                  </div>
+                </div>
+              </div>
 
-              {/* Kullanıcı Bilgileri */}
+              {/* Sağ Taraf - Şifre Düzenleme ve Kullanıcı Bilgileri */}
+              <div className="w-1/2 p-4 overflow-y-auto">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Hesap Ayarları</h4>
+                
+                {/* Modal Notification */}
+                {modalNotification && (
+                  <div className={`mb-4 p-3 rounded-lg border ${
+                    modalNotification.type === 'success' 
+                      ? 'bg-green-50 border-green-200 text-green-800' 
+                      : 'bg-red-50 border-red-200 text-red-800'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{modalNotification.message}</span>
+                      <button 
+                        onClick={() => setModalNotification(null)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
               <div className="space-y-4">
+                  {/* Şifre Düzenleme */}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-200">
+                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                      Şifre Değiştir
+                    </h5>
+                    
+                    <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label>
-                  <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Mevcut Şifre</label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className={`w-full px-3 py-2 bg-white rounded-lg text-gray-900 border transition-all text-sm ${
+                            passwordErrors.currentPassword 
+                              ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-200' 
+                              : 'border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-200'
+                          }`}
+                          placeholder="Mevcut şifrenizi girin"
+                        />
+                        {passwordErrors.currentPassword && (
+                          <p className="text-xs text-red-600 mt-1">{passwordErrors.currentPassword}</p>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Yeni Şifre</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className={`w-full px-3 py-2 bg-white rounded-lg text-gray-900 border transition-all text-sm ${
+                            passwordErrors.newPassword 
+                              ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-200' 
+                              : 'border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-200'
+                          }`}
+                          placeholder="Yeni şifrenizi girin"
+                        />
+                        {passwordErrors.newPassword && (
+                          <p className="text-xs text-red-600 mt-1">{passwordErrors.newPassword}</p>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Yeni Şifre Tekrar</label>
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className={`w-full px-3 py-2 bg-white rounded-lg text-gray-900 border transition-all text-sm ${
+                            passwordErrors.confirmPassword 
+                              ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-200' 
+                              : 'border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-200'
+                          }`}
+                          placeholder="Yeni şifrenizi tekrar girin"
+                        />
+                        {passwordErrors.confirmPassword && (
+                          <p className="text-xs text-red-600 mt-1">{passwordErrors.confirmPassword}</p>
+                        )}
+                      </div>
+                      
+                      <button 
+                        onClick={handlePasswordUpdate}
+                        disabled={updatingPassword}
+                        className="w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {updatingPassword ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Kullanıcı Bilgileri */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                    <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                      Hesap Bilgileri
+                    </h5>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Ad Soyad</label>
+                        <div className="px-3 py-2 bg-white rounded-lg text-gray-900 border border-gray-300 text-sm">
                     {userDetails?.full_name || user?.user_metadata?.full_name || 'Bilgi yok'}
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                        <div className="px-3 py-2 bg-white rounded-lg text-gray-900 border border-gray-300 text-sm">
                     {user?.email || 'Bilgi yok'}
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                  <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Rol</label>
+                        <div className="px-3 py-2 bg-white rounded-lg text-gray-900 border border-gray-300 text-sm">
                     {userDetails?.role === 'admin' ? '👑 Admin' : 
                      userDetails?.role === 'yönetici' ? '⭐ Yönetici' : 
                      '👤 Kullanıcı'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Hesap Durumu</label>
+                        <div className="px-3 py-2 bg-green-100 rounded-lg text-green-800 border border-green-300 flex items-center text-sm">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          Aktif
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
+            {/* Footer */}
+            <div className="flex justify-end p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
               <button
                 onClick={() => setShowProfileModal(false)}
-                className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 font-medium text-sm"
               >
-                Kapat
+                Kaydet
               </button>
             </div>
           </div>

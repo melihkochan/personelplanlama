@@ -31,7 +31,6 @@ const ChatSystem = ({ currentUser }) => {
   // Sohbetleri yükle
   useEffect(() => {
     if (currentUser?.id) {
-      console.log('🔍 Current User:', currentUser);
       loadConversations();
       loadOnlineUsers();
     }
@@ -104,7 +103,6 @@ const ChatSystem = ({ currentUser }) => {
   // Mesajları dinle
   useEffect(() => {
     if (currentConversation?.id) {
-      console.log('🔄 Sohbet değişti, mesajlar yükleniyor:', currentConversation.id);
       loadMessages(currentConversation.id);
       markMessagesAsRead(currentConversation.id);
       const unsubscribe = subscribeToMessages(currentConversation.id);
@@ -113,13 +111,11 @@ const ChatSystem = ({ currentUser }) => {
         unsubscribe();
       };
     } else {
-      console.log('❌ currentConversation yok veya ID yok:', currentConversation);
     }
   }, [currentConversation?.id]);
 
   const loadConversations = async () => {
     try {
-      console.log('🔄 Sohbetler yükleniyor...');
       
       // Önce conversations'ları al
       const { data: conversations, error: convError } = await supabase
@@ -131,7 +127,6 @@ const ChatSystem = ({ currentUser }) => {
         throw convError;
       }
 
-      console.log('📋 Bulunan sohbetler:', conversations?.length || 0);
 
       // Her conversation için participants ve messages'ları ayrı ayrı al
       const conversationsWithData = [];
@@ -158,13 +153,6 @@ const ChatSystem = ({ currentUser }) => {
               .single();
 
             if (!userError && userData) {
-              console.log(`👤 User data for ${userData.full_name}:`, {
-                id: userData.id,
-                full_name: userData.full_name,
-                role: userData.role,
-                avatar_url: userData.avatar_url
-              });
-              
               participantsWithData.push({
                 user_id: userData.id,
                 email: userData.email,
@@ -216,7 +204,6 @@ const ChatSystem = ({ currentUser }) => {
         return bLastMessage - aLastMessage; // En yeni üstte
       });
 
-      console.log('📊 Toplam sohbet sayısı:', sortedConversations.length);
       setConversations(sortedConversations);
     } catch (error) {
       console.error('❌ Sohbetler yüklenirken genel hata:', error);
@@ -226,7 +213,6 @@ const ChatSystem = ({ currentUser }) => {
 
   const loadMessages = async (conversationId) => {
     try {
-      console.log('🔍 Mesajlar yükleniyor, conversation_id:', conversationId);
       
       const { data, error } = await supabase
         .from('messages')
@@ -238,7 +224,6 @@ const ChatSystem = ({ currentUser }) => {
         console.error('❌ Mesajlar yüklenirken hata:', error);
         setMessages([]);
       } else {
-        console.log('✅ Mesajlar yüklendi:', data?.length || 0, 'mesaj');
         setMessages(data || []);
         setTimeout(scrollToBottom, 100);
       }
@@ -579,11 +564,6 @@ const ChatSystem = ({ currentUser }) => {
                     // Avatar URL'ini avatarService ile al
                     const fullAvatarUrl = otherUser?.avatar_url ? avatarService.getAvatarUrl(otherUser.avatar_url) : null;
                     
-                    console.log(`🖼️ Avatar check for ${fullName}:`, {
-                      original_avatar_url: otherUser?.avatar_url,
-                      full_avatar_url: fullAvatarUrl,
-                      hasAvatar: !!fullAvatarUrl
-                    });
                     
                     return (
                       <>
@@ -594,12 +574,8 @@ const ChatSystem = ({ currentUser }) => {
                               alt="Avatar" 
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                console.log(`❌ Avatar load error for ${fullName}:`, e);
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'flex';
-                              }}
-                              onLoad={() => {
-                                console.log(`✅ Avatar loaded for ${fullName}`);
                               }}
                             />
                             <div className={`w-full h-full rounded-full flex items-center justify-center text-white font-medium ${getAvatarColor(otherUser?.email)}`} style={{display: 'none'}}>

@@ -38,7 +38,6 @@ const ChatSidebar = ({
           // Online status değişikliklerini dinle
           if (payload.new.is_online !== payload.old.is_online || 
               payload.new.last_seen !== payload.old.last_seen) {
-            console.log('🔄 User status değişti, kullanıcı listesi güncelleniyor...');
             // Sadece allUsers state'ini güncelle
             setAllUsers(prevUsers => {
               return prevUsers.map(user => {
@@ -64,10 +63,8 @@ const ChatSidebar = ({
 
   const loadAllUsers = async () => {
     try {
-      console.log('🔄 Kullanıcılar yükleniyor...');
       const result = await getChatUsers(currentUser.id);
       
-      console.log('📋 getChatUsers sonucu:', result);
       
       if (result.success && result.data.length > 0) {
         // Duplicate'leri kaldır ve current user'ı filtrele
@@ -77,10 +74,8 @@ const ChatSidebar = ({
           )
           .filter(user => user.id !== currentUser.id);
         
-        console.log('👥 Filtrelenmiş kullanıcılar:', uniqueUsers);
         setAllUsers(uniqueUsers);
       } else {
-        console.log('⚠️ Kullanıcı bulunamadı veya hata var');
         setAllUsers([]);
       }
     } catch (error) {

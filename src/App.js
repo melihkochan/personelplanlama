@@ -75,12 +75,9 @@ function MainApp() {
   useEffect(() => {
     const loadStores = async () => {
       try {
-        console.log('🔄 Mağaza verileri yükleniyor...');
         const result = await getAllStores();
-        console.log('📊 Mağaza verileri sonucu:', result);
         
         if (result.success) {
-          console.log('✅ Mağaza verileri başarıyla yüklendi:', result.data);
           setAllStores(result.data || []);
         } else {
           console.error('❌ Mağaza verileri yüklenemedi:', result.error);
@@ -320,12 +317,6 @@ function MainApp() {
         
         if (data.hourly && data.daily) {
           setWeatherData(data);
-          console.log('🌤️ Hava durumu verisi yüklendi:', data);
-          console.log('🌡️ Mevcut sıcaklık:', data.current?.temperature_2m);
-          console.log('📊 Günlük maksimum:', data.daily?.temperature_2m_max?.[0]);
-          console.log('🌧️ Yağış verisi:', data.hourly?.precipitation?.slice(0, 8));
-          console.log('💨 Rüzgar verisi:', data.hourly?.wind_speed_10m?.slice(0, 8));
-          console.log('💧 Nem verisi:', data.hourly?.relative_humidity_2m?.slice(0, 8));
         }
       } catch (error) {
         console.error('❌ Hava durumu verisi yüklenirken hata:', error);
@@ -365,7 +356,6 @@ function MainApp() {
           setWeatherData(data);
         }
       } catch (error) {
-        console.log('Hava durumu API hatası:', error);
         // Fallback veri
         setWeatherData({
           hourly: {
@@ -506,14 +496,10 @@ function MainApp() {
             setUserDetails(userDetailsResult.data);
             
             // Avatar URL'ini ayarla
-            console.log('🔍 User details:', userDetailsResult.data);
-            console.log('🔍 Avatar URL from DB:', userDetailsResult.data.avatar_url);
             if (userDetailsResult.data.avatar_url) {
               const avatarUrl = avatarService.getAvatarUrl(userDetailsResult.data.avatar_url);
-              console.log('🔍 Generated avatar URL:', avatarUrl);
               setUserAvatar(avatarUrl);
             } else {
-              console.log('❌ No avatar_url found in user details');
             }
           } else {
             // Eğer veritabanında bulunamazsa, user metadata'sını kullan

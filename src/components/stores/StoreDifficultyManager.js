@@ -466,7 +466,7 @@ const StoreDifficultyManager = () => {
       title: 'Kod',
       dataIndex: 'storeCode',
       key: 'storeCode',
-      width: 80,
+      width: 60,
       align: 'center',
       sorter: (a, b) => a.storeCode - b.storeCode,
       filters: Array.from(new Set(storeData.map(store => store.storeCode))).map(code => ({
@@ -474,26 +474,26 @@ const StoreDifficultyManager = () => {
         value: code
       })),
       onFilter: (value, record) => record.storeCode === value,
-      render: (value) => <span className="text-sm font-medium text-blue-600 text-center block">{value}</span>
+      render: (value) => <span className="text-xs font-medium text-blue-600 text-center block">{value}</span>
     },
     {
       title: 'Mağaza Adı',
       dataIndex: 'storeName',
       key: 'storeName',
-      width: 180,
+      width: 140,
       sorter: (a, b) => a.storeName.localeCompare(b.storeName),
       filters: Array.from(new Set(storeData.map(store => store.storeName))).map(name => ({
         text: name,
         value: name
       })),
       onFilter: (value, record) => record.storeName === value,
-      render: (text) => <span className="text-sm">{text}</span>
+      render: (text) => <span className="text-xs">{text}</span>
     },
     {
       title: 'Bölge',
       dataIndex: 'region',
       key: 'region',
-      width: 120,
+      width: 100,
       sorter: (a, b) => (a.region || '').localeCompare(b.region || ''),
       filters: Array.from(new Set(storeData.map(store => store.region))).map(region => ({
         text: region,
@@ -503,10 +503,10 @@ const StoreDifficultyManager = () => {
       render: (text) => <span className="text-xs text-gray-600">{text}</span>
     },
     {
-      title: 'Ortalama Kasa',
+      title: 'Ort. Kasa',
       dataIndex: 'averageCases',
       key: 'averageCases',
-      width: 110,
+      width: 80,
       align: 'center',
       sorter: (a, b) => a.averageCases - b.averageCases,
       filters: [
@@ -529,10 +529,10 @@ const StoreDifficultyManager = () => {
       )
     },
     {
-      title: 'Ortalama Palet',
+      title: 'Ort. Palet',
       dataIndex: 'averagePallets',
       key: 'averagePallets',
-      width: 110,
+      width: 80,
       align: 'center',
       sorter: (a, b) => a.averagePallets - b.averagePallets,
       filters: [
@@ -555,10 +555,10 @@ const StoreDifficultyManager = () => {
       )
     },
     {
-      title: 'Fiziksel Zorluk',
+      title: 'Fiziksel',
       dataIndex: 'physicalAccessDifficulty',
       key: 'physicalAccessDifficulty',
-      width: 100,
+      width: 70,
       align: 'center',
       filters: [
         { text: '1 (Kolay)', value: 1 },
@@ -578,10 +578,10 @@ const StoreDifficultyManager = () => {
       sorter: (a, b) => a.physicalAccessDifficulty - b.physicalAccessDifficulty,
     },
     {
-      title: 'Araç Mağaza Uzaklığı',
+      title: 'Araç Uzaklığı',
       dataIndex: 'vehicleDistance',
       key: 'vehicleDistance',
-      width: 130,
+      width: 90,
       align: 'center',
       filters: [
         { text: '1 (Yakın)', value: 1 },
@@ -601,10 +601,10 @@ const StoreDifficultyManager = () => {
       sorter: (a, b) => a.vehicleDistance - b.vehicleDistance,
     },
     {
-      title: 'Avm Zorluğu',
+      title: 'AVM',
       dataIndex: 'mallDifficulty',
       key: 'mallDifficulty',
-      width: 100,
+      width: 60,
       align: 'center',
       filters: [
         { text: '0 (Yok)', value: 0 },
@@ -625,10 +625,10 @@ const StoreDifficultyManager = () => {
       sorter: (a, b) => a.mallDifficulty - b.mallDifficulty,
     },
     {
-      title: 'Bölgesel Zorluk',
+      title: 'Bölgesel',
       dataIndex: 'regionalDifficulty',
       key: 'regionalDifficulty',
-      width: 110,
+      width: 70,
       align: 'center',
       filters: [
         { text: '1 (Kolay)', value: 1 },
@@ -651,7 +651,7 @@ const StoreDifficultyManager = () => {
       title: 'Toplam',
       dataIndex: 'totalDifficultyScore',
       key: 'totalDifficultyScore',
-      width: 100,
+      width: 70,
       align: 'center',
       filters: [
         { text: '0-1 (Düşük)', value: 'low' },
@@ -679,7 +679,7 @@ const StoreDifficultyManager = () => {
       title: 'Açıklama',
       dataIndex: 'description',
       key: 'description',
-      width: 120,
+      width: 100,
       ellipsis: true,
       filters: [
         { text: 'Açıklama Var', value: 'has_description' },
@@ -693,7 +693,7 @@ const StoreDifficultyManager = () => {
       render: (text) => (
         <Tooltip title={text}>
           <span className="text-xs text-gray-600">
-            {text ? text.substring(0, 30) + '...' : '-'}
+            {text ? text.substring(0, 20) + '...' : '-'}
           </span>
         </Tooltip>
       ),
@@ -702,7 +702,7 @@ const StoreDifficultyManager = () => {
       title: 'Tip',
       dataIndex: 'storeType',
       key: 'storeType',
-      width: 70,
+      width: 60,
       align: 'center',
       filters: [
         { text: 'CADDE', value: 'CADDE' },
@@ -722,7 +722,7 @@ const StoreDifficultyManager = () => {
       title: 'Merdiven',
       dataIndex: 'stairSteps',
       key: 'stairSteps',
-      width: 100,
+      width: 70,
       align: 'center',
       filters: [
         { text: 'Basamak Yok', value: 'no_stairs' },
@@ -753,23 +753,23 @@ const StoreDifficultyManager = () => {
     {
       title: 'Görseller',
       key: 'images',
-      width: 100,
+      width: 80,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Görselleri Görüntüle">
             <Button
               type="text"
               size="small"
-              icon={<ImageIcon size={14} />}
+              icon={<ImageIcon size={12} />}
               onClick={() => handleViewImages(record)}
               className={record.images?.length > 0 ? 'text-green-600 hover:text-green-700' : 'text-gray-400'}
             >
-              <span className={record.images?.length > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+              <span className={record.images?.length > 0 ? 'text-green-600 font-medium text-xs' : 'text-gray-400 text-xs'}>
                 {record.images?.length || 0}
               </span>
             </Button>
           </Tooltip>
-          <Tooltip title="Görsel Ekle (Tek veya Çoklu)">
+          <Tooltip title="Görsel Ekle">
             <AntUpload
               multiple
               beforeUpload={(file) => handleImageUpload(file, record.key)}
@@ -780,7 +780,7 @@ const StoreDifficultyManager = () => {
               <Button 
                 type="text" 
                 size="small"
-                icon={<Upload size={14} />}
+                icon={<Upload size={12} />}
                 loading={uploadingImages[record.key]}
               />
             </AntUpload>
@@ -791,14 +791,14 @@ const StoreDifficultyManager = () => {
     {
       title: 'İşlemler',
       key: 'actions',
-      width: 100,
+      width: 80,
       render: (_, record) => (
         <Space size="small">
-          <Tooltip title="Detay Görünümü">
+          <Tooltip title="Detay">
             <Button
               type="text"
               size="small"
-              icon={<Eye size={14} />}
+              icon={<Eye size={12} />}
               onClick={() => handleViewDetail(record)}
             />
           </Tooltip>
@@ -806,7 +806,7 @@ const StoreDifficultyManager = () => {
             <Button
               type="text"
               size="small"
-              icon={<Edit size={14} />}
+              icon={<Edit size={12} />}
               onClick={() => handleEdit(record)}
             />
           </Tooltip>
@@ -916,7 +916,7 @@ const StoreDifficultyManager = () => {
             columns={columns}
             dataSource={currentData}
             loading={loading}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 900 }}
             pagination={{
               current: currentPage,
               pageSize: pageSize,

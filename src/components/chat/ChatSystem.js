@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Users, MessageCircle, MoreVertical, Search, Phone, Video, Paperclip, Smile, X, Trash2 } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatSidebar from './ChatSidebar';
-import { supabase } from '../../services/supabase';
+import { supabase, avatarService } from '../../services/supabase';
 
 const ChatSystem = ({ currentUser }) => {
   const [conversations, setConversations] = useState([]);
@@ -153,11 +153,18 @@ const ChatSystem = ({ currentUser }) => {
           for (const participant of participants || []) {
             const { data: userData, error: userError } = await supabase
               .from('users')
-              .select('id, email, full_name, username, last_seen, is_online, avatar_url')
+              .select('id, email, full_name, username, last_seen, is_online, avatar_url, role')
               .eq('id', participant.user_id)
               .single();
 
             if (!userError && userData) {
+              console.log(`👤 User data for ${userData.full_name}:`, {
+                id: userData.id,
+                full_name: userData.full_name,
+                role: userData.role,
+                avatar_url: userData.avatar_url
+              });
+              
               participantsWithData.push({
                 user_id: userData.id,
                 email: userData.email,
@@ -165,7 +172,8 @@ const ChatSystem = ({ currentUser }) => {
                 username: userData.username,
                 last_seen: userData.last_seen,
                 is_online: userData.is_online || false,
-                avatar_url: userData.avatar_url // Avatar URL'ini ekle
+                avatar_url: userData.avatar_url,
+                role: userData.role
               });
             }
           }
@@ -190,13 +198,6 @@ const ChatSystem = ({ currentUser }) => {
           console.error(`❌ Conversation işlenirken hata (conv ${conv.id}):`, error);
         }
       }
-
-      if (convError) {
-        console.error('❌ Conversations yüklenirken hata:', convError);
-        throw convError;
-      }
-
-      console.log('📋 Bulunan sohbetler:', conversations?.length || 0);
 
       // Sadece current user'ın dahil olduğu sohbetleri filtrele
       const conversationsWithParticipants = conversationsWithData.filter(conv => {
@@ -575,11 +576,41 @@ const ChatSystem = ({ currentUser }) => {
                       return user?.is_online || false;
                     };
                     
+                    // Avatar URL'ini avatarService ile al
+                    const fullAvatarUrl = otherUser?.avatar_url ? avatarService.getAvatarUrl(otherUser.avatar_url) : null;
+                    
+                    console.log(`🖼️ Avatar check for ${fullName}:`, {
+                      original_avatar_url: otherUser?.avatar_url,
+                      full_avatar_url: fullAvatarUrl,
+                      hasAvatar: !!fullAvatarUrl
+                    });
+                    
                     return (
                       <>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${getAvatarColor(otherUser?.email)}`}>
-                          {getInitials(fullName || otherUser?.email)}
-                        </div>
+                        {fullAvatarUrl ? (
+                          <div className="w-10 h-10 rounded-full overflow-hidden">
+                            <img 
+                              src={fullAvatarUrl} 
+                              alt="Avatar" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                console.log(`❌ Avatar load error for ${fullName}:`, e);
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                              onLoad={() => {
+                                console.log(`✅ Avatar loaded for ${fullName}`);
+                              }}
+                            />
+                            <div className={`w-full h-full rounded-full flex items-center justify-center text-white font-medium ${getAvatarColor(otherUser?.email)}`} style={{display: 'none'}}>
+                              {getInitials(fullName || otherUser?.email)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${getAvatarColor(otherUser?.email)}`}>
+                            {getInitials(fullName || otherUser?.email)}
+                          </div>
+                        )}
                         <div>
                           <h2 className="font-semibold text-gray-900">
                             {fullName || 'Bilinmeyen Kullanıcı'}

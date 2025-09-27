@@ -3772,10 +3772,11 @@ export const getChatUsers = async (currentUserId) => {
       full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı',
       is_online: user.is_online,
       last_seen: user.last_seen,
-      avatar_url: user.avatar_url, // Avatar URL'ini ekle
+      avatar_url: user.avatar_url,
+      role: user.role || 'kullanıcı', // Ana role alanı
       user_metadata: { 
         full_name: user.full_name || user.username || user.email?.split('@')[0] || 'Kullanıcı',
-        role: user.role || 'Kullanıcı' // Gerçek rolü kullan
+        role: user.role || 'kullanıcı' // Gerçek rolü kullan
       }
     }));
 

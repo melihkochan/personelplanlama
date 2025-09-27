@@ -139,7 +139,30 @@ const ChatSidebar = ({
     .filter((user, index, self) => 
       // Duplicate'leri kaldır (aynı ID'ye sahip kullanıcıları)
       index === self.findIndex(u => u.id === user.id)
-    );
+    )
+    .sort((a, b) => {
+      // Role göre sıralama
+      const roleOrder = {
+        'admin': 1,
+        'yönetici': 2,
+        'kullanıcı': 3
+      };
+      
+      const aRole = a.user_metadata?.role || a.role || 'kullanıcı';
+      const bRole = b.user_metadata?.role || b.role || 'kullanıcı';
+      
+      const aOrder = roleOrder[aRole] || 6;
+      const bOrder = roleOrder[bRole] || 6;
+      
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      
+      // Aynı role sahipse alfabetik sırala
+      const aName = a.user_metadata?.full_name || a.email || '';
+      const bName = b.user_metadata?.full_name || b.email || '';
+      return aName.localeCompare(bName, 'tr');
+    });
 
   return (
     <div className="w-80 bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 flex flex-col h-full shadow-lg">
@@ -151,7 +174,7 @@ const ChatSidebar = ({
               <MessageCircle className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Sohbetler</h2>
+              <h2 className="text-base font-semibold text-gray-900">Sohbetler</h2>
               <div className="flex items-center gap-1">
                 <p className="text-xs text-gray-500">{conversations.length} sohbet</p>
                 {conversations.reduce((total, conv) => {
@@ -192,7 +215,7 @@ const ChatSidebar = ({
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
                   <MessageCircle className="w-4 h-4 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Yeni Sohbet</h3>
+                <h3 className="text-base font-semibold text-gray-900">Yeni Sohbet</h3>
               </div>
               <button
                 onClick={() => setShowUserList(false)}
@@ -236,12 +259,12 @@ const ChatSidebar = ({
                     )}
                   </div>
                   
-                  <div className="ml-4 flex-1">
+                  <div className="ml-3 flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                      <h4 className="text-sm font-medium text-gray-900 group-hover:text-purple-600 transition-colors truncate">
                         {user.full_name || user.user_metadata?.full_name || 'Kullanıcı'}
                       </h4>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         isOnline(user) 
                           ? 'bg-green-100 text-green-700' 
                           : 'bg-gray-100 text-gray-600'
@@ -249,8 +272,16 @@ const ChatSidebar = ({
                         {isOnline(user) ? 'Çevrimiçi' : 'Çevrimdışı'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 truncate">
-                      {user.user_metadata?.role || 'Kullanıcı'}
+                    <p className="text-xs text-gray-500 truncate">
+                      {(() => {
+                        const role = user.user_metadata?.role || user.role || 'kullanıcı';
+                        const roleNames = {
+                          'admin': 'Admin',
+                          'yönetici': 'Yönetici',
+                          'kullanıcı': 'Kullanıcı'
+                        };
+                        return roleNames[role] || 'Kullanıcı';
+                      })()}
                     </p>
                   </div>
                 </div>
@@ -263,8 +294,8 @@ const ChatSidebar = ({
             <div className="w-20 h-20 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
               <MessageCircle className="w-10 h-10 text-purple-500" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Henüz sohbet yok</h3>
-            <p className="text-gray-600 mb-6 max-w-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Henüz sohbet yok</h3>
+            <p className="text-sm text-gray-600 mb-6 max-w-sm">
               Yeni bir sohbet başlatmak için yukarıdaki + butonuna tıklayın
             </p>
             <button
@@ -330,7 +361,7 @@ const ChatSidebar = ({
                   
                   <div className="ml-3 flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-medium text-gray-900 truncate text-sm">
+                      <h4 className="text-sm font-medium text-gray-900 truncate">
                         {otherUserName}
                       </h4>
                       <span className={`text-xs ${unreadCount > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}`}>

@@ -315,7 +315,7 @@ function MainApp() {
   useEffect(() => {
     const fetchWeatherData = async () => {
       try {
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${cityCoordinates.lat}&longitude=${cityCoordinates.lon}&current=temperature_2m&hourly=temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Europe%2FIstanbul&forecast_days=7`);
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${cityCoordinates.lat}&longitude=${cityCoordinates.lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&hourly=temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Europe%2FIstanbul&forecast_days=7`);
         const data = await response.json();
         
         if (data.hourly && data.daily) {
@@ -358,7 +358,7 @@ function MainApp() {
       try {
         // Open-Meteo API kullanarak İstanbul hava durumu
         const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=41.0138&longitude=28.9497&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe/Istanbul&forecast_days=7`
+          `https://api.open-meteo.com/v1/forecast?latitude=41.0138&longitude=28.9497&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe/Istanbul&forecast_days=7`
         );
         if (response.ok) {
           const data = await response.json();
@@ -2802,10 +2802,19 @@ function MainApp() {
                                     99: 'Şiddetli fırtınalı'
                                   };
                                   return descriptions[weatherCode] || 'Güneşli';
-                                })()}, {Math.round(weatherData?.current?.temperature_2m || weatherData?.daily?.temperature_2m_max?.[selectedDay] || 22)}°C
+                                })()}, {selectedDay === 0 
+                                  ? Math.round(weatherData?.current?.temperature_2m || weatherData?.hourly?.temperature_2m?.[0] || 22)
+                                  : Math.round(weatherData?.daily?.temperature_2m_max?.[selectedDay] || 22)
+                                }°C
                               </p>
                               <p className="text-xs text-gray-500">
-                                Nem: {Math.round(weatherData?.hourly?.relative_humidity_2m?.[0] || 65)}% • Rüzgar: {Math.round(weatherData?.hourly?.wind_speed_10m?.[0] || 15)} km/h
+                                Nem: {selectedDay === 0 
+                                  ? Math.round(weatherData?.current?.relative_humidity_2m || weatherData?.hourly?.relative_humidity_2m?.[0] || 65)
+                                  : Math.round(weatherData?.hourly?.relative_humidity_2m?.[0] || 65)
+                                }% • Rüzgar: {selectedDay === 0 
+                                  ? Math.round(weatherData?.current?.wind_speed_10m || weatherData?.hourly?.wind_speed_10m?.[0] || 15)
+                                  : Math.round(weatherData?.hourly?.wind_speed_10m?.[0] || 15)
+                                } km/h
                               </p>
                               <p className="text-xs text-gray-500">
                                 En yüksek: {Math.round(weatherData?.daily?.temperature_2m_max?.[selectedDay] || 22)}° • En düşük: {Math.round(weatherData?.daily?.temperature_2m_min?.[selectedDay] || 18)}°
@@ -2816,7 +2825,7 @@ function MainApp() {
                             <p className="text-xs text-gray-500 mb-1">Sıcaklık</p>
                             <p className="text-2xl font-bold text-gray-900">
                               {selectedDay === 0 
-                                ? Math.round(weatherData?.current?.temperature_2m || weatherData?.daily?.temperature_2m_max?.[0] || 22)
+                                ? Math.round(weatherData?.current?.temperature_2m || weatherData?.hourly?.temperature_2m?.[0] || 22)
                                 : Math.round(weatherData?.daily?.temperature_2m_max?.[selectedDay] || 22)
                               }°
                             </p>
@@ -3442,7 +3451,7 @@ function MainApp() {
                           <Clock className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <h3 className="text-2xl font-bold text-gray-900">Son Aktiviteler</h3>
+                          <h3 className="text-2xl font-bold text-gray-900">Son Aktiviteler </h3>
                           <p className="text-sm text-gray-600">Güncel personel durumları</p>
                         </div>
                       </div>
@@ -3460,8 +3469,8 @@ function MainApp() {
                           {/* Modern Timeline Line */}
                           <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-green-400 via-blue-400 to-purple-400 rounded-full"></div>
                           
-                          <div className="space-y-6">
-                            {dataStatus.dailyNotes.slice(0, 5).map((note, index) => {
+                          <div className="space-y-4">
+                            {dataStatus.dailyNotes.slice(0, 7).map((note, index) => {
                               const statusConfig = {
                                 'raporlu': { 
                                   color: 'red', 
@@ -3477,54 +3486,61 @@ function MainApp() {
                                   icon: '😴',
                                   label: 'Dinlenme'
                                 },
-                                'izinli': { 
+                                'yillik_izin': { 
                                   color: 'purple', 
                                   bg: 'from-purple-50 to-purple-100', 
                                   border: 'border-purple-200/50',
                                   icon: '🏖️',
-                                  label: 'İzinli'
+                                  label: 'Yıllık İzin'
                                 },
-                                'hastalık': { 
+                                'habersiz': { 
                                   color: 'orange', 
                                   bg: 'from-orange-50 to-orange-100', 
                                   border: 'border-orange-200/50',
-                                  icon: '🤒',
-                                  label: 'Hastalık'
+                                  icon: '❌',
+                                  label: 'Habersiz'
+                                },
+                                'gecici_gorev': { 
+                                  color: 'blue', 
+                                  bg: 'from-blue-50 to-blue-100', 
+                                  border: 'border-blue-200/50',
+                                  icon: '🔄',
+                                  label: 'Geçici Görev'
                                 }
                               };
                               
                               const config = statusConfig[note.status] || { 
-                                color: 'blue', 
-                                bg: 'from-blue-50 to-blue-100', 
-                                border: 'border-blue-200/50',
+                                color: 'gray', 
+                                bg: 'from-gray-50 to-gray-100', 
+                                border: 'border-gray-200/50',
                                 icon: '👤',
-                                label: 'Aktif'
+                                label: 'Bilinmeyen Durum'
                               };
 
                               return (
-                                <div key={index} className="relative pl-16 group">
+                                <div key={index} className="relative pl-12 group">
                                   {/* Modern Timeline Dot */}
-                                  <div className={`absolute left-4 top-4 w-4 h-4 rounded-full bg-${config.color}-500 ring-4 ring-${config.color}-100 shadow-lg group-hover:scale-125 transition-transform duration-300`}></div>
+                                  <div className={`absolute left-3 top-3 w-3 h-3 rounded-full bg-${config.color}-500 ring-2 ring-${config.color}-100 shadow-md group-hover:scale-125 transition-transform duration-300`}></div>
                                   
                                   {/* Modern Activity Card */}
-                                  <div className={`relative bg-gradient-to-br ${config.bg} rounded-2xl p-4 border ${config.border} hover:shadow-lg transition-all duration-300 group-hover:scale-105 overflow-hidden`}>
+                                  <div className={`relative bg-gradient-to-br ${config.bg} rounded-xl p-3 border ${config.border} hover:shadow-md transition-all duration-300 group-hover:scale-105 overflow-hidden`}>
                                     {/* Card Background Pattern */}
-                                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500"></div>
+                                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
                                     
                                     <div className="relative z-10">
-                                      <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                          <span className="text-lg">{config.icon}</span>
-                                          <p className="text-sm font-semibold text-gray-900 truncate">{note.full_name}</p>
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm">{config.icon}</span>
+                                          <p className="text-xs font-semibold text-gray-900 truncate">{note.full_name}</p>
                                         </div>
-                                        <span className="text-xs text-gray-500 bg-white/50 px-2 py-1 rounded-lg">
+                                        <span className="text-xs text-gray-500 bg-white/50 px-2 py-1 rounded-md">
                                           {new Date(note.date).toLocaleDateString('tr-TR')}
                                         </span>
                                       </div>
                                       
                                       <div className="flex items-center gap-2">
-                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200`}>
-                                          <div className={`w-2 h-2 bg-${config.color}-500 rounded-full mr-2`}></div>
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200`}>
+                                          <div className={`w-1.5 h-1.5 bg-${config.color}-500 rounded-full mr-1.5`}></div>
                                           {config.label}
                                         </span>
                                       </div>
@@ -3589,7 +3605,7 @@ function MainApp() {
                       </div>
 
                       {/* Ultra Modern Calendar Grid */}
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden border border-gray-200/50 shadow-lg">
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden border border-gray-200/50 shadow-lg flex-1">
                         {/* Modern Day Headers */}
                         <div className="grid grid-cols-7 bg-gradient-to-r from-blue-600 to-indigo-600">
                           {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, index) => (
@@ -3605,20 +3621,20 @@ function MainApp() {
                             <div
                               key={index}
                               className={`
-                                p-3 border-r border-b border-gray-200/50 min-h-[100px] relative transition-all duration-300 hover:bg-white/50
+                                p-2 border-r border-b border-gray-200/50 min-h-[80px] relative transition-all duration-300 hover:bg-white/50 group
                                 ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50/50'}
                                 ${day.isToday ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300/50' : ''}
                                 ${isFutureDate(new Date(day.year, day.month, day.day)) ? 'opacity-60' : ''}
                               `}
                             >
                               <div className={`
-                                text-sm font-bold mb-2 flex items-center justify-between
+                                text-xs font-bold mb-1 flex items-center justify-between
                                 ${day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                                 ${day.isToday ? 'text-blue-600' : ''}
                               `}>
                                 <span>{day.day}</span>
                                 {day.isToday && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
                                 )}
                               </div>
 
@@ -3633,26 +3649,27 @@ function MainApp() {
 
                                 if (dayNotes.length > 0) {
                                   const statusConfig = {
-                                    'raporlu': { color: 'red', icon: '🚫' },
-                                    'dinlenme': { color: 'green', icon: '😴' },
-                                    'izinli': { color: 'purple', icon: '🏖️' },
-                                    'hastalık': { color: 'orange', icon: '🤒' }
+                                    'raporlu': { color: 'red', icon: '🚫', label: 'Raporlu' },
+                                    'dinlenme': { color: 'green', icon: '😴', label: 'Dinlenme' },
+                                    'yillik_izin': { color: 'purple', icon: '🏖️', label: 'Yıllık İzin' },
+                                    'habersiz': { color: 'orange', icon: '❌', label: 'Habersiz' },
+                                    'gecici_gorev': { color: 'blue', icon: '🔄', label: 'Geçici Görev' }
                                   };
 
                                   return (
                                     <div className="space-y-1">
-                                      <div className="flex items-center gap-1 mb-2">
-                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
                                         <span className="text-xs font-bold text-gray-600">
                                           {dayNotes.length} aktivite
                                         </span>
                                       </div>
                                       
-                                      <div className="space-y-1">
+                                      <div className="space-y-0.5">
                                         {dayNotes.slice(0, 2).map((note, index) => {
-                                          const config = statusConfig[note.status] || { color: 'blue', icon: '👤' };
+                                          const config = statusConfig[note.status] || { color: 'blue', icon: '👤', label: 'Aktif' };
                                           return (
-                                            <div key={index} className={`text-xs px-2 py-1 rounded-lg bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200 truncate flex items-center gap-1`}>
+                                            <div key={index} className={`text-xs px-1.5 py-0.5 rounded-md bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200 truncate flex items-center gap-1`}>
                                               <span className="text-xs">{config.icon}</span>
                                               <span className="truncate">{note.full_name}</span>
                                             </div>
@@ -3660,10 +3677,31 @@ function MainApp() {
                                         })}
                                         
                                         {dayNotes.length > 2 && (
-                                          <div className="text-xs text-gray-500 bg-gray-100 rounded-lg px-2 py-1 text-center border border-gray-200">
+                                          <div 
+                                            className="text-xs text-gray-500 bg-gray-100 rounded-md px-1.5 py-0.5 text-center border border-gray-200 cursor-help relative"
+                                            title={`${dayNotes.slice(2).map(note => {
+                                              const config = statusConfig[note.status] || { label: 'Aktif' };
+                                              return `${note.full_name} (${config.label})`;
+                                            }).join(', ')}`}
+                                          >
                                             +{dayNotes.length - 2} daha
                                           </div>
                                         )}
+                                      </div>
+                                      
+                                      {/* Günlük tooltip - tüm aktiviteler */}
+                                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 min-w-max">
+                                        <div className="font-semibold mb-1">{day.day} {getMonthName(day.month)} {day.year}</div>
+                                        {dayNotes.map((note, index) => {
+                                          const config = statusConfig[note.status] || { label: 'Aktif' };
+                                          return (
+                                            <div key={index} className="flex items-center gap-2">
+                                              <span className="text-xs">{config.icon}</span>
+                                              <span>{note.full_name} - {config.label}</span>
+                                            </div>
+                                          );
+                                        })}
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-800"></div>
                                       </div>
                                     </div>
                                   );

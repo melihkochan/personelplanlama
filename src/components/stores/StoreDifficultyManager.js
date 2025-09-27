@@ -503,10 +503,10 @@ const StoreDifficultyManager = () => {
       render: (text) => <span className="text-xs text-gray-600">{text}</span>
     },
     {
-      title: 'Ort. Kasa',
+      title: 'Kasa',
       dataIndex: 'averageCases',
       key: 'averageCases',
-      width: 80,
+      width: 70,
       align: 'center',
       sorter: (a, b) => a.averageCases - b.averageCases,
       filters: [
@@ -529,10 +529,10 @@ const StoreDifficultyManager = () => {
       )
     },
     {
-      title: 'Ort. Palet',
+      title: 'Palet',
       dataIndex: 'averagePallets',
       key: 'averagePallets',
-      width: 80,
+      width: 70,
       align: 'center',
       sorter: (a, b) => a.averagePallets - b.averagePallets,
       filters: [
@@ -578,10 +578,10 @@ const StoreDifficultyManager = () => {
       sorter: (a, b) => a.physicalAccessDifficulty - b.physicalAccessDifficulty,
     },
     {
-      title: 'Araç Uzaklığı',
+      title: 'Uzaklık',
       dataIndex: 'vehicleDistance',
       key: 'vehicleDistance',
-      width: 90,
+      width: 70,
       align: 'center',
       filters: [
         { text: '1 (Yakın)', value: 1 },
@@ -679,7 +679,7 @@ const StoreDifficultyManager = () => {
       title: 'Açıklama',
       dataIndex: 'description',
       key: 'description',
-      width: 100,
+      width: 120,
       ellipsis: true,
       filters: [
         { text: 'Açıklama Var', value: 'has_description' },
@@ -817,6 +817,20 @@ const StoreDifficultyManager = () => {
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
+      <style>
+        {`
+          .compact-table .ant-table-thead > tr > th {
+            font-size: 11px !important;
+            padding: 8px 4px !important;
+            line-height: 1.2 !important;
+            white-space: nowrap !important;
+          }
+          .compact-table .ant-table-tbody > tr > td {
+            font-size: 11px !important;
+            padding: 6px 4px !important;
+          }
+        `}
+      </style>
       <Card className="mb-4 shadow-sm">
         <div className="flex justify-between items-center mb-3">
           {/* Sol üst - Arama */}
@@ -916,7 +930,7 @@ const StoreDifficultyManager = () => {
             columns={columns}
             dataSource={currentData}
             loading={loading}
-            scroll={{ x: 900 }}
+            scroll={{ x: 800 }}
             pagination={{
               current: currentPage,
               pageSize: pageSize,
@@ -932,6 +946,9 @@ const StoreDifficultyManager = () => {
             }}
             size="small"
             className="compact-table"
+            style={{
+              fontSize: '12px'
+            }}
           />
         ) : viewMode === 'detail' ? (
           <div>

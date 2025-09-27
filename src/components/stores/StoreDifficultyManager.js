@@ -852,8 +852,15 @@ const StoreDifficultyManager = () => {
             </div>
           </div>
           
-          {/* Sağ üst - Görünüm seçenekleri ve İşlem butonları */}
+          {/* Sağ üst - Toplam bilgisi, Görünüm seçenekleri ve İşlem butonları */}
           <div className="flex items-center space-x-4">
+            {/* Toplam bilgisi */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-3 py-1">
+              <span className="text-sm font-medium text-blue-700">
+                Toplam: <span className="font-bold text-blue-800">{filteredData.length}</span> mağaza
+              </span>
+            </div>
+
             {/* Görünüm seçenekleri */}
             <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm flex">
               <button
@@ -912,16 +919,6 @@ const StoreDifficultyManager = () => {
               Excel İndir
             </button>
             </div>
-          </div>
-        </div>
-
-
-        {/* Toplam bilgisi */}
-        <div className="flex justify-end mb-4">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-2">
-            <span className="text-sm font-medium text-blue-700">
-              Toplam: <span className="font-bold text-blue-800">{filteredData.length}</span> mağaza
-            </span>
           </div>
         </div>
 

@@ -164,6 +164,7 @@ function MainApp() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [weatherData, setWeatherData] = useState(null);
   const [dailyMotivation, setDailyMotivation] = useState('');
+  const [activeWeatherTab, setActiveWeatherTab] = useState('temperature');
   
   // Gerçek zamanlı saat güncellemesi
   useEffect(() => {
@@ -177,12 +178,14 @@ function MainApp() {
   useEffect(() => {
     const fetchWeatherData = async () => {
       try {
-        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=41.0138&longitude=28.9497&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Europe%2FIstanbul&forecast_days=7');
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=41.0138&longitude=28.9497&current=temperature_2m&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Europe%2FIstanbul&forecast_days=7');
         const data = await response.json();
         
         if (data.hourly && data.daily) {
           setWeatherData(data);
           console.log('🌤️ Hava durumu verisi yüklendi:', data);
+          console.log('🌡️ Mevcut sıcaklık:', data.current?.temperature_2m);
+          console.log('📊 Günlük maksimum:', data.daily?.temperature_2m_max?.[0]);
         }
       } catch (error) {
         console.error('❌ Hava durumu verisi yüklenirken hata:', error);
@@ -2535,23 +2538,46 @@ function MainApp() {
                       <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-2xl p-6 mb-6 border border-sky-200/50">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center">
-                              <span className="text-2xl">
+                            <div className="w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+                              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
                                 {(() => {
-                                  const currentHour = new Date().getHours();
                                   const weatherCode = weatherData?.daily?.weather_code?.[0] || 0;
                                   
-                                  if (weatherCode === 0) return '☀️';
-                                  if (weatherCode === 1 || weatherCode === 2) return '⛅';
-                                  if (weatherCode === 3) return '☁️';
-                                  if (weatherCode >= 45 && weatherCode <= 48) return '🌫️';
-                                  if (weatherCode >= 51 && weatherCode <= 67) return '🌧️';
-                                  if (weatherCode >= 71 && weatherCode <= 77) return '❄️';
-                                  if (weatherCode >= 80 && weatherCode <= 86) return '⛈️';
-                                  if (weatherCode >= 95 && weatherCode <= 99) return '⛈️';
-                                  return '☀️';
+                                  // Open-Meteo weather codes için emoji ikonlar
+                                  const weatherEmojis = {
+                                    0: '☀️',   // Clear sky
+                                    1: '🌤️',   // Mainly clear
+                                    2: '⛅',    // Partly cloudy
+                                    3: '☁️',    // Overcast
+                                    45: '🌫️',  // Fog
+                                    48: '🌫️',  // Depositing rime fog
+                                    51: '🌦️',  // Light drizzle
+                                    53: '🌦️',  // Moderate drizzle
+                                    55: '🌦️',  // Dense drizzle
+                                    61: '🌧️',  // Slight rain
+                                    63: '🌧️',  // Moderate rain
+                                    65: '🌧️',  // Heavy rain
+                                    71: '❄️',   // Slight snow fall
+                                    73: '❄️',   // Moderate snow fall
+                                    75: '❄️',   // Heavy snow fall
+                                    77: '❄️',   // Snow grains
+                                    80: '🌦️',  // Slight rain showers
+                                    81: '🌧️',  // Moderate rain showers
+                                    82: '🌧️',  // Violent rain showers
+                                    85: '❄️',   // Slight snow showers
+                                    86: '❄️',   // Heavy snow showers
+                                    95: '⛈️',   // Thunderstorm
+                                    96: '⛈️',   // Thunderstorm with slight hail
+                                    99: '⛈️'    // Thunderstorm with heavy hail
+                                  };
+                                  
+                                  return (
+                                    <text x="12" y="18" textAnchor="middle" fontSize="20" fill="white">
+                                      {weatherEmojis[weatherCode] || '☀️'}
+                                    </text>
+                                  );
                                 })()}
-                              </span>
+                              </svg>
                             </div>
                             <div>
                               <h4 className="text-lg font-semibold text-gray-900">İstanbul</h4>
@@ -2582,7 +2608,7 @@ function MainApp() {
                                     99: 'Şiddetli fırtınalı'
                                   };
                                   return descriptions[weatherCode] || 'Güneşli';
-                                })()}, {Math.round(weatherData?.daily?.temperature_2m_max?.[0] || 22)}°C
+                                })()}, {Math.round(weatherData?.current?.temperature_2m || weatherData?.daily?.temperature_2m_max?.[0] || 22)}°C
                               </p>
                               <p className="text-xs text-gray-500">
                                 En yüksek: {Math.round(weatherData?.daily?.temperature_2m_max?.[0] || 22)}° • En düşük: {Math.round(weatherData?.daily?.temperature_2m_min?.[0] || 18)}°
@@ -2590,7 +2616,8 @@ function MainApp() {
                           </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold text-gray-900">{Math.round(weatherData?.daily?.temperature_2m_max?.[0] || 22)}°</p>
+                            <p className="text-xs text-gray-500 mb-1">Sıcaklık</p>
+                            <p className="text-2xl font-bold text-gray-900">{Math.round(weatherData?.current?.temperature_2m || weatherData?.daily?.temperature_2m_max?.[0] || 22)}°</p>
                             <p className="text-sm text-gray-600">
                               {currentTime.toLocaleDateString('tr-TR', { 
                                 weekday: 'long', 
@@ -2600,6 +2627,7 @@ function MainApp() {
                             </p>
                           </div>
                         </div>
+
                         
                         {/* 7 Günlük Hava Durumu Tahmini */}
                         <div className="bg-white/60 rounded-xl p-4">
@@ -2618,22 +2646,46 @@ function MainApp() {
                               const minTemp = Math.round(weatherData?.daily?.temperature_2m_min?.[i] || (18 + i));
                               const weatherCode = weatherData?.daily?.weather_code?.[i] || 0;
                               
-                              const getWeatherEmoji = (code) => {
-                                if (code === 0) return '☀️';
-                                if (code === 1 || code === 2) return '⛅';
-                                if (code === 3) return '☁️';
-                                if (code >= 45 && code <= 48) return '🌫️';
-                                if (code >= 51 && code <= 67) return '🌧️';
-                                if (code >= 71 && code <= 77) return '❄️';
-                                if (code >= 80 && code <= 86) return '⛈️';
-                                if (code >= 95 && code <= 99) return '⛈️';
-                                return '☀️';
+                              const getWeatherIcon = (code) => {
+                                // Open-Meteo weather codes için emoji ikonlar
+                                const weatherEmojis = {
+                                  0: '☀️',   // Clear sky
+                                  1: '🌤️',   // Mainly clear
+                                  2: '⛅',    // Partly cloudy
+                                  3: '☁️',    // Overcast
+                                  45: '🌫️',  // Fog
+                                  48: '🌫️',  // Depositing rime fog
+                                  51: '🌦️',  // Light drizzle
+                                  53: '🌦️',  // Moderate drizzle
+                                  55: '🌦️',  // Dense drizzle
+                                  61: '🌧️',  // Slight rain
+                                  63: '🌧️',  // Moderate rain
+                                  65: '🌧️',  // Heavy rain
+                                  71: '❄️',   // Slight snow fall
+                                  73: '❄️',   // Moderate snow fall
+                                  75: '❄️',   // Heavy snow fall
+                                  77: '❄️',   // Snow grains
+                                  80: '🌦️',  // Slight rain showers
+                                  81: '🌧️',  // Moderate rain showers
+                                  82: '🌧️',  // Violent rain showers
+                                  85: '❄️',   // Slight snow showers
+                                  86: '❄️',   // Heavy snow showers
+                                  95: '⛈️',   // Thunderstorm
+                                  96: '⛈️',   // Thunderstorm with slight hail
+                                  99: '⛈️'    // Thunderstorm with heavy hail
+                                };
+                                
+                                return (
+                                  <div className="w-8 h-8 flex items-center justify-center text-2xl">
+                                    {weatherEmojis[code] || '☀️'}
+                                  </div>
+                                );
                               };
                               
                               return (
                                 <div key={i} className="text-center p-2 rounded-lg hover:bg-white/40 transition-colors">
                                   <p className="text-xs text-gray-600 mb-1 font-medium">{dayNames[date.getDay()]}</p>
-                                  <div className="text-lg mb-1">{getWeatherEmoji(weatherCode)}</div>
+                                  <div className="flex justify-center mb-1">{getWeatherIcon(weatherCode)}</div>
                                   <p className="text-sm font-bold text-gray-900">{maxTemp}°</p>
                                   <p className="text-xs text-gray-600">{minTemp}°</p>
                           </div>
@@ -2653,52 +2705,237 @@ function MainApp() {
                           <h4 className="text-lg font-semibold text-gray-900">Günlük Sıcaklık Değişimi</h4>
                           </div>
                         <div className="bg-white/60 rounded-xl p-4">
+                          {/* Hava Durumu Sekmeleri */}
+                          <div className="flex space-x-0.5 bg-gray-100 rounded-lg p-0.5 mb-4">
+                            <button
+                              onClick={() => setActiveWeatherTab('temperature')}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                                activeWeatherTab === 'temperature'
+                                  ? 'bg-white text-gray-900 shadow-sm'
+                                  : 'text-gray-600 hover:text-gray-900'
+                              }`}
+                            >
+                              Sıcaklık
+                            </button>
+                            <button
+                              onClick={() => setActiveWeatherTab('precipitation')}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                                activeWeatherTab === 'precipitation'
+                                  ? 'bg-white text-gray-900 shadow-sm'
+                                  : 'text-gray-600 hover:text-gray-900'
+                              }`}
+                            >
+                              Yağış
+                            </button>
+                            <button
+                              onClick={() => setActiveWeatherTab('wind')}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                                activeWeatherTab === 'wind'
+                                  ? 'bg-white text-gray-900 shadow-sm'
+                                  : 'text-gray-600 hover:text-gray-900'
+                              }`}
+                            >
+                              Rüzgar
+                            </button>
+                            </div>
+                          
                           <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm text-gray-600">24 Saatlik Sıcaklık Trendi</span>
+                            <span className="text-sm text-gray-600">
+                              {activeWeatherTab === 'temperature' && '24 Saatlik Sıcaklık Trendi'}
+                              {activeWeatherTab === 'precipitation' && '24 Saatlik Yağış Trendi'}
+                              {activeWeatherTab === 'wind' && '24 Saatlik Rüzgar Trendi'}
+                            </span>
                             <span className="text-xs text-gray-500">İstanbul</span>
-                          </div>
-                          <div className="h-32 flex items-end justify-between gap-1">
-                            {weatherData?.hourly?.temperature_2m?.slice(0, 24).map((temp, index) => {
-                              const maxTemp = Math.max(...weatherData.hourly.temperature_2m.slice(0, 24));
-                              const minTemp = Math.min(...weatherData.hourly.temperature_2m.slice(0, 24));
-                              const height = ((temp - minTemp) / (maxTemp - minTemp)) * 100;
-                              const isCurrentHour = index === new Date().getHours();
-                              
-                              return (
-                                <div key={index} className="flex flex-col items-center">
-                                  <div 
-                                    className={`w-3 rounded-t transition-all duration-300 ${
-                                      isCurrentHour 
-                                        ? 'bg-gradient-to-t from-red-500 to-orange-400' 
-                                        : 'bg-gradient-to-t from-blue-400 to-cyan-300'
-                                    }`}
-                                    style={{ height: `${Math.max(height, 10)}px` }}
-                                    title={`${new Date().getHours() + index}:00 - ${Math.round(temp)}°C`}
-                                  ></div>
-                                  {index % 6 === 0 && (
-                                    <span className="text-xs text-gray-500 mt-1">
-                                      {new Date().getHours() + index}:00
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            }) || Array.from({length: 24}, (_, i) => (
-                              <div key={i} className="flex flex-col items-center">
-                                <div 
-                                  className="w-3 bg-gradient-to-t from-gray-300 to-gray-400 rounded-t"
-                                  style={{ height: `${20 + (i % 3) * 10}px` }}
-                                ></div>
-                              </div>
-                            ))}
+                            </div>
+                          <div className="h-40 relative">
+                            <svg className="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
+                              {(() => {
+                                if (activeWeatherTab === 'temperature' && weatherData?.hourly?.temperature_2m?.slice(0, 24)) {
+                                  const temps = weatherData.hourly.temperature_2m.slice(0, 24);
+                                  const maxTemp = Math.max(...temps);
+                                  const minTemp = Math.min(...temps);
+                                  const tempRange = maxTemp - minTemp || 1;
+                                  
+                                  const points = temps.map((temp, index) => {
+                                    const x = (index / 23) * 400;
+                                    const y = 100 - ((temp - minTemp) / tempRange) * 80 - 10;
+                                    return `${x},${y}`;
+                                  }).join(' ');
+                                  
+                                  return (
+                                    <>
+                                      <polygon
+                                        points={`0,110 ${points} 400,110`}
+                                        fill="url(#temperatureGradient)"
+                                        opacity="0.3"
+                                      />
+                                      <polyline
+                                        points={points}
+                                        fill="none"
+                                        stroke="#f59e0b"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                      {temps.map((temp, index) => {
+                                        const x = (index / 23) * 400;
+                                        const y = 100 - ((temp - minTemp) / tempRange) * 80 - 10;
+                                        const isCurrentHour = index === new Date().getHours();
+                                        
+                                        return (
+                                          <g key={index}>
+                                            <circle
+                                              cx={x}
+                                              cy={y}
+                                              r={isCurrentHour ? "4" : "2"}
+                                              fill={isCurrentHour ? "#ef4444" : "#f59e0b"}
+                                              stroke="white"
+                                              strokeWidth="1"
+                                            />
+                                            {/* Sıcaklık değerleri */}
+                                            <text
+                                              x={x}
+                                              y={y - 6}
+                                              textAnchor="middle"
+                                              className="fill-gray-500"
+                                              fontSize="8"
+                                            >
+                                              {Math.round(temp)}°
+                                            </text>
+                                          </g>
+                                        );
+                                      })}
+                                      <defs>
+                                        <linearGradient id="temperatureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                          <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.8"/>
+                                          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.1"/>
+                                        </linearGradient>
+                                      </defs>
+                                    </>
+                                  );
+                                } else if (activeWeatherTab === 'precipitation') {
+                                  // Yağış grafiği - bar chart
+                                  const precipitation = [10, 10, 10, 10, 10, 5, 10, 10]; // Sabit değerler
+                                  
+                                  return (
+                                    <>
+                                      {precipitation.map((precip, index) => {
+                                        const x = (index / 7) * 400 + 20;
+                                        const barWidth = 40;
+                                        const barHeight = (precip / 10) * 60;
+                                        const y = 100 - barHeight;
+                                        
+                                        return (
+                                          <g key={index}>
+                                            <rect
+                                              x={x}
+                                              y={y}
+                                              width={barWidth}
+                                              height={barHeight}
+                                              fill="#3b82f6"
+                                              rx="2"
+                                            />
+                                            <text
+                                              x={x + barWidth/2}
+                                              y={y - 6}
+                                              textAnchor="middle"
+                                              className="fill-gray-500"
+                                              fontSize="8"
+                                            >
+                                              {precip}%
+                                            </text>
+                                          </g>
+                                        );
+                                      })}
+                                    </>
+                                  );
+                                } else if (activeWeatherTab === 'wind') {
+                                  // Rüzgar grafiği - saat saat gösterim
+                                  const windData = [
+                                    { speed: 23, direction: 'NE' },
+                                    { speed: 19, direction: 'NE' },
+                                    { speed: 21, direction: 'NE' },
+                                    { speed: 27, direction: 'SW' },
+                                    { speed: 26, direction: 'SW' },
+                                    { speed: 26, direction: 'SW' },
+                                    { speed: 19, direction: 'NE' },
+                                    { speed: 14, direction: 'NE' }
+                                  ];
+                                  
+                                  return (
+                                    <>
+                                      {windData.map((wind, index) => {
+                                        const x = (index / 7) * 400 + 20;
+                                        const y = 50;
+                                        
+                                        return (
+                                          <g key={index}>
+                                            <text
+                                              x={x + 20}
+                                              y={y - 10}
+                                              textAnchor="middle"
+                                              className="fill-gray-500"
+                                              fontSize="8"
+                                            >
+                                              {wind.speed} km/s
+                                            </text>
+                                            <text
+                                              x={x + 20}
+                                              y={y + 5}
+                                              textAnchor="middle"
+                                              className="fill-gray-500"
+                                              fontSize="8"
+                                            >
+                                              {wind.direction}
+                                            </text>
+                                            {/* Rüzgar yönü oku */}
+                                            <path
+                                              d={wind.direction === 'NE' 
+                                                ? `M${x + 20} ${y + 10} L${x + 15} ${y + 15} M${x + 20} ${y + 10} L${x + 25} ${y + 15}`
+                                                : `M${x + 20} ${y + 10} L${x + 15} ${y + 5} M${x + 20} ${y + 10} L${x + 25} ${y + 5}`
+                                              }
+                                              stroke="#10b981"
+                                              strokeWidth="1.5"
+                                              fill="none"
+                                              markerEnd="url(#arrowhead)"
+                                            />
+                                          </g>
+                                        );
+                                      })}
+                                      <defs>
+                                        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                                                refX="9" refY="3.5" orient="auto">
+                                          <polygon points="0 0, 10 3.5, 0 7" fill="#10b981" />
+                                        </marker>
+                                      </defs>
+                                    </>
+                                  );
+                                } else {
+                                  // Fallback
+                                  return (
+                                    <polyline
+                                      points="0,80 50,70 100,60 150,50 200,45 250,50 300,60 350,70 400,80"
+                                      fill="none"
+                                      stroke="#9ca3af"
+                                      strokeWidth="2"
+                                    />
+                                  );
+                                }
+                              })()}
+                            </svg>
                           </div>
                           <div className="flex justify-between text-xs text-gray-500 mt-2">
-                            <span>Gece</span>
-                            <span>Sabah</span>
-                            <span>Öğle</span>
-                            <span>Akşam</span>
+                            <span>03:00</span>
+                            <span>06:00</span>
+                            <span>09:00</span>
+                            <span>12:00</span>
+                            <span>15:00</span>
+                            <span>18:00</span>
+                            <span>21:00</span>
+                            <span>00:00</span>
+                            </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
 

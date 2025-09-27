@@ -449,9 +449,9 @@ function MainApp() {
   
   // Açılır-kapanır menü state'leri
   const [expandedGroups, setExpandedGroups] = useState({
-    personnel: true,
-    stores: true,
-    vehicles: true,
+    personnel: false,
+    stores: false,
+    vehicles: false,
     aktarma: true
   });
 
@@ -1276,9 +1276,6 @@ function MainApp() {
                 <Home className={`w-3 h-3 ${activeTab === 'home' ? 'text-white' : 'text-gray-700'}`} />
               </div>
               <span className="flex-1 text-left">Ana Sayfa</span>
-              {activeTab === 'home' && (
-                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-              )}
             </button>
 
 
@@ -1305,9 +1302,6 @@ function MainApp() {
                 <span className="px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
                   {unreadMessageCount}
                 </span>
-              )}
-              {activeTab === 'chat' && (
-                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
               )}
             </button>
 
@@ -1363,9 +1357,6 @@ function MainApp() {
                   <BarChart3 className={`w-2.5 h-2.5 ${activeTab === 'statistics' ? 'text-white' : 'text-gray-600'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Anadolu İstatistikler</span>
-                {activeTab === 'statistics' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1373,7 +1364,7 @@ function MainApp() {
                 className={`
                   w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'vardiya-kontrol'
-                    ? 'text-white border-l-4 border-l-amber-500 bg-slate-700/30'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
@@ -1393,7 +1384,7 @@ function MainApp() {
                 className={`
                   w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'performance'
-                    ? 'text-white border-l-4 border-l-green-500 bg-slate-700/30'
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
@@ -1426,9 +1417,6 @@ function MainApp() {
                   <MapPin className={`w-2.5 h-2.5 ${activeTab === 'store-distribution' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Anadolu Personel Konum Dağılımı</span>
-                {activeTab === 'store-distribution' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1449,9 +1437,6 @@ function MainApp() {
                   <Car className={`w-2.5 h-2.5 ${activeTab === 'vehicle-distribution' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Anadolu Personel Araç Dağılımı</span>
-                {activeTab === 'vehicle-distribution' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1472,9 +1457,6 @@ function MainApp() {
                   <Users className={`w-2.5 h-2.5 ${activeTab === 'personnel' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Anadolu Personel Listesi</span>
-                {activeTab === 'personnel' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
             </div>
                 )}
@@ -1519,9 +1501,6 @@ function MainApp() {
                   <Store className={`w-3 h-3 ${activeTab === 'stores' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Anadolu Mağaza Listesi</span>
-                {activeTab === 'stores' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1542,9 +1521,6 @@ function MainApp() {
                   <MapPin className={`w-3 h-3 ${activeTab === 'store-distance' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Anadolu Mağaza Uzaklık Ölçer</span>
-                {activeTab === 'store-distance' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
                   </div>
@@ -1589,9 +1565,6 @@ function MainApp() {
                         <Car className={`w-3 h-3 ${activeTab === 'vehicles' ? 'text-white' : 'text-gray-700'}`} />
                       </div>
                       <span className="flex-1 text-left whitespace-nowrap">Anadolu Araç Listesi</span>
-                      {activeTab === 'vehicles' && (
-                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                      )}
                     </button>
                   </div>
                 )}
@@ -1631,7 +1604,7 @@ function MainApp() {
                 className={`
                   w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'aktarma-personel-list'
-                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
@@ -1644,9 +1617,6 @@ function MainApp() {
                   <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                       <span className="flex-1 text-left">Aktarma Personel Performans Analizi</span>
-                {activeTab === 'aktarma-personel-list' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1654,7 +1624,7 @@ function MainApp() {
                 className={`
                   w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'aktarma-dagitim-analizi'
-                    ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/25'
                     : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
@@ -1667,9 +1637,6 @@ function MainApp() {
                   <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                       <span className="flex-1 text-left">Aktarma Mağaza Detaylı Dağıtım Analizi</span>
-                {activeTab === 'aktarma-dagitim-analizi' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1690,9 +1657,6 @@ function MainApp() {
                   <AlertTriangle className={`w-3 h-3 ${activeTab === 'aktarma-personel-magaza-zorluk' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                       <span className="flex-1 text-left">Aktarma Personel Mağaza Zorluk Verileri</span>
-                {activeTab === 'aktarma-personel-magaza-zorluk' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1713,9 +1677,6 @@ function MainApp() {
                   <AlertCircle className={`w-3 h-3 ${activeTab === 'store-difficulty' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left">Aktarma Mağaza Zorluk Yönetimi</span>
-                {activeTab === 'store-difficulty' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
                   </div>
@@ -1758,9 +1719,6 @@ function MainApp() {
                         <Car className={`w-2.5 h-2.5 ${activeTab === 'aktarma-vehicle-list' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                       <span className="flex-1 text-left whitespace-nowrap">Aktarma Depo Araç Listesi</span>
-                      {activeTab === 'aktarma-vehicle-list' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
                   </div>
                 )}
@@ -1795,9 +1753,6 @@ function MainApp() {
                   <Clock className={`w-3 h-3 ${activeTab === 'team-shifts' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Ekip Vardiyaları</span>
-                {activeTab === 'team-shifts' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1818,9 +1773,6 @@ function MainApp() {
                   <Users className={`w-3 h-3 ${activeTab === 'team-personnel' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Ekip Personel Bilgileri</span>
-                {activeTab === 'team-personnel' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
             </div>
@@ -1853,9 +1805,6 @@ function MainApp() {
                   <FileExcelOutlined className={`w-3 h-3 ${activeTab === 'puantaj-takip' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Puantaj Takip</span>
-                {activeTab === 'puantaj-takip' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
               <button
@@ -1876,9 +1825,6 @@ function MainApp() {
                   <Package className={`w-3 h-3 ${activeTab === 'puantaj-takvim' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Puantaj Takvim</span>
-                {activeTab === 'puantaj-takvim' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
             </div>
@@ -1914,9 +1860,6 @@ function MainApp() {
                 <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">
                   Geliştirme
                 </span>
-                {activeTab === 'planning' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
 
@@ -1942,9 +1885,6 @@ function MainApp() {
                 <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 shadow-sm">
                   Geliştirme
                 </span>
-                {activeTab === 'akilli-dagitim' && (
-                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-r-full shadow-lg"></div>
-                )}
               </button>
 
             </div>
@@ -2216,7 +2156,7 @@ function MainApp() {
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
                         ${activeTab === 'vardiya-kontrol'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
                       `}
@@ -2233,7 +2173,7 @@ function MainApp() {
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
                         ${activeTab === 'performance'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
                       `}
@@ -2353,7 +2293,7 @@ function MainApp() {
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
                         ${activeTab === 'aktarma-personel-list'
-                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
                       `}
@@ -2370,7 +2310,7 @@ function MainApp() {
                       className={`
                         w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
                         ${activeTab === 'aktarma-dagitim-analizi'
-                          ? 'bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg'
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
                       `}

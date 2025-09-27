@@ -961,7 +961,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                     total_night_shifts: personSchedules.filter(s => s.shift_type === 'gece').length,
                     total_day_shifts: personSchedules.filter(s => s.shift_type === 'gunduz').length,
                     total_evening_shifts: personSchedules.filter(s => s.shift_type === 'aksam').length,
-                    total_temp_assignments: personSchedules.filter(s => s.shift_type === 'gecici_gorev').length,
+                    total_temp_assignments: personSchedules.filter(s => s.shift_type === 'gecici_gorev' || s.shift_type === 'gecici').length,
                     total_sick_days: personSchedules.filter(s => s.shift_type === 'raporlu').length,
                     total_annual_leave: personSchedules.filter(s => s.shift_type === 'yillik_izin').length
                   };
@@ -2614,7 +2614,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         shiftTypeText = 'Gündüz Vardiyası';
       } else if (detail.shift_type === 'aksam') {
         shiftTypeText = 'Akşam Vardiyası';
-      } else if (detail.shift_type === 'gecici_gorev') {
+      } else if (detail.shift_type === 'gecici_gorev' || detail.shift_type === 'gecici') {
         shiftTypeText = 'Geçici Görev';
       } else if (detail.shift_type === 'raporlu') {
         shiftTypeText = 'Raporlu';
@@ -4432,7 +4432,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       </div>
                       <div className="text-center bg-white p-4 rounded-lg shadow-sm border border-purple-200">
                         <div className="text-xl font-bold text-purple-600 mb-2">
-                          {personnelDetails.filter(d => d.shift_type === 'gecici_gorev').length}
+                          {personnelDetails.filter(d => d.shift_type === 'gecici_gorev' || d.shift_type === 'gecici').length}
                         </div>
                         <div className="text-sm text-gray-700 font-medium">🔄 Geçici Görev Haftası</div>
                       </div>
@@ -4550,7 +4550,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                   detail.shift_type === 'gece' ? 'bg-blue-100 text-blue-800' :
                                   detail.shift_type === 'gunduz' ? 'bg-green-100 text-green-800' :
                                   detail.shift_type === 'aksam' ? 'bg-orange-100 text-orange-800' :
-                                  detail.shift_type === 'gecici_gorev' ? 'bg-purple-100 text-purple-800' :
+                                  (detail.shift_type === 'gecici_gorev' || detail.shift_type === 'gecici') ? 'bg-purple-100 text-purple-800' :
                                   detail.shift_type === 'raporlu' ? 'bg-red-100 text-red-800' :
                                   detail.shift_type === 'yillik_izin' ? 'bg-yellow-100 text-yellow-800' :
                                   'bg-gray-100 text-gray-800'
@@ -4558,7 +4558,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                   {detail.shift_type === 'gece' ? '🌙 Gece' :
                                    detail.shift_type === 'gunduz' ? '☀️ Gündüz' :
                                    detail.shift_type === 'aksam' ? '🌅 Akşam' :
-                                   detail.shift_type === 'gecici_gorev' ? '🔄 Geçici' :
+                                   (detail.shift_type === 'gecici_gorev' || detail.shift_type === 'gecici') ? '🔄 Geçici' :
                                    detail.shift_type === 'raporlu' ? '🏥 Raporlu' :
                                    detail.shift_type === 'yillik_izin' ? '🏖️ İzinli' :
                                    detail.shift_type}
@@ -4584,7 +4584,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                     return 'Gündüz Vardiyası';
                                   } else if (detail.shift_type === 'aksam') {
                                     return 'Akşam Vardiyası';
-                                  } else if (detail.shift_type === 'gecici_gorev') {
+                                  } else if (detail.shift_type === 'gecici_gorev' || detail.shift_type === 'gecici') {
                                     return 'Geçici Görev';
                                   } else if (detail.shift_type === 'raporlu') {
                                     return 'Raporlu';

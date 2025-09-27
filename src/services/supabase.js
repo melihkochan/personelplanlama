@@ -2024,6 +2024,15 @@ export const getAllShiftStatistics = async (year = null) => {
       
     if (error) throw error;
     
+    // Daily notes'tan da geçici görev verilerini getir
+    const { data: dailyNotes, error: dailyNotesError } = await supabase
+      .from('daily_notes')
+      .select('employee_code, status')
+      .eq('status', 'gecici_gorev');
+      
+    if (dailyNotesError) {
+      console.error('Daily notes error:', dailyNotesError);
+    }
     
     if (!schedules || schedules.length === 0) {
       return { success: true, data: [] };
@@ -2059,6 +2068,7 @@ export const getAllShiftStatistics = async (year = null) => {
           statistics[employeeCode].total_evening_shifts++;
           break;
         case 'gecici_gorev':
+        case 'gecici':
           statistics[employeeCode].total_temp_assignments++;
           break;
         case 'raporlu':
@@ -2069,6 +2079,29 @@ export const getAllShiftStatistics = async (year = null) => {
           break;
       }
     });
+    
+    // Daily notes'tan geçici görev verilerini ekle
+    if (dailyNotes && dailyNotes.length > 0) {
+      dailyNotes.forEach(note => {
+        const employeeCode = note.employee_code;
+        
+        if (!statistics[employeeCode]) {
+          statistics[employeeCode] = {
+            employee_code: employeeCode,
+            total_night_shifts: 0,
+            total_day_shifts: 0,
+            total_evening_shifts: 0,
+            total_temp_assignments: 0,
+            total_sick_days: 0,
+            total_annual_leave: 0
+          };
+        }
+        
+        if (note.status === 'gecici_gorev') {
+          statistics[employeeCode].total_temp_assignments++;
+        }
+      });
+    }
     
     const result = Object.values(statistics);
     

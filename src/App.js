@@ -452,7 +452,10 @@ function MainApp() {
     personnel: false,
     stores: false,
     vehicles: false,
-    aktarma: true
+    aktarma: true,
+    'aktarma-personnel': false,
+    'aktarma-stores': false,
+    'aktarma-vehicles': false
   });
 
 
@@ -1581,13 +1584,13 @@ function MainApp() {
                 </h3>
               </div>
 
-              {/* Personel Yönetimi Alt Grubu */}
+              {/* Aktarma Personel Yönetimi Alt Grubu */}
               <div className="ml-1 mt-2">
                 <button
                   onClick={() => toggleGroup('aktarma-personnel')}
                   className="w-full flex items-center px-2 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-gray-50 group"
                 >
-                  <span className="flex-1 text-left text-gray-700 text-xs font-medium">Personel ve Mağaza Yönetimi</span>
+                  <span className="flex-1 text-left text-gray-700 text-xs font-medium">Personel Yönetimi</span>
                   <div className={`w-4 h-4 rounded-md flex items-center justify-center ml-2 transition-all duration-300 ${
                     expandedGroups['aktarma-personnel'] ? 'bg-orange-100' : 'bg-gray-100 group-hover:bg-gray-200'
                   }`}>
@@ -1619,22 +1622,45 @@ function MainApp() {
                       <span className="flex-1 text-left">Aktarma Personel Performans Analizi</span>
               </button>
 
+
+                  </div>
+                )}
+              </div>
+
+              {/* Aktarma Mağaza Yönetimi Alt Grubu */}
+              <div className="ml-1">
+                <button
+                  onClick={() => toggleGroup('aktarma-stores')}
+                  className="w-full flex items-center px-2 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-gray-50 group"
+                >
+                  <span className="flex-1 text-left text-gray-700 text-xs font-medium">Mağaza Yönetimi</span>
+                  <div className={`w-4 h-4 rounded-md flex items-center justify-center ml-2 transition-all duration-300 ${
+                    expandedGroups['aktarma-stores'] ? 'bg-orange-100' : 'bg-gray-100 group-hover:bg-gray-200'
+                  }`}>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${
+                      expandedGroups['aktarma-stores'] ? 'rotate-180' : ''
+                    } ${expandedGroups['aktarma-stores'] ? 'text-orange-600' : 'text-gray-600'}`} />
+                  </div>
+              </button>
+
+                {expandedGroups['aktarma-stores'] && (
+                  <div className="ml-2 space-y-1 mt-2 border-l-2 border-gray-200 pl-2">
               <button
                 onClick={() => handleTabChange('aktarma-dagitim-analizi')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'aktarma-dagitim-analizi'
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
                   activeTab === 'aktarma-dagitim-analizi' 
                     ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
+                          : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-gray-700'}`} />
+                        <BarChart3 className={`w-3 h-3 ${activeTab === 'aktarma-dagitim-analizi' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                       <span className="flex-1 text-left">Aktarma Mağaza Detaylı Dağıtım Analizi</span>
               </button>
@@ -1642,19 +1668,19 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('aktarma-personel-magaza-zorluk')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'aktarma-personel-magaza-zorluk'
                     ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
                   activeTab === 'aktarma-personel-magaza-zorluk' 
                     ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
+                          : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <AlertTriangle className={`w-3 h-3 ${activeTab === 'aktarma-personel-magaza-zorluk' ? 'text-white' : 'text-gray-700'}`} />
+                        <AlertTriangle className={`w-3 h-3 ${activeTab === 'aktarma-personel-magaza-zorluk' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                       <span className="flex-1 text-left">Aktarma Personel Mağaza Zorluk Verileri</span>
               </button>
@@ -1662,23 +1688,22 @@ function MainApp() {
               <button
                 onClick={() => handleTabChange('store-difficulty')}
                 className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
                   ${activeTab === 'store-difficulty'
                     ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
                   }
                 `}
               >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
                   activeTab === 'store-difficulty' 
                     ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
+                          : 'bg-gray-100 group-hover:bg-gray-200'
                 }`}>
-                  <AlertCircle className={`w-3 h-3 ${activeTab === 'store-difficulty' ? 'text-white' : 'text-gray-700'}`} />
+                        <AlertCircle className={`w-3 h-3 ${activeTab === 'store-difficulty' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left">Aktarma Mağaza Zorluk Yönetimi</span>
               </button>
-
                   </div>
                 )}
               </div>

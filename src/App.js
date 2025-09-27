@@ -1202,18 +1202,18 @@ function MainApp() {
               <div className="ml-2">
                 <button
                   onClick={() => toggleGroup('personnel')}
-                  className="w-full flex items-center px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                  className="w-full flex items-center px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:text-white hover:bg-slate-700/50 transition-all duration-200 mb-2"
                 >
                   {expandedGroups.personnel ? (
-                    <ChevronDown className="w-3 h-3 mr-1" />
+                    <ChevronDown className="w-4 h-4 mr-2" />
                   ) : (
-                    <ChevronRight className="w-3 h-3 mr-1" />
+                    <ChevronRight className="w-4 h-4 mr-2" />
                   )}
-                  <span className="text-xs font-medium text-slate-400">Personel Yönetimi</span>
+                  <span className="text-sm font-semibold text-slate-200">Personel Yönetimi</span>
                 </button>
                 
                 {expandedGroups.personnel && (
-                  <div className="ml-4 space-y-1 mt-1">
+                  <div className="ml-6 space-y-1 mt-2">
 
               {/* İstatistikler */}
               <button
@@ -1221,7 +1221,7 @@ function MainApp() {
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'statistics'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
+                    ? 'text-white border-l-4 border-l-emerald-500 bg-slate-700/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
@@ -1234,9 +1234,6 @@ function MainApp() {
                   <BarChart3 className={`w-3 h-3 ${activeTab === 'statistics' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
                 <span className="flex-1 text-left">Anadolu İstatistikler</span>
-                {activeTab === 'statistics' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                )}
               </button>
 
               <button
@@ -1244,7 +1241,7 @@ function MainApp() {
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'vardiya-kontrol'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25'
+                    ? 'text-white border-l-4 border-l-amber-500 bg-slate-700/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
@@ -1257,9 +1254,6 @@ function MainApp() {
                   <Clock className={`w-3 h-3 ${activeTab === 'vardiya-kontrol' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
                 <span className="flex-1 text-left">Anadolu Personel Kontrol</span>
-                {activeTab === 'vardiya-kontrol' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                )}
               </button>
 
               <button
@@ -1267,7 +1261,7 @@ function MainApp() {
                 className={`
                   w-full flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 transform hover:scale-105 relative group
                   ${activeTab === 'performance'
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/25'
+                    ? 'text-white border-l-4 border-l-green-500 bg-slate-700/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }
                 `}
@@ -1280,9 +1274,6 @@ function MainApp() {
                   <BarChart3 className={`w-3 h-3 ${activeTab === 'performance' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
                 <span className="flex-1 text-left">Anadolu Performans Analizi</span>
-                {activeTab === 'performance' && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-white rounded-l-full"></div>
-                )}
               </button>
 
               <button
@@ -1810,7 +1801,10 @@ function MainApp() {
           {/* Modern Sidebar Footer */}
           <div className="p-3 border-t border-slate-700/50 space-y-2 flex-shrink-0">
             {/* User Profile */}
-            <div className="flex items-center p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all duration-300 group">
+            <div 
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center p-3 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all duration-300 group cursor-pointer"
+            >
               <div className="relative">
                 {userAvatar ? (
                   <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg">
@@ -1849,8 +1843,8 @@ function MainApp() {
                 </div>
               </div>
               
-              <div className="flex-1 ml-2 min-w-0">
-                <p className="text-xs font-semibold text-white truncate">
+              <div className="flex-1 ml-3 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">
                   {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
                 </p>
                 <div className="flex items-center gap-1">

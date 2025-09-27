@@ -2634,9 +2634,9 @@ function MainApp() {
 
 
                 {/* Modern Dashboard Cards */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
                   {/* Bugünün Durumları - Sol Yarı */}
-                  <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-2xl lg:rounded-3xl shadow-2xl border border-white/20 p-4 lg:p-8 overflow-hidden">
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-5">
                       <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600"></div>
@@ -2644,30 +2644,30 @@ function MainApp() {
                     
                     <div className="relative z-10">
                       {/* Header */}
-                      <div className="flex items-center justify-between mb-8">
-                              <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-3xl flex items-center justify-center shadow-xl">
-                            <Calendar className="w-7 h-7 text-white" />
+                      <div className="flex items-center justify-between mb-4 lg:mb-8">
+                              <div className="flex items-center gap-2 lg:gap-4">
+                          <div className="w-10 h-10 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl lg:rounded-3xl flex items-center justify-center shadow-xl">
+                            <Calendar className="w-5 h-5 lg:w-7 lg:h-7 text-white" />
                                 </div>
                                 <div>
-                            <h3 className="text-3xl font-bold text-gray-900">Hava Durumu</h3>
+                            <h3 className="text-xl lg:text-3xl font-bold text-gray-900">Hava Durumu</h3>
                           </div>
                         </div>
 
                         {/* Sağ üstte saat */}
                         <div className="text-right">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Clock className="w-4 h-4 text-gray-600" />
-                            <p className="text-sm font-medium text-gray-700">Şu anki saat</p>
+                          <div className="flex items-center gap-1 lg:gap-2 mb-1">
+                            <Clock className="w-3 h-3 lg:w-4 lg:h-4 text-gray-600" />
+                            <p className="text-xs lg:text-sm font-medium text-gray-700">Şu anki saat</p>
                           </div>
-                          <p className="text-2xl font-bold text-gray-900">
+                          <p className="text-lg lg:text-2xl font-bold text-gray-900">
                             {currentTime.toLocaleTimeString('tr-TR', { 
                               hour: '2-digit', 
                               minute: '2-digit',
                               second: '2-digit'
                             })}
                           </p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-gray-600 hidden lg:block">
                             {currentTime.toLocaleDateString('tr-TR', { 
                               weekday: 'long', 
                               day: 'numeric', 
@@ -2678,11 +2678,11 @@ function MainApp() {
                         </div>
 
                       {/* Hava Durumu */}
-                      <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-2xl p-6 mb-6 border border-sky-200/50">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
-                              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-xl lg:rounded-2xl p-3 lg:p-6 mb-4 lg:mb-6 border border-sky-200/50">
+                        <div className="flex items-center justify-between mb-3 lg:mb-4">
+                          <div className="flex items-center gap-2 lg:gap-4">
+                            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg">
+                              <svg className="w-6 h-6 lg:w-8 lg:h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
                                 {(() => {
                                   const weatherCode = weatherData?.daily?.weather_code?.[0] || 0;
                                   
@@ -2715,7 +2715,7 @@ function MainApp() {
                                   };
                                   
                                   return (
-                                    <text x="12" y="18" textAnchor="middle" fontSize="20" fill="white">
+                                    <text x="12" y="18" textAnchor="middle" fontSize="16" fill="white">
                                       {weatherEmojis[weatherData?.daily?.weather_code?.[selectedDay] || 0] || '☀️'}
                                     </text>
                                   );
@@ -2726,10 +2726,10 @@ function MainApp() {
                               <div className="relative city-selector">
                                 <button
                                   onClick={() => setShowCitySelector(!showCitySelector)}
-                                  className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                                  className="flex items-center gap-1 lg:gap-2 text-sm lg:text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
                                 >
                                   {selectedCity}
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                   </svg>
                                 </button>
@@ -2823,13 +2823,13 @@ function MainApp() {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500 mb-1">Sıcaklık</p>
-                            <p className="text-2xl font-bold text-gray-900">
+                            <p className="text-xl lg:text-2xl font-bold text-gray-900">
                               {selectedDay === 0 
                                 ? Math.round(weatherData?.current?.temperature_2m || weatherData?.hourly?.temperature_2m?.[0] || 22)
                                 : Math.round(weatherData?.daily?.temperature_2m_max?.[selectedDay] || 22)
                               }°
                             </p>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-xs lg:text-sm text-gray-600 hidden lg:block">
                               {currentTime.toLocaleDateString('tr-TR', { 
                                 weekday: 'long', 
                                 day: 'numeric', 
@@ -2841,12 +2841,12 @@ function MainApp() {
                         
                         
                         {/* 7 Günlük Hava Durumu Tahmini - Grafiğin altında */}
-                        <div className="bg-white/60 rounded-xl p-4">
-                          <div className="flex items-center justify-center gap-2 mb-3">
-                            <Calendar className="w-4 h-4 text-gray-600" />
-                            <p className="text-sm font-medium text-gray-700">7 Günlük Tahmin</p>
+                        <div className="bg-white/60 rounded-lg lg:rounded-xl p-2 lg:p-4">
+                          <div className="flex items-center justify-center gap-1 lg:gap-2 mb-2 lg:mb-3">
+                            <Calendar className="w-3 h-3 lg:w-4 lg:h-4 text-gray-600" />
+                            <p className="text-xs lg:text-sm font-medium text-gray-700">7 Günlük Tahmin</p>
                             </div>
-                          <div className="grid grid-cols-7 gap-2">
+                          <div className="grid grid-cols-7 gap-1 lg:gap-2">
                             {Array.from({ length: 7 }, (_, i) => {
                               const date = new Date();
                               date.setDate(date.getDate() + i);
@@ -2888,7 +2888,7 @@ function MainApp() {
                               };
                               
                               return (
-                                  <div className="w-8 h-8 flex items-center justify-center text-2xl">
+                                  <div className="w-6 h-6 lg:w-8 lg:h-8 flex items-center justify-center text-lg lg:text-2xl">
                                     {weatherEmojis[code] || '☀️'}
                           </div>
                                 );
@@ -2898,7 +2898,7 @@ function MainApp() {
                                 <button
                                   key={i}
                                   onClick={() => setSelectedDay(i)}
-                                  className={`text-center p-2 rounded-lg transition-all duration-200 ${
+                                  className={`text-center p-1 lg:p-2 rounded-md lg:rounded-lg transition-all duration-200 ${
                                     isSelected 
                                       ? 'bg-blue-500 text-white shadow-md' 
                                       : 'hover:bg-white/40 text-gray-700'
@@ -2908,7 +2908,7 @@ function MainApp() {
                                     {dayNames[date.getDay()]}
                                   </p>
                                   <div className="flex justify-center mb-1">{getWeatherIcon(weatherCode)}</div>
-                                  <p className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-gray-900'}`}>{maxTemp}°</p>
+                                  <p className={`text-xs lg:text-sm font-bold ${isSelected ? 'text-white' : 'text-gray-900'}`}>{maxTemp}°</p>
                                   <p className={`text-xs ${isSelected ? 'text-blue-100' : 'text-gray-600'}`}>{minTemp}°</p>
                                 </button>
                               );
@@ -2919,20 +2919,20 @@ function MainApp() {
 
 
                       {/* Günlük Sıcaklık Grafiği - 7 günlük takvimin üstünde */}
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-4 border border-blue-200/50">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl lg:rounded-2xl p-3 lg:p-6 mb-3 lg:mb-4 border border-blue-200/50">
+                        <div className="flex items-center gap-2 lg:gap-3 mb-3 lg:mb-4">
+                          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg lg:rounded-xl flex items-center justify-center">
+                            <svg className="w-4 h-4 lg:w-5 lg:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
                             </div>
-                          <h4 className="text-lg font-semibold text-gray-900">
+                          <h4 className="text-sm lg:text-lg font-semibold text-gray-900">
                             Hava Grafiği
                           </h4>
                           </div>
-                        <div className="bg-white/60 rounded-xl p-4">
+                        <div className="bg-white/60 rounded-lg lg:rounded-xl p-2 lg:p-4">
                           {/* Hava Durumu Sekmeleri */}
-                          <div className="flex space-x-0.5 bg-gray-100 rounded-lg p-0.5 mb-4">
+                          <div className="flex space-x-0.5 bg-gray-100 rounded-lg p-0.5 mb-3 lg:mb-4">
                             <button
                               onClick={() => setActiveWeatherTab('temperature')}
                               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
@@ -3437,39 +3437,39 @@ function MainApp() {
                 </div>
 
                 {/* Recent Activity & Calendar */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
                   {/* Ultra Modern Activity Timeline */}
-                  <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 p-8 overflow-hidden">
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-2xl lg:rounded-3xl shadow-2xl border border-white/20 p-4 lg:p-8 overflow-hidden">
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-5">
                       <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-600"></div>
                     </div>
                     
                     <div className="relative z-10">
-                      <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                          <Clock className="w-5 h-5 text-white" />
+                      <div className="flex items-center gap-2 lg:gap-3 mb-4 lg:mb-8">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg">
+                          <Clock className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
                         </div>
                         <div>
-                          <h3 className="text-2xl font-bold text-gray-900">Son Aktiviteler </h3>
-                          <p className="text-sm text-gray-600">Güncel personel durumları</p>
+                          <h3 className="text-lg lg:text-2xl font-bold text-gray-900">Son Aktiviteler </h3>
+                          <p className="text-xs lg:text-sm text-gray-600">Güncel personel durumları</p>
                         </div>
                       </div>
 
                       {dataStatus.dailyNotes.length === 0 ? (
-                        <div className="text-center py-12">
-                          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Clock className="w-10 h-10 text-gray-400" />
+                        <div className="text-center py-6 lg:py-12">
+                          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl lg:rounded-2xl flex items-center justify-center mx-auto mb-3 lg:mb-4">
+                            <Clock className="w-8 h-8 lg:w-10 lg:h-10 text-gray-400" />
                           </div>
-                          <h4 className="text-lg font-semibold text-gray-600 mb-2">Henüz aktivite bulunmuyor</h4>
-                          <p className="text-sm text-gray-500">Personel aktiviteleri burada görünecek</p>
+                          <h4 className="text-sm lg:text-lg font-semibold text-gray-600 mb-2">Henüz aktivite bulunmuyor</h4>
+                          <p className="text-xs lg:text-sm text-gray-500">Personel aktiviteleri burada görünecek</p>
                         </div>
                       ) : (
                         <div className="relative">
                           {/* Modern Timeline Line */}
-                          <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-green-400 via-blue-400 to-purple-400 rounded-full"></div>
+                          <div className="absolute left-4 lg:left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-green-400 via-blue-400 to-purple-400 rounded-full"></div>
                           
-                          <div className="space-y-4">
+                          <div className="space-y-3 lg:space-y-4">
                             {dataStatus.dailyNotes.slice(0, 7).map((note, index) => {
                               const statusConfig = {
                                 'raporlu': { 
@@ -3518,29 +3518,29 @@ function MainApp() {
                               };
 
                               return (
-                                <div key={index} className="relative pl-12 group">
+                                <div key={index} className="relative pl-10 lg:pl-12 group">
                                   {/* Modern Timeline Dot */}
-                                  <div className={`absolute left-3 top-3 w-3 h-3 rounded-full bg-${config.color}-500 ring-2 ring-${config.color}-100 shadow-md group-hover:scale-125 transition-transform duration-300`}></div>
+                                  <div className={`absolute left-2 lg:left-3 top-3 w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-${config.color}-500 ring-2 ring-${config.color}-100 shadow-md group-hover:scale-125 transition-transform duration-300`}></div>
                                   
                                   {/* Modern Activity Card */}
-                                  <div className={`relative bg-gradient-to-br ${config.bg} rounded-xl p-3 border ${config.border} hover:shadow-md transition-all duration-300 group-hover:scale-105 overflow-hidden`}>
+                                  <div className={`relative bg-gradient-to-br ${config.bg} rounded-lg lg:rounded-xl p-2 lg:p-3 border ${config.border} hover:shadow-md transition-all duration-300 group-hover:scale-105 overflow-hidden`}>
                                     {/* Card Background Pattern */}
-                                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
+                                    <div className="absolute top-0 right-0 w-12 h-12 lg:w-16 lg:h-16 bg-white/20 rounded-full -translate-y-6 translate-x-6 lg:-translate-y-8 lg:translate-x-8 group-hover:scale-150 transition-transform duration-500"></div>
                                     
                                     <div className="relative z-10">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-sm">{config.icon}</span>
+                                      <div className="flex items-center justify-between mb-1 lg:mb-2">
+                                        <div className="flex items-center gap-1 lg:gap-2">
+                                          <span className="text-xs lg:text-sm">{config.icon}</span>
                                           <p className="text-xs font-semibold text-gray-900 truncate">{note.full_name}</p>
                                         </div>
-                                        <span className="text-xs text-gray-500 bg-white/50 px-2 py-1 rounded-md">
+                                        <span className="text-xs text-gray-500 bg-white/50 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-md">
                                           {new Date(note.date).toLocaleDateString('tr-TR')}
                                         </span>
                                       </div>
                                       
-                                      <div className="flex items-center gap-2">
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200`}>
-                                          <div className={`w-1.5 h-1.5 bg-${config.color}-500 rounded-full mr-1.5`}></div>
+                                      <div className="flex items-center gap-1 lg:gap-2">
+                                        <span className={`inline-flex items-center px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-700 border border-${config.color}-200`}>
+                                          <div className={`w-1 h-1 lg:w-1.5 lg:h-1.5 bg-${config.color}-500 rounded-full mr-1 lg:mr-1.5`}></div>
                                           {config.label}
                                         </span>
                                       </div>

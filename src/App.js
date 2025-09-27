@@ -2841,11 +2841,7 @@ function MainApp() {
                         
                         
                         {/* 7 Günlük Hava Durumu Tahmini - Grafiğin altında */}
-                        <div className="bg-white/60 rounded-lg lg:rounded-xl p-2 lg:p-4">
-                          <div className="flex items-center justify-center gap-1 lg:gap-2 mb-2 lg:mb-3">
-                            <Calendar className="w-3 h-3 lg:w-4 lg:h-4 text-gray-600" />
-                            <p className="text-xs lg:text-sm font-medium text-gray-700">7 Günlük Tahmin</p>
-                            </div>
+                        <div className="bg-transparent rounded-lg lg:rounded-xl p-2 lg:p-4">
                           <div className="grid grid-cols-7 gap-1 lg:gap-2">
                             {Array.from({ length: 7 }, (_, i) => {
                               const date = new Date();

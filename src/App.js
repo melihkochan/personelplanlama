@@ -500,6 +500,7 @@ function MainApp() {
       if (isAuthenticated && user) {
         try {
           const role = await getUserRole(user.id);
+          console.log('🔍 App.js - getUserRole result:', role);
           setUserRole(role);
 
           const userDetailsResult = await getUserDetails(user.id, user.email);

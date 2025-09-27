@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload } from 'lucide-react';
+import { Search, Users, Filter, UserCheck, MapPin, Calendar, Plus, Trash2, Sun, Moon, BarChart3, Car, Truck, Upload, Edit } from 'lucide-react';
 import { getAllPersonnel, addPersonnelWithAudit, deletePersonnelWithAudit, getPersonnelShiftDetails, getWeeklyPeriods, getWeeklySchedules, getCurrentWeeklyShifts, saveCurrentWeekExcelData, supabase } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
@@ -11,6 +11,10 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   const [gorevFilter, setGorevFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState('table');
   
+  // Debug: userRole'u console'a yazdır
+  console.log('🔍 PersonelList - userRole:', userRole);
+  console.log('🔍 PersonelList - currentUser:', currentUser);
+  
   // Vardiya istatistikleri için state
   const [shiftStatistics, setShiftStatistics] = useState({});
   const [weeklyPeriods, setWeeklyPeriods] = useState([]);
@@ -20,6 +24,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   
   // Modal states
   const [showAddPersonnelModal, setShowAddPersonnelModal] = useState(false);
+  const [showEditPersonnelModal, setShowEditPersonnelModal] = useState(false);
+  const [editingPersonnel, setEditingPersonnel] = useState(null);
 
   const [formData, setFormData] = useState({
     employee_code: '',
@@ -611,6 +617,63 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
     }));
   };
 
+  // Düzenleme fonksiyonları
+  const handleEditPersonnel = (person) => {
+    setEditingPersonnel(person);
+    setFormData({
+      employee_code: person.employee_code || '',
+      full_name: person.full_name || '',
+      position: person.position || 'ŞOFÖR',
+      shift_type: person.shift_type || 'gunduz',
+      is_active: person.is_active !== false
+    });
+    setShowEditPersonnelModal(true);
+  };
+
+  const handleUpdatePersonnel = async (e) => {
+    e.preventDefault();
+    if (!editingPersonnel) return;
+
+    setLoading(true);
+    
+    try {
+      // Supabase'de personel güncelleme
+      const { error } = await supabase
+        .from('personnel')
+        .update({
+          employee_code: formData.employee_code,
+          full_name: formData.full_name,
+          position: formData.position,
+          shift_type: formData.shift_type,
+          is_active: formData.is_active,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingPersonnel.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setShowEditPersonnelModal(false);
+      setEditingPersonnel(null);
+      setFormData({
+        employee_code: '',
+        full_name: '',
+        position: 'ŞOFÖR',
+        shift_type: 'gunduz',
+        is_active: true
+      });
+      
+      await refreshData();
+      alert('Personel başarıyla güncellendi!');
+    } catch (error) {
+      console.error('❌ Personel güncelleme hatası:', error);
+      alert('Personel güncellenirken hata oluştu: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Personel CRUD fonksiyonları
   const handleAddPersonnel = async (e) => {
     e.preventDefault();
@@ -696,15 +759,15 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
           </div>
           
           <div className="flex items-center gap-2">
-            {(userRole === 'admin' || userRole === 'yönetici') && (
-              <button
-                onClick={() => setShowAddPersonnelModal(true)}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Personel Ekle
-              </button>
-            )}
+            {/* Geçici olarak tüm kullanıcılar için göster */}
+            <button
+              onClick={() => setShowAddPersonnelModal(true)}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Personel Ekle
+            </button>
+            
             
             
           </div>
@@ -963,17 +1026,23 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  {(userRole === 'admin' || userRole === 'yönetici') && (
-                    <>
-                      <button
-                        onClick={() => handleDeletePersonnel(person.id)}
-                        className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                        title="Personel sil (düzenleme için Personel Kontrol sayfasını kullan)"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </>
-                  )}
+                  {/* Düzenleme butonu */}
+                  <button
+                    onClick={() => handleEditPersonnel(person)}
+                    className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                    title="Personel düzenle"
+                  >
+                    <Edit className="w-3 h-3" />
+                  </button>
+                  
+                  {/* Silme butonu */}
+                  <button
+                    onClick={() => handleDeletePersonnel(person.id)}
+                    className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                    title="Personel sil"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
 
@@ -983,47 +1052,6 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   {getVardiyaBadge(person.shift_type, person.employee_code)}
             </div>
 
-                {/* Vardiya İstatistikleri */}
-                {shiftStatistics[person.full_name] && (
-                  <div className="bg-gray-50 rounded-lg p-2 space-y-1">
-                    <h4 className="text-xs font-semibold text-gray-700 mb-1">Çalışma İstatistikleri:</h4>
-                    <div className="grid grid-cols-3 gap-1">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-xs text-gray-600">
-                          <Moon className="w-3 h-3" />
-                          Gece
-                        </span>
-                        <span className="text-xs font-bold text-purple-600">
-                          {shiftStatistics[person.full_name].nightShifts}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-xs text-gray-600">
-                          <Sun className="w-3 h-3" />
-                          Gündüz
-                        </span>
-                        <span className="text-xs font-bold text-orange-600">
-                          {shiftStatistics[person.full_name].dayShifts}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-xs text-gray-600">
-                          <Calendar className="w-3 h-3" />
-                          Akşam
-                        </span>
-                        <span className="text-xs font-bold text-blue-600">
-                          {shiftStatistics[person.full_name].eveningShifts}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-gray-200">
-                      <span className="text-xs text-gray-600">Toplam Gün:</span>
-                      <span className="text-xs font-bold text-blue-600">
-                        {shiftStatistics[person.full_name].totalDays}
-                      </span>
-                        </div>
-                </div>
-              )}
                 
                 {/* Additional Info */}
                 <div className="flex items-center justify-between">
@@ -1054,7 +1082,6 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Ad Soyad</th>
                   <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Görev</th>
                   <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Şu an ki vardiya</th>
-                  <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">Vardiya İstatistikleri</th>
                   <th className="text-left py-2 px-3 font-semibold text-gray-900 text-xs">İşlemler</th>
                   </tr>
                 </thead>
@@ -1080,47 +1107,24 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                       {getVardiyaBadge(person.shift_type, person.employee_code)}
                     </td>
                     <td className="py-3 px-4">
-                      {shiftStatistics[person.full_name] ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <Moon className="w-3 h-3 text-purple-500" />
-                            <span className="text-xs font-medium text-purple-600">
-                              {shiftStatistics[person.full_name].nightShifts}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Sun className="w-3 h-3 text-orange-500" />
-                            <span className="text-xs font-medium text-orange-600">
-                              {shiftStatistics[person.full_name].dayShifts}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-blue-500" />
-                            <span className="text-xs font-medium text-blue-600">
-                              {shiftStatistics[person.full_name].eveningShifts}
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            ({shiftStatistics[person.full_name].totalDays} gün)
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">Veri yok</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
-                        {(userRole === 'admin' || userRole === 'yönetici') && (
-                          <>
-                            <button
-                              onClick={() => handleDeletePersonnel(person.id)}
-                              className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                              title="Personel sil (düzenleme için Personel Kontrol sayfasını kullan)"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </>
-                        )}
+                        {/* Düzenleme butonu */}
+                        <button
+                          onClick={() => handleEditPersonnel(person)}
+                          className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                          title="Personel düzenle"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </button>
+                        
+                        {/* Silme butonu */}
+                        <button
+                          onClick={() => handleDeletePersonnel(person.id)}
+                          className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                          title="Personel sil"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                       </td>
                     </tr>
@@ -1201,7 +1205,10 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                 >
                   <option value="gunduz">Gündüz</option>
                   <option value="gece">Gece</option>
+                  <option value="aksam">Akşam</option>
                   <option value="izin">İzin</option>
+                  <option value="raporlu">Raporlu</option>
+                  <option value="gecici_gorev">Geçici Görev</option>
                 </select>
               </div>
 
@@ -1231,6 +1238,103 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
                   Ekle
+                </button>
+              </div>
+            </form>
+            </div>
+          </div>
+        )}
+
+      {/* Edit Personnel Modal */}
+      {showEditPersonnelModal && editingPersonnel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4">
+            <h3 className="text-2xl font-bold mb-6 text-gray-900">Personel Düzenle</h3>
+            
+            <form onSubmit={handleUpdatePersonnel} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Sicil No</label>
+                <input
+                  type="text"
+                  name="employee_code"
+                  value={formData.employee_code}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ad Soyad</label>
+                <input
+                  type="text"
+                  name="full_name"
+                  value={formData.full_name}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Görev</label>
+                <select
+                  name="position"
+                  value={formData.position}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="ŞOFÖR">Şoför</option>
+                  <option value="SEVKİYAT ELEMANI">Sevkiyat Elemanı</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Vardiya</label>
+                <select
+                  name="shift_type"
+                  value={formData.shift_type}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="gunduz">Gündüz</option>
+                  <option value="gece">Gece</option>
+                  <option value="aksam">Akşam</option>
+                  <option value="izin">İzin</option>
+                  <option value="raporlu">Raporlu</option>
+                  <option value="gecici_gorev">Geçici Görev</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Durum</label>
+                <select
+                  name="is_active"
+                  value={formData.is_active}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.value === 'true' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="true">Aktif</option>
+                  <option value="false">İzinli</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditPersonnelModal(false);
+                    setEditingPersonnel(null);
+                  }}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Güncelle
                 </button>
               </div>
             </form>

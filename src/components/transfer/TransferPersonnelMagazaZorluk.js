@@ -70,11 +70,7 @@ const TransferPersonnelMagazaZorluk = () => {
       
       const monthList = [
         { value: 'current', label: `Güncel Ay (${monthNames[currentMonthStr] || 'Bilinmeyen'})` },
-        { value: 'all', label: 'Tüm Aylar (Yavaş Yükleme)' },
-        ...uniqueMonths.map(month => ({
-          value: month,
-          label: `${monthNames[month]} (${data.filter(item => item.ay === month).length} kayıt)`
-        }))
+        { value: 'all', label: 'Tüm Aylar (Yavaş Yükleme)' }
       ];
 
       setAvailableMonths(monthList);

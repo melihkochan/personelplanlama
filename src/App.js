@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
@@ -2721,20 +2721,40 @@ function MainApp() {
                           
                           {/* Biraz sollu orta - Mesaj */}
                           <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
-                            <p className="text-white/90 text-lg font-medium">
+                            <div className="flex items-center gap-3">
                               {(() => {
                                 const hour = currentTime.getHours();
                                 if (hour >= 5 && hour < 12) {
-                                  return '🌅 Güneş doğuyor, yeni başlangıçlar!';
+                                  return (
+                                    <>
+                                      <Sunrise className="w-6 h-6 text-yellow-200 animate-pulse" />
+                                      <p className="text-white/90 text-lg font-medium">Güneş doğuyor, yeni başlangıçlar!</p>
+                                    </>
+                                  );
                                 } else if (hour >= 12 && hour < 17) {
-                                  return '☀️ Parlak gün, enerji dolu saatler!';
+                                  return (
+                                    <>
+                                      <Sun className="w-6 h-6 text-yellow-200 animate-pulse" />
+                                      <p className="text-white/90 text-lg font-medium">Parlak gün, enerji dolu saatler!</p>
+                                    </>
+                                  );
                                 } else if (hour >= 17 && hour < 20) {
-                                  return '🌇 Gün batımı, huzurlu akşam!';
+                                  return (
+                                    <>
+                                      <Sunset className="w-6 h-6 text-orange-200 animate-pulse" />
+                                      <p className="text-white/90 text-lg font-medium">Gün batımı, huzurlu akşam!</p>
+                                    </>
+                                  );
                                 } else {
-                                  return '🌙 Yıldızlı gece, dinlenme vakti!';
+                                  return (
+                                    <>
+                                      <Moon className="w-6 h-6 text-blue-200 animate-pulse" />
+                                      <p className="text-white/90 text-lg font-medium">Yıldızlı gece, dinlenme vakti!</p>
+                                    </>
+                                  );
                                 }
                               })()}
-                            </p>
+                            </div>
                       </div>
                         </div>
                         
@@ -2759,7 +2779,7 @@ function MainApp() {
                       <div className="flex items-center justify-between mb-4 lg:mb-8">
                               <div className="flex items-center gap-2 lg:gap-4">
                           <div className="w-10 h-10 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl lg:rounded-3xl flex items-center justify-center shadow-xl">
-                            <Calendar className="w-5 h-5 lg:w-7 lg:h-7 text-white" />
+                            <Cloud className="w-5 h-5 lg:w-7 lg:h-7 text-white" />
                                 </div>
                                 <div>
                             <h3 className="text-xl lg:text-3xl font-bold text-gray-900">Hava Durumu</h3>
@@ -2794,45 +2814,42 @@ function MainApp() {
                         <div className="flex items-center justify-between mb-3 lg:mb-4">
                           <div className="flex items-center gap-2 lg:gap-4">
                             <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg">
-                              <svg className="w-6 h-6 lg:w-8 lg:h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                {(() => {
-                                  const weatherCode = weatherData?.daily?.weather_code?.[0] || 0;
-                                  
-                                  // Open-Meteo weather codes için emoji ikonlar
-                                  const weatherEmojis = {
-                                    0: '☀️',   // Clear sky
-                                    1: '🌤️',   // Mainly clear
-                                    2: '⛅',    // Partly cloudy
-                                    3: '☁️',    // Overcast
-                                    45: '🌫️',  // Fog
-                                    48: '🌫️',  // Depositing rime fog
-                                    51: '🌦️',  // Light drizzle
-                                    53: '🌦️',  // Moderate drizzle
-                                    55: '🌦️',  // Dense drizzle
-                                    61: '🌧️',  // Slight rain
-                                    63: '🌧️',  // Moderate rain
-                                    65: '🌧️',  // Heavy rain
-                                    71: '❄️',   // Slight snow fall
-                                    73: '❄️',   // Moderate snow fall
-                                    75: '❄️',   // Heavy snow fall
-                                    77: '❄️',   // Snow grains
-                                    80: '🌦️',  // Slight rain showers
-                                    81: '🌧️',  // Moderate rain showers
-                                    82: '🌧️',  // Violent rain showers
-                                    85: '❄️',   // Slight snow showers
-                                    86: '❄️',   // Heavy snow showers
-                                    95: '⛈️',   // Thunderstorm
-                                    96: '⛈️',   // Thunderstorm with slight hail
-                                    99: '⛈️'    // Thunderstorm with heavy hail
-                                  };
-                                  
-                                  return (
-                                    <text x="12" y="18" textAnchor="middle" fontSize="16" fill="white">
-                                      {weatherEmojis[weatherData?.daily?.weather_code?.[selectedDay] || 0] || '☀️'}
-                                    </text>
-                                  );
-                                })()}
-                              </svg>
+                              {(() => {
+                                const weatherCode = weatherData?.daily?.weather_code?.[selectedDay] || 0;
+                                
+                                // Modern Lucide ikonları
+                                const getWeatherIcon = (code) => {
+                                  switch (code) {
+                                    case 0: return <Sun className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Clear sky
+                                    case 1: return <Sun className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Mainly clear
+                                    case 2: return <Cloud className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Partly cloudy
+                                    case 3: return <Cloud className="w-6 h-6 lg:w-8 lg:h-8 text-gray-200" />; // Overcast
+                                    case 45: return <CloudFog className="w-6 h-6 lg:w-8 lg:h-8 text-gray-200" />; // Fog
+                                    case 48: return <CloudFog className="w-6 h-6 lg:w-8 lg:h-8 text-gray-200" />; // Depositing rime fog
+                                    case 51: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Light drizzle
+                                    case 53: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Moderate drizzle
+                                    case 55: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Dense drizzle
+                                    case 61: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Slight rain
+                                    case 63: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Moderate rain
+                                    case 65: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Heavy rain
+                                    case 71: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Slight snow fall
+                                    case 73: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Moderate snow fall
+                                    case 75: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Heavy snow fall
+                                    case 77: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Snow grains
+                                    case 80: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Slight rain showers
+                                    case 81: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Moderate rain showers
+                                    case 82: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Violent rain showers
+                                    case 85: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Slight snow showers
+                                    case 86: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Heavy snow showers
+                                    case 95: return <CloudLightning className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Thunderstorm
+                                    case 96: return <CloudLightning className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Thunderstorm with slight hail
+                                    case 99: return <CloudLightning className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Thunderstorm with heavy hail
+                                    default: return <Sun className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />;
+                                  }
+                                };
+                                
+                                return getWeatherIcon(weatherCode);
+                              })()}
                             </div>
                             <div>
                               <div className="relative city-selector">
@@ -3030,9 +3047,7 @@ function MainApp() {
                       <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl lg:rounded-2xl p-3 lg:p-6 mb-3 lg:mb-4 border border-blue-200/50">
                         <div className="flex items-center gap-2 lg:gap-3 mb-3 lg:mb-4">
                           <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg lg:rounded-xl flex items-center justify-center">
-                            <svg className="w-4 h-4 lg:w-5 lg:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
+                            <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
                             </div>
                           <h4 className="text-sm lg:text-lg font-semibold text-gray-900">
                             Hava Grafiği

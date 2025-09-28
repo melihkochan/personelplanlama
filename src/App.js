@@ -2984,38 +2984,41 @@ function MainApp() {
                               const isSelected = selectedDay === i;
                               
                               const getWeatherIcon = (code) => {
-                                // Open-Meteo weather codes için emoji ikonlar
-                                const weatherEmojis = {
-                                  0: '☀️',   // Clear sky
-                                  1: '🌤️',   // Mainly clear
-                                  2: '⛅',    // Partly cloudy
-                                  3: '☁️',    // Overcast
-                                  45: '🌫️',  // Fog
-                                  48: '🌫️',  // Depositing rime fog
-                                  51: '🌦️',  // Light drizzle
-                                  53: '🌦️',  // Moderate drizzle
-                                  55: '🌦️',  // Dense drizzle
-                                  61: '🌧️',  // Slight rain
-                                  63: '🌧️',  // Moderate rain
-                                  65: '🌧️',  // Heavy rain
-                                  71: '❄️',   // Slight snow fall
-                                  73: '❄️',   // Moderate snow fall
-                                  75: '❄️',   // Heavy snow fall
-                                  77: '❄️',   // Snow grains
-                                  80: '🌦️',  // Slight rain showers
-                                  81: '🌧️',  // Moderate rain showers
-                                  82: '🌧️',  // Violent rain showers
-                                  85: '❄️',   // Slight snow showers
-                                  86: '❄️',   // Heavy snow showers
-                                  95: '⛈️',   // Thunderstorm
-                                  96: '⛈️',   // Thunderstorm with slight hail
-                                  99: '⛈️'    // Thunderstorm with heavy hail
-                              };
-                              
-                              return (
-                                  <div className="w-6 h-6 lg:w-8 lg:h-8 flex items-center justify-center text-lg lg:text-2xl">
-                                    {weatherEmojis[code] || '☀️'}
-                          </div>
+                                // Modern Lucide ikonları
+                                const getIcon = (weatherCode) => {
+                                  switch (weatherCode) {
+                                    case 0: return <Sun className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-500" />; // Clear sky
+                                    case 1: return <Sun className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-500" />; // Mainly clear
+                                    case 2: return <Cloud className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />; // Partly cloudy
+                                    case 3: return <Cloud className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600" />; // Overcast
+                                    case 45: return <CloudFog className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />; // Fog
+                                    case 48: return <CloudFog className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />; // Depositing rime fog
+                                    case 51: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Light drizzle
+                                    case 53: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Moderate drizzle
+                                    case 55: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Dense drizzle
+                                    case 61: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />; // Slight rain
+                                    case 63: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />; // Moderate rain
+                                    case 65: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-700" />; // Heavy rain
+                                    case 71: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Slight snow fall
+                                    case 73: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Moderate snow fall
+                                    case 75: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Heavy snow fall
+                                    case 77: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Snow grains
+                                    case 80: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Slight rain showers
+                                    case 81: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />; // Moderate rain showers
+                                    case 82: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-700" />; // Violent rain showers
+                                    case 85: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Slight snow showers
+                                    case 86: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Heavy snow showers
+                                    case 95: return <CloudLightning className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />; // Thunderstorm
+                                    case 96: return <CloudLightning className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />; // Thunderstorm with slight hail
+                                    case 99: return <CloudLightning className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />; // Thunderstorm with heavy hail
+                                    default: return <Sun className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-500" />;
+                                  }
+                                };
+                                
+                                return (
+                                  <div className="w-6 h-6 lg:w-8 lg:h-8 flex items-center justify-center">
+                                    {getIcon(code)}
+                                  </div>
                                 );
                               };
                               

@@ -633,106 +633,116 @@ Devam etmek istediğinizden emin misiniz?`;
       }
     };
 
-    const getCardBorder = (role) => {
+    const getCardStyle = (role) => {
       switch (role) {
         case 'admin':
-          return 'border-2 border-yellow-400 shadow-yellow-100 hover:border-yellow-500';
+          return 'border-l-4 border-l-yellow-400 bg-gradient-to-r from-yellow-50 to-white';
         case 'yönetici':
-          return 'border-2 border-purple-400 shadow-purple-100 hover:border-purple-500';
+          return 'border-l-4 border-l-purple-400 bg-gradient-to-r from-purple-50 to-white';
         default:
-          return 'border border-gray-100 hover:border-blue-200';
+          return 'border-l-4 border-l-blue-400 bg-gradient-to-r from-blue-50 to-white';
       }
     };
 
     return (
-      <div className={`group bg-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col ${getCardBorder(user.role)}`}>
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              {userAvatar ? (
-                <div className="w-12 h-12 rounded-full overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
-                  <img 
-                    src={userAvatar} 
-                    alt="Avatar" 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                  <div className={`w-full h-full flex items-center justify-center text-white font-bold text-base ${getAvatarColor(user.role)}`} style={{display: 'none'}}>
+      <div className={`group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 ${getCardStyle(user.role)}`}>
+        {/* Header */}
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                {userAvatar ? (
+                  <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm">
+                    <img 
+                      src={userAvatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className={`w-full h-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(user.role)}`} style={{display: 'none'}}>
+                      {getInitials(user.full_name || user.username)}
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm ${getAvatarColor(user.role)}`}>
                     {getInitials(user.full_name || user.username)}
                   </div>
-                </div>
-              ) : (
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 ${getAvatarColor(user.role)}`}>
-                  {getInitials(user.full_name || user.username)}
-                </div>
-              )}
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-gray-900 text-sm truncate">{user.full_name || user.username || 'Kullanıcı'}</h3>
+                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                {user.full_name && <p className="text-xs text-gray-400 truncate">@{user.username}</p>}
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-gray-900 text-base">{user.full_name || user.username || 'Kullanıcı'}</h3>
-              <p className="text-xs text-gray-600 mb-1">{user.email}</p>
-              {user.full_name && <p className="text-xs text-gray-500 font-medium">@{user.username}</p>}
-              
-              {/* Online Status ve Last Seen */}
-              <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-col items-end gap-1">
+              {getRoleBadge(user.role)}
+              <div className="flex items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${user.is_online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span className={`text-xs font-medium ${user.is_online ? 'text-green-600' : 'text-gray-500'}`}>
-                  {user.is_online ? 'Çevrimiçi' : user.last_seen ? `Son görülme: ${new Date(user.last_seen).toLocaleString('tr-TR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}` : 'Hiç görülmedi'}
+                <span className={`text-xs ${user.is_online ? 'text-green-600' : 'text-gray-500'}`}>
+                  {user.is_online ? 'Çevrimiçi' : 'Offline'}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            {getRoleBadge(user.role)}
-            <span className={`
-              px-2 py-1 rounded-full text-xs font-semibold shadow-sm
-              ${user.is_active 
-                ? 'bg-green-100 text-green-800 border border-green-200' 
-                : 'bg-red-100 text-red-800 border border-red-200'
-              }
-            `}>
-              {user.is_active ? '✓ Aktif' : '✗ Pasif'}
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          {/* Status ve Last Seen */}
+          <div className="flex items-center justify-between mb-3">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              user.is_active 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {user.is_active ? 'Aktif' : 'Pasif'}
             </span>
+            {!user.is_online && user.last_seen && (
+              <span className="text-xs text-gray-500">
+                {new Date(user.last_seen).toLocaleDateString('tr-TR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            {user.email !== getCurrentUserEmail() ? (
+              <>
+                <button
+                  onClick={() => handleEditUser(user)}
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs font-medium"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  Düzenle
+                </button>
+                <button
+                  onClick={() => handleDeleteUser(user.id)}
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs font-medium"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Sil
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowChangePasswordModal(true)}
+                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-xs font-medium"
+              >
+                <User className="w-3 h-3" />
+                Şifre Değiştir
+              </button>
+            )}
           </div>
         </div>
-        
-                 <div className="flex gap-2 mt-auto pt-3">
-          {user.email !== getCurrentUserEmail() ? (
-            <>
-              <button
-                onClick={() => handleEditUser(user)}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-xs"
-              >
-                <Edit3 className="w-3 h-3" />
-                Düzenle
-              </button>
-              <button
-                onClick={() => handleDeleteUser(user.id)}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-xs"
-              >
-                <Trash2 className="w-3 h-3" />
-                Sil
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setShowChangePasswordModal(true)}
-              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-xs"
-            >
-              <User className="w-3 h-3" />
-              Şifre Değiştir
-            </button>
-          )}
-        </div>
-        
       </div>
     );
   };
@@ -933,7 +943,7 @@ Devam etmek istediğinizden emin misiniz?`;
               </button>
             </div>
           ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                {users.map((user) => (
                  <UserCard key={user.id} user={user} />
                ))}
@@ -1595,7 +1605,7 @@ Devam etmek istediğinizden emin misiniz?`;
                           </button>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {users.map((user) => (
                             <UserCard key={user.id} user={user} />
                           ))}

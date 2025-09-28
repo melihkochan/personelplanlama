@@ -27,7 +27,6 @@ const Statistics = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('İstatistik verileri yükleniyor...');
       
       const [performance, personnel] = await Promise.all([
         getPerformanceData(),
@@ -39,7 +38,6 @@ const Statistics = () => {
       let enrichedPerformanceData = [];
       
       if (performance && performance.success && performance.data && performance.data.length > 0) {
-        console.log('✅ Performance verisi başarıyla yüklendi:', performance.data.length, 'kayıt');
         // Performans analizi sayfasındaki gibi gerçek veriyi işle
         enrichedPerformanceData = processRealData(performance.data);
       } else {
@@ -59,10 +57,6 @@ const Statistics = () => {
       setPerformanceData(enrichedPerformanceData);
       setPersonnelData(personnelDataArray);
       
-      console.log('İstatistik verileri yüklendi:', {
-        performanceCount: enrichedPerformanceData.length,
-        personnelCount: personnelDataArray.length
-      });
       
     } catch (error) {
       console.error('❌ Veri yüklenirken hata:', error);
@@ -77,7 +71,6 @@ const Statistics = () => {
   const processRealData = (rawData) => {
     if (!rawData || !rawData.length) return [];
     
-    console.log('Statistics - Gerçek veri işleniyor, toplam kayıt:', rawData.length);
     
     // Mağaza bazında benzersiz veri için gruplandırma (tarih + vardiya + mağaza)
     const storeUniqueRecords = {};
@@ -86,7 +79,6 @@ const Statistics = () => {
       const { employee_name, employee_code, date, trips = 0, pallets = 0, boxes = 0, stores_visited = 0, date_shift_type, store_codes, sheet_name } = record;
       
       if (!employee_name) {
-        console.warn(`⚠️ employee_name boş, kayıt atlanıyor`);
         return;
       }
       
@@ -160,7 +152,6 @@ const Statistics = () => {
       };
     });
     
-    console.log('Statistics - İşlenmiş mağaza bazında benzersiz veri:', processedData.length, 'mağaza ziyareti');
     return processedData;
   };
 

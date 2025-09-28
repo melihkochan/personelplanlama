@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake, Wind } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
@@ -2814,7 +2814,7 @@ function MainApp() {
                         <div className="flex items-center justify-between mb-3 lg:mb-4">
                           <div className="flex items-center gap-2 lg:gap-4">
                             <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-sky-400 to-blue-500 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg">
-                              {(() => {
+                                {(() => {
                                 const weatherCode = weatherData?.daily?.weather_code?.[selectedDay] || 0;
                                 
                                 // Modern Lucide ikonları
@@ -2824,23 +2824,23 @@ function MainApp() {
                                     case 1: return <Sun className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Mainly clear
                                     case 2: return <Cloud className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Partly cloudy
                                     case 3: return <Cloud className="w-6 h-6 lg:w-8 lg:h-8 text-gray-200" />; // Overcast
-                                    case 45: return <CloudFog className="w-6 h-6 lg:w-8 lg:h-8 text-gray-200" />; // Fog
-                                    case 48: return <CloudFog className="w-6 h-6 lg:w-8 lg:h-8 text-gray-200" />; // Depositing rime fog
-                                    case 51: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Light drizzle
-                                    case 53: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Moderate drizzle
-                                    case 55: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Dense drizzle
-                                    case 61: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Slight rain
-                                    case 63: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Moderate rain
-                                    case 65: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Heavy rain
-                                    case 71: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Slight snow fall
-                                    case 73: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Moderate snow fall
-                                    case 75: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Heavy snow fall
-                                    case 77: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Snow grains
-                                    case 80: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Slight rain showers
-                                    case 81: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Moderate rain showers
-                                    case 82: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-blue-200" />; // Violent rain showers
-                                    case 85: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Slight snow showers
-                                    case 86: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-blue-100" />; // Heavy snow showers
+                                    case 45: return <CloudFog className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Fog
+                                    case 48: return <CloudFog className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Depositing rime fog
+                                    case 51: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Light drizzle
+                                    case 53: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Moderate drizzle
+                                    case 55: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Dense drizzle
+                                    case 61: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Slight rain
+                                    case 63: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Moderate rain
+                                    case 65: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Heavy rain
+                                    case 71: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Slight snow fall
+                                    case 73: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Moderate snow fall
+                                    case 75: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Heavy snow fall
+                                    case 77: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Snow grains
+                                    case 80: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Slight rain showers
+                                    case 81: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Moderate rain showers
+                                    case 82: return <CloudRain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Violent rain showers
+                                    case 85: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Slight snow showers
+                                    case 86: return <Snowflake className="w-6 h-6 lg:w-8 lg:h-8 text-white" />; // Heavy snow showers
                                     case 95: return <CloudLightning className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Thunderstorm
                                     case 96: return <CloudLightning className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Thunderstorm with slight hail
                                     case 99: return <CloudLightning className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-200" />; // Thunderstorm with heavy hail
@@ -2849,7 +2849,7 @@ function MainApp() {
                                 };
                                 
                                 return getWeatherIcon(weatherCode);
-                              })()}
+                                })()}
                             </div>
                             <div>
                               <div className="relative city-selector">
@@ -2984,34 +2984,46 @@ function MainApp() {
                               const isSelected = selectedDay === i;
                               
                               const getWeatherIcon = (code) => {
-                                // Modern Lucide ikonları
+                                // Modern Lucide ikonları - seçili gün için beyaz, diğerleri için renkli
                                 const getIcon = (weatherCode) => {
+                                  const iconColor = isSelected ? 'text-white' : 
+                                    weatherCode === 0 || weatherCode === 1 ? 'text-yellow-500' :
+                                    weatherCode === 2 ? 'text-gray-500' :
+                                    weatherCode === 3 ? 'text-gray-600' :
+                                    weatherCode === 45 || weatherCode === 48 ? 'text-gray-500' :
+                                    weatherCode === 51 || weatherCode === 53 || weatherCode === 55 || weatherCode === 80 ? 'text-blue-500' :
+                                    weatherCode === 61 || weatherCode === 63 || weatherCode === 81 ? 'text-blue-600' :
+                                    weatherCode === 65 || weatherCode === 82 ? 'text-blue-700' :
+                                    weatherCode === 71 || weatherCode === 73 || weatherCode === 75 || weatherCode === 77 || weatherCode === 85 || weatherCode === 86 ? 'text-blue-400' :
+                                    weatherCode === 95 || weatherCode === 96 || weatherCode === 99 ? 'text-yellow-600' :
+                                    'text-yellow-500';
+                                  
                                   switch (weatherCode) {
-                                    case 0: return <Sun className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-500" />; // Clear sky
-                                    case 1: return <Sun className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-500" />; // Mainly clear
-                                    case 2: return <Cloud className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />; // Partly cloudy
-                                    case 3: return <Cloud className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600" />; // Overcast
-                                    case 45: return <CloudFog className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />; // Fog
-                                    case 48: return <CloudFog className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />; // Depositing rime fog
-                                    case 51: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Light drizzle
-                                    case 53: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Moderate drizzle
-                                    case 55: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Dense drizzle
-                                    case 61: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />; // Slight rain
-                                    case 63: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />; // Moderate rain
-                                    case 65: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-700" />; // Heavy rain
-                                    case 71: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Slight snow fall
-                                    case 73: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Moderate snow fall
-                                    case 75: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Heavy snow fall
-                                    case 77: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Snow grains
-                                    case 80: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />; // Slight rain showers
-                                    case 81: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />; // Moderate rain showers
-                                    case 82: return <CloudRain className="w-4 h-4 lg:w-5 lg:h-5 text-blue-700" />; // Violent rain showers
-                                    case 85: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Slight snow showers
-                                    case 86: return <Snowflake className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />; // Heavy snow showers
-                                    case 95: return <CloudLightning className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />; // Thunderstorm
-                                    case 96: return <CloudLightning className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />; // Thunderstorm with slight hail
-                                    case 99: return <CloudLightning className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />; // Thunderstorm with heavy hail
-                                    default: return <Sun className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-500" />;
+                                    case 0: return <Sun className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Clear sky
+                                    case 1: return <Sun className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Mainly clear
+                                    case 2: return <Cloud className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Partly cloudy
+                                    case 3: return <Cloud className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Overcast
+                                    case 45: return <CloudFog className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Fog
+                                    case 48: return <CloudFog className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Depositing rime fog
+                                    case 51: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Light drizzle
+                                    case 53: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Moderate drizzle
+                                    case 55: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Dense drizzle
+                                    case 61: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Slight rain
+                                    case 63: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Moderate rain
+                                    case 65: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Heavy rain
+                                    case 71: return <Snowflake className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Slight snow fall
+                                    case 73: return <Snowflake className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Moderate snow fall
+                                    case 75: return <Snowflake className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Heavy snow fall
+                                    case 77: return <Snowflake className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Snow grains
+                                    case 80: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Slight rain showers
+                                    case 81: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Moderate rain showers
+                                    case 82: return <CloudRain className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Violent rain showers
+                                    case 85: return <Snowflake className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Slight snow showers
+                                    case 86: return <Snowflake className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Heavy snow showers
+                                    case 95: return <CloudLightning className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Thunderstorm
+                                    case 96: return <CloudLightning className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Thunderstorm with slight hail
+                                    case 99: return <CloudLightning className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />; // Thunderstorm with heavy hail
+                                    default: return <Sun className={`w-4 h-4 lg:w-5 lg:h-5 ${iconColor}`} />;
                                   }
                                 };
                                 
@@ -3046,61 +3058,80 @@ function MainApp() {
                       </div>
 
 
-                      {/* Günlük Sıcaklık Grafiği - 7 günlük takvimin üstünde */}
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl lg:rounded-2xl p-3 lg:p-6 mb-3 lg:mb-4 border border-blue-200/50">
-                        <div className="flex items-center gap-2 lg:gap-3 mb-3 lg:mb-4">
-                          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg lg:rounded-xl flex items-center justify-center">
-                            <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
+                      {/* Modern Hava Grafiği */}
+                      <div className="bg-white rounded-xl lg:rounded-2xl p-4 lg:p-6 mb-3 lg:mb-4 shadow-lg border border-gray-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                              <BarChart3 className="w-5 h-5 text-white" />
                             </div>
-                          <h4 className="text-sm lg:text-lg font-semibold text-gray-900">
-                            Hava Grafiği
-                          </h4>
+                            <div>
+                              <h4 className="text-lg font-bold text-gray-900">Hava Analizi</h4>
+                              <p className="text-sm text-gray-500">Detaylı hava durumu grafikleri</p>
                           </div>
-                        <div className="bg-white/60 rounded-lg lg:rounded-xl p-2 lg:p-4">
-                          {/* Hava Durumu Sekmeleri */}
-                          <div className="flex space-x-0.5 bg-gray-100 rounded-lg p-0.5 mb-3 lg:mb-4">
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs text-gray-500">Canlı Veri</span>
+                          </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 border border-gray-200">
+                          {/* Modern Sekmeler */}
+                          <div className="flex bg-white rounded-xl p-1 mb-4 shadow-sm border border-gray-200">
                             <button
                               onClick={() => setActiveWeatherTab('temperature')}
-                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                                 activeWeatherTab === 'temperature'
-                                  ? 'bg-white text-gray-900 shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-900'
+                                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md'
+                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
+                              <Sun className="w-4 h-4" />
                               Sıcaklık
                             </button>
                             <button
                               onClick={() => setActiveWeatherTab('precipitation')}
-                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                                 activeWeatherTab === 'precipitation'
-                                  ? 'bg-white text-gray-900 shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-900'
+                                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
+                              <CloudRain className="w-4 h-4" />
                               Yağış
                             </button>
                             <button
                               onClick={() => setActiveWeatherTab('wind')}
-                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                                 activeWeatherTab === 'wind'
-                                  ? 'bg-white text-gray-900 shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-900'
+                                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md'
+                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
+                              <Wind className="w-4 h-4" />
                               Rüzgar
                             </button>
                             </div>
                           
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm text-gray-600">
-                              {activeWeatherTab === 'temperature' && '24 Saatlik Sıcaklık Trendi'}
-                              {activeWeatherTab === 'precipitation' && '24 Saatlik Yağış Trendi'}
-                              {activeWeatherTab === 'wind' && '24 Saatlik Rüzgar Trendi'}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${
+                                activeWeatherTab === 'temperature' ? 'bg-orange-500' :
+                                activeWeatherTab === 'precipitation' ? 'bg-blue-500' : 'bg-green-500'
+                              }`}></div>
+                              <span className="text-sm font-semibold text-gray-800">
+                                {activeWeatherTab === 'temperature' && '24 Saatlik Sıcaklık Analizi'}
+                                {activeWeatherTab === 'precipitation' && '24 Saatlik Yağış Analizi'}
+                                {activeWeatherTab === 'wind' && '24 Saatlik Rüzgar Analizi'}
                             </span>
-                            <span className="text-xs text-gray-700">{selectedCity}</span>
                             </div>
-                          <div className="h-40 relative">
-                            <svg className="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-3 h-3 text-gray-500" />
+                              <span className="text-xs text-gray-600 font-medium">{selectedCity}</span>
+                            </div>
+                            </div>
+                          <div className="h-48 relative bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                            <svg className="w-full h-full" viewBox="0 0 400 140" preserveAspectRatio="none">
                               {(() => {
                                 if (activeWeatherTab === 'temperature' && weatherData?.hourly?.temperature_2m?.slice(0, 24)) {
                                   // Seçilen güne göre veri al

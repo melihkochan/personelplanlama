@@ -27,7 +27,7 @@ const Statistics = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('📊 İstatistik verileri yükleniyor...');
+      console.log('İstatistik verileri yükleniyor...');
       
       const [performance, personnel] = await Promise.all([
         getPerformanceData(),
@@ -59,7 +59,7 @@ const Statistics = () => {
       setPerformanceData(enrichedPerformanceData);
       setPersonnelData(personnelDataArray);
       
-      console.log('📊 İstatistik verileri yüklendi:', {
+      console.log('İstatistik verileri yüklendi:', {
         performanceCount: enrichedPerformanceData.length,
         personnelCount: personnelDataArray.length
       });
@@ -77,7 +77,7 @@ const Statistics = () => {
   const processRealData = (rawData) => {
     if (!rawData || !rawData.length) return [];
     
-    console.log('📊 Statistics - Gerçek veri işleniyor, toplam kayıt:', rawData.length);
+    console.log('Statistics - Gerçek veri işleniyor, toplam kayıt:', rawData.length);
     
     // Mağaza bazında benzersiz veri için gruplandırma (tarih + vardiya + mağaza)
     const storeUniqueRecords = {};
@@ -160,7 +160,7 @@ const Statistics = () => {
       };
     });
     
-    console.log('📊 Statistics - İşlenmiş mağaza bazında benzersiz veri:', processedData.length, 'mağaza ziyareti');
+    console.log('Statistics - İşlenmiş mağaza bazında benzersiz veri:', processedData.length, 'mağaza ziyareti');
     return processedData;
   };
 

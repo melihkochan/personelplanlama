@@ -519,7 +519,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             console.log('✅ Excel verisi başarıyla yüklendi');
             setUploadMessage({
               type: 'success',
-              text: `✅ Excel verisi başarıyla yüklendi!\n\n📊 ${periods.length} haftalık dönem\n👥 ${schedules.length} vardiya kaydı\n\nVeriler sisteme kaydedildi.`
+              text: `Excel verisi başarıyla yüklendi!\n\n${periods.length} haftalık dönem\n${schedules.length} vardiya kaydı\n\nVeriler sisteme kaydedildi.`
             });
             
             // Hızlı veri güncelleme
@@ -2858,7 +2858,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                           {/* Haftalık Plan Göstergesi */}
                           <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-50 to-purple-50 px-3 py-1 rounded-full border border-blue-200">
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs font-medium text-blue-700">📅 Haftalık Plan Üzerinden</span>
+                            <span className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Haftalık Plan Üzerinden
+                            </span>
                             <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.5s'}}></div>
                           </div>
                         </div>
@@ -3031,7 +3034,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h4 className="text-lg font-semibold text-gray-900">📈 Personel Devam Takip Detayları</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                    Personel Devam Takip Detayları
+                  </h4>
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
                       <label className="text-sm font-medium text-gray-700">Ay:</label>

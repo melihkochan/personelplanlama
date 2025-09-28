@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X, Trash2, Edit } from 'lucide-react';
+import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X, Trash2, Edit, TrendingUp, Sun, Moon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes, logAuditEvent, checkJuly7Data, supabase } from '../../services/supabase';
 
@@ -2859,7 +2859,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
               {/* Modern Ay Seçimi */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">📅 Ay Seçimi</label>
+                <label className="text-sm font-medium text-gray-700 mb-1 block flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  Ay Seçimi
+                </label>
                 <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
                   {/* Tüm Aylar Seçeneği - Farklı Renk */}
                   <button
@@ -2871,7 +2874,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     }`}
                   >
                     <div className="text-center">
-                      <div className="text-sm mb-0.5">📊</div>
+                      <div className="text-sm mb-0.5 flex justify-center">
+                        <BarChart3 className="w-4 h-4 text-purple-600" />
+                      </div>
                       <div className="text-xs font-medium text-gray-900">Tüm Aylar</div>
                       <div className="text-xs text-gray-500">
                         {availableDates.length} veri
@@ -3019,7 +3024,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                                   <span key={dateItem.id} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                     dateItem.shift === 'GÜNDÜZ' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
                                   }`}>
-                                    {dateItem.shift === 'GÜNDÜZ' ? '🌅' : '🌙'} {dateItem.date}
+                                    {dateItem.shift === 'GÜNDÜZ' ? <Sun className="w-3 h-3 text-orange-500" /> : <Moon className="w-3 h-3 text-blue-500" />} {dateItem.date}
                                   </span>
                                 ))}
                               </div>
@@ -3115,16 +3120,24 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
                               {/* Tarih İçeriği */}
                               <div className="text-center">
-                                <div className="text-sm mb-1">
-                                  {isDayShift ? '🌅' : '🌙'}
+                                <div className="text-sm mb-1 flex justify-center">
+                                  {isDayShift ? <Sun className="w-4 h-4 text-orange-500" /> : <Moon className="w-4 h-4 text-blue-500" />}
                       </div>
-                                <div className="text-xs font-medium text-gray-900 mb-1">
+                                <div className={`text-xs font-medium mb-1 ${
+                                  isSelected 
+                                    ? (isDayShift ? 'text-orange-800' : 'text-blue-800')
+                                    : 'text-gray-900'
+                                }`}>
                                   {dateItem.date}
                                 </div>
                                 <div className={`text-xs font-medium px-1 py-0.5 rounded ${
-                                  isDayShift 
-                                    ? 'bg-orange-100 text-orange-700' 
-                                    : 'bg-blue-100 text-blue-700'
+                                  isSelected
+                                    ? (isDayShift 
+                                        ? 'bg-orange-200 text-orange-800' 
+                                        : 'bg-blue-200 text-blue-800')
+                                    : (isDayShift 
+                                        ? 'bg-orange-100 text-orange-700' 
+                                        : 'bg-blue-100 text-blue-700')
                                 }`}>
                                   {isDayShift ? 'Gündüz' : 'Gece'}
                                 </div>
@@ -3142,7 +3155,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-blue-600">📅</span>
+                    <Calendar className="w-4 h-4 text-blue-600" />
                     <span className="text-gray-700">Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {selectedMonth ? getDatesForMonth(availableDates, selectedMonth).length : availableDates.length} veri</span>
                 </div>
                   <div className="flex items-center gap-2">
@@ -3161,7 +3174,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     })()}</span></span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-green-600">{weeklyView ? '📊' : '📈'}</span>
+                    {weeklyView ? <BarChart3 className="w-4 h-4 text-green-600" /> : <TrendingUp className="w-4 h-4 text-green-600" />}
                     <span className="text-gray-700">Görünüm: <span className="font-medium text-green-600">{weeklyView ? 'Haftalık' : 'Günlük'}</span></span>
                   </div>
                 </div>

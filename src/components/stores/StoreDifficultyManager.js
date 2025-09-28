@@ -286,7 +286,7 @@ const StoreDifficultyManager = () => {
       // Supabase'e güncelle
       console.log('🔄 Güncelleme başlatılıyor...', updateData);
       const result = await storeDifficultyService.updateStore(editingRecord.id, updateData);
-      console.log('📊 Güncelleme sonucu:', result);
+      console.log('Güncelleme sonucu:', result);
       
       if (result.success) {
         // Başarılı güncelleme sonrası verileri tekrar getir

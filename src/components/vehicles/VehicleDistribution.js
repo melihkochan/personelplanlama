@@ -17,18 +17,15 @@ const VehicleDistribution = () => {
 
   // Seçili ay değiştiğinde tarihleri filtrele
   useEffect(() => {
-    console.log('🔄 Ay değişti, selectedMonth:', selectedMonth, 'availableDates:', availableDates.length);
     if (availableDates.length > 0) {
       if (selectedMonth) {
         // Belirli bir ay seçilmişse, o ayın tarihlerini seç
         const monthDates = getDatesForMonth(availableDates, selectedMonth);
         const monthDateIds = monthDates.map(item => item.id);
-        console.log('📅 Seçilen ay tarihleri:', monthDateIds.length);
         setSelectedDates(monthDateIds);
       } else {
         // "Tüm Aylar" seçilmişse, tüm tarihleri seç
         const allDateIds = availableDates.map(item => item.id);
-        console.log('📅 Tüm tarihler seçildi:', allDateIds.length);
         setSelectedDates(allDateIds);
       }
     }
@@ -36,32 +33,30 @@ const VehicleDistribution = () => {
 
   // Helper fonksiyonlar
   const getAvailableMonths = (dates) => {
-    console.log('🔍 getAvailableMonths çağrıldı, dates length:', dates.length);
     const months = new Set();
     dates.forEach((item, index) => {
-      console.log(`📅 Item ${index}:`, item);
       if (item.date) {
-        console.log('📅 Date string:', item.date);
+        
         
         // YYYY-MM-DD formatını kontrol et
         if (item.date.includes('-')) {
           const [year, month, day] = item.date.split('-');
-          console.log('📅 Parsed (YYYY-MM-DD):', { year, month, day });
+          
           if (month && year) {
             const monthKey = `${year}-${month.padStart(2, '0')}`;
             months.add(monthKey);
-            console.log('📅 Ay eklendi:', monthKey);
+            
           } else {
-            console.log('⚠️ Geçersiz tarih formatı:', item.date);
+            
           }
         } else if (item.date.includes('.')) {
           // DD.MM.YYYY formatını kontrol et
           const [day, month, year] = item.date.split('.');
-          console.log('📅 Parsed (DD.MM.YYYY):', { day, month, year });
+          console.log('Parsed (DD.MM.YYYY):', { day, month, year });
           if (month && year) {
             const monthKey = `${year}-${month.padStart(2, '0')}`;
             months.add(monthKey);
-            console.log('📅 Ay eklendi:', monthKey);
+            console.log('Ay eklendi:', monthKey);
           } else {
             console.log('⚠️ Geçersiz tarih formatı:', item.date);
           }
@@ -727,7 +722,8 @@ const VehicleDistribution = () => {
         <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
-              📊 Personel Araç Kullanım Tablosu
+              <BarChart3 className="w-5 h-5" />
+              Personel Araç Kullanım Tablosu
             </h2>
             <p className="text-blue-100 text-xs mt-1">Her personelin araç türlerine göre kullanım istatistikleri</p>
           </div>

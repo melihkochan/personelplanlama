@@ -1478,7 +1478,17 @@ Devam etmek istediğinizden emin misiniz?`;
                   ? 'bg-yellow-400 text-yellow-900' 
                   : 'bg-purple-400 text-purple-900'
               }`}>
-                {userRole === 'admin' ? '👑 Admin' : '⭐ Yönetici'}
+                {userRole === 'admin' ? (
+                  <>
+                    <Crown className="w-3 h-3 mr-1" />
+                    Admin
+                  </>
+                ) : (
+                  <>
+                    <Star className="w-3 h-3 mr-1" />
+                    Yönetici
+                  </>
+                )}
               </span>
             </div>
           </div>

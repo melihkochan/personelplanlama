@@ -3143,11 +3143,22 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-blue-600">📅</span>
-                    <span className="text-gray-700">Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {selectedMonth ? getDatesForMonth(availableDates, selectedMonth).length : availableDates.length} tarih</span>
+                    <span className="text-gray-700">Seçilen: <span className="font-medium text-blue-600">{selectedDates.length}</span> / {selectedMonth ? getDatesForMonth(availableDates, selectedMonth).length : availableDates.length} veri</span>
                 </div>
                   <div className="flex items-center gap-2">
                     <span className="text-purple-600">🔄</span>
-                    <span className="text-gray-700">Vardiya: <span className="font-medium text-purple-600">Tümü</span></span>
+                    <span className="text-gray-700">Vardiya: <span className="font-medium text-purple-600">{(() => {
+                      if (selectedDates.length === 0) return 'Yok';
+                      
+                      const selectedDateItems = availableDates.filter(item => selectedDates.includes(item.id));
+                      const hasDay = selectedDateItems.some(item => item.shift === 'GÜNDÜZ');
+                      const hasNight = selectedDateItems.some(item => item.shift === 'GECE');
+                      
+                      if (hasDay && hasNight) return 'Tümü';
+                      if (hasDay && !hasNight) return 'Gündüz';
+                      if (!hasDay && hasNight) return 'Gece';
+                      return 'Tümü';
+                    })()}</span></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-green-600">{weeklyView ? '📊' : '📈'}</span>
@@ -3155,28 +3166,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   </div>
                 </div>
                 
-                {/* Vardiya Durumu Bilgisi */}
-                {(() => {
-                  const datesToFilter = selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates;
-                  const hasDayShift = datesToFilter.some(item => item.shift === 'GÜNDÜZ');
-                  const hasNightShift = datesToFilter.some(item => item.shift === 'GECE');
-                  
-                  return (
-                    <div className="mt-2 pt-2 border-t border-blue-200">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="text-orange-600">🌅🌙</span>
-                        <span>Mevcut Vardiyalar: 
-                          <span className="font-medium text-orange-600 ml-1">
-                            {hasDayShift ? '🌅 Gündüz' : ''}
-                            {hasDayShift && hasNightShift ? ' + ' : ''}
-                            {hasNightShift ? '🌙 Gece' : ''}
-                            {!hasDayShift && !hasNightShift ? 'Yok' : ''}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
                 
                 {weeklyView && (
                   <div className="mt-2 pt-2 border-t border-blue-200">

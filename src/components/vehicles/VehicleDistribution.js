@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getPerformanceData, getAllPersonnel, getAllVehicles } from '../../services/supabase';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'; // Added lucide-react for sort icons
+import { ArrowUpDown, ArrowUp, ArrowDown, BarChart3 } from 'lucide-react'; // Added lucide-react for sort icons
 
 const VehicleDistribution = () => {
   const [performanceData, setPerformanceData] = useState([]);

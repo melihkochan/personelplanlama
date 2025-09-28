@@ -2407,12 +2407,22 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     });
   };
 
-  // Personel aylık istatistikleri
-  const getPersonnelMonthlyStats = (employeeCode) => {
-    const stats = {};
+  // Personel aylık istatistikleri - Memoized
+  const getPersonnelMonthlyStats = useMemo(() => {
+    const statsCache = {};
     
-    for (let month = 1; month <= 12; month++) {
-      const monthRecords = dailyNotes.filter(note => {
+    return (employeeCode) => {
+      // Cache key oluştur
+      const cacheKey = `${employeeCode}-${selectedMonthlyYear}-${selectedMonthlyMonth}-${selectedMonthlyStatus}`;
+      
+      if (statsCache[cacheKey]) {
+        return statsCache[cacheKey];
+      }
+      
+      const stats = {};
+      
+      // Önce tüm notları bir kez filtrele
+      const filteredNotes = dailyNotes.filter(note => {
         const noteDate = new Date(note.date);
         const noteYear = noteDate.getFullYear();
         const noteMonth = noteDate.getMonth() + 1;
@@ -2425,21 +2435,90 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         }
         
         // Eğer "Tüm Aylar" seçilmişse sadece yıla göre filtrele
-        if (selectedMonthlyMonth === 'all') {
+        if (selectedMonthlyMonth === 'all_months') {
           return noteYear === selectedMonthlyYear && 
                  note.employee_code === employeeCode;
         }
         
         return noteYear === selectedMonthlyYear && 
-               noteMonth === month && 
                note.employee_code === employeeCode;
       });
       
-      stats[month] = monthRecords.length;
-    }
-    
-    return stats;
-  };
+      // Filtrelenmiş notları aylara göre grupla
+      for (let month = 1; month <= 12; month++) {
+        stats[month] = filteredNotes.filter(note => {
+          const noteDate = new Date(note.date);
+          return noteDate.getMonth() + 1 === month;
+        }).length;
+      }
+      
+      // Cache'e kaydet
+      statsCache[cacheKey] = stats;
+      return stats;
+    };
+  }, [dailyNotes, selectedMonthlyYear, selectedMonthlyMonth, selectedMonthlyStatus]);
+
+  // Aylık detay personel listesi - Memoized
+  const monthlyPersonnelData = useMemo(() => {
+    return personnelList
+      .map((person) => {
+        const personStats = getPersonnelMonthlyStats(person.employee_code);
+        
+        if (selectedMonthlyMonth === 'all_months') {
+          // Tümü seçeneği için toplam gün sayısını hesapla
+          const totalDays = Object.values(personStats).reduce((sum, val) => sum + (val || 0), 0);
+          return { person, personStats, totalDays };
+        } else {
+          const month = selectedMonthlyMonth + 1; // selectedMonthlyMonth 0-based, month 1-based
+          const totalDays = personStats[month] || 0;
+          return { person, personStats, totalDays };
+        }
+      })
+      .filter(({ person, personStats, totalDays }) => {
+        // Görev filtresi uygula
+        if (selectedMonthlyPosition !== 'all_positions') {
+          if (person.position !== selectedMonthlyPosition) {
+            return false;
+          }
+        }
+        
+        // Tümü seçildiğinde tüm personel gözüksün
+        if (selectedMonthlyMonth === 'all_months') {
+          return true; // Tüm personel göster
+        } else {
+          // Tekil ay seçildiğinde sadece o ayda verisi olan personel gözüksün
+          return totalDays > 0;
+        }
+      })
+      .sort((a, b) => {
+        // Sıralama uygula
+        let aValue, bValue;
+        
+        switch (monthlySortColumn) {
+          case 'name':
+            aValue = a.person.full_name || a.person.username || '';
+            bValue = b.person.full_name || b.person.username || '';
+            break;
+          case 'position':
+            aValue = a.person.position || '';
+            bValue = b.person.position || '';
+            break;
+          case 'total':
+            aValue = a.totalDays;
+            bValue = b.totalDays;
+            break;
+          default:
+            aValue = a.person.employee_code;
+            bValue = b.person.employee_code;
+        }
+        
+        if (monthlySortDirection === 'asc') {
+          return aValue > bValue ? 1 : -1;
+        } else {
+          return aValue < bValue ? 1 : -1;
+        }
+      });
+  }, [personnelList, getPersonnelMonthlyStats, selectedMonthlyMonth, selectedMonthlyPosition, monthlySortColumn, monthlySortDirection]);
 
   // Aylık detaylar için hover tooltip içeriği
   const getMonthlyDetailsTooltip = (employeeCode, month) => {
@@ -3090,38 +3169,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                 </div>
                 
                                 {(() => {
-                  const allPersonnel = personnelList
-                    .map((person) => {
-                      const personStats = getPersonnelMonthlyStats(person.employee_code);
-                      
-                      if (selectedMonthlyMonth === 'all_months') {
-                        // Tümü seçeneği için toplam gün sayısını hesapla
-                        const totalDays = Object.values(personStats).reduce((sum, val) => sum + (val || 0), 0);
-                        return { person, personStats, totalDays };
-                      } else {
-                        const month = selectedMonthlyMonth + 1; // selectedMonthlyMonth 0-based, month 1-based
-                        const totalDays = personStats[month] || 0;
-                        return { person, personStats, totalDays };
-                      }
-                    })
-                    .filter(({ person, personStats, totalDays }) => {
-                      // Görev filtresi uygula
-                      if (selectedMonthlyPosition !== 'all_positions') {
-                        if (person.position !== selectedMonthlyPosition) {
-                          return false;
-                        }
-                      }
-                      
-                      // Tümü seçildiğinde tüm personel gözüksün
-                      if (selectedMonthlyMonth === 'all_months') {
-                        return true; // Tüm personel göster
-                      } else {
-                        // Tekil ay seçildiğinde sadece o ayda verisi olan personel gözüksün
-                        const month = selectedMonthlyMonth + 1;
-                        const days = personStats[month] || 0;
-                        return days > 0; // Sadece verisi olan personel göster
-                      }
-                    });
+                  const allPersonnel = monthlyPersonnelData;
 
                   if (allPersonnel.length === 0) {
                     return (

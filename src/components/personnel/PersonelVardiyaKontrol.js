@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info, Check, Car, Edit3, Moon, Sun } from 'lucide-react';
+import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info, Check, Car, Edit3, Moon, Sun, Plane, Shield, Heart } from 'lucide-react';
 import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, saveCurrentWeekExcelData, deletePeriodAndShifts, logAuditEvent, supabase } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
@@ -120,7 +120,25 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
     ];
-    return months[month] || 'Bilinmeyen';
+    
+    // month parametresini kontrol et ve normalleştir
+    if (month === null || month === undefined || isNaN(month)) {
+      return 'Bilinmeyen';
+    }
+    
+    const monthIndex = parseInt(month);
+    
+    // Eğer 1-12 arası ise 0-11 arası çevir
+    if (monthIndex >= 1 && monthIndex <= 12) {
+      return months[monthIndex - 1] || 'Bilinmeyen';
+    }
+    
+    // Eğer 0-11 arası ise direkt kullan
+    if (monthIndex >= 0 && monthIndex <= 11) {
+      return months[monthIndex] || 'Bilinmeyen';
+    }
+    
+    return 'Bilinmeyen';
   };
 
   const [activeTab, setActiveTab] = useState('current-shift');
@@ -168,7 +186,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     const monthsWithData = new Set();
     // Bu fonksiyon component mount olmadan önce çalıştığı için dailyNotes henüz yüklenmemiş olabilir
     // Bu yüzden geçici olarak mevcut ayı kullan, sonra useEffect ile güncelle
-    return `${new Date().getFullYear()}-${new Date().getMonth()}`;
+    return `${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`;
   });
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [calendarAnimation, setCalendarAnimation] = useState('slide-in'); // 'slide-in', 'slide-out-left', 'slide-out-right'
@@ -383,7 +401,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                         .eq('end_date', endDateStr);
                       
                       if (checkError) {
-                        console.log('⚠️ Mevcut dönem kontrolü hatası:', checkError);
                       }
                       
                       // Eğer aynı tarih yoksa ekle
@@ -394,9 +411,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                           week_label: weekLabel,
                           year: year
                         });
-                        console.log('✅ Yeni dönem eklenecek:', weekLabel);
                       } else {
-                        console.log('⚠️ Bu dönem zaten mevcut:', weekLabel);
                       }
                     }
                   }
@@ -483,16 +498,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                 year: period.year
               });
               
-              // Debug log ekle
-              console.log('📝 Vardiya kaydı:', {
-                employee_code: employeeCode.toString(),
-                shift_type: shiftType,
-                shift_hours: shiftHours,
-                status: status,
-                period_start_date: period.start_date,
-                period_end_date: period.end_date,
-                year: period.year
-              });
             }
           });
           
@@ -516,14 +521,12 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
               details: `Excel yükleme: ${periods.length} haftalık dönem, ${schedules.length} vardiya kaydı eklendi`
             });
             
-            console.log('✅ Excel verisi başarıyla yüklendi');
             setUploadMessage({
               type: 'success',
               text: `Excel verisi başarıyla yüklendi!\n\n${periods.length} haftalık dönem\n${schedules.length} vardiya kaydı\n\nVeriler sisteme kaydedildi.`
             });
             
             // Hızlı veri güncelleme
-            console.log('🔄 Veriler güncelleniyor...');
             
             // Sadece personel listesini yeniden yükle (hızlı)
             const personnelResult = await getAllPersonnel();
@@ -536,16 +539,13 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             
             // Ana sayfa takvimini güncelle
             if (onDataUpdate) {
-              console.log('🔄 Ana sayfa güncelleniyor...');
               await onDataUpdate();
             }
             
             // İstatistikleri yeniden yükle
-            console.log('🔄 İstatistikler güncelleniyor...');
             await loadInitialData();
             await loadDailyNotes();
             
-            console.log('✅ Veri güncelleme tamamlandı');
           } else {
             // Mevcut veri uyarısı veya diğer hatalar
             console.error('❌ Excel yükleme hatası:', result.error);
@@ -690,7 +690,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           details: `Vardiya güncellendi: ${shiftData.employee_code} - ${shiftData.shift_type}`
         });
         
-        console.log('✅ Vardiya güncellendi');
       } else {
         // Yeni kayıt
         const { data, error } = await supabase
@@ -715,7 +714,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           details: `Yeni vardiya eklendi: ${shiftData.employee_code} - ${shiftData.shift_type}`
         });
         
-        console.log('✅ Yeni vardiya eklendi');
       }
 
 
@@ -793,7 +791,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         });
       }
       
-      console.log('✅ Vardiya güncellendi');
       setShowShiftEditModal(false);
       setEditingShift(null);
       
@@ -850,7 +847,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         details: `Vardiya silindi: ${shiftToDelete?.employee_code} - ${shiftToDelete?.shift_type}`
       });
       
-      console.log('✅ Vardiya silindi');
       
       // Ana sayfayı güncelle
       if (onDataUpdate) {
@@ -882,8 +878,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       dailyNotes.forEach(note => {
         const noteDate = new Date(note.date);
         const noteYear = noteDate.getFullYear();
-        const noteMonth = noteDate.getMonth();
-        monthsWithData.add(`${noteYear}-${noteMonth}`);
+        const noteMonth = noteDate.getMonth() + 1; // 1-12 arası format için
+        monthsWithData.add(`${noteYear}-${noteMonth.toString().padStart(2, '0')}`);
       });
 
       // Mevcut seçimde veri var mı kontrolü
@@ -914,6 +910,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       
       if (result.success) {
         setDailyNotes(result.data);
+        
         if (result.data.length > 0) {
         }
         
@@ -1330,7 +1327,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       
       // Vardiya güncellemesi yapıldıysa weekly_schedules tablosunu da güncelle
       if (newAbsence.status === 'raporlu' || newAbsence.status === 'yillik_izin') {
-        console.log('🔄 Vardiya güncellemesi yapılıyor...');
         
         // Seçilen tarihin hangi haftaya ait olduğunu bul
         const selectedDate = new Date(newAbsence.date);
@@ -1342,7 +1338,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           
           // Seçilen tarih güncel dönem içindeyse güncelle
           if (selectedDate >= periodStart && selectedDate <= periodEnd) {
-            console.log('✅ Tarih güncel dönem içinde, vardiya güncelleniyor...');
             
             // weekly_schedules tablosunu güncelle
             const { error: weeklySchedulesError } = await supabase
@@ -1357,7 +1352,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             if (weeklySchedulesError) {
               console.error('❌ Weekly schedules güncellenemedi:', weeklySchedulesError);
             } else {
-              console.log('✅ Weekly schedules güncellendi');
             }
           }
         }
@@ -1469,13 +1463,13 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   const getStatusText = (status) => {
     switch (status) {
       case 'raporlu':
-        return '🏥 Raporlu';
+        return 'Raporlu';
       case 'habersiz':
-        return '❌ Habersiz';
+        return 'Habersiz';
       case 'yillik_izin':
-        return '🏖️ Yıllık İzin';
+        return 'Yıllık İzin';
       case 'dinlenme':
-        return '😴 Dinlenme';
+        return 'Dinlenme';
       default:
         return status;
     }
@@ -1498,7 +1492,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       // Seçilen ay ve yıla göre filtrele
       if (selectedMonth && selectedMonth.includes && selectedMonth.includes('-')) {
         const [year, month] = selectedMonth.split('-');
-        return noteYear === parseInt(year) && noteMonth === parseInt(month);
+        return noteYear === parseInt(year) && noteMonth === (parseInt(month) - 1); // 1-12'yi 0-11'e çevir
       }
       
       return noteYear === selectedYear && noteMonth === selectedMonth;
@@ -1585,10 +1579,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     if (selectedMonth && selectedMonth.includes && selectedMonth.includes('-')) {
       const [year, month] = selectedMonth.split('-');
       currentYear = parseInt(year);
-      currentMonth = parseInt(month);
+      currentMonth = parseInt(month) - 1; // 1-12'yi 0-11'e çevir
     } else {
       currentYear = selectedYear;
-      currentMonth = selectedMonth;
+      currentMonth = selectedMonth - 1; // 1-12'yi 0-11'e çevir
     }
     
     const daysInMonth = getDaysInMonth(currentYear, currentMonth);
@@ -1621,6 +1615,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           noteDate.getDate() === date.getDate()
         );
       });
+      
       
 
       
@@ -1664,7 +1659,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   const handleMonthChange = (newMonth, newYear) => {
     // selectedMonth henüz tanımlanmamışsa sadece yeni değerleri set et
     if (!selectedMonth) {
-      setSelectedMonth(`${newYear}-${newMonth}`);
+      setSelectedMonth(`${newYear}-${(newMonth + 1).toString().padStart(2, '0')}`);
       setSelectedYear(newYear);
       setCurrentPage(1);
       return;
@@ -1699,7 +1694,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     }
     
     setTimeout(() => {
-      setSelectedMonth(`${newYear}-${newMonth}`);
+      setSelectedMonth(`${newYear}-${(newMonth + 1).toString().padStart(2, '0')}`);
       setSelectedYear(newYear);
       setCurrentPage(1); // Ay değiştiğinde ilk sayfaya dön
     }, 150);
@@ -1935,7 +1930,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
       if (scheduleError) throw scheduleError;
 
-      console.log(`✅ ${schedules.length} vardiya kaydı güncellendi`);
 
       // Audit log kaydet
       await logAuditEvent({
@@ -1974,7 +1968,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
   // Seçili dönemi silme fonksiyonu
   const handleDeletePeriod = async (periodId) => {
-    console.log('🗑️ Silme işlemi başlatılıyor...', periodId);
     
     if (!periodId) {
       alert('Lütfen silinecek bir tarih seçin!');
@@ -1987,10 +1980,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
     try {
       setGlobalEditLoading(true);
-      console.log('🔄 Silme işlemi başlatılıyor...');
       
       const result = await deletePeriodAndShifts(periodId);
-      console.log('📊 Silme sonucu:', result);
       
       if (result.success) {
         // Audit log kaydet
@@ -2008,17 +1999,13 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           details: `Haftalık dönem ve vardiya verileri silindi: Period ID ${periodId}`
         });
         
-        console.log('✅ Dönem başarıyla silindi');
         alert('Dönem ve vardiya verileri başarıyla silindi!');
         
         // Verileri yenile ve modal'ı açık tut
-        console.log('🔄 Veriler yenileniyor...');
         await loadInitialData();
-        console.log('✅ Veriler yenilendi');
         
         // Global date edit modal verilerini yenile
         if (globalDateEditModal) {
-          console.log('🔄 Global date edit modal verileri yenileniyor...');
           try {
             const { data: periods, error } = await supabase
               .from('weekly_periods')
@@ -2027,12 +2014,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             
             if (!error) {
               setAllPeriods(periods || []);
-              console.log('✅ Global date edit modal verileri yenilendi:', periods?.length || 0, 'kayıt');
-            } else {
-              console.error('❌ Global date edit modal veri yenileme hatası:', error);
             }
           } catch (error) {
-            console.error('❌ Global date edit modal veri yenileme hatası:', error);
           }
         }
         
@@ -2081,7 +2064,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     }
     
     try {
-      console.log('🔍 Güncel vardiya verileri yükleniyor...');
       
       // En güncel dönemi bul
       const { data: periods, error: periodsError } = await supabase
@@ -2095,16 +2077,13 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         return;
       }
       
-      console.log('📊 Bulunan dönemler:', periods);
       
       if (periods && periods.length > 0) {
         const latestPeriod = periods[0];
         setCurrentPeriod(latestPeriod);
         
-        console.log('✅ En güncel dönem bulundu:', latestPeriod);
         
         // Bu dönemdeki tüm vardiya verilerini getir (sayfalama yok)
-        console.log('🔍 Vardiya verileri aranıyor... Period ID:', latestPeriod.id);
         
         const { data: shifts, error: shiftsError } = await supabase
           .from('weekly_schedules')
@@ -2117,12 +2096,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           return;
         }
         
-        console.log('📊 Bulunan vardiya verileri:', shifts);
         
         if (shifts && shifts.length > 0) {
           // Personel listesini getir (sadece gerekli olanları)
           const employeeCodes = shifts.map(s => s.employee_code);
-          console.log('🔍 Aranan personel kodları:', employeeCodes);
           
           const { data: personnel, error: personnelError } = await supabase
             .from('personnel')
@@ -2134,7 +2111,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             return;
           }
           
-          console.log('📊 Bulunan personel verileri:', personnel);
           
           // Personel bilgilerini birleştir
           const personnelMap = {};
@@ -2161,15 +2137,11 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           setHasMore(shifts.length === pageSize);
           setCurrentShiftPage(page);
           
-          console.log('✅ Güncel vardiya verileri yüklendi:', enrichedShifts.length, 'kayıt (sayfa:', page, ')');
-          console.log('📊 Örnek veri:', enrichedShifts[0]);
         } else {
-          console.log('⚠️ Bu dönemde vardiya verisi bulunamadı');
           setCurrentShiftData([]);
           setHasMore(false);
         }
       } else {
-        console.log('⚠️ Hiç dönem bulunamadı');
         setCurrentShiftData([]);
         setHasMore(false);
       }
@@ -2193,7 +2165,6 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
 
   const handleUpdateCurrentShift = async (e) => {
     e.preventDefault();
-    console.log('🔍 handleUpdateCurrentShift fonksiyonu çalışıyor...');
     setCurrentShiftEditLoading(true);
     
     try {
@@ -2211,7 +2182,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
       }
       
       // Audit log kaydet
-      console.log('🔍 Audit log ekleniyor...', {
+      const auditResult = await logAuditEvent({
         userId: currentUser?.id,
         userEmail: currentUser?.email,
         userName: currentUser?.user_metadata?.full_name || currentUser?.email,
@@ -2226,30 +2197,9 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
         },
         ipAddress: null,
         userAgent: navigator.userAgent,
-        details: `Güncel vardiya güncellendi: ${editingCurrentShift.employee_code} - ${currentShiftEditForm.shift_type}`
-      });
-      
-      const auditResult = await logAuditEvent({
-        userId: currentUser?.id,
-        userEmail: currentUser?.email,
-        userName: currentUser?.user_metadata?.full_name || currentUser?.email,
-        action: 'UPDATE',
-        tableName: 'weekly_schedules',
-        recordId: null, // UUID sorunu için null yapıyoruz
-        oldValues: editingCurrentShift,
-        newValues: {
-          ...editingCurrentShift,
-          shift_type: currentShiftEditForm.shift_type,
-          shift_hours: currentShiftEditForm.shift_hours
-        },
-        ipAddress: null,
-        userAgent: navigator.userAgent,
         details: `Güncel vardiya güncellendi: ${editingCurrentShift.employee_code} - ${currentShiftEditForm.shift_type} (ID: ${editingCurrentShift.id})`
       });
       
-      console.log('🔍 Audit log sonucu:', auditResult);
-      
-      console.log('✅ Vardiya başarıyla güncellendi');
       
       // Verileri yenile
       loadCurrentShiftData();
@@ -2774,7 +2724,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                     <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl shadow-lg border border-green-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-green-700 mb-1">☀️ Gündüz Vardiyası</p>
+                          <p className="text-sm font-medium text-green-700 mb-1 flex items-center gap-1">
+                            <Sun className="w-4 h-4" />
+                            Gündüz Vardiyası
+                          </p>
                           <p className="text-xl font-bold text-green-900">
                             {shiftStatistics.filter(s => s.total_day_shifts > 0).length}
                           </p>
@@ -2802,7 +2755,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl shadow-lg border border-purple-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-purple-700 mb-1">🔄 Geçici Görev</p>
+                          <p className="text-sm font-medium text-purple-700 mb-1 flex items-center gap-1">
+                            <RefreshCw className="w-4 h-4" />
+                            Geçici Görev
+                          </p>
                           <p className="text-xl font-bold text-purple-900">
                             {shiftStatistics.filter(s => s.total_temp_assignments > 0).length}
                           </p>
@@ -2830,7 +2786,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                     <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl shadow-lg border border-yellow-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-yellow-700 mb-1">🏖️ Yıllık İzin</p>
+                          <p className="text-sm font-medium text-yellow-700 mb-1 flex items-center gap-1">
+                            <Plane className="w-4 h-4" />
+                            Yıllık İzin
+                          </p>
                           <p className="text-xl font-bold text-yellow-900">
                             {shiftStatistics.filter(s => s.total_annual_leave > 0).length}
                           </p>
@@ -2910,7 +2869,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                               className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 cursor-pointer hover:bg-blue-50 transition-all duration-200 group"
                               onClick={() => handleSort('gunduz')}
                             >
-                              {getSortableHeader('gunduz', '☀️ Gündüz', '', false)}
+                              {getSortableHeader('gunduz', <><Sun className="w-4 h-4 inline" /> Gündüz</>, '', false)}
                             </th>
                             <th 
                               className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 cursor-pointer hover:bg-blue-50 transition-all duration-200 group"
@@ -2922,7 +2881,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                               className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 cursor-pointer hover:bg-blue-50 transition-all duration-200 group"
                               onClick={() => handleSort('gecici')}
                             >
-                              {getSortableHeader('gecici', '🔄 Geçici', '', false)}
+                              {getSortableHeader('gecici', <><RefreshCw className="w-4 h-4 inline" /> Geçici</>, '', false)}
                             </th>
                             <th 
                               className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 cursor-pointer hover:bg-blue-50 transition-all duration-200 group"
@@ -2934,7 +2893,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                               className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 cursor-pointer hover:bg-blue-50 transition-all duration-200 group"
                               onClick={() => handleSort('izin')}
                             >
-                              {getSortableHeader('izin', '🏖️ İzin', '', false)}
+                              {getSortableHeader('izin', <><Plane className="w-4 h-4 inline" /> İzin</>, '', false)}
                             </th>
                             <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-20">
                               <div className="flex items-center justify-center">
@@ -3046,7 +3005,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                         onChange={(e) => setSelectedMonthlyMonth(e.target.value === 'all_months' ? 'all_months' : parseInt(e.target.value))}
                         className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       >
-                        <option value="all_months">📊 Tümü</option>
+                        <option value="all_months">Tümü</option>
                         {(() => {
                           // Hangi aylarda veri olduğunu kontrol et
                           const monthsWithData = new Set();
@@ -3119,12 +3078,12 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                         onChange={(e) => setSelectedMonthlyStatus(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       >
-                        <option value="all_statuses">📊 Tümü</option>
-                        <option value="dinlenme">😴 Dinlenme</option>
-                        <option value="yillik_izin">🏖️ Yıllık İzin</option>
-                        <option value="raporlu">🏥 Raporlu</option>
-                        <option value="habersiz">❌ Habersiz</option>
-                        <option value="gecici_gorev">🔄 Geçici Görev</option>
+                        <option value="all_statuses">Tümü</option>
+                        <option value="dinlenme">Dinlenme</option>
+                        <option value="yillik_izin">Yıllık İzin</option>
+                        <option value="raporlu">Raporlu</option>
+                        <option value="habersiz">Habersiz</option>
+                        <option value="gecici_gorev">Geçici Görev</option>
                       </select>
                     </div>
                   </div>
@@ -3551,7 +3510,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h5 className="text-base font-semibold text-blue-900 mb-1">📅 Güncel Dönem</h5>
+                            <h5 className="text-base font-semibold text-blue-900 mb-1 flex items-center gap-2">
+                              <Calendar className="w-4 h-4" />
+                              Güncel Dönem
+                            </h5>
                             <p className="text-blue-700">{currentPeriod.week_label}</p>
                             <p className="text-sm text-blue-600">
                               {new Date(currentPeriod.start_date).toLocaleDateString('tr-TR')} - {new Date(currentPeriod.end_date).toLocaleDateString('tr-TR')}
@@ -3678,7 +3640,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                                     case 'gecici':
                                                       return (
                                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
-                                                          🔄 Geçici
+                                                          <RefreshCw className="w-3 h-3 inline mr-1" />Geçici
                                                         </span>
                                                       );
                                                     case 'izin':
@@ -3690,7 +3652,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                                     case 'yillik_izin':
                                                       return (
                                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
-                                                          🏖️ Yıllık İzin
+                                                          <Plane className="w-3 h-3 inline mr-1" />Yıllık İzin
                                                         </span>
                                                       );
                                                     case 'raporlu':
@@ -3793,7 +3755,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
               
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Excel Yükleme</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Upload className="w-5 h-5" />
+                    Excel Yükleme
+                  </h3>
                   <p className="text-sm text-gray-600 mb-4">
                     Excel dosyasından vardiya programını yükleyin. Dosya formatı: .xlsx, .xls
                   </p>
@@ -3877,7 +3842,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                 </div>
 
                 <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🔄 İstatistik Güncelleme</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5" />
+                    İstatistik Güncelleme
+                  </h3>
                   <p className="text-sm text-gray-600 mb-4">
                     Tüm personel istatistiklerini güncelleyin
                   </p>
@@ -3893,7 +3861,10 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                 </div>
 
                 <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📅 Genel Tarih Düzenleme</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Genel Tarih Düzenleme
+                  </h3>
                   <p className="text-sm text-gray-600 mb-4">
                     Tüm veritabanındaki tarih aralıklarını görüntüleyin ve düzenleyin
                   </p>
@@ -3919,20 +3890,23 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {viewMode === 'calendar' ? '📅 Takvim Görünümü' : '📋 Liste Görünümü'}
+                  {viewMode === 'calendar' 
+                    ? <><Calendar className="w-5 h-5 inline mr-2" />Takvim Görünümü</> 
+                    : <><FileText className="w-5 h-5 inline mr-2" />Liste Görünümü</>
+                  }
                 </h2>
                 <div className="flex items-center space-x-4">
                                       <div className="flex items-center space-x-2">
                       <label className="text-sm font-medium text-gray-700">Ay Seçimi:</label>
                       <select
-                        value={selectedMonth === 'all' ? 'all' : `${selectedYear}-${selectedMonth}`}
+                        value={selectedMonth === 'all' ? 'all' : selectedMonth}
                         onChange={(e) => {
                           if (e.target.value === 'all') {
                             setSelectedMonth('all');
                           } else {
                             const [year, month] = e.target.value.split('-');
                             setSelectedYear(parseInt(year));
-                            setSelectedMonth(parseInt(month));
+                            setSelectedMonth(e.target.value); // String formatını koru
                           }
                           setCurrentPage(1); // Sayfa değiştiğinde ilk sayfaya dön
                         }}
@@ -3945,8 +3919,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                           dailyNotes.forEach(note => {
                             const noteDate = new Date(note.date);
                             const noteYear = noteDate.getFullYear();
-                            const noteMonth = noteDate.getMonth();
-                            monthsWithData.add(`${noteYear}-${noteMonth}`);
+                            const noteMonth = noteDate.getMonth() + 1; // 1-12 arası format için
+                            monthsWithData.add(`${noteYear}-${noteMonth.toString().padStart(2, '0')}`);
                           });
                           
                           // Eğer hiç veri yoksa sadece mevcut ayı göster
@@ -3963,20 +3937,37 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                             });
                           }
                           
-                          // Veri olan ayları sırala ve göster
-                          return Array.from(monthsWithData).sort((a, b) => {
-                            const [yearA, monthA] = a.split('-');
-                            const [yearB, monthB] = b.split('-');
-                            if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
-                            return parseInt(monthB) - parseInt(monthA);
-                          }).map(monthKey => {
-                            const [year, month] = monthKey.split('-');
-                            return (
-                              <option key={monthKey} value={monthKey}>
-                                {getMonthName(parseInt(month))} {year}
-                              </option>
-                            );
-                          });
+                          // Veri olan ayları sırala ve göster (sadece geçmiş ve mevcut aylar)
+                          const today = new Date();
+                          const currentYear = today.getFullYear();
+                          const currentMonth = today.getMonth() + 1; // 1-12 arası
+                          
+                          return Array.from(monthsWithData)
+                            .filter(monthKey => {
+                              const [year, month] = monthKey.split('-');
+                              const yearNum = parseInt(year);
+                              const monthNum = parseInt(month);
+                              
+                              // Gelecek ayları filtrele
+                              if (yearNum > currentYear) return false;
+                              if (yearNum === currentYear && monthNum > currentMonth) return false;
+                              
+                              return true;
+                            })
+                            .sort((a, b) => {
+                              const [yearA, monthA] = a.split('-');
+                              const [yearB, monthB] = b.split('-');
+                              if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
+                              return parseInt(monthB) - parseInt(monthA);
+                            })
+                            .map(monthKey => {
+                              const [year, month] = monthKey.split('-');
+                              return (
+                                <option key={monthKey} value={monthKey}>
+                                  {getMonthName(parseInt(month))} {year}
+                                </option>
+                              );
+                            });
                         })()}
                       </select>
                     </div>
@@ -3987,8 +3978,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       onChange={(e) => setViewMode(e.target.value)}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white hover:border-blue-400 transition-all duration-200 shadow-sm"
                     >
-                      <option value="calendar">📅 Takvim</option>
-                      <option value="list">📋 Liste</option>
+                      <option value="calendar">Takvim</option>
+                      <option value="list">Liste</option>
                     </select>
                   </div>
                   <button
@@ -4004,7 +3995,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    📅 {(() => {
+                    <Calendar className="w-4 h-4 inline mr-2" />{(() => {
                       if (selectedMonth && selectedMonth.includes && selectedMonth.includes('-')) {
                         const [year, month] = selectedMonth.split('-');
                         return `${getMonthName(parseInt(month))} ${year}`;
@@ -4228,10 +4219,20 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => {
-                            if (selectedMonth === 0) {
-                              handleMonthChange(11, selectedYear - 1);
+                            let currentMonth, currentYear;
+                            if (selectedMonth && selectedMonth.includes && selectedMonth.includes('-')) {
+                              const [year, month] = selectedMonth.split('-');
+                              currentYear = parseInt(year);
+                              currentMonth = parseInt(month) - 1; // 0-11 arası format için
                             } else {
-                              handleMonthChange(selectedMonth - 1, selectedYear);
+                              currentYear = selectedYear;
+                              currentMonth = selectedMonth;
+                            }
+                            
+                            if (currentMonth === 0) {
+                              handleMonthChange(11, currentYear - 1);
+                            } else {
+                              handleMonthChange(currentMonth - 1, currentYear);
                             }
                           }}
                           className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-110 transform"
@@ -4240,8 +4241,18 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                         </button>
                         <button
                           onClick={() => {
-                            const nextMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
-                            const nextYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+                            let currentMonth, currentYear;
+                            if (selectedMonth && selectedMonth.includes && selectedMonth.includes('-')) {
+                              const [year, month] = selectedMonth.split('-');
+                              currentYear = parseInt(year);
+                              currentMonth = parseInt(month) - 1; // 0-11 arası format için
+                            } else {
+                              currentYear = selectedYear;
+                              currentMonth = selectedMonth;
+                            }
+                            
+                            const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+                            const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
                             
                             // Gelecek ay kontrolü
                             const today = new Date();

@@ -15,7 +15,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const [selectedDates, setSelectedDates] = useState([]);
   const [availableDates, setAvailableDates] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(null); // Seçili ay
-  const [shiftFilter, setShiftFilter] = useState('all');
   const [availableShifts, setAvailableShifts] = useState([]); // Mevcut vardiyalar
   const [sortBy, setSortBy] = useState('boxes'); // Default olarak Kasa seçili
   const [sortDirection, setSortDirection] = useState('desc');
@@ -305,8 +304,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         });
         
         
-        console.log('🔍 Processed data (ilk 10 kayıt):', processedData.slice(0, 10));
-        console.log('🔍 Temmuz verileri processedData\'da var mı?', processedData.filter(item => item.date.includes('2025-07')));
         
         // Performance_data'daki shift_type dağılımını kontrol et (tarih shift'i)
         const shiftDistribution = {};
@@ -578,8 +575,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         
               // Available dates hazırlandı
         
-        console.log('🔍 Available dates array (ilk 20 kayıt):', availableDatesArray.slice(0, 20));
-        console.log('🔍 Temmuz verileri var mı?', availableDatesArray.filter(item => item.date.includes('07.2025')));
         setAvailableDates(availableDatesArray);
         
         // Mevcut vardiyaları analiz et
@@ -813,29 +808,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   // Vardiya belirleme artık veritabanından geliyor
 
-  // Vardiya filtreleme - sadece shiftFilter değiştiğinde çalışsın
-  useEffect(() => {
-    // Vardiya filtreleme
-    if (availableDates.length > 0) {
-      let filteredDateIds = [];
-      
-      // Seçili ayın tarihlerini al
-      const datesToFilter = selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates;
-      
-      if (shiftFilter === 'all') {
-        // Tüm vardiyalar seçiliyse, seçili ayın tüm tarihlerini al
-        filteredDateIds = datesToFilter.map(item => item.id);
-      } else if (shiftFilter === 'day') {
-        // Sadece gündüz vardiyası seçiliyse, sadece gündüz vardiyası olan tarihleri al
-        filteredDateIds = datesToFilter.filter(item => item.shift === 'GÜNDÜZ').map(item => item.id);
-      } else if (shiftFilter === 'night') {
-        // Sadece gece vardiyası seçiliyse, sadece gece vardiyası olan tarihleri al
-        filteredDateIds = datesToFilter.filter(item => item.shift === 'GECE').map(item => item.id);
-      }
-      
-      setSelectedDates(filteredDateIds);
-    }
-  }, [shiftFilter, selectedMonth, availableDates]); // selectedMonth ve availableDates bağımlılıklarını ekledim
   
 
 
@@ -848,23 +820,11 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         const monthDateIds = monthDates.map(item => item.id);
         setSelectedDates(monthDateIds);
         
-        // Ay değiştiğinde vardiya filtresini "Tüm Vardiyalar"a sıfırla
-        // Eğer seçili ayda sadece bir vardiya varsa, o vardiyayı otomatik seç
-        const hasDayShift = monthDates.some(item => item.shift === 'GÜNDÜZ');
-        const hasNightShift = monthDates.some(item => item.shift === 'GECE');
-        
-        if (hasDayShift && !hasNightShift) {
-          setShiftFilter('day');
-        } else if (!hasDayShift && hasNightShift) {
-          setShiftFilter('night');
-        } else {
-          setShiftFilter('all');
-        }
+        // Ay değiştiğinde tarihleri seç
       } else {
         // "Tüm Aylar" seçilmişse, tüm tarihleri seç
         const allDateIds = availableDates.map(item => item.id);
         setSelectedDates(allDateIds);
-        setShiftFilter('all');
       }
     }
   }, [selectedMonth, availableDates]);
@@ -1808,26 +1768,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       selectedDateShiftCombinations = availableDates || [];
     }
 
-    // VARDİYA FİLTRESİ UYGULA
-    if (shiftFilter !== 'all') {
-      const beforeFilterCount = selectedDateShiftCombinations.length;
-      
-      if (shiftFilter === 'day') {
-        // Sadece gündüz vardiyaları
-        selectedDateShiftCombinations = selectedDateShiftCombinations.filter(item => 
-          item.shift === 'GÜNDÜZ' || item.shift === 'gunduz' || item.shift === 'GUNDUZ'
-        );
-        // Gündüz filtresi uygulandı
-      } else if (shiftFilter === 'night') {
-        // Sadece gece vardiyaları
-        selectedDateShiftCombinations = selectedDateShiftCombinations.filter(item => 
-          item.shift === 'GECE' || item.shift === 'gece' || item.shift === 'NIGHT'
-        );
-        // Gece filtresi uygulandı
-      }
-      
-      // Shift filtresi uygulandı
-    }
 
     // Seçili tarih+shift kombinasyonlarının bir Set'ini oluştur hızlı kontrol için
     const selectedDateShiftSet = new Set();
@@ -2666,9 +2606,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       months.add(monthKey);
     });
     
-    const result = Array.from(months).sort().reverse(); // En son ay önce gelsin
-    console.log('🔍 Mevcut aylar:', result);
-    return result;
+    return Array.from(months).sort().reverse(); // En son ay önce gelsin
   };
 
   const getMonthDisplayName = (monthKey) => {
@@ -2886,89 +2824,54 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       {!initialDataLoading && analysisData && (
         <>
           {/* Filtreleme Paneli */}
-          <div className="bg-white rounded-lg border border-gray-200 p-2 mb-3">
-            {/* Üst Bar: Başlık + Görünüm Butonları */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
-              <h3 className="text-sm font-semibold text-gray-800">Filtreleme Seçenekleri</h3>
-            </div>
-            
+          <div className="bg-white rounded-lg border border-gray-200 p-1 mb-1">
+            {/* Üst Bar: Görünüm Butonları */}
+            <div className="flex items-center justify-end mb-0.5">
+                  {/* Modern Görünüm Toggle */}
+                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
                   <button
-                onClick={() => {
-                  const newWeeklyView = !weeklyView;
-                  setWeeklyView(newWeeklyView);
-                  // Haftalık görünüm aktif olduğunda tüm vardiyaları göster
-                  if (newWeeklyView) {
-                    setShiftFilter('all');
-                  }
-                }}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 ${
-                  weeklyView ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {weeklyView ? '📅 Haftalık Görünüm' : '📊 Günlük Görünüm'}
+                      onClick={() => setWeeklyView(false)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                        !weeklyView 
+                          ? 'bg-white text-blue-600 shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      Günlük
+                    </button>
+                    <button
+                      onClick={() => setWeeklyView(true)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                        weeklyView 
+                          ? 'bg-white text-purple-600 shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      Haftalık
                   </button>
+                  </div>
             </div>
             
             {/* Filtreler */}
             <div className="space-y-3">
-              {/* Vardiya Filtresi - Gece ve Gündüz */}
-              {!weeklyView && (() => {
-                // Seçili ayın tarihlerini al
-                const datesToFilter = selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates;
-                
-                // Hangi vardiyaların mevcut olduğunu kontrol et
-                const hasDayShift = datesToFilter.some(item => item.shift === 'GÜNDÜZ');
-                const hasNightShift = datesToFilter.some(item => item.shift === 'GECE');
-                const hasAnyShift = datesToFilter.length > 0;
-                
-                return (
-                  <div className="flex items-center gap-4">
-                    <label className="text-sm font-medium text-gray-700 min-w-[100px]">Vardiya Seçimi</label>
-                    <div className="flex gap-2">
-                      {[
-                        { key: 'all', label: 'Tüm Vardiyalar', color: 'bg-blue-500', disabled: !hasAnyShift },
-                        { key: 'day', label: '🌅 Gündüz', color: 'bg-yellow-500', disabled: !hasDayShift },
-                        { key: 'night', label: '🌙 Gece', color: 'bg-blue-500', disabled: !hasNightShift }
-                      ].map(({ key, label, color, disabled }) => (
-                        <button
-                          key={key}
-                          onClick={() => !disabled && setShiftFilter(key)}
-                          disabled={disabled}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                            disabled 
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                              : shiftFilter === key 
-                                ? `${color} text-white` 
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                          title={disabled ? `Bu ayda ${key === 'day' ? 'gündüz' : key === 'night' ? 'gece' : 'vardiya'} bulunmuyor` : ''}
-                        >
-                          {label}
-                          {disabled && <span className="ml-1 text-xs">(Yok)</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* Modern Ay Seçimi */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-3 block">📅 Ay Seçimi</label>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">📅 Ay Seçimi</label>
                 <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
-                  {/* Tüm Aylar Seçeneği */}
+                  {/* Tüm Aylar Seçeneği - Farklı Renk */}
                   <button
                     onClick={() => setSelectedMonth(null)}
                     className={`p-1.5 rounded-md border-2 transition-all duration-200 hover:shadow-sm ${
                       selectedMonth === null
-                        ? 'border-blue-500 bg-blue-50 shadow-sm'
-                        : 'border-gray-200 bg-white hover:border-blue-300'
+                        ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 shadow-sm'
+                        : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
                     }`}
                   >
                     <div className="text-center">
-                      <div className="text-sm mb-0.5">📅</div>
+                      <div className="text-sm mb-0.5">📊</div>
                       <div className="text-xs font-medium text-gray-900">Tüm Aylar</div>
                       <div className="text-xs text-gray-500">
                         {availableDates.length} veri
@@ -2980,9 +2883,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                   {getAvailableMonths(availableDates).map(monthKey => {
                     const monthDates = getDatesForMonth(availableDates, monthKey);
                     const isSelected = selectedMonth === monthKey;
-                    
-                    return (
-                      <button
+                
+                return (
+                        <button
                         key={monthKey}
                         onClick={() => setSelectedMonth(monthKey)}
                         className={`p-1.5 rounded-md border-2 transition-all duration-200 hover:shadow-sm ${
@@ -2995,10 +2898,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                           <div className="text-sm mb-0.5">📆</div>
                           <div className="text-xs font-medium text-gray-900">
                             {getMonthDisplayName(monthKey)}
-                          </div>
+                    </div>
                           <div className="text-xs text-gray-500">
                             {monthDates.length} veri
-                          </div>
+                  </div>
                           {/* Vardiya göstergesi */}
                           <div className="flex justify-center gap-0.5 mt-0.5">
                             {monthDates.some(d => d.shift === 'GÜNDÜZ') && (
@@ -3244,7 +3147,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 </div>
                   <div className="flex items-center gap-2">
                     <span className="text-purple-600">🔄</span>
-                    <span className="text-gray-700">Vardiya: <span className="font-medium text-purple-600">{shiftFilter === 'all' ? 'Tümü' : shiftFilter === 'day' ? 'Gündüz' : 'Gece'}</span></span>
+                    <span className="text-gray-700">Vardiya: <span className="font-medium text-purple-600">Tümü</span></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-green-600">{weeklyView ? '📊' : '📈'}</span>

@@ -390,7 +390,7 @@ const PuantajTakvim = () => {
                 '100%': '#52c41a',
               }}
               showInfo={true} 
-              strokeWidth={6} 
+              size={6} 
               format={(percent) => `${Math.round(percent)}%`} 
               style={{ maxWidth: '400px', margin: '0 auto' }}
             />

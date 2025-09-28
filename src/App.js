@@ -34,7 +34,7 @@ import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, supabase, avatarService, getUserProfile, updateUserProfile } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, createPersonnelNotification, createVehicleNotification, createStoreNotification, createShiftNotification, createPerformanceNotification, createSystemNotification, supabase, avatarService, getUserProfile, updateUserProfile } from './services/supabase';
 import { getPendingRegistrationsCount } from './services/supabase';
 import ModernAvatarUpload from './components/ui/ModernAvatarUpload';
 import './App.css';
@@ -143,6 +143,15 @@ function MainApp() {
         
         // Veritabanında avatar_url'i güncelle
         await updateUserProfile(user.id, { avatar_url: result.path });
+        
+        // Sistem bildirimi oluştur
+        try {
+          await createSystemNotification('PROFILE_UPDATE', { 
+            details: 'Kullanıcı avatarı güncellendi' 
+          }, user.id);
+        } catch (notificationError) {
+          console.error('Bildirim oluşturma hatası:', notificationError);
+        }
         
         // User details'i güncelle
         setUserDetails(prev => ({
@@ -806,6 +815,15 @@ function MainApp() {
     await loadDailyNotes();
       await loadCurrentShiftData();
       
+      // Sistem bildirimi oluştur
+      try {
+        await createSystemNotification('DATA_REFRESH', { 
+          details: 'Tüm veriler yenilendi ve cache temizlendi' 
+        }, user.id);
+      } catch (notificationError) {
+        console.error('Bildirim oluşturma hatası:', notificationError);
+      }
+      
       // Sayfayı yenile (cache bypass için)
       window.location.reload();
       
@@ -1154,6 +1172,15 @@ function MainApp() {
 
       // Başarılı güncelleme
       showModalNotification('Şifre başarıyla güncellendi!', 'success');
+      
+      // Sistem bildirimi oluştur
+      try {
+        await createSystemNotification('PASSWORD_CHANGE', { 
+          details: 'Kullanıcı şifresi başarıyla değiştirildi' 
+        }, user.id);
+      } catch (notificationError) {
+        console.error('Bildirim oluşturma hatası:', notificationError);
+      }
       
       // Form alanlarını temizle
       setCurrentPassword('');

@@ -1308,6 +1308,20 @@ export const bulkSavePerformanceData = async (performanceDataArray, sheetNames =
       return { success: false, error: error.message };
     }
     
+    // Bildirim oluştur (eğer kullanıcı ID'si varsa)
+    if (data && data.length > 0) {
+      try {
+        // Mevcut kullanıcıyı al
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await createPerformanceNotification('BULK_ADD', { count: data.length }, user.id);
+        }
+      } catch (notificationError) {
+        console.error('Bildirim oluşturma hatası:', notificationError);
+        // Bildirim hatası ana işlemi etkilemesin
+      }
+    }
+    
     return { success: true, data };
   } catch (error) {
     console.error('❌ bulkSavePerformanceData catch error:', error);
@@ -3734,6 +3748,155 @@ export const createPendingApprovalNotification = async () => {
   } catch (error) {
     return { success: false, error: error.message };
   }
+};
+
+
+// Personel işlemleri için bildirimler
+export const createPersonnelNotification = async (action, personnelData, userId) => {
+  const actionMessages = {
+    'CREATE': 'Yeni personel eklendi',
+    'UPDATE': 'Personel bilgileri güncellendi', 
+    'DELETE': 'Personel silindi',
+    'TRANSFER': 'Personel transfer edildi'
+  };
+
+  const notification = {
+    user_id: userId,
+    title: `${actionMessages[action]} - Personel`,
+    message: `${actionMessages[action]}: ${personnelData.name || personnelData.full_name || 'Bilinmeyen'} (${personnelData.employee_code || 'Kod yok'})`,
+    type: action === 'DELETE' ? 'warning' : 'success',
+    action_type: `PERSONNEL_${action}`,
+    table_name: 'personnel',
+    record_id: personnelData.id,
+    is_read: false
+  };
+
+  return await createNotification(notification);
+};
+
+// Araç işlemleri için bildirimler
+export const createVehicleNotification = async (action, vehicleData, userId) => {
+  const actionMessages = {
+    'CREATE': 'Yeni araç eklendi',
+    'UPDATE': 'Araç bilgileri güncellendi',
+    'DELETE': 'Araç silindi',
+    'MAINTENANCE': 'Araç bakım kaydı eklendi'
+  };
+
+  const notification = {
+    user_id: userId,
+    title: `${actionMessages[action]} - Araç`,
+    message: `${actionMessages[action]}: ${vehicleData.license_plate || 'Plaka yok'} (${vehicleData.vehicle_type || 'Tip yok'})`,
+    type: action === 'DELETE' ? 'warning' : 'success',
+    action_type: `VEHICLE_${action}`,
+    table_name: 'vehicles',
+    record_id: vehicleData.id,
+    is_read: false
+  };
+
+  return await createNotification(notification);
+};
+
+// Mağaza işlemleri için bildirimler
+export const createStoreNotification = async (action, storeData, userId) => {
+  const actionMessages = {
+    'CREATE': 'Yeni mağaza eklendi',
+    'UPDATE': 'Mağaza bilgileri güncellendi',
+    'DELETE': 'Mağaza silindi',
+    'DIFFICULTY_UPDATE': 'Mağaza zorluk seviyesi güncellendi'
+  };
+
+  const notification = {
+    user_id: userId,
+    title: `${actionMessages[action]} - Mağaza`,
+    message: `${actionMessages[action]}: ${storeData.store_name || 'İsim yok'} (${storeData.store_code || 'Kod yok'})`,
+    type: action === 'DELETE' ? 'warning' : 'success',
+    action_type: `STORE_${action}`,
+    table_name: 'stores',
+    record_id: storeData.id,
+    is_read: false
+  };
+
+  return await createNotification(notification);
+};
+
+// Vardiya işlemleri için bildirimler
+export const createShiftNotification = async (action, shiftData, userId) => {
+  const actionMessages = {
+    'CREATE': 'Yeni vardiya oluşturuldu',
+    'UPDATE': 'Vardiya güncellendi',
+    'DELETE': 'Vardiya silindi',
+    'ASSIGN': 'Personel vardiyaya atandı',
+    'UNASSIGN': 'Personel vardiyadan çıkarıldı'
+  };
+
+  const notification = {
+    user_id: userId,
+    title: `${actionMessages[action]} - Vardiya`,
+    message: `${actionMessages[action]}: ${shiftData.shift_name || 'Vardiya'} (${shiftData.date || 'Tarih yok'})`,
+    type: action === 'DELETE' ? 'warning' : 'success',
+    action_type: `SHIFT_${action}`,
+    table_name: 'shifts',
+    record_id: shiftData.id,
+    is_read: false
+  };
+
+  return await createNotification(notification);
+};
+
+// Performans verisi işlemleri için bildirimler
+export const createPerformanceNotification = async (action, performanceData, userId) => {
+  const actionMessages = {
+    'BULK_ADD': 'Toplu performans verisi eklendi',
+    'UPDATE': 'Performans verisi güncellendi',
+    'DELETE': 'Performans verisi silindi',
+    'IMPORT': 'Performans verisi içe aktarıldı'
+  };
+
+  const recordCount = performanceData.count || performanceData.length || 1;
+  const message = action === 'BULK_ADD' || action === 'IMPORT' 
+    ? `${actionMessages[action]}: ${recordCount} kayıt`
+    : `${actionMessages[action]}: ${performanceData.employee_code || 'Personel kodu yok'}`;
+
+  const notification = {
+    user_id: userId,
+    title: `${actionMessages[action]} - Performans Verisi`,
+    message: message,
+    type: 'success',
+    action_type: `PERFORMANCE_${action}`,
+    table_name: 'performance_data',
+    record_id: performanceData.id,
+    is_read: false
+  };
+
+  return await createNotification(notification);
+};
+
+// Sistem işlemleri için bildirimler
+export const createSystemNotification = async (action, systemData, userId) => {
+  const actionMessages = {
+    'LOGIN': 'Sistem girişi yapıldı',
+    'LOGOUT': 'Sistem çıkışı yapıldı',
+    'PASSWORD_CHANGE': 'Şifre değiştirildi',
+    'PROFILE_UPDATE': 'Profil güncellendi',
+    'DATA_EXPORT': 'Veri dışa aktarıldı',
+    'DATA_IMPORT': 'Veri içe aktarıldı',
+    'BACKUP': 'Yedekleme yapıldı',
+    'RESTORE': 'Geri yükleme yapıldı'
+  };
+
+  const notification = {
+    user_id: userId,
+    title: `${actionMessages[action]} - Sistem`,
+    message: `${actionMessages[action]}: ${systemData.details || 'Detay yok'}`,
+    type: action === 'LOGOUT' || action === 'PASSWORD_CHANGE' ? 'warning' : 'info',
+    action_type: `SYSTEM_${action}`,
+    table_name: 'system_logs',
+    record_id: systemData.id,
+    is_read: false
+  };
+
+  return await createNotification(notification);
 };
 
 // Bekleyen onay bildirimlerini temizle

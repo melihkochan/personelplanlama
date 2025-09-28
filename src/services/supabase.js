@@ -1131,24 +1131,45 @@ export const savePerformanceData = async (performanceData) => {
 
 export const getPerformanceData = async (dateRange = null) => {
   try {
-    let query = supabase
+    // Supabase varsayılan limit'i 1000, bunu aşmak için farklı yaklaşım
+    // Önce tüm verileri say
+    const { count } = await supabase
       .from('performance_data')
-      .select(`
-        *,
-        personnel:personnel!performance_data_employee_code_fkey (
-          full_name,
-          position
-        )
-      `)
-      .order('date', { ascending: false });
+      .select('*', { count: 'exact', head: true });
     
-    if (dateRange) {
-      query = query.gte('date', dateRange.from).lte('date', dateRange.to);
+    // Tüm verileri getirmek için pagination kullan
+    let allData = [];
+    const batchSize = 1000;
+    const totalBatches = Math.ceil(count / batchSize);
+    
+    for (let i = 0; i < totalBatches; i++) {
+      const from = i * batchSize;
+      const to = Math.min(from + batchSize - 1, count - 1);
+      
+      let batchQuery = supabase
+        .from('performance_data')
+        .select(`
+          *,
+          personnel:personnel!performance_data_employee_code_fkey (
+            full_name,
+            position
+          )
+        `)
+        .order('date', { ascending: false })
+        .range(from, to);
+      
+      if (dateRange) {
+        batchQuery = batchQuery.gte('date', dateRange.from).lte('date', dateRange.to);
+      }
+      
+      const { data: batchData, error: batchError } = await batchQuery;
+      
+      if (batchError) throw batchError;
+      
+      allData = [...allData, ...(batchData || [])];
     }
     
-    const { data, error } = await query;
-    
-    if (error) throw error;
+    const data = allData;
     
     // Performance_data tablosundaki shift_type'ı kullan (Excel'den gelen vardiya bilgisi)
     const enrichedData = data?.map(item => ({
@@ -1158,7 +1179,6 @@ export const getPerformanceData = async (dateRange = null) => {
       position: item.personnel?.position || 'Bilinmeyen'
     })) || [];
     
-    // Performance data çekildi
     
     return { success: true, data: enrichedData };
   } catch (error) {
@@ -3870,6 +3890,23 @@ export const createPerformanceNotification = async (action, performanceData, use
   };
 
   return await createNotification(notification);
+};
+
+// 07 Temmuz verilerini kontrol et
+export const checkJuly7Data = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('performance_data')
+      .select('*')
+      .eq('date', '2025-07-07');
+    
+    if (error) throw error;
+    
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('07 Temmuz veri kontrolü hatası:', error);
+    return { success: false, error: error.message };
+  }
 };
 
 // Sistem işlemleri için bildirimler

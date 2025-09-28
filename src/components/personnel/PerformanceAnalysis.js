@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, BarChart3, Calendar, Users, Truck, Package, FileText, User, Download, CheckCircle, XCircle, AlertTriangle, X, Trash2, Edit } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes, logAuditEvent, supabase } from '../../services/supabase';
+import { getAllPersonnel, bulkSavePerformanceDataWithAudit, getPerformanceData, getStoreLocationsByCodes, logAuditEvent, checkJuly7Data, supabase } from '../../services/supabase';
 
 const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: propStoreData, userRole, currentUser }) => {
   // PerformanceAnalysis başladı
@@ -116,7 +116,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       });
       
       setAllPerformanceDates(sortedDates);
-      console.log('🔍 Performans tarihleri bulundu:', sortedDates.length, 'kayıt');
     } catch (error) {
       console.error('❌ Performans tarihleri yükleme hatası:', error);
       alert(`❌ Performans tarihleri yüklenemedi: ${error.message}`);
@@ -153,7 +152,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
       if (error) throw error;
 
-      console.log(`✅ ${updatedRecords.length} performans kaydı güncellendi`);
 
       // Audit log kaydet
       await logAuditEvent({
@@ -214,7 +212,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
       if (error) throw error;
 
-      console.log(`✅ ${deletedRecords.length} performans kaydı silindi`);
 
       // Audit log kaydet
       await logAuditEvent({
@@ -270,7 +267,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
   const loadPerformanceDataFromDatabase = async () => {
     // loadPerformanceDataFromDatabase başladı
     
-    console.log('🔍 Personnel database durumu:', personnelDatabase.length);
     
     // Personnel database kontrolünü geçici olarak kaldır
     // if (!personnelDatabase.length) {
@@ -308,7 +304,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           }
         });
         
-        console.log(`🔍 Orijinal kayıt: ${result.data.length}, Benzersiz teslimat: ${uniqueStoreDeliveries.size}`);
+        
+        console.log('🔍 Processed data (ilk 10 kayıt):', processedData.slice(0, 10));
+        console.log('🔍 Temmuz verileri processedData\'da var mı?', processedData.filter(item => item.date.includes('2025-07')));
         
         // Performance_data'daki shift_type dağılımını kontrol et (tarih shift'i)
         const shiftDistribution = {};
@@ -579,6 +577,9 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         });
         
               // Available dates hazırlandı
+        
+        console.log('🔍 Available dates array (ilk 20 kayıt):', availableDatesArray.slice(0, 20));
+        console.log('🔍 Temmuz verileri var mı?', availableDatesArray.filter(item => item.date.includes('07.2025')));
         setAvailableDates(availableDatesArray);
         
         // Mevcut vardiyaları analiz et
@@ -719,15 +720,12 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         // localStorage'a da kaydet (F5 yenileme için)
         try {
           localStorage.setItem('performanceSummary', JSON.stringify(performanceSummary));
-          console.log('💾 Performance summary localStorage\'a kaydedildi');
         } catch (error) {
           console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
         }
         
-        console.log('🌐 Database yükleme sırasında global summary güncellendi:', window.performanceSummary);
         
         // İlk veri yükleme tamamlandı
-        console.log('✅ Performans verileri başarıyla yüklendi ve analiz edildi');
         setTimeout(() => {
           setInitialDataLoading(false);
         }, 300);
@@ -1282,7 +1280,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         
         // Debug için plaka bilgisini logla
         if (rowIndex < 5) {
-          console.log(`🔍 Satır ${rowIndex}: Plaka = "${plaka}"`);
         }
         
         if (!magazaKodu || !sofor) return;
@@ -1781,7 +1778,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     results.summary.totalPallets = Math.round(Array.from(uniqueStoreDeliveries.values())
       .reduce((sum, delivery) => sum + delivery.pallets, 0));
     
-    console.log(`🏪 Benzersiz mağaza teslimatları: ${uniqueStoreDeliveries.size}, Toplam kasa: ${results.summary.totalBoxes}, Toplam palet: ${results.summary.totalPallets}`);
   };
 
 
@@ -1989,7 +1985,6 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     filteredResults.summary.totalPallets = Math.round(Array.from(filteredUniqueStoreDeliveries.values())
       .reduce((sum, delivery) => sum + delivery.pallets, 0));
     
-    console.log(`🔍 Filtrelenmiş benzersiz mağaza teslimatları: ${filteredUniqueStoreDeliveries.size}, Toplam kasa: ${filteredResults.summary.totalBoxes}`);
 
     // Shift kombinasyonu sayısını ekle
     filteredResults.summary.shiftCombinations = selectedDateShiftCombinations.length;
@@ -2009,12 +2004,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     // localStorage'a da kaydet (F5 yenileme için)
     try {
       localStorage.setItem('performanceSummary', JSON.stringify(performanceSummary));
-      console.log('💾 Performance summary localStorage\'a kaydedildi');
     } catch (error) {
       console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
     }
     
-    console.log('🌐 Global performance summary güncellendi:', window.performanceSummary);
     
     // Toplam gün sayısını hesapla (sadece benzersiz tarihler)
     const uniqueDates = new Set();
@@ -2658,13 +2651,24 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     const months = new Set();
     
     dates.forEach(item => {
-      const [day, month, year] = item.date.split('.');
+      // Tarih formatını kontrol et - hem dd.MM.yyyy hem de yyyy-MM-dd formatlarını destekle
+      let dateStr = item.date;
+      
+      // Eğer yyyy-MM-dd formatındaysa, dd.MM.yyyy formatına çevir
+      if (dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        dateStr = `${day}.${month}.${year}`;
+      }
+      
+      const [day, month, year] = dateStr.split('.');
       const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
       months.add(monthKey);
     });
     
-    return Array.from(months).sort().reverse(); // En son ay önce gelsin
+    const result = Array.from(months).sort().reverse(); // En son ay önce gelsin
+    console.log('🔍 Mevcut aylar:', result);
+    return result;
   };
 
   const getMonthDisplayName = (monthKey) => {
@@ -2675,7 +2679,16 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
 
   const getDatesForMonth = (dates, monthKey) => {
     return dates.filter(item => {
-      const [day, month, year] = item.date.split('.');
+      // Tarih formatını kontrol et - hem dd.MM.yyyy hem de yyyy-MM-dd formatlarını destekle
+      let dateStr = item.date;
+      
+      // Eğer yyyy-MM-dd formatındaysa, dd.MM.yyyy formatına çevir
+      if (dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        dateStr = `${day}.${month}.${year}`;
+      }
+      
+      const [day, month, year] = dateStr.split('.');
       const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       const itemMonthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
       return itemMonthKey === monthKey;
@@ -2686,7 +2699,16 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     if (dates.length === 0) return null;
     
     const parseDate = (dateStr) => {
-      const [day, month, year] = dateStr.split('.');
+      // Tarih formatını kontrol et - hem dd.MM.yyyy hem de yyyy-MM-dd formatlarını destekle
+      let formattedDateStr = dateStr;
+      
+      // Eğer yyyy-MM-dd formatındaysa, dd.MM.yyyy formatına çevir
+      if (dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        formattedDateStr = `${day}.${month}.${year}`;
+      }
+      
+      const [day, month, year] = formattedDateStr.split('.');
       return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     };
     
@@ -2932,29 +2954,64 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                 );
               })()}
 
-              {/* Ay Seçimi */}
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-700 min-w-[80px]">Ay</label>
-                <div className="flex-1 relative max-w-[200px]">
-                  <select
-                    value={selectedMonth || ''}
-                    onChange={(e) => setSelectedMonth(e.target.value || null)}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:border-gray-400 transition-colors appearance-none cursor-pointer"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
-                      backgroundPosition: 'right 0.75rem center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundSize: '1.5em 1.5em',
-                      paddingRight: '2.5rem'
-                    }}
+              {/* Modern Ay Seçimi */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-3 block">📅 Ay Seçimi</label>
+                <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1.5">
+                  {/* Tüm Aylar Seçeneği */}
+                  <button
+                    onClick={() => setSelectedMonth(null)}
+                    className={`p-1.5 rounded-md border-2 transition-all duration-200 hover:shadow-sm ${
+                      selectedMonth === null
+                        ? 'border-blue-500 bg-blue-50 shadow-sm'
+                        : 'border-gray-200 bg-white hover:border-blue-300'
+                    }`}
                   >
-                    <option value="">📅 Tüm Aylar</option>
-                    {getAvailableMonths(availableDates).map(monthKey => (
-                      <option key={monthKey} value={monthKey}>
-                        📆 {getMonthDisplayName(monthKey)}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="text-center">
+                      <div className="text-sm mb-0.5">📅</div>
+                      <div className="text-xs font-medium text-gray-900">Tüm Aylar</div>
+                      <div className="text-xs text-gray-500">
+                        {availableDates.length} veri
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Ay Kartları */}
+                  {getAvailableMonths(availableDates).map(monthKey => {
+                    const monthDates = getDatesForMonth(availableDates, monthKey);
+                    const isSelected = selectedMonth === monthKey;
+                    
+                    return (
+                      <button
+                        key={monthKey}
+                        onClick={() => setSelectedMonth(monthKey)}
+                        className={`p-1.5 rounded-md border-2 transition-all duration-200 hover:shadow-sm ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50 shadow-sm'
+                            : 'border-gray-200 bg-white hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="text-sm mb-0.5">📆</div>
+                          <div className="text-xs font-medium text-gray-900">
+                            {getMonthDisplayName(monthKey)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {monthDates.length} veri
+                          </div>
+                          {/* Vardiya göstergesi */}
+                          <div className="flex justify-center gap-0.5 mt-0.5">
+                            {monthDates.some(d => d.shift === 'GÜNDÜZ') && (
+                              <span className="w-1 h-1 bg-orange-400 rounded-full" title="Gündüz"></span>
+                            )}
+                            {monthDates.some(d => d.shift === 'GECE') && (
+                              <span className="w-1 h-1 bg-blue-400 rounded-full" title="Gece"></span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2962,7 +3019,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-700">
-                    Tarih Seçimi ({selectedMonth ? getDatesForMonth(availableDates, selectedMonth).length : availableDates.length} gün)
+                    Tarih Seçimi ({selectedMonth ? getDatesForMonth(availableDates, selectedMonth).length : availableDates.length} veri)
                   </label>
                 </div>
 
@@ -3070,59 +3127,108 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
                     </div>
                   </div>
                 ) : (
-                  // Günlük Görünüm
+                  // Modern Günlük Görünüm
               <div>
-                <div className="flex gap-2 mb-2">
+                    {/* Kompakt Hızlı Seçim Butonları */}
+                    <div className="flex flex-wrap gap-2 mb-3">
                   <button
                         onClick={() => setSelectedDates((selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).map(item => item.id))}
-                    className="px-2 py-0.5 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                        className="px-3 py-1.5 bg-green-500 text-white rounded-md text-xs font-medium hover:bg-green-600 transition-colors"
                   >
-                    Tümünü Seç
+                        ✅ Tümünü Seç
                   </button>
 
                   <button
                     onClick={() => setSelectedDates([])}
-                    className="px-2 py-0.5 bg-red-500 text-white rounded text-xs hover:bg-red-600"
-                  >
-                    Tümünü Kaldır
+                        className="px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-colors"
+                      >
+                        ❌ Tümünü Kaldır
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const dayDates = (selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates)
+                            .filter(item => item.shift === 'GÜNDÜZ')
+                            .map(item => item.id);
+                          setSelectedDates(dayDates);
+                        }}
+                        className="px-3 py-1.5 bg-orange-500 text-white rounded-md text-xs font-medium hover:bg-orange-600 transition-colors"
+                      >
+                        🌅 Sadece Gündüz
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const nightDates = (selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates)
+                            .filter(item => item.shift === 'GECE')
+                            .map(item => item.id);
+                          setSelectedDates(nightDates);
+                        }}
+                        className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-colors"
+                      >
+                        🌙 Sadece Gece
                   </button>
                 </div>
-                    <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {(selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).map((dateItem) => (
-                          <div key={dateItem.id} className="relative">
-                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
-                              selectedDates.includes(dateItem.id) ? 
-                                (dateItem.shift === 'GECE' ? 'border-blue-500 bg-blue-50' : 'border-orange-500 bg-orange-50') :
-                                (dateItem.shift === 'GECE' ? 'border-gray-200 bg-white hover:border-blue-300' : 'border-gray-200 bg-white hover:border-orange-300')
-                        }`}>
-                          <input
-                            type="checkbox"
-                                checked={selectedDates.includes(dateItem.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                    setSelectedDates([...selectedDates, dateItem.id]);
-                              } else {
+
+                    {/* Kompakt Tarih Kartları */}
+                    <div className="max-h-48 overflow-y-auto">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+                        {(selectedMonth ? getDatesForMonth(availableDates, selectedMonth) : availableDates).map((dateItem) => {
+                          const isSelected = selectedDates.includes(dateItem.id);
+                          const isDayShift = dateItem.shift === 'GÜNDÜZ';
+                          
+                          return (
+                            <div
+                              key={dateItem.id}
+                              onClick={() => {
+                                if (isSelected) {
                                     setSelectedDates(selectedDates.filter(d => d !== dateItem.id));
-                              }
-                            }}
-                                className={`w-5 h-5 rounded focus:ring-2 ${
-                                  dateItem.shift === 'GECE' ? 'text-blue-600 focus:ring-blue-500' : 'text-orange-600 focus:ring-orange-500'
-                                }`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-900 truncate">{dateItem.date}</span>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    dateItem.shift === 'GÜNDÜZ' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
-                                  }`}>
-                                    {dateItem.shift === 'GÜNDÜZ' ? '🌅 Gündüz' : '🌙 Gece'}
-                              </span>
+                                } else {
+                                  setSelectedDates([...selectedDates, dateItem.id]);
+                                }
+                              }}
+                              className={`relative p-2 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-sm transform hover:scale-102 ${
+                                isSelected
+                                  ? (isDayShift 
+                                      ? 'border-orange-500 bg-orange-50 shadow-sm' 
+                                      : 'border-blue-500 bg-blue-50 shadow-sm')
+                                  : (isDayShift
+                                      ? 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50'
+                                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50')
+                              }`}
+                            >
+                              {/* Seçim İndikatörü */}
+                              <div className="absolute top-1 right-1">
+                                <div className={`w-3 h-3 rounded-full border flex items-center justify-center ${
+                                  isSelected
+                                    ? (isDayShift ? 'border-orange-500 bg-orange-500' : 'border-blue-500 bg-blue-500')
+                                    : 'border-gray-300'
+                                }`}>
+                                  {isSelected && (
+                                    <CheckCircle className="w-2 h-2 text-white" />
+                                  )}
                             </div>
                           </div>
-                        </label>
+
+                              {/* Tarih İçeriği */}
+                              <div className="text-center">
+                                <div className="text-sm mb-1">
+                                  {isDayShift ? '🌅' : '🌙'}
                       </div>
-                    ))}
+                                <div className="text-xs font-medium text-gray-900 mb-1">
+                                  {dateItem.date}
+                                </div>
+                                <div className={`text-xs font-medium px-1 py-0.5 rounded ${
+                                  isDayShift 
+                                    ? 'bg-orange-100 text-orange-700' 
+                                    : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {isDayShift ? 'Gündüz' : 'Gece'}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                   </div>
                 </div>
                   </div>

@@ -34,7 +34,7 @@ import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, createPersonnelNotification, createVehicleNotification, createStoreNotification, createShiftNotification, createPerformanceNotification, createSystemNotification, supabase, avatarService, getUserProfile, updateUserProfile } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, createPersonnelNotification, createVehicleNotification, createStoreNotification, createShiftNotification, createPerformanceNotification, createSystemNotification, checkJuly7Data, supabase, avatarService, getUserProfile, updateUserProfile } from './services/supabase';
 import { getPendingRegistrationsCount } from './services/supabase';
 import ModernAvatarUpload from './components/ui/ModernAvatarUpload';
 import './App.css';
@@ -512,7 +512,6 @@ function MainApp() {
       if (isAuthenticated && user) {
         try {
           const role = await getUserRole(user.id);
-          console.log('🔍 App.js - getUserRole result:', role);
           setUserRole(role);
 
           const userDetailsResult = await getUserDetails(user.id, user.email);

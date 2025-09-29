@@ -3516,7 +3516,6 @@ function MainApp() {
                         <button
                                     onClick={() => {
                                       // Mağaza listesine git ve seçili mağazayı aç
-                                      console.log('Mağaza listesine gidiliyor:', store);
                                       const storeId = store.id || store.store_code;
                                       navigate(`/stores?selected=${storeId}`);
                                     }}

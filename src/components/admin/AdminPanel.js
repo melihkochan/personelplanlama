@@ -150,7 +150,12 @@ const AdminPanel = ({ userRole, currentUser }) => {
           if ((payload.new.is_online !== payload.old.is_online || 
               payload.new.last_seen !== payload.old.last_seen) &&
               !anyAvatarModalOpen) {
-            loadUsers(); // Kullanıcı listesini yenile
+            // Tüm listeyi yenilemek yerine sadece değişen kullanıcıyı güncelle
+            setUsers(prevUsers => 
+              prevUsers.map(user => 
+                user.id === payload.new.id ? { ...user, ...payload.new } : user
+              )
+            );
           }
         }
       )
@@ -161,9 +166,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
           table: 'users'
         },
         (payload) => {
-          // Modal açık değilse yenile
+          // Modal açık değilse yeni kullanıcıyı listeye ekle
           if (!anyAvatarModalOpen) {
-            loadUsers(); // Kullanıcı listesini yenile
+            setUsers(prevUsers => [...prevUsers, payload.new]);
           }
         }
       )
@@ -1042,21 +1047,7 @@ Devam etmek istediğinizden emin misiniz?`;
       
       setFilters(newFilters);
       
-      // Otomatik filtreleme - dropdown değişikliklerinde
-      if (name === 'userEmail' || name === 'action' || name === 'tableName') {
-        // Kısa bir gecikme ile filtreleme yap (debounce)
-        setTimeout(() => {
-          loadAuditLogsWithFilters(newFilters);
-        }, 300);
-      }
-      
-      // Tarih filtreleri için de otomatik filtreleme
-      if (name === 'dateFrom' || name === 'dateTo') {
-        // Tarih değişikliklerinde biraz daha uzun gecikme
-        setTimeout(() => {
-          loadAuditLogsWithFilters(newFilters);
-        }, 500);
-      }
+      // Otomatik filtreleme kaldırıldı - sadece "Filtrele" butonuna basıldığında yüklensin
     };
     
     const loadAuditLogsWithFilters = async (customFilters = null) => {

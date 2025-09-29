@@ -1993,15 +1993,12 @@ function MainApp() {
                   {userDetails?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı'}
                 </p>
                 <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-gray-600">
-                    {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
-                  </span>
                     <span className={`px-1 py-0.5 rounded-full text-[9px] font-bold ${
                       userRole === 'admin' ? 'bg-red-100 text-red-700' : 
                       userRole === 'yönetici' ? 'bg-purple-100 text-purple-700' : 
                       'bg-blue-100 text-blue-700'
                   }`}>
-                    {userRole === 'admin' ? 'Yönetici' : userRole === 'yönetici' ? 'Moderatör' : 'Üye'}
+                    {userRole === 'admin' ? 'Admin' : userRole === 'yönetici' ? 'Yönetici' : 'Kullanıcı'}
                   </span>
                 </div>
               </div>
@@ -2028,12 +2025,12 @@ function MainApp() {
             {(userRole === 'admin' || userRole === 'yönetici') && (
               <button
                 onClick={() => handleTabChange('admin')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-md hover:shadow-green-500/25 group text-xs font-medium"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-md hover:shadow-green-500/25 group text-xs font-semibold border border-green-400/30"
               >
-                  <Shield className="w-3 h-3" />
-                  <span>Admin</span>
+                  <Shield className="w-3 h-3 drop-shadow-sm" />
+                  <span className="drop-shadow-sm">Admin</span>
                 {pendingApprovalCount > 0 && (
-                    <span className="px-1 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded-full animate-pulse">
+                    <span className="px-1 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded-full animate-pulse shadow-md">
                     {pendingApprovalCount}
                   </span>
                 )}

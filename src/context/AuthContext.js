@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
   const heartbeatRef = useRef(null);
   
   // Oturum zaman aşımı ayarları (dakika cinsinden)
-  const SESSION_TIMEOUT_MINUTES = 5; // 5 dakika hareketsizlik
+  const SESSION_TIMEOUT_MINUTES = 15; // 15 dakika hareketsizlik
   const WARNING_BEFORE_TIMEOUT_MINUTES = 1; // 1 dakika önce uyarı
   const COUNTDOWN_SECONDS = 60; // 60 saniye geri sayım
 
@@ -48,6 +48,12 @@ export const AuthProvider = ({ children }) => {
     }
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
+    }
+    
+    // Modal açıksa kapat ve geri sayımı durdur
+    if (showSessionTimeout) {
+      setShowSessionTimeout(false);
+      setSessionTimeoutCountdown(0);
     }
     
     // Uyarı ve oturum kapatma timeout'larını ayarla

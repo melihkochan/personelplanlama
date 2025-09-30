@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { supabase, logAuditEvent, updateUserOnlineStatus, checkPendingRegistration, cleanupOldSessions } from '../services/supabase';
+import { supabase, logAuditEvent, updateUserOnlineStatus, updateUserOnlineStatusWithSession, checkPendingRegistration, cleanupOldSessions } from '../services/supabase';
 
 const AuthContext = createContext();
 
@@ -329,7 +329,8 @@ export const AuthProvider = ({ children }) => {
           .single();
         
         if (!userError && userData) {
-          await updateUserOnlineStatus(userData.id, true);
+          // Online durumu ve session_start'ı güncelle
+          await updateUserOnlineStatusWithSession(userData.id, true);
         } else {
           // Alternatif olarak auth user ID ile dene
           const { data: userDataById, error: userErrorById } = await supabase
@@ -339,7 +340,7 @@ export const AuthProvider = ({ children }) => {
             .single();
           
           if (!userErrorById && userDataById) {
-            await updateUserOnlineStatus(userDataById.id, true);
+            await updateUserOnlineStatusWithSession(userDataById.id, true);
           }
         }
       } catch (onlineError) {

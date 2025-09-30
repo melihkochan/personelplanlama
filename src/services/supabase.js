@@ -4261,6 +4261,49 @@ export const updateUserOnlineStatus = async (userId, isOnline) => {
   }
 };
 
+// Online durumu ve session_start ile güncelleme
+export const updateUserOnlineStatusWithSession = async (userId, isOnline) => {
+  try {
+    const updateData = {
+      is_online: isOnline,
+      last_seen: new Date().toISOString()
+    };
+
+    // Eğer online yapılıyorsa session_start'ı da ekle
+    if (isOnline) {
+      updateData.session_start = new Date().toISOString();
+    }
+
+    // Önce normal client ile dene
+    const { data, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', userId)
+      .select();
+
+    if (error) {
+      // RLS hatası varsa admin client ile dene
+      const { data: adminData, error: adminError } = await supabaseAdmin
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select();
+
+      if (adminError) {
+        console.error('❌ Online durumu güncelleme hatası:', adminError);
+        return { success: false, error: adminError };
+      }
+
+      return { success: true, data: adminData };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('❌ Online durumu güncelleme hatası:', error);
+    return { success: false, error };
+  }
+};
+
 export const getUserOnlineStatus = async (userId) => {
   try {
     const { data, error } = await supabase
@@ -4277,6 +4320,28 @@ export const getUserOnlineStatus = async (userId) => {
     return { success: true, data };
   } catch (error) {
     console.error('❌ Online durumu alma hatası:', error);
+    return { success: false, error };
+  }
+};
+
+// Çevrimiçi kullanıcıları getir (kendi kullanıcı hariç)
+export const getOnlineUsers = async (currentUserId) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, full_name, avatar_url, is_online, last_seen, session_start')
+      .eq('is_online', true)
+      .neq('id', currentUserId)
+      .order('last_seen', { ascending: false });
+
+    if (error) {
+      console.error('❌ Çevrimiçi kullanıcılar alınırken hata:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('❌ Çevrimiçi kullanıcılar alma hatası:', error);
     return { success: false, error };
   }
 };

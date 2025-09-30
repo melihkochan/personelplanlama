@@ -34,7 +34,7 @@ import ChatSystem from './components/chat/ChatSystem';
 import SessionTimeoutModal from './components/ui/SessionTimeoutModal';
 import RulesApp from './components/rules/RulesApp';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, createPersonnelNotification, createVehicleNotification, createStoreNotification, createShiftNotification, createPerformanceNotification, createSystemNotification, checkJuly7Data, supabase, avatarService, getUserProfile, updateUserProfile } from './services/supabase';
+import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, createPersonnelNotification, createVehicleNotification, createStoreNotification, createShiftNotification, createPerformanceNotification, createSystemNotification, checkJuly7Data, supabase, avatarService, getUserProfile, updateUserProfile, getOnlineUsers } from './services/supabase';
 import { getPendingRegistrationsCount } from './services/supabase';
 import ModernAvatarUpload from './components/ui/ModernAvatarUpload';
 import './App.css';
@@ -81,6 +81,11 @@ function MainApp() {
   const [isSearching, setIsSearching] = useState(false);
   const [allStores, setAllStores] = useState([]);
 
+  // Çevrimiçi kullanıcılar için state'ler
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [loadingOnlineUsers, setLoadingOnlineUsers] = useState(false);
+  const [showOnlineUsersModal, setShowOnlineUsersModal] = useState(false);
+
   // Mağaza verilerini yükle
   useEffect(() => {
     const loadStores = async () => {
@@ -101,6 +106,36 @@ function MainApp() {
       loadStores();
     }
   }, [isAuthenticated]);
+
+  // Çevrimiçi kullanıcıları yükle
+  const loadOnlineUsers = async () => {
+    if (!user?.id) return;
+    
+    setLoadingOnlineUsers(true);
+    try {
+      const result = await getOnlineUsers(user.id);
+      if (result.success) {
+        setOnlineUsers(result.data || []);
+      }
+    } catch (error) {
+      console.error('❌ Çevrimiçi kullanıcılar yüklenirken hata:', error);
+    } finally {
+      setLoadingOnlineUsers(false);
+    }
+  };
+
+  // Çevrimiçi kullanıcıları periyodik olarak güncelle
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    // İlk yükleme
+    loadOnlineUsers();
+
+    // Her 30 saniyede bir güncelle
+    const interval = setInterval(loadOnlineUsers, 30000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user?.id]);
 
   // Mağaza arama fonksiyonu
   const handleStoreSearch = (term) => {
@@ -1273,13 +1308,27 @@ function MainApp() {
                   <p className="text-xs text-gray-700">Modern İş Yönetimi</p>
                 </div>
               </div>
-              <button
-                onClick={() => setShowRulesModal(true)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-300"
-                title="Sistem Kuralları"
-              >
-                <Shield className="w-4 h-4 text-blue-400" />
-              </button>
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => setShowRulesModal(true)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-300"
+                  title="Sistem Kuralları"
+                >
+                  <Shield className="w-4 h-4 text-blue-400" />
+                </button>
+                <button
+                  onClick={() => setShowOnlineUsersModal(true)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-300 relative"
+                  title="Çevrimiçi Kullanıcılar"
+                >
+                  <UserCheck className="w-4 h-4 text-green-500" />
+                  {onlineUsers.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                      {onlineUsers.length}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
             
           </div>
@@ -2068,6 +2117,18 @@ function MainApp() {
                   title="Sistem Kuralları"
                 >
                   <Shield className="w-5 h-5 text-blue-600" />
+                </button>
+                <button
+                  onClick={() => setShowOnlineUsersModal(true)}
+                  className="p-2 rounded-xl hover:bg-gray-100 transition-colors relative"
+                  title="Çevrimiçi Kullanıcılar"
+                >
+                  <UserCheck className="w-5 h-5 text-green-600" />
+                  {onlineUsers.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {onlineUsers.length}
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={() => setShowNotificationPanel(true)}
@@ -4105,6 +4166,92 @@ function MainApp() {
           </div>
         </div>
       )}
+      
+      {/* Çevrimiçi Kullanıcılar Modal */}
+      {showOnlineUsersModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <UserCheck className="w-6 h-6 text-green-600" />
+                <h2 className="text-xl font-bold text-gray-900">Çevrimiçi Kullanıcılar</h2>
+                {onlineUsers.length > 0 && (
+                  <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded-full">
+                    {onlineUsers.length} kişi
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowOnlineUsersModal(false)}
+                className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(80vh-80px)] p-6">
+              {loadingOnlineUsers ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                  <span className="ml-3 text-gray-600">Yükleniyor...</span>
+                </div>
+              ) : onlineUsers.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <UserCheck className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium">Şu anda çevrimiçi kullanıcı yok</p>
+                  <p className="text-sm mt-2">Diğer kullanıcılar giriş yaptığında burada görünecek</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {onlineUsers.map((onlineUser) => {
+                    const sessionDuration = onlineUser.session_start 
+                      ? Math.floor((new Date() - new Date(onlineUser.session_start)) / 1000 / 60)
+                      : 0;
+                    
+                    return (
+                      <div key={onlineUser.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                            {onlineUser.avatar_url ? (
+                              <img 
+                                src={onlineUser.avatar_url} 
+                                alt={onlineUser.full_name || onlineUser.username}
+                                className="w-12 h-12 rounded-full object-cover"
+                              />
+                            ) : (
+                              (onlineUser.full_name || onlineUser.username || 'U').charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 text-lg">
+                              {onlineUser.full_name || onlineUser.username || 'Kullanıcı'}
+                            </p>
+                            <p className="text-gray-500">@{onlineUser.username}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                            <span className="text-green-600 font-medium">Çevrimiçi</span>
+                          </div>
+                          {sessionDuration > 0 && (
+                            <p className="text-sm text-gray-500">
+                              {sessionDuration >= 60 
+                                ? `${Math.floor(sessionDuration / 60)}s ${sessionDuration % 60}dk`
+                                : `${sessionDuration} dakika`
+                              }
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Profil Ayarları Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

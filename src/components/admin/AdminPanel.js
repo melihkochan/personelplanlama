@@ -561,9 +561,9 @@ Devam etmek istediğinizden emin misiniz?`;
     <button
       onClick={() => onClick(id)}
       className={`
-        flex items-center gap-2 w-full px-3 py-2 rounded-lg transition-all duration-200 text-sm
+        flex items-center gap-2 w-full px-2 py-2 rounded-md transition-all duration-200 text-sm
         ${active 
-          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+          ? 'bg-blue-600 text-white shadow-sm' 
           : 'text-gray-600 hover:bg-gray-100'
         }
       `}
@@ -572,10 +572,10 @@ Devam etmek istediğinizden emin misiniz?`;
       <span className="font-medium">{label}</span>
       {count > 0 && (
         <span className={`
-          ml-auto px-2 py-1 rounded-full text-xs font-bold
+          ml-auto px-1.5 py-0.5 rounded text-xs font-bold
           ${active 
-            ? 'bg-white text-blue-600' 
-            : 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md'
+            ? 'bg-white/20 text-white' 
+            : 'bg-red-100 text-red-600'
           }
         `}>
           {count}
@@ -621,7 +621,7 @@ Devam etmek istediğinizden emin misiniz?`;
     }
   };
 
-  const UserCard = ({ user }) => {
+  const UserListItem = ({ user }) => {
     const [userAvatar, setUserAvatar] = useState(null);
 
     // Avatar URL'ini al
@@ -652,24 +652,37 @@ Devam etmek istediğinizden emin misiniz?`;
       }
     };
 
-    const getCardStyle = (role) => {
+    const getRoleColor = (role) => {
       switch (role) {
         case 'admin':
-          return 'border-l-4 border-l-yellow-400 bg-gradient-to-r from-yellow-50 to-white';
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
         case 'yönetici':
-          return 'border-l-4 border-l-purple-400 bg-gradient-to-r from-purple-50 to-white';
+          return 'bg-purple-100 text-purple-800 border-purple-200';
         default:
-          return 'border-l-4 border-l-blue-400 bg-gradient-to-r from-blue-50 to-white';
+          return 'bg-blue-100 text-blue-800 border-blue-200';
       }
     };
 
+    const formatLastSeen = (lastSeen) => {
+      if (!lastSeen) return 'Hiç giriş yapmamış';
+      const now = new Date();
+      const lastSeenDate = new Date(lastSeen);
+      const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return 'Az önce';
+      if (diffInMinutes < 60) return `${diffInMinutes} dk önce`;
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} saat önce`;
+      return lastSeenDate.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+    };
+
     return (
-      <div className={`group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 ${getCardStyle(user.role)}`}>
-        {/* Header */}
-        <div className="p-4 border-b border-gray-100">
+      <div className="group bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200">
+        <div className="p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            {/* Sol taraf - Avatar ve Kullanıcı Bilgileri */}
+            <div className="flex items-center space-x-3 flex-1 min-w-0">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
                 {userAvatar ? (
                   <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm">
                     <img 
@@ -690,76 +703,81 @@ Devam etmek istediğinizden emin misiniz?`;
                     {getInitials(user.full_name || user.username)}
                   </div>
                 )}
+                {/* Online durumu */}
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                  user.is_online ? 'bg-green-500' : 'bg-gray-400'
+                }`}></div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-gray-900 text-sm truncate">{user.full_name || user.username || 'Kullanıcı'}</h3>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                {user.full_name && <p className="text-xs text-gray-400 truncate">@{user.username}</p>}
+
+              {/* Kullanıcı Bilgileri */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-1">
+                  <h3 className="text-sm font-semibold text-gray-900 truncate">
+                    {user.full_name || user.username || 'Kullanıcı'}
+                  </h3>
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getRoleColor(user.role)}`}>
+                    {getRoleBadge(user.role)}
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                    user.is_active 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {user.is_active ? 'Aktif' : 'Pasif'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 truncate">{user.email}</p>
+                {user.full_name && (
+                  <p className="text-xs text-gray-500 truncate">@{user.username}</p>
+                )}
+                <div className="flex items-center space-x-3 mt-1 text-xs text-gray-500">
+                  <div className="flex items-center space-x-1">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      {user.is_online ? 'Çevrimiçi' : formatLastSeen(user.last_seen)}
+                    </span>
+                  </div>
+                  {user.session_start && (
+                    <div className="flex items-center space-x-1">
+                      <Activity className="w-3 h-3" />
+                      <span>
+                        {Math.floor((new Date() - new Date(user.session_start)) / (1000 * 60))} dk
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              {getRoleBadge(user.role)}
-              <div className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${user.is_online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span className={`text-xs ${user.is_online ? 'text-green-600' : 'text-gray-500'}`}>
-                  {user.is_online ? 'Çevrimiçi' : 'Offline'}
-                </span>
-              </div>
+
+            {/* Sağ taraf - Aksiyonlar */}
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              {user.email !== getCurrentUserEmail() ? (
+                <>
+                  <button
+                    onClick={() => handleEditUser(user)}
+                    className="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors group"
+                    title="Düzenle"
+                  >
+                    <Edit3 className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(user.id)}
+                    className="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors group"
+                    title="Sil"
+                  >
+                    <Trash2 className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowChangePasswordModal(true)}
+                  className="p-1.5 text-green-600 bg-green-50 rounded hover:bg-green-100 transition-colors group"
+                  title="Şifre Değiştir"
+                >
+                  <User className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                </button>
+              )}
             </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4">
-          {/* Status ve Last Seen */}
-          <div className="flex items-center justify-between mb-3">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              user.is_active 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-red-100 text-red-700'
-            }`}>
-              {user.is_active ? 'Aktif' : 'Pasif'}
-            </span>
-            {!user.is_online && user.last_seen && (
-              <span className="text-xs text-gray-500">
-                {new Date(user.last_seen).toLocaleDateString('tr-TR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            {user.email !== getCurrentUserEmail() ? (
-              <>
-                <button
-                  onClick={() => handleEditUser(user)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs font-medium"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  Düzenle
-                </button>
-                <button
-                  onClick={() => handleDeleteUser(user.id)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs font-medium"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Sil
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setShowChangePasswordModal(true)}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-xs font-medium"
-              >
-                <User className="w-3 h-3" />
-                Şifre Değiştir
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -1467,76 +1485,84 @@ Devam etmek istediğinizden emin misiniz?`;
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="h-full">
-        {/* Bilgilendirme Banner */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 shadow-lg">
-          <div className="flex items-center gap-3 text-white">
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <Shield className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm">Yönetim Paneli</h3>
-              <p className="text-xs text-blue-100">Bu sayfaya sadece Admin ve Yönetici kullanıcıları erişebilir. Sistem yönetimi ve kullanıcı kontrolü için kullanılır.</p>
-            </div>
-            <div className="ml-auto">
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                userRole === 'admin' 
-                  ? 'bg-yellow-400 text-yellow-900' 
-                  : 'bg-purple-400 text-purple-900'
-              }`}>
-                {userRole === 'admin' ? (
-                  <>
-                    <Crown className="w-3 h-3 mr-1" />
-                    Admin
-                  </>
-                ) : (
-                  <>
-                    <Star className="w-3 h-3 mr-1" />
-                    Yönetici
-                  </>
-                )}
-              </span>
+        {/* Compact Header */}
+        <div className="bg-white border-b border-gray-200 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold text-gray-900">Admin Panel</h1>
+                  <p className="text-sm text-gray-500">Sistem yönetimi</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                  userRole === 'admin' 
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {userRole === 'admin' ? (
+                    <>
+                      <Crown className="w-3 h-3 mr-1" />
+                      Admin
+                    </>
+                  ) : (
+                    <>
+                      <Star className="w-3 h-3 mr-1" />
+                      Yönetici
+                    </>
+                  )}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="bg-white p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
+
+          {/* Compact Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-lg p-4 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs font-medium">Toplam Kullanıcı</p>
+                  <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                </div>
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-4 h-4 text-blue-600" />
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
-                <p className="text-gray-600">Sistem yönetimi ve kullanıcı kontrolü</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs font-medium">Admin</p>
+                  <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.role === 'admin').length}</p>
+                </div>
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Crown className="w-4 h-4 text-purple-600" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-200 hover:border-green-300 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-xs font-medium">Aktif</p>
+                  <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.is_active).length}</p>
+                </div>
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Check className="w-4 h-4 text-green-600" />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <StatCard
-              title="Toplam Kullanıcı"
-              value={users.length}
-              icon={Users}
-              color="bg-blue-500"
-            />
-            <StatCard
-              title="Admin Kullanıcı"
-              value={users.filter(u => u.role === 'admin').length}
-              icon={Crown}
-              color="bg-purple-500"
-            />
-            <StatCard
-              title="Aktif Kullanıcı"
-              value={users.filter(u => u.is_active).length}
-              icon={Check}
-              color="bg-green-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Left Menu */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               <MenuButton
                 id="users"
                 icon={Users}
@@ -1587,11 +1613,19 @@ Devam etmek istediğinizden emin misiniz?`;
             <div className="lg:col-span-3">
               {activeSection === 'users' && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-gray-900">Kullanıcı Yönetimi</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Users className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Kullanıcılar</h3>
+                        <p className="text-xs text-gray-500">{users.length} kullanıcı</p>
+                      </div>
+                    </div>
                     <button
                       onClick={() => setShowAddUserModal(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                     >
                       <Plus className="w-4 h-4" />
                       Yeni Kullanıcı
@@ -1620,9 +1654,9 @@ Devam etmek istediğinizden emin misiniz?`;
                           </button>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-2">
                           {users.map((user) => (
-                            <UserCard key={user.id} user={user} />
+                            <UserListItem key={user.id} user={user} />
                           ))}
                         </div>
                       )}

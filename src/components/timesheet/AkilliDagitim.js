@@ -593,15 +593,15 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
             } else if (normalizedType === 'panelvan') {
               stats[driverCode].panelvan++;
             }
-            stats[driverCode].total++;
+          stats[driverCode].total++;
             dailyAssigned.add(driverCode);
           }
         }
         
         // Sevkiyat elemanı istatistikleri
         if (vehicleAssignment.deliveryStaff && Array.isArray(vehicleAssignment.deliveryStaff)) {
-          vehicleAssignment.deliveryStaff.forEach(staff => {
-            const staffCode = staff.employee_code;
+        vehicleAssignment.deliveryStaff.forEach(staff => {
+          const staffCode = staff.employee_code;
             if (stats[staffCode]) {
               // Araç tipine göre sayacı artır
               if (normalizedType === 'kamyon') {
@@ -611,7 +611,7 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
               } else if (normalizedType === 'panelvan') {
                 stats[staffCode].panelvan++;
               }
-              stats[staffCode].total++;
+          stats[staffCode].total++;
               dailyAssigned.add(staffCode);
             }
           });
@@ -787,9 +787,34 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
             // En az çalışan şoförleri öncelikle seç
             driversWithWorkload.sort((a, b) => a.workDays - b.workDays);
             
-            // Araç tipi rotasyonu kontrolü
+            // Araç tipi ve aynı araç rotasyonu kontrolü
             const availableDrivers = driversWithWorkload.filter(({ driver, workDays }) => {
-              // Önceki gün hangi araç tipine atanmış kontrol et
+              // Son 2 gün hangi araçlara atanmış kontrol et
+              if (dayIndex >= 2) {
+                const lastTwoDays = [weekDays[dayIndex - 1], weekDays[dayIndex - 2]];
+                let consecutiveSameVehicle = false;
+                
+                lastTwoDays.forEach(checkDay => {
+                  const checkDayPlan = weeklyPlan.gece[checkDay];
+                  if (checkDayPlan) {
+                    Object.values(checkDayPlan.vehicles).forEach(prevAssignment => {
+                      if (prevAssignment.driver && prevAssignment.driver.employee_code === driver.employee_code) {
+                        // Aynı araç plakasına 2 gün üst üste atanmış mı?
+                        if (prevAssignment.vehiclePlate === vehicle.plate) {
+                          consecutiveSameVehicle = true;
+                        }
+                      }
+                    });
+                  }
+                });
+                
+                if (consecutiveSameVehicle) {
+                  console.log(`🚫 ${driver.full_name} son 2 gün ${vehicle.plate} aracına atanmış, bugün aynı araca atanmayacak`);
+                  return false;
+                }
+              }
+              
+              // Araç tipi rotasyonu kontrolü
               if (dayIndex > 0) {
                 const previousDay = weekDays[dayIndex - 1];
                 const previousDayPlan = weeklyPlan.gece[previousDay];
@@ -835,10 +860,10 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
             if (availableDrivers.length > 0) {
               // EŞİT DAĞITIM: En az çalışan şoförü seç
               const selectedDriver = availableDrivers[0];
-              vehicleAssignment.driver = selectedDriver;
-              assignedDrivers.add(selectedDriver.employee_code);
+            vehicleAssignment.driver = selectedDriver;
+            assignedDrivers.add(selectedDriver.employee_code);
               console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı (EŞİT DAĞITIM - En az çalışan)`);
-            } else {
+          } else {
               // Eğer eşit dağıtım yapılamıyorsa, en az çalışan şoförü seç
               const selectedDriver = driversWithWorkload[0].driver;
               vehicleAssignment.driver = selectedDriver;
@@ -863,52 +888,93 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           }
         }
 
-        // 3. SEVKİYAT ELEMANI ATAMA - EŞİT DAĞITIM VE ADALET
+        // 3. SEVKİYAT ELEMANI ATAMA - HER GÜN FARKLI EŞLEŞTİRME
         const staffNeeded = 2; // TÜM ARAÇLAR İÇİN 2 SEVKİYAT ELEMANI ZORUNLU
+        
+        // Tüm sevkiyat elemanlarının bu hafta araç tipi dağılımını hesapla
+        const staffVehicleTypeStats = {};
+        availableGeceDeliveryStaff.forEach(staff => {
+          staffVehicleTypeStats[staff.employee_code] = {
+            staff,
+            kamyon: 0,
+            kamyonet: 0,
+            panelvan: 0,
+            total: 0,
+            workDays: 0,
+            // Bu güne kadar hangi kişilerle çalıştığını takip et
+            workedWith: new Set()
+          };
+          
+          // Bu güne kadar kaç gün çalıştığını ve hangi araç tiplerine çıktığını hesapla
+          for (let j = 0; j < dayIndex; j++) {
+            const checkDay = weekDays[j];
+            const checkDayPlan = weeklyPlan.gece[checkDay];
+            if (checkDayPlan) {
+              Object.values(checkDayPlan.vehicles).forEach(prevAssignment => {
+                if (prevAssignment.deliveryStaff && prevAssignment.deliveryStaff.some(s => s.employee_code === staff.employee_code)) {
+                  staffVehicleTypeStats[staff.employee_code].workDays++;
+                  const vehicleType = prevAssignment.vehicleType;
+                  if (vehicleType === 'Kamyon') staffVehicleTypeStats[staff.employee_code].kamyon++;
+                  else if (vehicleType === 'Kamyonet') staffVehicleTypeStats[staff.employee_code].kamyonet++;
+                  else if (vehicleType === 'Panelvan') staffVehicleTypeStats[staff.employee_code].panelvan++;
+                  staffVehicleTypeStats[staff.employee_code].total++;
+                  
+                  // Bu güne kadar hangi kişilerle çalıştığını kaydet
+                  prevAssignment.deliveryStaff.forEach(partner => {
+                    if (partner.employee_code !== staff.employee_code) {
+                      staffVehicleTypeStats[staff.employee_code].workedWith.add(partner.employee_code);
+                    }
+                  });
+                }
+              });
+            }
+          }
+        });
         
         for (let i = 0; i < staffNeeded; i++) {
           let selectedStaff = null;
           
-          // Atanmamış sevkiyat elemanlarını filtrele
-          const unassignedDeliveryStaff = availableGeceDeliveryStaff.filter(staff => 
+          // Mevcut araç tipi için en uygun sevkiyat elemanını seç
+          const currentVehicleType = vehicle.type;
+          const availableStaff = availableGeceDeliveryStaff.filter(staff => 
             !assignedDeliveryStaff.has(staff.employee_code)
           );
           
-          if (unassignedDeliveryStaff.length > 0) {
-            // EŞİT DAĞITIM: En az çalışan sevkiyat elemanlarını öncelikle seç
-            const staffWithWorkload = unassignedDeliveryStaff.map(staff => {
-              // Bu hafta kaç gün çalıştığını hesapla
-              let workDays = 0;
-              for (let j = 0; j < dayIndex; j++) {
-                const checkDay = weekDays[j];
-                const checkDayPlan = weeklyPlan.gece[checkDay];
-                if (checkDayPlan) {
-                  Object.values(checkDayPlan.vehicles).forEach(prevAssignment => {
-                    if (prevAssignment.deliveryStaff && prevAssignment.deliveryStaff.some(s => s.employee_code === staff.employee_code)) {
-                      workDays++;
-                    }
-                  });
-                }
+          if (availableStaff.length > 0) {
+            // Araç tipi rotasyonu, eşit dağıtım ve farklı eşleştirme için skorlama
+            const scoredStaff = availableStaff.map(staff => {
+              const stats = staffVehicleTypeStats[staff.employee_code];
+              let score = 0;
+              
+              // En az çalışan kişileri öncelikle seç
+              score += (10 - stats.workDays) * 100;
+              
+              // Araç tipi eşit dağıtımı için skor
+              if (currentVehicleType === 'Kamyon') {
+                score += (10 - stats.kamyon) * 50;
+              } else if (currentVehicleType === 'Kamyonet') {
+                score += (10 - stats.kamyonet) * 50;
+              } else if (currentVehicleType === 'Panelvan') {
+                score += (10 - stats.panelvan) * 50;
               }
               
-              return {
-                staff,
-                workDays,
-                isAvailable: true
-              };
-            });
-
-            // En az çalışan sevkiyat elemanlarını öncelikle seç
-            staffWithWorkload.sort((a, b) => a.workDays - b.workDays);
-            
-            // Araç tipi rotasyonu kontrolü
-            const availableStaff = staffWithWorkload.filter(({ staff, workDays }) => {
-              // Önceki gün hangi araç tipine atanmış kontrol et
+              // FARKLI EŞLEŞTİRME: Bu güne kadar az çalıştığı kişilerle eşleş
+              const alreadyAssignedStaff = Array.from(assignedDeliveryStaff);
+              let diversityScore = 0;
+              alreadyAssignedStaff.forEach(assignedCode => {
+                if (!stats.workedWith.has(assignedCode)) {
+                  diversityScore += 100; // Daha önce çalışmadığı kişiyle eşleş
+                } else {
+                  diversityScore -= 50; // Daha önce çalıştığı kişiyle eşleşme
+                }
+              });
+              score += diversityScore;
+              
+              // Önceki gün araç tipi rotasyonu kontrolü
               if (dayIndex > 0) {
                 const previousDay = weekDays[dayIndex - 1];
                 const previousDayPlan = weeklyPlan.gece[previousDay];
                 if (previousDayPlan) {
-                  // Önceki gün hangi araç tipine atanmış bul
                   let previousVehicleType = null;
                   Object.values(previousDayPlan.vehicles).forEach(prevAssignment => {
                     if (prevAssignment.deliveryStaff && prevAssignment.deliveryStaff.some(s => s.employee_code === staff.employee_code)) {
@@ -917,52 +983,62 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
                   });
                   
                   if (previousVehicleType) {
-                    const currentVehicleType = vehicle.type;
-                    
                     // Kamyon → Kamyon atanmasın (Kamyonet/Panelvan'a atanmalı)
                     if (previousVehicleType === 'Kamyon' && currentVehicleType === 'Kamyon') {
-                      return false;
+                      score -= 1000;
                     }
                     // Kamyonet → Kamyonet atanmasın (Kamyon'a atanmalı)
                     if (previousVehicleType === 'Kamyonet' && currentVehicleType === 'Kamyonet') {
-                      return false;
+                      score -= 1000;
                     }
                     // Panelvan → Panelvan atanmasın (Kamyon'a atanmalı)
                     if (previousVehicleType === 'Panelvan' && currentVehicleType === 'Panelvan') {
-                      return false;
+                      score -= 1000;
                     }
                     // Kamyonet → Panelvan atanmasın (Kamyon'a atanmalı)
                     if (previousVehicleType === 'Kamyonet' && currentVehicleType === 'Panelvan') {
-                      return false;
+                      score -= 1000;
                     }
                     // Panelvan → Kamyonet atanmasın (Kamyon'a atanmalı)
                     if (previousVehicleType === 'Panelvan' && currentVehicleType === 'Kamyonet') {
-                      return false;
+                      score -= 1000;
                     }
                   }
                 }
               }
               
-              return true;
-            }).map(({ staff }) => staff);
-
-            if (availableStaff.length > 0) {
-              // EŞİT DAĞITIM: En az çalışan sevkiyat elemanını seç
-              selectedStaff = availableStaff[0];
-              assignedDeliveryStaff.add(selectedStaff.employee_code);
-              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (EŞİT DAĞITIM - En az çalışan)`);
-            } else {
-              // Eğer eşit dağıtım yapılamıyorsa, en az çalışan sevkiyat elemanını seç
-              selectedStaff = staffWithWorkload[0].staff;
-              assignedDeliveryStaff.add(selectedStaff.employee_code);
-              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (SON ÇARE - En az çalışan)`);
-            }
-          } else if (availableGeceDeliveryStaff.length > 0) {
-            // Eğer tüm sevkiyat elemanları atandıysa, günlük rotasyon ile seç
-            const staffIndex = (dayIndex * geceVehicles.length + vehicleIndex * staffNeeded + i) % availableGeceDeliveryStaff.length;
-            selectedStaff = availableGeceDeliveryStaff[staffIndex];
+              // Aynı araç plakasına 2 gün üst üste atanma kontrolü
+              if (dayIndex >= 2) {
+                const lastTwoDays = [weekDays[dayIndex - 1], weekDays[dayIndex - 2]];
+                let consecutiveSameVehicle = false;
+                
+                lastTwoDays.forEach(checkDay => {
+                  const checkDayPlan = weeklyPlan.gece[checkDay];
+                  if (checkDayPlan) {
+                    Object.values(checkDayPlan.vehicles).forEach(prevAssignment => {
+                      if (prevAssignment.deliveryStaff && prevAssignment.deliveryStaff.some(s => s.employee_code === staff.employee_code)) {
+                        if (prevAssignment.vehiclePlate === vehicle.plate) {
+                          consecutiveSameVehicle = true;
+                        }
+                      }
+                    });
+                  }
+                });
+                
+                if (consecutiveSameVehicle) {
+                  score -= 2000;
+                }
+              }
+              
+              return { staff, score };
+            });
+            
+            // En yüksek skorlu sevkiyat elemanını seç
+            scoredStaff.sort((a, b) => b.score - a.score);
+            selectedStaff = scoredStaff[0].staff;
             assignedDeliveryStaff.add(selectedStaff.employee_code);
-            console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (tekrar)`);
+            
+            console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (SKOR: ${scoredStaff[0].score})`);
           }
           
           if (selectedStaff) {
@@ -1240,9 +1316,24 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
     const vehicles = getFixedVehicles();
     
+    // Her gün için farklı arka plan rengi
+    const dayColors = {
+      'Pazar': 'bg-blue-50',
+      'Pazartesi': 'bg-green-50', 
+      'Salı': 'bg-yellow-50',
+      'Çarşamba': 'bg-purple-50',
+      'Perşembe': 'bg-pink-50',
+      'Cuma': 'bg-indigo-50'
+    };
+    
     return weekDays.map(day => {
       const dayPlan = weeklyPlan.gece[day];
-      const row = { key: day, day: day };
+      const dayColor = dayColors[day];
+      const row = { 
+        key: day, 
+        day: day,
+        className: dayColor
+      };
       
       vehicles.forEach(vehicle => {
         const assignment = dayPlan?.vehicles[vehicle.id];
@@ -1444,6 +1535,7 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
               scroll={{ x: 1000 }}
               size="small"
               bordered
+              rowClassName={(record) => record.className || ''}
             />
             
             {/* Personel İstatistikleri - Şoför ve Sevkiyatçı Ayrı */}

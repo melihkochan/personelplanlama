@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Car, Truck, MapPin, Calendar, Filter, Search, RefreshCw, 
   Download, Eye, EyeOff, Sun, Moon, Clock, AlertCircle, CheckCircle,
-  BarChart3, Settings, RotateCcw, Save, FileText, UserCheck, Plus, Minus, Printer, ArrowLeft
+  BarChart3, Settings, RotateCcw, Save, FileText, UserCheck, Plus, Minus, Printer, ArrowLeft, Trash2, Edit
 } from 'lucide-react';
 import { 
   getAllPersonnel, 
@@ -68,11 +68,117 @@ const AkilliDagitim = ({ userRole, onDataUpdate, user }) => {
   
   // Özet bilgiler
   const [summary, setSummary] = useState(null);
+  
+  // Düzenlenebilir başlıklar
+  const [editableTitles, setEditableTitles] = useState({
+    mainTitle: 'Akıllı Personel Dağıtım Sistemi',
+    subtitle: 'Gece vardiyası personeli için optimize edilmiş haftalık dağıtım planı',
+    planTitle: 'Akıllı Personel Dağıtım Planı - Gece Vardiyası',
+    planSubtitle: '8 araç - Ekip Kuralı: 1 Şoför + 2 Sevkiyat Elemanı'
+  });
+  
+  // Düzenleme durumu
+  const [editingTitle, setEditingTitle] = useState(null);
 
   // İlk açılışta kaydedilen planları yükle
   useEffect(() => {
     loadSavedPlans();
   }, []);
+
+  // Başlık düzenleme fonksiyonları
+  const handleTitleEdit = (titleKey) => {
+    setEditingTitle(titleKey);
+  };
+
+  const handleTitleSave = (titleKey, newValue) => {
+    setEditableTitles(prev => ({
+      ...prev,
+      [titleKey]: newValue
+    }));
+    setEditingTitle(null);
+  };
+
+  const handleTitleCancel = () => {
+    setEditingTitle(null);
+  };
+
+  // Plan silme fonksiyonu
+  const handleDeletePlan = async (planId) => {
+    try {
+      const { error } = await supabase
+        .from('saved_plans')
+        .delete()
+        .eq('id', planId);
+      
+      if (error) throw error;
+      
+      message.success('Plan başarıyla silindi!');
+      loadSavedPlans(); // Listeyi yenile
+    } catch (error) {
+      console.error('Plan silme hatası:', error);
+      message.error('Plan silinirken hata oluştu!');
+    }
+  };
+
+  // Plan adı güncelleme fonksiyonu
+  const handleUpdatePlanName = async (planId, newName) => {
+    try {
+      const { error } = await supabase
+        .from('saved_plans')
+        .update({ plan_name: newName })
+        .eq('id', planId);
+      
+      if (error) throw error;
+      
+      message.success('Plan adı güncellendi!');
+      loadSavedPlans(); // Listeyi yenile
+    } catch (error) {
+      console.error('Plan adı güncelleme hatası:', error);
+      message.error('Plan adı güncellenirken hata oluştu!');
+    }
+  };
+
+  // Düzenlenebilir başlık bileşeni
+  const EditableTitle = ({ titleKey, title, className = "", placeholder = "" }) => {
+    const [tempValue, setTempValue] = useState(title);
+    
+    const handleKeyPress = (e) => {
+      if (e.key === 'Enter') {
+        handleTitleSave(titleKey, tempValue);
+      } else if (e.key === 'Escape') {
+        setTempValue(title);
+        handleTitleCancel();
+      }
+    };
+
+    if (editingTitle === titleKey) {
+      return (
+        <input
+          type="text"
+          value={tempValue}
+          onChange={(e) => setTempValue(e.target.value)}
+          onKeyDown={handleKeyPress}
+          onBlur={() => handleTitleSave(titleKey, tempValue)}
+          className={`bg-transparent border-b-2 border-blue-500 outline-none ${className}`}
+          placeholder={placeholder}
+          autoFocus
+        />
+      );
+    }
+
+    return (
+      <span 
+        className={`cursor-pointer hover:bg-gray-100 px-2 py-1 rounded ${className}`}
+        onClick={() => {
+          setTempValue(title);
+          handleTitleEdit(titleKey);
+        }}
+        title="Düzenlemek için tıklayın"
+      >
+        {title}
+      </span>
+    );
+  };
 
   // A3 yazdırma fonksiyonu
   const handlePrint = () => {
@@ -1634,19 +1740,23 @@ const AkilliDagitim = ({ userRole, onDataUpdate, user }) => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center">
               <Users className="w-6 h-6 mr-3 text-purple-600" />
-              Akıllı Personel Dağıtım Sistemi
+              <EditableTitle 
+                titleKey="mainTitle"
+                title={editableTitles.mainTitle}
+                className="text-2xl font-bold text-gray-900"
+                placeholder="Ana başlık"
+              />
             </h2>
             <p className="text-gray-600 mt-1">
-              Gece vardiyası personeli için optimize edilmiş haftalık dağıtım planı
+              <EditableTitle 
+                titleKey="subtitle"
+                title={editableTitles.subtitle}
+                className="text-gray-600"
+                placeholder="Alt başlık"
+              />
             </p>
           </div>
           <Space>
-            <Button 
-              icon={<Settings />} 
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              Ayarlar
-            </Button>
             {/* {weeklyPlan && (
               <Button 
                 type="primary" 
@@ -1696,66 +1806,100 @@ const AkilliDagitim = ({ userRole, onDataUpdate, user }) => {
           }
         >
           {savedPlans.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedPlans.map((plan) => (
-                <div 
-                  key={plan.id} 
-                  className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-300 transition-all duration-300 group"
+            <div className="space-y-3">
+              {savedPlans.map((plan, index) => (
+                <Card
+                  key={plan.id}
+                  className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500"
+                  style={{
+                    background: index % 2 === 0 ? '#fafafa' : '#ffffff',
+                    borderRadius: '12px'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center mb-2">
-                        <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                        <h4 className="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors">
+                        <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                        <h4 className="font-semibold text-gray-800 text-base group-hover:text-blue-600 transition-colors flex-1">
                           {plan.plan_name}
                         </h4>
+                        <div className="flex items-center space-x-1">
+                          <Button 
+                            type="text" 
+                            size="small"
+                            onClick={() => {
+                              const newName = prompt('Plan adını düzenleyin:', plan.plan_name);
+                              if (newName && newName.trim() !== '') {
+                                handleUpdatePlanName(plan.id, newName.trim());
+                              }
+                            }}
+                            className="text-gray-400 hover:text-blue-600 p-1"
+                            icon={<Edit className="w-4 h-4" />}
+                            title="Plan adını düzenle"
+                          />
+                          <Button 
+                            type="text" 
+                            size="small"
+                            onClick={() => {
+                              if (window.confirm('Bu planı silmek istediğinizden emin misiniz?')) {
+                                handleDeletePlan(plan.id);
+                              }
+                            }}
+                            className="text-gray-400 hover:text-red-600 p-1"
+                            icon={<Trash2 className="w-4 h-4" />}
+                            title="Planı sil"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-sm text-gray-600 flex items-center">
-                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1 text-gray-400" />
                           {new Date(plan.created_at).toLocaleDateString('tr-TR')}
-                        </p>
-                        <p className="text-sm text-gray-600 flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                        </span>
+                        <span className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1 text-gray-400" />
                           {new Date(plan.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                        <p className="text-xs text-gray-500 flex items-center">
-                          <Users className="w-4 h-4 mr-2 text-gray-400" />
+                        </span>
+                        <span className="flex items-center">
+                          <Users className="w-4 h-4 mr-1 text-gray-400" />
                           {plan.created_by || 'Sistem'}
-                        </p>
+                        </span>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex space-x-2 pt-4 border-t border-gray-100">
-                    <Button 
-                      type="primary" 
-                      size="small"
-                      onClick={() => loadSavedPlan(plan.id)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 border-0 rounded-lg font-medium"
-                      icon={<Eye className="w-4 h-4" />}
-                    >
-                      Aç
-                    </Button>
-                    <Button 
-                      type="default" 
-                      size="small"
-                      onClick={() => {
-                        setWeeklyPlan(plan.plan_data);
-                        setPersonnelStats(plan.personnel_stats || {});
-                        setCurrentView('detail');
-                        // Yazdırma işlemini biraz geciktir
-                        setTimeout(() => {
-                          handlePrint();
-                        }, 500);
-                      }}
-                      className="flex-1 border-gray-300 hover:border-blue-300 hover:text-blue-600 rounded-lg font-medium"
-                      icon={<Printer className="w-4 h-4" />}
-                    >
-                      Yazdır
-                    </Button>
+                  <div className="flex justify-end items-center pt-4 border-t border-gray-100">
+                    <div className="flex space-x-2">
+                      <Button 
+                        type="primary" 
+                        size="small"
+                        onClick={() => loadSavedPlan(plan.id)}
+                        className="bg-blue-600 hover:bg-blue-700 border-0 rounded-lg font-medium"
+                        icon={<Eye className="w-4 h-4" />}
+                      >
+                        Aç
+                      </Button>
+                      <Button 
+                        type="default" 
+                        size="small"
+                        onClick={() => {
+                          setWeeklyPlan(plan.plan_data);
+                          setPersonnelStats(plan.personnel_stats || {});
+                          setCurrentView('detail');
+                          // Yazdırma işlemini biraz geciktir
+                          setTimeout(() => {
+                            handlePrint();
+                          }, 500);
+                        }}
+                        className="border-gray-300 hover:border-blue-300 hover:text-blue-600 rounded-lg font-medium"
+                        icon={<Printer className="w-4 h-4" />}
+                      >
+                        Yazdır
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           ) : (
@@ -1800,49 +1944,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate, user }) => {
             </div>
           </Card>
 
-          {/* Ayarlar */}
-      {showSettings && (
-        <Card title="Dağıtım Ayarları">
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={settings.enableLeaveExclusion}
-                onChange={(e) => setSettings({...settings, enableLeaveExclusion: e.target.checked})}
-                className="mr-3"
-              />
-              <span className="text-gray-700">Raporlu ve yıllık izindeki personeli hariç tut</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={settings.enablePreviousDayConsideration}
-                onChange={(e) => setSettings({...settings, enablePreviousDayConsideration: e.target.checked})}
-                className="mr-3"
-              />
-              <span className="text-gray-700">Önceki gün atamalarını dikkate al</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={settings.allowEmptySpotsForSmallVehicles}
-                onChange={(e) => setSettings({...settings, allowEmptySpotsForSmallVehicles: e.target.checked})}
-                className="mr-3"
-              />
-              <span className="text-gray-700">Küçük araçlarda boş yer bırakılabilir</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={settings.enableBalikesirAvsa}
-                onChange={(e) => setSettings({...settings, enableBalikesirAvsa: e.target.checked})}
-                className="mr-3"
-              />
-              <span className="text-gray-700">Balıkesir-Avşa planla (sezonluk kapalı)</span>
-            </label>
-          </Space>
-        </Card>
-      )}
 
       {/* Akıllı Personel Dağıtım Planı */}
       {weeklyPlan && (
@@ -1852,12 +1953,22 @@ const AkilliDagitim = ({ userRole, onDataUpdate, user }) => {
             title={
               <div className="flex items-center">
                 <Moon className="w-5 h-5 text-purple-600 mr-2" />
-                Akıllı Personel Dağıtım Planı - Gece Vardiyası
+                <EditableTitle 
+                  titleKey="planTitle"
+                  title={editableTitles.planTitle}
+                  className="text-lg font-semibold"
+                  placeholder="Plan başlığı"
+                />
               </div>
             }
             extra={
               <div className="flex items-center space-x-3">
-              <span className="text-gray-600 text-sm">8 araç - Ekip Kuralı: 1 Şoför + 2 Sevkiyat Elemanı</span>
+              <EditableTitle 
+                titleKey="planSubtitle"
+                title={editableTitles.planSubtitle}
+                className="text-gray-600 text-sm"
+                placeholder="Plan alt başlığı"
+              />
                 <Button 
                   type="primary" 
                   icon={<Printer className="w-4 h-4" />}
@@ -1873,19 +1984,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate, user }) => {
                   className="border-green-500 text-green-600 hover:bg-green-50"
                 >
                   Planı Kaydet
-                </Button>
-                <Button 
-                  type="default" 
-                  icon={<FileText className="w-4 h-4" />}
-                  onClick={() => {
-                    setShowSavedPlans(!showSavedPlans);
-                    if (!showSavedPlans) {
-                      loadSavedPlans();
-                    }
-                  }}
-                  className="border-blue-500 text-blue-600 hover:bg-blue-50"
-                >
-                  Kaydedilen Planlar
                 </Button>
               </div>
             }

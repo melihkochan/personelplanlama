@@ -1261,8 +1261,7 @@ function MainApp() {
     { id: 'personnel', label: 'Personel Listesi', icon: Users },
     { id: 'vardiya-kontrol', label: 'Personel Kontrol', icon: Clock },
     { id: 'performance', label: 'Performans Analizi', icon: BarChart3 },
-    { id: 'planning', label: 'Akıllı Personel Dağıtım', icon: Calendar },
-    { id: 'akilli-dagitim', label: 'Akıllı Dağıtım', icon: Users },
+    { id: 'akilli-dagitim', label: 'Akıllı Personel Dağıtım', icon: Users },
     { id: 'statistics', label: 'İstatistikler', icon: BarChart3 }
   ];
 
@@ -1942,28 +1941,6 @@ function MainApp() {
                 </h3>
               </div>
 
-              <button
-                onClick={() => handleTabChange('planning')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'planning'
-                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'planning' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <Calendar className={`w-2 h-2 ${activeTab === 'planning' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Akıllı Personel Dağıtım</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">
-                  Geliştirme
-                </span>
-              </button>
 
 
 
@@ -2527,26 +2504,6 @@ function MainApp() {
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        handleTabChange('planning');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'planning'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <Calendar className="w-5 h-5 mr-3" />
-                      Akıllı Personel Dağıtım
-                      <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
-                        Geliştirme
-                      </span>
-                    </button>
 
 
                   </div>
@@ -3993,13 +3950,6 @@ function MainApp() {
 
 
 
-            {/* Akıllı Personel Dağıtım */}
-            {activeTab === 'planning' && (
-              <AkilliPersonelDagitim
-                userRole={userRole}
-                onDataUpdate={refreshData}
-              />
-            )}
 
 
 

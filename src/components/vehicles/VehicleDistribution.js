@@ -52,23 +52,23 @@ const VehicleDistribution = () => {
         } else if (item.date.includes('.')) {
           // DD.MM.YYYY formatını kontrol et
           const [day, month, year] = item.date.split('.');
-          console.log('Parsed (DD.MM.YYYY):', { day, month, year });
+          // console.log('Parsed (DD.MM.YYYY):', { day, month, year });
           if (month && year) {
             const monthKey = `${year}-${month.padStart(2, '0')}`;
             months.add(monthKey);
-            console.log('Ay eklendi:', monthKey);
+            // console.log('Ay eklendi:', monthKey);
           } else {
-            console.log('⚠️ Geçersiz tarih formatı:', item.date);
+            // console.log('⚠️ Geçersiz tarih formatı:', item.date);
           }
         } else {
-          console.log('⚠️ Bilinmeyen tarih formatı:', item.date);
+          // console.log('⚠️ Bilinmeyen tarih formatı:', item.date);
         }
       } else {
-        console.log('⚠️ Date property yok:', item);
+        // console.log('⚠️ Date property yok:', item);
       }
     });
     const result = Array.from(months).sort();
-    console.log('📅 Bulunan aylar:', result);
+    // console.log('📅 Bulunan aylar:', result);
     return result;
   };
 
@@ -477,10 +477,10 @@ const VehicleDistribution = () => {
           const availableDatesArray = [];
           const dateShiftMap = new Map();
           
-          console.log('🔍 Performance data yükleniyor:', data.length, 'kayıt');
+          // console.log('🔍 Performance data yükleniyor:', data.length, 'kayıt');
           
           data.forEach(record => {
-            console.log('📅 Record date:', record.date, 'shift:', record.shift);
+            // console.log('📅 Record date:', record.date, 'shift:', record.shift);
             const key = `${record.date}_${record.shift}`;
             if (!dateShiftMap.has(key)) {
               dateShiftMap.set(key, true);
@@ -492,7 +492,7 @@ const VehicleDistribution = () => {
             }
           });
           
-          console.log('📅 Available dates hazırlandı:', availableDatesArray.length, 'tarih');
+          // console.log('📅 Available dates hazırlandı:', availableDatesArray.length, 'tarih');
           
           // Available dates'i sırala
           availableDatesArray.sort((a, b) => {
@@ -529,7 +529,7 @@ const VehicleDistribution = () => {
           setVehicleData(vehicleResult.data || []);
         }
       } catch (error) {
-        console.error('❌ Veri yükleme hatası:', error);
+        // console.error('❌ Veri yükleme hatası:', error);
       } finally {
         setLoading(false);
       }
@@ -604,7 +604,7 @@ const VehicleDistribution = () => {
                 <select
                   value={selectedMonth || ''}
                   onChange={(e) => {
-                    console.log('🔍 Ay seçimi değişti:', e.target.value);
+                    // console.log('🔍 Ay seçimi değişti:', e.target.value);
                     setSelectedMonth(e.target.value || null);
                   }}
                   className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:border-gray-400 transition-colors appearance-none cursor-pointer"
@@ -619,9 +619,9 @@ const VehicleDistribution = () => {
                   <option value="">📅 Tüm Aylar</option>
                   {(() => {
                     const availableMonths = getAvailableMonths(availableDates);
-                    console.log('📅 Dropdown için aylar:', availableMonths);
+                    // console.log('📅 Dropdown için aylar:', availableMonths);
                     return availableMonths.map(monthKey => {
-                      console.log('📅 Ay seçeneği:', monthKey);
+                      // console.log('📅 Ay seçeneği:', monthKey);
                       return (
                         <option key={monthKey} value={monthKey}>
                           📆 {getMonthDisplayName(monthKey)}

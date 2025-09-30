@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Users, Upload, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, BarChart3, FileText, Plus, Save, Eye, X, User, Trash2, RefreshCw, Edit, Download, Info, Check, Car, Edit3, Moon, Sun, Plane, Shield, Heart } from 'lucide-react';
-import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, saveCurrentWeekExcelData, deletePeriodAndShifts, logAuditEvent, supabase } from '../../services/supabase';
+import { saveWeeklySchedules, saveWeeklyPeriods, saveDailyAttendance, getAllShiftStatistics, getDailyAttendance, getAllPersonnel, getAllUsers, getWeeklyPeriods, getPersonnelShiftDetails, getWeeklySchedules, getDailyNotes, clearAllShiftData, saveExcelData, saveCurrentWeekExcelData, deletePeriodAndShifts, logAuditEvent, supabase } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
 // Skeleton Loading Component
@@ -928,11 +928,14 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
     setLoading(true);
     try {
       
-      // 1. Önce personelleri çek
-      const personnelResult = await getAllPersonnel();
+      // 1. Önce personelleri çek - users tablosundan
+      const usersResult = await getAllUsers();
       
-      if (personnelResult.success) {
-        const filteredPersonnel = personnelResult.data;
+      if (usersResult.success) {
+        // Sadece personel rolündeki aktif kullanıcıları al
+        const filteredPersonnel = usersResult.data.filter(user => 
+          user.role === 'personel' && user.is_active === true
+        );
         
         // Personel listesini A-Z sırala
         const sortedPersonnel = filteredPersonnel.sort((a, b) => 
@@ -948,7 +951,9 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             
             for (const person of sortedPersonnel) {
               try {
-                const personResult = await getPersonnelShiftDetails(person.employee_code);
+                // employee_code yoksa id kullan
+                const employeeCode = person.employee_code || person.id || person.id;
+                const personResult = await getPersonnelShiftDetails(employeeCode);
                 
                 if (personResult.success) {
                   const personSchedules = personResult.data || [];
@@ -966,7 +971,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                 
                   
                   realTimeStats.push({
-                    employee_code: person.employee_code,
+                    employee_code: person.employee_code || person.id,
                     full_name: person.full_name,
                     position: person.position || 'Belirtilmemiş',
                     ...stats,
@@ -974,7 +979,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                   });
                 } else {
                   realTimeStats.push({
-                    employee_code: person.employee_code,
+                    employee_code: person.employee_code || person.id,
                     full_name: person.full_name,
                     position: person.position || 'Belirtilmemiş',
                     total_night_shifts: 0,
@@ -988,7 +993,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                 }
               } catch (error) {
                 realTimeStats.push({
-                  employee_code: person.employee_code,
+                  employee_code: person.employee_code || person.id,
                   full_name: person.full_name,
                   position: person.position || 'Belirtilmemiş',
                   total_night_shifts: 0,
@@ -1017,7 +1022,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
           } catch (scheduleError) {
             // Hata durumunda sadece personelleri göster
             const emptyStats = sortedPersonnel.map(person => ({
-              employee_code: person.employee_code,
+              employee_code: person.employee_code || person.id,
               full_name: person.full_name,
               position: person.position || 'Belirtilmemiş',
               total_night_shifts: 0,
@@ -2462,7 +2467,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
   const monthlyPersonnelData = useMemo(() => {
     return personnelList
       .map((person) => {
-        const personStats = getPersonnelMonthlyStats(person.employee_code);
+        const personStats = getPersonnelMonthlyStats(person.employee_code || person.id);
         
         if (selectedMonthlyMonth === 'all_months') {
           // Tümü seçeneği için toplam gün sayısını hesapla
@@ -2508,8 +2513,8 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
             bValue = b.totalDays;
             break;
           default:
-            aValue = a.person.employee_code;
-            bValue = b.person.employee_code;
+            aValue = a.person.employee_code || person.id;
+            bValue = b.person.employee_code || person.id;
         }
         
         if (monthlySortDirection === 'asc') {
@@ -3091,7 +3096,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                           
                           // Tüm personel için veri olan ayları kontrol et
                           personnelList.forEach(person => {
-                            const personStats = getPersonnelMonthlyStats(person.employee_code);
+                            const personStats = getPersonnelMonthlyStats(person.employee_code || person.id);
                             Object.keys(personStats).forEach(monthKey => {
                               const month = parseInt(monthKey);
                               if (personStats[month] > 0) {
@@ -3230,7 +3235,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                 
                                 // Tüm personel için veri olan ayları kontrol et
                                 personnelList.forEach(person => {
-                                  const personStats = getPersonnelMonthlyStats(person.employee_code);
+                                  const personStats = getPersonnelMonthlyStats(person.employee_code || person.id);
                                   Object.keys(personStats).forEach(monthKey => {
                                     const month = parseInt(monthKey);
                                     if (personStats[month] > 0) {
@@ -3318,7 +3323,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                               };
 
                               return (
-                                <tr key={person.employee_code} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200">
+                                <tr key={person.employee_code || person.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200">
                                   <td className="px-3 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
                                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-3">
@@ -3326,7 +3331,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                       </div>
                                       <div>
                                         <div className="text-sm font-semibold text-gray-900">{person.full_name}</div>
-                                        <div className="text-xs text-gray-500">{person.employee_code}</div>
+                                        <div className="text-xs text-gray-500">{person.employee_code || person.id}</div>
                                       </div>
                                     </div>
                                   </td>
@@ -3350,7 +3355,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                         
                                         // Tüm personel için veri olan ayları kontrol et
                                         personnelList.forEach(person => {
-                                          const personStats = getPersonnelMonthlyStats(person.employee_code);
+                                          const personStats = getPersonnelMonthlyStats(person.employee_code || person.id);
                                           Object.keys(personStats).forEach(monthKey => {
                                             const month = parseInt(monthKey);
                                             if (personStats[month] > 0) {
@@ -3367,7 +3372,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                         return sortedMonths.map(monthIndex => {
                                           const month = monthIndex + 1; // 0-based'den 1-based'e
                                           const days = personStats[month] || 0;
-                                          const tooltipData = getMonthlyDetailsTooltip(person.employee_code, month);
+                                          const tooltipData = getMonthlyDetailsTooltip(person.employee_code || person.id, month);
                                           
                                           return (
                                             <td key={monthIndex} className="px-1 py-4 whitespace-nowrap text-center relative group">
@@ -3433,7 +3438,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                     } else {
                                       const month = selectedMonthlyMonth + 1; // selectedMonthlyMonth 0-based, month 1-based
                                       const days = personStats[month] || 0;
-                                      const tooltipData = getMonthlyDetailsTooltip(person.employee_code, month);
+                                      const tooltipData = getMonthlyDetailsTooltip(person.employee_code || person.id, month);
                                       
                                       return (
                                         <td key={month} className="px-1 py-4 whitespace-nowrap text-center relative group">
@@ -3640,7 +3645,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                                          'bg-gray-600 hover:bg-gray-700';
                                       
                                       return (
-                                        <tr key={person.employee_code} className={`${rowColor} transition-colors duration-200`}>
+                                        <tr key={person.employee_code || person.id} className={`${rowColor} transition-colors duration-200`}>
                                           <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex items-center">
                                               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${
@@ -3648,7 +3653,7 @@ const PersonelVardiyaKontrol = ({ userRole, onDataUpdate, onCurrentShiftDataUpda
                                                 isSofor ? 'bg-green-600' :
                                                 'bg-gray-600'
                                               }`}>
-                                                {person.employee_code}
+                                                {person.employee_code || person.id}
                                               </div>
                                             </div>
                                           </td>

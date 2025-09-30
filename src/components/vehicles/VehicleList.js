@@ -16,22 +16,26 @@ const VehicleList = ({ vehicleData: propVehicleData, currentUser }) => {
   });
 
   useEffect(() => {
-    const loadVehicleData = async () => {
-      setLoading(true);
-      try {
-        const result = await getAllVehicles();
-        if (result.success) {
-          setVehicleData(result.data);
+    if (propVehicleData && propVehicleData.length > 0) {
+      setVehicleData(propVehicleData);
+    } else {
+      const loadVehicleData = async () => {
+        setLoading(true);
+        try {
+          const result = await getAllVehicles();
+          if (result.success) {
+            setVehicleData(result.data);
+          }
+        } catch (error) {
+          // Hata durumunda sessizce devam et
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        // Hata durumunda sessizce devam et
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    loadVehicleData();
-  }, [propVehicleData]);
+      loadVehicleData();
+    }
+  }, []); // Sadece component mount olduğunda çalışsın
 
   // Veri yenileme
   const refreshVehicleData = async () => {

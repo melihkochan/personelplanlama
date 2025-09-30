@@ -12,8 +12,8 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
   const [viewMode, setViewMode] = useState('table');
   
   // Debug: userRole'u console'a yazdır
-  console.log('🔍 PersonelList - userRole:', userRole);
-  console.log('🔍 PersonelList - currentUser:', currentUser);
+  // console.log('🔍 PersonelList - userRole:', userRole);
+  // console.log('🔍 PersonelList - currentUser:', currentUser);
   
   // Vardiya istatistikleri için state
   const [shiftStatistics, setShiftStatistics] = useState({});
@@ -667,7 +667,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
       await refreshData();
       alert('Personel başarıyla güncellendi!');
     } catch (error) {
-      console.error('❌ Personel güncelleme hatası:', error);
+      // console.error('❌ Personel güncelleme hatası:', error);
       alert('Personel güncellenirken hata oluştu: ' + error.message);
     } finally {
       setLoading(false);
@@ -698,7 +698,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         alert('Personel eklenirken hata oluştu: ' + result.error);
       }
     } catch (error) {
-      console.error('❌ Personel ekleme hatası:', error);
+      // console.error('❌ Personel ekleme hatası:', error);
       alert('Personel eklenirken hata oluştu!');
     } finally {
       setLoading(false);
@@ -725,7 +725,7 @@ const PersonelList = ({ personnelData: propPersonnelData, onPersonnelUpdate, use
         alert('Personel silinirken hata oluştu: ' + result.error);
       }
     } catch (error) {
-      console.error('❌ Personel silme hatası:', error);
+      // console.error('❌ Personel silme hatası:', error);
       alert('Personel silinirken hata oluştu!');
     } finally {
       setLoading(false);

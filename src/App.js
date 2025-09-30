@@ -13,7 +13,7 @@ import TransferPersonnelList from './components/transfer/TransferPersonnelList';
 import TransferPersonnelMagazaZorluk from './components/transfer/TransferPersonnelMagazaZorluk';
 import TransferDistributionAnalysis from './components/transfer/TransferDistributionAnalysis';
 import TransferVehicleList from './components/transfer/TransferVehicleList';
-import VardiyaPlanlama from './components/timesheet/VardiyaPlanlama';
+import AkilliPersonelDagitim from './components/timesheet/AkilliPersonelDagitim';
 import AkilliDagitim from './components/timesheet/AkilliDagitim';
 import PerformanceAnalysis from './components/personnel/PerformanceAnalysis';
 import PersonelVardiyaKontrol from './components/personnel/PersonelVardiyaKontrol';
@@ -790,7 +790,7 @@ function MainApp() {
     }
   }, [isAuthenticated, user]);
 
-  // Periyodik olarak tüm verileri yenile (her 5 dakikada bir)
+  // Periyodik olarak tüm verileri yenile (her 15 dakikada bir)
   useEffect(() => {
     if (isAuthenticated && user) {
       const interval = setInterval(async () => {
@@ -800,22 +800,27 @@ function MainApp() {
         } catch (error) {
           console.error('❌ Periyodik veri yenileme hatası:', error);
         }
-      }, 300000); // 5 dakika
+      }, 900000); // 15 dakika
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
 
-  // Sayfa görünürlük kontrolü - kullanıcı sekmeye geri döndüğünde veri yenile
+  // Sayfa görünürlük kontrolü - kullanıcı sekmeye geri döndüğünde sadece kritik verileri yenile
   useEffect(() => {
+    let lastRefreshTime = 0;
+    const MIN_REFRESH_INTERVAL = 300000; // 5 dakika minimum interval
+    
     const handleVisibilityChange = async () => {
       if (!document.hidden && isAuthenticated && user) {
-        // Kullanıcı sekmeye geri döndü, verileri yenile
-        try {
-          await loadData();
-          await loadDailyNotes();
-          await loadCurrentShiftData();
-        } catch (error) {
-          console.error('❌ Sayfa görünürlük veri yenileme hatası:', error);
+        const now = Date.now();
+        if (now - lastRefreshTime > MIN_REFRESH_INTERVAL) {
+          // Kullanıcı sekmeye geri döndü, sadece güncel vardiya verilerini yenile
+          try {
+            await loadCurrentShiftData();
+            lastRefreshTime = now;
+          } catch (error) {
+            console.error('❌ Sayfa görünürlük veri yenileme hatası:', error);
+          }
         }
       }
     };
@@ -1256,7 +1261,7 @@ function MainApp() {
     { id: 'personnel', label: 'Personel Listesi', icon: Users },
     { id: 'vardiya-kontrol', label: 'Personel Kontrol', icon: Clock },
     { id: 'performance', label: 'Performans Analizi', icon: BarChart3 },
-    { id: 'planning', label: 'Vardiya Planlama', icon: Calendar },
+    { id: 'planning', label: 'Akıllı Personel Dağıtım', icon: Calendar },
     { id: 'akilli-dagitim', label: 'Akıllı Dağıtım', icon: Users },
     { id: 'statistics', label: 'İstatistikler', icon: BarChart3 }
   ];
@@ -1927,13 +1932,13 @@ function MainApp() {
 
             </div>
 
-            {/* Vardiya Planlama Grubu */}
+            {/* Akıllı Personel Dağıtım Grubu */}
             <div className="space-y-2 mt-6">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
                 <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                   <div className="w-1 h-3 bg-gradient-to-b from-pink-500 to-rose-600 rounded-full"></div>
-                  <span className="border-b-2 border-pink-500">Vardiya Planlama</span>
+                  <span className="border-b-2 border-pink-500">Akıllı Personel Dağıtım</span>
                 </h3>
               </div>
 
@@ -1954,7 +1959,7 @@ function MainApp() {
                 }`}>
                   <Calendar className={`w-2 h-2 ${activeTab === 'planning' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
-                <span className="flex-1 text-left whitespace-nowrap">Vardiya Planlama</span>
+                <span className="flex-1 text-left whitespace-nowrap">Akıllı Personel Dağıtım</span>
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">
                   Geliştirme
                 </span>
@@ -2518,7 +2523,7 @@ function MainApp() {
                   <div className="space-y-2">
                     <div className="flex items-center px-4 py-2">
                       <div className="flex-1 h-px bg-gray-300"></div>
-                      <span className="px-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Vardiya Planlama</span>
+                      <span className="px-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Akıllı Personel Dağıtım</span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
 
@@ -2536,7 +2541,7 @@ function MainApp() {
                       `}
                     >
                       <Calendar className="w-5 h-5 mr-3" />
-                      Vardiya Planlama
+                      Akıllı Personel Dağıtım
                       <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                         <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
                         Geliştirme
@@ -3988,9 +3993,9 @@ function MainApp() {
 
 
 
-            {/* Vardiya Planlama */}
+            {/* Akıllı Personel Dağıtım */}
             {activeTab === 'planning' && (
-              <VardiyaPlanlama
+              <AkilliPersonelDagitim
                 userRole={userRole}
                 onDataUpdate={refreshData}
               />

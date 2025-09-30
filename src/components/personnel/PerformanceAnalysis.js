@@ -116,7 +116,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       
       setAllPerformanceDates(sortedDates);
     } catch (error) {
-      console.error('❌ Performans tarihleri yükleme hatası:', error);
+      // console.error('❌ Performans tarihleri yükleme hatası:', error);
       alert(`❌ Performans tarihleri yüklenemedi: ${error.message}`);
     } finally {
       setDateEditLoading(false);
@@ -243,7 +243,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       }, 200);
       
     } catch (error) {
-      console.error('❌ Performans tarihi silme hatası:', error);
+      // console.error('❌ Performans tarihi silme hatası:', error);
       alert(`❌ Tarih silinirken hata oluştu: ${error.message}`);
     } finally {
       setDateEditLoading(false);
@@ -269,7 +269,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     
     // Personnel database kontrolünü geçici olarak kaldır
     // if (!personnelDatabase.length) {
-    //   console.log('⚠️ Personnel database henüz yüklenmemiş, veri yükleme bekleniyor...');
+    //   // console.log('⚠️ Personnel database henüz yüklenmemiş, veri yükleme bekleniyor...');
     //   return;
     // }
 
@@ -336,7 +336,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           // Performance record işleniyor
           
           if (!employee_name) {
-            console.warn(`⚠️ employee_name boş, kayıt atlanıyor`);
+            // console.warn(`⚠️ employee_name boş, kayıt atlanıyor`);
             return;
           }
           
@@ -398,7 +398,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           // Personnel database'den position'a bak
           const person = personnelDatabase.find(p => p.full_name === employee_name);
           if (!person) {
-            console.warn(`⚠️ Personnel database'de bulunamadı: ${employee_name}`);
+            // console.warn(`⚠️ Personnel database'de bulunamadı: ${employee_name}`);
             return;
           }
           
@@ -716,7 +716,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         try {
           localStorage.setItem('performanceSummary', JSON.stringify(performanceSummary));
         } catch (error) {
-          console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
+          // console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
         }
         
         
@@ -732,7 +732,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         }, 500);
       }
       } catch (error) {
-      console.error('❌ Performans verileri yükleme hatası:', error);
+      // console.error('❌ Performans verileri yükleme hatası:', error);
       // Hata durumunda da loading'i bitir
       setTimeout(() => {
         setInitialDataLoading(false);
@@ -760,10 +760,10 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
           });
           // Personnel shift ve position analizi
         } else {
-          console.error('Personnel verileri yüklenemedi:', result.error);
+          // console.error('Personnel verileri yüklenemedi:', result.error);
         }
       } catch (error) {
-        console.error('Personnel verileri yüklenirken hata:', error);
+        // console.error('Personnel verileri yüklenirken hata:', error);
       }
     };
     
@@ -841,7 +841,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         // Personel bilgilerini veritabanından bul
         const personnelInfo = personnelDatabase.find(p => p.full_name === driverName);
         if (!personnelInfo) {
-          console.warn(`⚠️ Şoför bulunamadı: ${driverName}`);
+          // console.warn(`⚠️ Şoför bulunamadı: ${driverName}`);
           return;
         }
         
@@ -888,7 +888,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         // Personel bilgilerini veritabanından bul
         const personnelInfo = personnelDatabase.find(p => p.full_name === personName);
         if (!personnelInfo) {
-          console.warn(`⚠️ Personel bulunamadı: ${personName}`);
+          // console.warn(`⚠️ Personel bulunamadı: ${personName}`);
           return;
         }
         
@@ -989,7 +989,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       }
       return [];
     } catch (error) {
-      console.error('❌ Mevcut veriler kontrol edilirken hata:', error);
+      // console.error('❌ Mevcut veriler kontrol edilirken hata:', error);
       return [];
     }
   };
@@ -1090,7 +1090,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         }, 3000);
         
       } catch (error) {
-        console.error('❌ Excel okuma hatası:', error);
+        // console.error('❌ Excel okuma hatası:', error);
         setUploadError('Excel dosyası okuma hatası: ' + error.message);
         
         // Hata durumunda da input'u temizle
@@ -1569,7 +1569,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     // Personnel shift araniyor
     
     if (!personnelDatabase || personnelDatabase.length === 0) {
-      console.warn('Personnel veritabanı boş');
+      // console.warn('Personnel veritabanı boş');
       return 'GÜNDÜZ';
     }
 
@@ -1607,7 +1607,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
         return 'GÜNDÜZ';
       }
     } else {
-      console.warn('❌ Personnel bulunamadı:', personnelName);
+      // console.warn('❌ Personnel bulunamadı:', personnelName);
       return 'GÜNDÜZ';
     }
   };
@@ -1945,7 +1945,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
     try {
       localStorage.setItem('performanceSummary', JSON.stringify(performanceSummary));
     } catch (error) {
-      console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
+      // console.warn('⚠️ localStorage\'a kaydetme hatası:', error);
     }
     
     
@@ -2181,7 +2181,7 @@ const PerformanceAnalysis = ({ personnelData: propPersonnelData, storeData: prop
       XLSX.writeFile(wb, fileName);
       
     } catch (error) {
-      console.error('❌ Excel export hatası:', error);
+      // console.error('❌ Excel export hatası:', error);
       alert('Excel dosyası oluşturulurken bir hata oluştu!');
     } finally {
       setLoadingPlans(false);

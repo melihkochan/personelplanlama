@@ -761,8 +761,34 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           });
 
           if (nonFixedDrivers.length > 0) {
-            // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
-            const availableDrivers = nonFixedDrivers.filter(driver => {
+            // EŞİT DAĞITIM: En az çalışan şoförleri öncelikle seç
+            const driversWithWorkload = nonFixedDrivers.map(driver => {
+              // Bu hafta kaç gün çalıştığını hesapla
+              let workDays = 0;
+              for (let i = 0; i < dayIndex; i++) {
+                const checkDay = weekDays[i];
+                const checkDayPlan = weeklyPlan.gece[checkDay];
+                if (checkDayPlan) {
+                  Object.values(checkDayPlan.vehicles).forEach(prevAssignment => {
+                    if (prevAssignment.driver && prevAssignment.driver.employee_code === driver.employee_code) {
+                      workDays++;
+                    }
+                  });
+                }
+              }
+              
+              return {
+                driver,
+                workDays,
+                isAvailable: true
+              };
+            });
+
+            // En az çalışan şoförleri öncelikle seç
+            driversWithWorkload.sort((a, b) => a.workDays - b.workDays);
+            
+            // Araç tipi rotasyonu kontrolü
+            const availableDrivers = driversWithWorkload.filter(({ driver, workDays }) => {
               // Önceki gün hangi araç tipine atanmış kontrol et
               if (dayIndex > 0) {
                 const previousDay = weekDays[dayIndex - 1];
@@ -804,25 +830,20 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
               }
               
               return true;
-            });
+            }).map(({ driver }) => driver);
 
             if (availableDrivers.length > 0) {
-              // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
-              // Daha iyi rotasyon için günlük karma yap
-              const shuffledDrivers = [...availableDrivers].sort(() => Math.random() - 0.5);
-              const driverIndex = (dayIndex * geceVehicles.length + vehicleIndex) % shuffledDrivers.length;
-              const selectedDriver = shuffledDrivers[driverIndex];
-            vehicleAssignment.driver = selectedDriver;
-            assignedDrivers.add(selectedDriver.employee_code);
-              console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı (EŞİT DAĞITIM)`);
-          } else {
-              // Eğer eşit dağıtım yapılamıyorsa, tüm şoförlerden seç
-              const shuffledDrivers = [...nonFixedDrivers].sort(() => Math.random() - 0.5);
-              const driverIndex = (dayIndex * geceVehicles.length + vehicleIndex) % shuffledDrivers.length;
-              const selectedDriver = shuffledDrivers[driverIndex];
+              // EŞİT DAĞITIM: En az çalışan şoförü seç
+              const selectedDriver = availableDrivers[0];
               vehicleAssignment.driver = selectedDriver;
               assignedDrivers.add(selectedDriver.employee_code);
-              console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı (SON ÇARE)`);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı (EŞİT DAĞITIM - En az çalışan)`);
+            } else {
+              // Eğer eşit dağıtım yapılamıyorsa, en az çalışan şoförü seç
+              const selectedDriver = driversWithWorkload[0].driver;
+              vehicleAssignment.driver = selectedDriver;
+              assignedDrivers.add(selectedDriver.employee_code);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı (SON ÇARE - En az çalışan)`);
             }
           } else {
             // Eğer sabit olmayan şoför yoksa, tüm şoförlerden seç (ama aynı gün 2 kez yazma)
@@ -854,8 +875,34 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           );
           
           if (unassignedDeliveryStaff.length > 0) {
-            // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
-            const availableStaff = unassignedDeliveryStaff.filter(staff => {
+            // EŞİT DAĞITIM: En az çalışan sevkiyat elemanlarını öncelikle seç
+            const staffWithWorkload = unassignedDeliveryStaff.map(staff => {
+              // Bu hafta kaç gün çalıştığını hesapla
+              let workDays = 0;
+              for (let j = 0; j < dayIndex; j++) {
+                const checkDay = weekDays[j];
+                const checkDayPlan = weeklyPlan.gece[checkDay];
+                if (checkDayPlan) {
+                  Object.values(checkDayPlan.vehicles).forEach(prevAssignment => {
+                    if (prevAssignment.deliveryStaff && prevAssignment.deliveryStaff.some(s => s.employee_code === staff.employee_code)) {
+                      workDays++;
+                    }
+                  });
+                }
+              }
+              
+              return {
+                staff,
+                workDays,
+                isAvailable: true
+              };
+            });
+
+            // En az çalışan sevkiyat elemanlarını öncelikle seç
+            staffWithWorkload.sort((a, b) => a.workDays - b.workDays);
+            
+            // Araç tipi rotasyonu kontrolü
+            const availableStaff = staffWithWorkload.filter(({ staff, workDays }) => {
               // Önceki gün hangi araç tipine atanmış kontrol et
               if (dayIndex > 0) {
                 const previousDay = weekDays[dayIndex - 1];
@@ -897,23 +944,18 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
               }
               
               return true;
-            });
+            }).map(({ staff }) => staff);
 
             if (availableStaff.length > 0) {
-              // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
-              // Daha iyi rotasyon için günlük karma yap
-              const shuffledStaff = [...availableStaff].sort(() => Math.random() - 0.5);
-              const staffIndex = (dayIndex * geceVehicles.length + vehicleIndex * staffNeeded + i) % shuffledStaff.length;
-              selectedStaff = shuffledStaff[staffIndex];
+              // EŞİT DAĞITIM: En az çalışan sevkiyat elemanını seç
+              selectedStaff = availableStaff[0];
               assignedDeliveryStaff.add(selectedStaff.employee_code);
-              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (EŞİT DAĞITIM)`);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (EŞİT DAĞITIM - En az çalışan)`);
             } else {
-              // Eğer eşit dağıtım yapılamıyorsa, tüm sevkiyat elemanlarından seç
-              const shuffledStaff = [...unassignedDeliveryStaff].sort(() => Math.random() - 0.5);
-              const staffIndex = (dayIndex * geceVehicles.length + vehicleIndex * staffNeeded + i) % shuffledStaff.length;
-              selectedStaff = shuffledStaff[staffIndex];
+              // Eğer eşit dağıtım yapılamıyorsa, en az çalışan sevkiyat elemanını seç
+              selectedStaff = staffWithWorkload[0].staff;
               assignedDeliveryStaff.add(selectedStaff.employee_code);
-              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (SON ÇARE)`);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (SON ÇARE - En az çalışan)`);
             }
           } else if (availableGeceDeliveryStaff.length > 0) {
             // Eğer tüm sevkiyat elemanları atandıysa, günlük rotasyon ile seç

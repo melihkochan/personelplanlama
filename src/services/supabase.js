@@ -4225,13 +4225,20 @@ export const cleanDuplicateProfiles = async () => {
 // Online durumu fonksiyonları
 export const updateUserOnlineStatus = async (userId, isOnline) => {
   try {
+    const updateData = {
+      is_online: isOnline,
+      last_seen: new Date().toISOString()
+    };
+
+    // Eğer offline yapılıyorsa session_start'ı null yap
+    if (!isOnline) {
+      updateData.session_start = null;
+    }
+
     // Önce normal client ile dene
     const { data, error } = await supabase
       .from('users')
-      .update({ 
-        is_online: isOnline,
-        last_seen: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', userId)
       .select();
 
@@ -4239,10 +4246,7 @@ export const updateUserOnlineStatus = async (userId, isOnline) => {
       // RLS hatası varsa admin client ile dene
       const { data: adminData, error: adminError } = await supabaseAdmin
         .from('users')
-        .update({ 
-          is_online: isOnline,
-          last_seen: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', userId)
         .select();
 

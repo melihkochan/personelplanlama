@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake, Wind } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake, Wind, Wifi } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
@@ -1321,12 +1321,10 @@ function MainApp() {
                   className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-300 relative"
                   title="Çevrimiçi Kullanıcılar"
                 >
-                  <UserCheck className="w-4 h-4 text-green-500" />
-                  {onlineUsers.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
-                      {onlineUsers.length}
-                    </span>
-                  )}
+                  <Wifi className="w-4 h-4 text-green-500" />
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                    {onlineUsers.length}
+                  </span>
                 </button>
               </div>
             </div>
@@ -2123,12 +2121,10 @@ function MainApp() {
                   className="p-2 rounded-xl hover:bg-gray-100 transition-colors relative"
                   title="Çevrimiçi Kullanıcılar"
                 >
-                  <UserCheck className="w-5 h-5 text-green-600" />
-                  {onlineUsers.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {onlineUsers.length}
-                    </span>
-                  )}
+                  <Wifi className="w-5 h-5 text-green-600" />
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {onlineUsers.length}
+                  </span>
                 </button>
                 <button
                   onClick={() => setShowNotificationPanel(true)}
@@ -4173,7 +4169,7 @@ function MainApp() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <UserCheck className="w-6 h-6 text-green-600" />
+                <Wifi className="w-6 h-6 text-green-600" />
                 <h2 className="text-xl font-bold text-gray-900">Çevrimiçi Kullanıcılar</h2>
                 {onlineUsers.length > 0 && (
                   <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded-full">
@@ -4196,7 +4192,7 @@ function MainApp() {
                 </div>
               ) : onlineUsers.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
-                  <UserCheck className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <Wifi className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <p className="text-lg font-medium">Şu anda çevrimiçi kullanıcı yok</p>
                   <p className="text-sm mt-2">Diğer kullanıcılar giriş yaptığında burada görünecek</p>
                 </div>

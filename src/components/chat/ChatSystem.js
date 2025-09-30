@@ -67,9 +67,10 @@ const ChatSystem = ({ currentUser }) => {
         },
         (payload) => {
           // Online status değişikliklerini dinle
-          if (payload.new.is_online !== payload.old.is_online || 
-              payload.new.last_seen !== payload.old.last_seen) {
-            console.log('🔄 Online status değişti, sohbetler yenileniyor...');
+          const isOnlineChanged = payload.new.is_online !== payload.old.is_online;
+          const isLastSeenChanged = payload.new.last_seen !== payload.old.last_seen;
+          
+          if (isOnlineChanged || isLastSeenChanged) {
             // Sadece conversations state'ini güncelle, tüm verileri yeniden yükleme
             setConversations(prevConversations => {
               return prevConversations.map(conv => {

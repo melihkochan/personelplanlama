@@ -38,8 +38,10 @@ const ChatSidebar = ({
         },
         (payload) => {
           // Online status değişikliklerini dinle
-          if (payload.new.is_online !== payload.old.is_online || 
-              payload.new.last_seen !== payload.old.last_seen) {
+          const isOnlineChanged = payload.new.is_online !== payload.old.is_online;
+          const isLastSeenChanged = payload.new.last_seen !== payload.old.last_seen;
+          
+          if (isOnlineChanged || isLastSeenChanged) {
             // Sadece allUsers state'ini güncelle
             setAllUsers(prevUsers => {
               return prevUsers.map(user => {

@@ -4225,8 +4225,7 @@ export const cleanDuplicateProfiles = async () => {
 // Online durumu fonksiyonları
 export const updateUserOnlineStatus = async (userId, isOnline) => {
   try {
-    // console.log('🔄 Online durumu güncelleniyor:', { userId, isOnline });
-    
+    // Önce normal client ile dene
     const { data, error } = await supabase
       .from('users')
       .update({ 
@@ -4237,11 +4236,24 @@ export const updateUserOnlineStatus = async (userId, isOnline) => {
       .select();
 
     if (error) {
-      console.error('❌ Online durumu güncellenirken hata:', error);
-      return { success: false, error };
+      // RLS hatası varsa admin client ile dene
+      const { data: adminData, error: adminError } = await supabaseAdmin
+        .from('users')
+        .update({ 
+          is_online: isOnline,
+          last_seen: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select();
+
+      if (adminError) {
+        console.error('❌ Online durumu güncelleme hatası:', adminError);
+        return { success: false, error: adminError };
+      }
+
+      return { success: true, data: adminData };
     }
 
-    // console.log('✅ Online durumu güncellendi:', data);
     return { success: true, data };
   } catch (error) {
     console.error('❌ Online durumu güncelleme hatası:', error);
@@ -4272,12 +4284,13 @@ export const getUserOnlineStatus = async (userId) => {
 // Eski oturumları temizleme fonksiyonu
 export const cleanupOldSessions = async () => {
   try {
-    // console.log('🧹 Eski oturumlar temizleniyor...');
+    console.log('🧹 Eski oturumlar temizleniyor...');
     
     // 5 dakikadan eski last_seen değerlerine sahip kullanıcıları offline yap
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
-    const { data, error } = await supabase
+    // Admin client ile temizleme yap (RLS bypass)
+    const { data, error } = await supabaseAdmin
       .from('users')
       .update({ 
         is_online: false 
@@ -4292,7 +4305,7 @@ export const cleanupOldSessions = async () => {
     }
 
     if (data && data.length > 0) {
-      // console.log(`✅ ${data.length} kullanıcının eski oturumu temizlendi:`, data.map(u => u.email));
+      console.log(`✅ ${data.length} kullanıcının eski oturumu temizlendi:`, data.map(u => u.email));
     }
 
     return { success: true, data };

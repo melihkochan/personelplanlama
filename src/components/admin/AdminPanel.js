@@ -147,9 +147,12 @@ const AdminPanel = ({ userRole, currentUser }) => {
         },
         (payload) => {
           // Sadece online status değişikliklerini dinle ve modal açık değilse
-          if ((payload.new.is_online !== payload.old.is_online || 
-              payload.new.last_seen !== payload.old.last_seen) &&
-              !anyAvatarModalOpen) {
+          // Ayrıca gerçekten değişiklik olup olmadığını kontrol et
+          const isOnlineChanged = payload.new.is_online !== payload.old.is_online;
+          const isLastSeenChanged = payload.new.last_seen !== payload.old.last_seen;
+          
+          // Sadece gerçek değişiklik varsa ve modal açık değilse güncelle
+          if ((isOnlineChanged || isLastSeenChanged) && !anyAvatarModalOpen) {
             // Tüm listeyi yenilemek yerine sadece değişen kullanıcıyı güncelle
             setUsers(prevUsers => 
               prevUsers.map(user => 

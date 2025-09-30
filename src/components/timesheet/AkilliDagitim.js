@@ -45,6 +45,14 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
   
   // Haftalık bölge dağıtım takibi
   const [weeklyRegionDistribution, setWeeklyRegionDistribution] = useState({});
+  
+  // Personel istatistikleri takibi
+  const [personnelStats, setPersonnelStats] = useState({});
+  
+  // Personel atama geçmişi (peş peşe aynı plakaya atanmasın)
+  const [personnelAssignmentHistory, setPersonnelAssignmentHistory] = useState({});
+  
+    // Haftalık bölge hedefleri kaldırıldı - Sadece personel dağılımına odaklanıyoruz
 
   // Sabit araç plakaları (8 araç) - Veritabanından alınan doğru plakalar
   const fixedVehiclePlates = [
@@ -158,20 +166,7 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     'Balıkesir-Avşa': { level: 0, weight: 0, type: 'kapali', weeklyTarget: 0 } // Kapalı
   };
 
-  // Bölge renk haritası - StoreDistribution.js'den al
-  const regionColors = {
-    'Ataşehir/Ümraniye/Üsküdar': 'bg-blue-100 text-blue-800 border-blue-300',
-    'Balıkesir-Avşa': 'bg-green-100 text-green-800 border-green-300',
-    'Beykoz/Ç.köy/S.tepe/S.beyliği': 'bg-purple-100 text-purple-800 border-purple-300',
-    'Gebze': 'bg-orange-100 text-orange-800 border-orange-300',
-    'Kadıköy': 'bg-red-100 text-red-800 border-red-300',
-    'Kocaeli': 'bg-indigo-100 text-indigo-800 border-indigo-300',
-    'M.tepe/Kartal/Pendik': 'bg-pink-100 text-pink-800 border-pink-300',
-    'Sakarya': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    'Şile': 'bg-teal-100 text-teal-800 border-teal-300',
-    'Karşı': 'bg-red-100 text-red-800 border-red-300',
-    'Anadolu': 'bg-blue-100 text-blue-800 border-blue-300'
-  };
+  // Bölge renk haritası kaldırıldı
 
   useEffect(() => {
     loadData();
@@ -467,7 +462,7 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     });
 
     // Haftalık planı analiz et
-    const weekDays = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
     
     weekDays.forEach((day, dayIndex) => {
       const dayPlan = weeklyPlan.gece[day];
@@ -524,8 +519,98 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     return workload;
   };
 
+    // Personel istatistiklerini hesapla
+  const calculatePersonnelStats = (weeklyPlan) => {
+    const stats = {};
+    console.log('🔍 DEBUG - calculatePersonnelStats başladı, weeklyPlan:', weeklyPlan);
+    
+    if (!weeklyPlan || !weeklyPlan.gece) {
+      console.log('🔍 DEBUG - weeklyPlan veya gece verisi yok');
+      return {};
+    }
+    
+    Object.values(weeklyPlan.gece).forEach(dayPlan => {
+      console.log('🔍 DEBUG - dayPlan:', dayPlan);
+      if (!dayPlan || !dayPlan.vehicles) return;
+      
+      Object.values(dayPlan.vehicles).forEach(vehicleAssignment => {
+        console.log('🔍 DEBUG - vehicleAssignment:', vehicleAssignment);
+        // Araç tipini vehicleAssignment'dan al
+        const vehicleType = vehicleAssignment.vehicleType || vehicleAssignment.type || 'Bilinmiyor';
+        console.log('🔍 DEBUG - vehicleType:', vehicleType);
+        
+        // Araç tipini normalize et (büyük/küçük harf uyumluluğu için)
+        let normalizedType = vehicleType.toLowerCase();
+        if (normalizedType === 'kamyon') {
+          normalizedType = 'kamyon';
+        } else if (normalizedType === 'kamyonet') {
+          normalizedType = 'kamyonet';
+        } else if (normalizedType === 'panelvan') {
+          normalizedType = 'panelvan';
+        }
+        
+        // Şoför istatistikleri
+        if (vehicleAssignment.driver) {
+          const driverCode = vehicleAssignment.driver.employee_code;
+          if (!stats[driverCode]) {
+            stats[driverCode] = {
+              name: vehicleAssignment.driver.full_name,
+              position: vehicleAssignment.driver.position || 'ŞOFÖR',
+              kamyon: 0,
+              kamyonet: 0,
+              panelvan: 0,
+              total: 0
+            };
+          }
+          
+          // Araç tipine göre sayacı artır
+          if (normalizedType === 'kamyon') {
+            stats[driverCode].kamyon++;
+          } else if (normalizedType === 'kamyonet') {
+            stats[driverCode].kamyonet++;
+          } else if (normalizedType === 'panelvan') {
+            stats[driverCode].panelvan++;
+          }
+          stats[driverCode].total++;
+        }
+        
+        // Sevkiyat elemanı istatistikleri
+        if (vehicleAssignment.deliveryStaff && Array.isArray(vehicleAssignment.deliveryStaff)) {
+          vehicleAssignment.deliveryStaff.forEach(staff => {
+            const staffCode = staff.employee_code;
+            if (!stats[staffCode]) {
+              stats[staffCode] = {
+                name: staff.full_name,
+                position: staff.position || 'SEVKİYAT ELEMANI',
+                kamyon: 0,
+                kamyonet: 0,
+                panelvan: 0,
+                total: 0
+              };
+            }
+            
+            // Araç tipine göre sayacı artır
+            if (normalizedType === 'kamyon') {
+              stats[staffCode].kamyon++;
+            } else if (normalizedType === 'kamyonet') {
+              stats[staffCode].kamyonet++;
+            } else if (normalizedType === 'panelvan') {
+              stats[staffCode].panelvan++;
+            }
+            stats[staffCode].total++;
+          });
+        }
+      });
+    });
+    
+    console.log('🔍 DEBUG - calculatePersonnelStats sonucu:', stats);
+    return stats;
+  };
+
     // Akıllı Personel Dağıtım Sistemi - Ana Plan Oluşturma
   const generateWeeklyPlan = () => {
+    // Haftalık bölge hedefleri kaldırıldı - Sadece personel dağılımına odaklanıyoruz
+
     const { 
       geceSoforler, 
       geceSevkiyatElemanlari 
@@ -587,7 +672,7 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     console.log('✅ Bulunan araçlar:', fixedVehicles.map(v => `${v.plate} (${v.type}) - Sabit Şoför1: ${v.driver1 || 'Yok'} - Sabit Şoför2: ${v.driver2 || 'Yok'}`));
 
     // Haftalık plan oluştur - Sadece gece vardiyası
-    const weekDays = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
     const weeklyPlan = {
       gece: {}
     };
@@ -613,57 +698,128 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
         const vehicleAssignment = {
           plate: vehicle.plate,
           type: vehicle.type,
+          vehicleType: vehicle.type, // Araç tipini ekle
           driver: null,
           deliveryStaff: [],
           region: ''
         };
 
-        // 1. SABİT ŞOFÖR ATAMA - Öncelikli (Kısıt: Sabit şoförler sadece kendi plaka araçlarına)
+        // 1. SABİT ŞOFÖR ATAMA - Öncelikli (SABİT ŞOFÖRLERİ KORU - DEĞİŞTİRME)
         let fixedDriverAssigned = false;
         if (vehicle.driver1) {
           const fixedDriver = availableGeceDrivers.find(d => d.full_name === vehicle.driver1);
-          if (fixedDriver && !assignedDrivers.has(fixedDriver.employee_code)) {
+          if (fixedDriver) {
             vehicleAssignment.driver = fixedDriver;
             assignedDrivers.add(fixedDriver.employee_code);
             fixedDriverAssigned = true;
-            console.log(`🌙 ${day} - ${vehicle.plate}: Sabit Şoför1 ${fixedDriver.full_name} atandı`);
+            console.log(`🌙 ${day} - ${vehicle.plate}: Sabit Şoför1 ${fixedDriver.full_name} atandı (SABİT)`);
           }
         }
         if (!fixedDriverAssigned && vehicle.driver2) {
           const fixedDriver = availableGeceDrivers.find(d => d.full_name === vehicle.driver2);
-          if (fixedDriver && !assignedDrivers.has(fixedDriver.employee_code)) {
+          if (fixedDriver) {
             vehicleAssignment.driver = fixedDriver;
             assignedDrivers.add(fixedDriver.employee_code);
             fixedDriverAssigned = true;
-            console.log(`🌙 ${day} - ${vehicle.plate}: Sabit Şoför2 ${fixedDriver.full_name} atandı`);
+            console.log(`🌙 ${day} - ${vehicle.plate}: Sabit Şoför2 ${fixedDriver.full_name} atandı (SABİT)`);
           }
         }
 
-        // 2. ROTASYONLU ŞOFÖR ATAMA - Sabit şoför yoksa
+        // 2. ROTASYONLU ŞOFÖR ATAMA - EŞİT DAĞITIM VE ADALET
         if (!fixedDriverAssigned) {
-          // Atanmamış şoförleri filtrele
-          const unassignedDrivers = availableGeceDrivers.filter(driver => 
-            !assignedDrivers.has(driver.employee_code)
-          );
+          // Sabit olmayan şoförleri filtrele (sabit şoförler hariç)
+          const nonFixedDrivers = availableGeceDrivers.filter(driver => {
+            // Sabit şoför olup olmadığını kontrol et
+            const isFixedDriver = geceVehicles.some(v => 
+              (v.driver1 && v.driver1 === driver.full_name) || 
+              (v.driver2 && v.driver2 === driver.full_name)
+            );
+            return !isFixedDriver && !assignedDrivers.has(driver.employee_code);
+          });
 
-          if (unassignedDrivers.length > 0) {
-            // Günlük rotasyon: Her gün farklı şoför
-            const driverIndex = (dayIndex * geceVehicles.length + vehicleIndex) % unassignedDrivers.length;
-            const selectedDriver = unassignedDrivers[driverIndex];
+          if (nonFixedDrivers.length > 0) {
+            // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
+            const availableDrivers = nonFixedDrivers.filter(driver => {
+              // Önceki gün hangi araç tipine atanmış kontrol et
+              if (dayIndex > 0) {
+                const previousDay = weekDays[dayIndex - 1];
+                const previousDayPlan = weeklyPlan.gece[previousDay];
+                if (previousDayPlan) {
+                  // Önceki gün hangi araç tipine atanmış bul
+                  let previousVehicleType = null;
+                  Object.values(previousDayPlan.vehicles).forEach(prevAssignment => {
+                    if (prevAssignment.driver && prevAssignment.driver.employee_code === driver.employee_code) {
+                      previousVehicleType = prevAssignment.vehicleType;
+                    }
+                  });
+                  
+                  if (previousVehicleType) {
+                    const currentVehicleType = vehicle.type;
+                    
+                    // Kamyon → Kamyon atanmasın (Kamyonet/Panelvan'a atanmalı)
+                    if (previousVehicleType === 'Kamyon' && currentVehicleType === 'Kamyon') {
+                      return false;
+                    }
+                    // Kamyonet → Kamyonet atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Kamyonet' && currentVehicleType === 'Kamyonet') {
+                      return false;
+                    }
+                    // Panelvan → Panelvan atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Panelvan' && currentVehicleType === 'Panelvan') {
+                      return false;
+                    }
+                    // Kamyonet → Panelvan atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Kamyonet' && currentVehicleType === 'Panelvan') {
+                      return false;
+                    }
+                    // Panelvan → Kamyonet atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Panelvan' && currentVehicleType === 'Kamyonet') {
+                      return false;
+                    }
+                  }
+                }
+              }
+              
+              return true;
+            });
+
+            if (availableDrivers.length > 0) {
+              // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
+              // Daha iyi rotasyon için günlük karma yap
+              const shuffledDrivers = [...availableDrivers].sort(() => Math.random() - 0.5);
+              const driverIndex = (dayIndex * geceVehicles.length + vehicleIndex) % shuffledDrivers.length;
+              const selectedDriver = shuffledDrivers[driverIndex];
             vehicleAssignment.driver = selectedDriver;
             assignedDrivers.add(selectedDriver.employee_code);
-            console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı`);
-          } else if (availableGeceDrivers.length > 0) {
-            // Eğer tüm şoförler atandıysa, günlük rotasyon ile seç
-            const driverIndex = (dayIndex * geceVehicles.length + vehicleIndex) % availableGeceDrivers.length;
-            const selectedDriver = availableGeceDrivers[driverIndex];
-            vehicleAssignment.driver = selectedDriver;
-            assignedDrivers.add(selectedDriver.employee_code);
-            console.log(`🌙 ${day} - ${vehicle.plate}: Şoför ${selectedDriver.full_name} atandı (tekrar kullanım)`);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı (EŞİT DAĞITIM)`);
+          } else {
+              // Eğer eşit dağıtım yapılamıyorsa, tüm şoförlerden seç
+              const shuffledDrivers = [...nonFixedDrivers].sort(() => Math.random() - 0.5);
+              const driverIndex = (dayIndex * geceVehicles.length + vehicleIndex) % shuffledDrivers.length;
+              const selectedDriver = shuffledDrivers[driverIndex];
+              vehicleAssignment.driver = selectedDriver;
+              assignedDrivers.add(selectedDriver.employee_code);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Rotasyonlu Şoför ${selectedDriver.full_name} atandı (SON ÇARE)`);
+            }
+          } else {
+            // Eğer sabit olmayan şoför yoksa, tüm şoförlerden seç (ama aynı gün 2 kez yazma)
+            const availableDrivers = availableGeceDrivers.filter(driver => 
+              !assignedDrivers.has(driver.employee_code)
+            );
+            
+            if (availableDrivers.length > 0) {
+              const driverIndex = (dayIndex * geceVehicles.length + vehicleIndex) % availableDrivers.length;
+              const selectedDriver = availableDrivers[driverIndex];
+              vehicleAssignment.driver = selectedDriver;
+              assignedDrivers.add(selectedDriver.employee_code);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Şoför ${selectedDriver.full_name} atandı (SON ÇARE)`);
+            } else {
+              console.log(`❌ ${day} - ${vehicle.plate}: Şoför atanamadı`);
+            }
           }
         }
 
-        // 3. SEVKİYAT ELEMANI ATAMA - Ekip Kuralı: Her Araç = 1 Şoför + 2 SEVKİYAT ELEMANI
+        // 3. SEVKİYAT ELEMANI ATAMA - EŞİT DAĞITIM VE ADALET
         const staffNeeded = 2; // TÜM ARAÇLAR İÇİN 2 SEVKİYAT ELEMANI ZORUNLU
         
         for (let i = 0; i < staffNeeded; i++) {
@@ -675,11 +831,67 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           );
           
           if (unassignedDeliveryStaff.length > 0) {
-            // Günlük rotasyon: Her gün farklı sevkiyat elemanı
-            const staffIndex = (dayIndex * geceVehicles.length + vehicleIndex * staffNeeded + i) % unassignedDeliveryStaff.length;
-            selectedStaff = unassignedDeliveryStaff[staffIndex];
-            assignedDeliveryStaff.add(selectedStaff.employee_code);
-            console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (yeni)`);
+            // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
+            const availableStaff = unassignedDeliveryStaff.filter(staff => {
+              // Önceki gün hangi araç tipine atanmış kontrol et
+              if (dayIndex > 0) {
+                const previousDay = weekDays[dayIndex - 1];
+                const previousDayPlan = weeklyPlan.gece[previousDay];
+                if (previousDayPlan) {
+                  // Önceki gün hangi araç tipine atanmış bul
+                  let previousVehicleType = null;
+                  Object.values(previousDayPlan.vehicles).forEach(prevAssignment => {
+                    if (prevAssignment.deliveryStaff && prevAssignment.deliveryStaff.some(s => s.employee_code === staff.employee_code)) {
+                      previousVehicleType = prevAssignment.vehicleType;
+                    }
+                  });
+                  
+                  if (previousVehicleType) {
+                    const currentVehicleType = vehicle.type;
+                    
+                    // Kamyon → Kamyon atanmasın (Kamyonet/Panelvan'a atanmalı)
+                    if (previousVehicleType === 'Kamyon' && currentVehicleType === 'Kamyon') {
+                      return false;
+                    }
+                    // Kamyonet → Kamyonet atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Kamyonet' && currentVehicleType === 'Kamyonet') {
+                      return false;
+                    }
+                    // Panelvan → Panelvan atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Panelvan' && currentVehicleType === 'Panelvan') {
+                      return false;
+                    }
+                    // Kamyonet → Panelvan atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Kamyonet' && currentVehicleType === 'Panelvan') {
+                      return false;
+                    }
+                    // Panelvan → Kamyonet atanmasın (Kamyon'a atanmalı)
+                    if (previousVehicleType === 'Panelvan' && currentVehicleType === 'Kamyonet') {
+                      return false;
+                    }
+                  }
+                }
+              }
+              
+              return true;
+            });
+
+            if (availableStaff.length > 0) {
+              // EŞİT DAĞITIM: Kamyon'a çıkmış kişiler Kamyonet/Panelvan'a, Kamyonet/Panelvan'a çıkmış kişiler Kamyon'a
+              // Daha iyi rotasyon için günlük karma yap
+              const shuffledStaff = [...availableStaff].sort(() => Math.random() - 0.5);
+              const staffIndex = (dayIndex * geceVehicles.length + vehicleIndex * staffNeeded + i) % shuffledStaff.length;
+              selectedStaff = shuffledStaff[staffIndex];
+              assignedDeliveryStaff.add(selectedStaff.employee_code);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (EŞİT DAĞITIM)`);
+            } else {
+              // Eğer eşit dağıtım yapılamıyorsa, tüm sevkiyat elemanlarından seç
+              const shuffledStaff = [...unassignedDeliveryStaff].sort(() => Math.random() - 0.5);
+              const staffIndex = (dayIndex * geceVehicles.length + vehicleIndex * staffNeeded + i) % shuffledStaff.length;
+              selectedStaff = shuffledStaff[staffIndex];
+              assignedDeliveryStaff.add(selectedStaff.employee_code);
+              console.log(`🌙 ${day} - ${vehicle.plate}: Sevkiyat ${i+1} ${selectedStaff.full_name} atandı (SON ÇARE)`);
+            }
           } else if (availableGeceDeliveryStaff.length > 0) {
             // Eğer tüm sevkiyat elemanları atandıysa, günlük rotasyon ile seç
             const staffIndex = (dayIndex * geceVehicles.length + vehicleIndex * staffNeeded + i) % availableGeceDeliveryStaff.length;
@@ -695,48 +907,10 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           }
         }
 
-        // 4. BÖLGE ATAMA - Eşit dağıtım ile tüm bölgeleri kullan
-        let selectedRegion = '';
-        
-        // Tüm bölgeleri tanımla
-        const allRegions = [
-          'Ataşehir/Ümraniye/Üsküdar',
-          'Beykoz/Ç.köy/S.tepe/S.beyliği', 
-          'Gebze',
-          'Kadıköy',
-          'Kocaeli',
-          'M.tepe/Kartal/Pendik',
-          'Sakarya',
-          'Şile'
-        ];
-        
-        // Balıkesir-Avşa kontrolü
-        if (settings.enableBalikesirAvsa) {
-          allRegions.push('Balıkesir-Avşa');
-        }
-        
-        // Araç tipine göre bölge filtreleme
-        let availableRegions = [];
-        if (vehicle.type === 'Kamyon') {
-          // Kamyon: Uzak bölgeler + haftalık bölgeler
-          availableRegions = ['Gebze', 'Kocaeli', 'Sakarya', 'Ataşehir/Ümraniye/Üsküdar', 'Beykoz/Ç.köy/S.tepe/S.beyliği'];
-        } else if (vehicle.type === 'Panelvan') {
-          // Panelvan: Yakın bölgeler + M.tepe
-          availableRegions = ['Şile', 'Kadıköy', 'M.tepe/Kartal/Pendik', 'Ataşehir/Ümraniye/Üsküdar', 'Beykoz/Ç.köy/S.tepe/S.beyliği'];
-        } else if (vehicle.type === 'Kamyonet') {
-          // Kamyonet: Tüm bölgeler (M.tepe öncelikli)
-          availableRegions = ['M.tepe/Kartal/Pendik', 'Şile', 'Kadıköy', 'Ataşehir/Ümraniye/Üsküdar', 'Beykoz/Ç.köy/S.tepe/S.beyliği'];
-        } else {
-          // Diğer araç tipleri: Tüm bölgeler
-          availableRegions = allRegions;
-        }
-        
-        // Günlük eşit dağıtım için rotasyon
-        const regionIndex = (dayIndex * geceVehicles.length + vehicleIndex) % availableRegions.length;
-        selectedRegion = availableRegions[regionIndex];
-        
-        vehicleAssignment.region = selectedRegion;
-        console.log(`🌙 ${day} - ${vehicle.plate}: ${selectedRegion} bölgesi (${vehicle.type})`);
+        // 4. BÖLGE ATAMA - KALDIRILDI (SADECE PERSONEL DAĞILIMINA ODAKLAN)
+        // Bölgeleri tamamen kaldırdık, sadece personel dağılımına odaklanıyoruz
+        vehicleAssignment.region = '';
+        console.log(`🌙 ${day} - ${vehicle.plate}: Personel atandı (${vehicle.type}) - PERSONEL ODAKLI`);
         
         dayPlan.vehicles[vehicle.id] = vehicleAssignment;
       });
@@ -751,7 +925,14 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     const workload = calculatePersonnelWorkload(weeklyPlan);
     setPersonnelWorkload(workload);
     
+    // Personel istatistiklerini hesapla ve kaydet
+    const stats = calculatePersonnelStats(weeklyPlan);
+    console.log('🔍 DEBUG - calculatePersonnelStats sonucu:', stats);
+    console.log('🔍 DEBUG - Object.keys(stats).length:', Object.keys(stats).length);
+    setPersonnelStats(stats);
+    
     console.log('📊 Personel Çalışma Yoğunluğu:', workload);
+    console.log('📊 Personel İstatistikleri:', stats);
   };
 
   // Gün için tarih hesapla
@@ -942,7 +1123,7 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
   const createNightShiftTableData = () => {
     if (!weeklyPlan) return [];
     
-    const weekDays = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
     const vehicles = getFixedVehicles();
     
     return weekDays.map(day => {
@@ -969,40 +1150,29 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
                   ⚠️ PERSONEL YOK
                 </div>
               )}
-              <div className="mb-1">
-                <div className="text-xs font-medium">Şoför</div>
-                <div className="text-xs">
+              <div className="mb-2">
+                <div className="text-sm font-bold text-blue-600">Şoför</div>
+                <div className="text-sm font-medium text-gray-800">
                   {assignment.driver ? assignment.driver.full_name : 'BOŞ'}
                 </div>
               </div>
               
-              <div className="space-y-1">
-                {assignment.deliveryStaff?.map((staff, index) => (
-                  <div key={index}>
-                    <div className="text-xs font-medium">Sevkiyat {index + 1}</div>
-                    <div className="text-xs">{staff.full_name}</div>
+              <div className="space-y-2">
+                {[0, 1].map((index) => {
+                  const staff = assignment.deliveryStaff?.[index];
+                  return (
+                    <div key={index} className="border-t border-gray-200 pt-1">
+                      <div className="text-sm font-bold text-green-600">Sevkiyat {index + 1}</div>
+                      <div className="text-sm font-medium text-gray-800">
+                        {staff ? staff.full_name : 'BOŞ'}
                   </div>
-                ))}
-                {hasMissingStaff && (
-                  <div className="text-xs text-red-600 font-bold bg-red-100 p-1 rounded">
-                    ⚠️ Sevkiyat {requiredStaff}: Yetersiz Eleman
                   </div>
-                )}
-                {hasNoStaff && (
-                  <div className="text-xs text-red-600 font-bold bg-red-100 p-1 rounded">
-                    ⚠️ Sevkiyat Elemanı Yok
-                  </div>
-                )}
-                {assignment.deliveryStaff.length === 1 && vehicle.type === 'Kamyon' && (
-                  <div className="text-xs text-red-600 font-bold bg-red-100 p-1 rounded">
-                    ⚠️ Sevkiyat 2: Yetersiz Eleman
-                  </div>
-                )}
+                  );
+                })}
+                {/* Eksik sevkiyat uyarıları kaldırıldı */}
               </div>
               
-              <span className={`px-2 py-1 rounded text-xs font-semibold border ${regionColors[assignment.region] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
-                {assignment.region}
-              </span>
+              {/* Bölge yazısı kaldırıldı */}
             </div>
           );
         }
@@ -1161,6 +1331,117 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
               size="small"
               bordered
             />
+            
+            {/* Personel İstatistikleri - Şoför ve Sevkiyatçı Ayrı */}
+            {Object.keys(personnelStats).length > 0 ? (
+              <div className="mt-6">
+                <div className="flex items-center mb-4">
+                  <BarChart3 className="w-5 h-5 text-purple-600 mr-2" />
+                  <h4 className="text-lg font-bold text-gray-800">📊 Personel Araç Atama İstatistikleri</h4>
+                </div>
+                
+                {/* Şoförler */}
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <Truck className="w-4 h-4 text-blue-600 mr-2" />
+                    <h5 className="text-sm font-bold text-blue-600">🚛 Şoförler - Araç Tipi Dağılımı</h5>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {Object.entries(personnelStats)
+                      .filter(([code, stats]) => stats.position === 'ŞOFÖR' || stats.position === 'Şoför')
+                      .sort((a, b) => b[1].total - a[1].total) // Toplam atama sayısına göre sırala
+                      .map(([code, stats]) => (
+                        <div key={code} className="border border-blue-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-blue-100 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="text-sm font-bold text-gray-800 mb-3 text-center">{stats.name}</div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Truck className="w-3 h-3 mr-1" />
+                                Kamyon:
+                              </span>
+                              <span className="font-bold text-blue-600 bg-blue-200 px-2 py-1 rounded-full">{stats.kamyon} kez</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Car className="w-3 h-3 mr-1" />
+                                Kamyonet:
+                              </span>
+                              <span className="font-bold text-orange-600 bg-orange-200 px-2 py-1 rounded-full">{stats.kamyonet} kez</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Car className="w-3 h-3 mr-1" />
+                                Panelvan:
+                              </span>
+                              <span className="font-bold text-purple-600 bg-purple-200 px-2 py-1 rounded-full">{stats.panelvan} kez</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs border-t border-gray-300 pt-2 mt-2">
+                              <span className="text-gray-700 font-bold">Toplam Atama:</span>
+                              <span className="font-bold text-gray-800 bg-gray-200 px-2 py-1 rounded-full">{stats.total} kez</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                
+                {/* Sevkiyatçılar */}
+                <div>
+                  <div className="flex items-center mb-3">
+                    <Users className="w-4 h-4 text-green-600 mr-2" />
+                    <h5 className="text-sm font-bold text-green-600">📦 Sevkiyat Elemanları - Araç Tipi Dağılımı</h5>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {Object.entries(personnelStats)
+                      .filter(([code, stats]) => stats.position === 'SEVKİYAT ELEMANI' || stats.position === 'Sevkiyat Elemanı')
+                      .sort((a, b) => b[1].total - a[1].total) // Toplam atama sayısına göre sırala
+                      .map(([code, stats]) => (
+                        <div key={code} className="border border-green-200 rounded-lg p-4 bg-gradient-to-br from-green-50 to-green-100 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="text-sm font-bold text-gray-800 mb-3 text-center">{stats.name}</div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Truck className="w-3 h-3 mr-1" />
+                                Kamyon:
+                              </span>
+                              <span className="font-bold text-blue-600 bg-blue-200 px-2 py-1 rounded-full">{stats.kamyon} kez</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Car className="w-3 h-3 mr-1" />
+                                Kamyonet:
+                              </span>
+                              <span className="font-bold text-orange-600 bg-orange-200 px-2 py-1 rounded-full">{stats.kamyonet} kez</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Car className="w-3 h-3 mr-1" />
+                                Panelvan:
+                              </span>
+                              <span className="font-bold text-purple-600 bg-purple-200 px-2 py-1 rounded-full">{stats.panelvan} kez</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs border-t border-gray-300 pt-2 mt-2">
+                              <span className="text-gray-700 font-bold">Toplam Atama:</span>
+                              <span className="font-bold text-gray-800 bg-gray-200 px-2 py-1 rounded-full">{stats.total} kez</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6">
+                <div className="flex items-center mb-4">
+                  <BarChart3 className="w-5 h-5 text-purple-600 mr-2" />
+                  <h4 className="text-lg font-bold text-gray-800">📊 Personel Araç Atama İstatistikleri</h4>
+                </div>
+                <div className="text-center py-8">
+                  <div className="text-gray-500 mb-2">İstatistikler yükleniyor...</div>
+                  <div className="text-xs text-gray-400">Plan oluşturulduktan sonra detaylı istatistikler görüntülenecek</div>
+                </div>
+              </div>
+            )}
             
             {/* Günlük Atanmamış Personel */}
             <div className="mt-4">

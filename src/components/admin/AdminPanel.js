@@ -137,6 +137,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
   useEffect(() => {
     if (!currentUser?.id || activeSection !== 'users') return;
 
+    // Debounce için timeout
+    let updateTimeout = null;
+
     const subscription = supabase
       .channel('users_updates')
       .on('postgres_changes',
@@ -147,18 +150,23 @@ const AdminPanel = ({ userRole, currentUser }) => {
         },
         (payload) => {
           // Sadece online status değişikliklerini dinle ve modal açık değilse
-          // Ayrıca gerçekten değişiklik olup olmadığını kontrol et
           const isOnlineChanged = payload.new.is_online !== payload.old.is_online;
           const isLastSeenChanged = payload.new.last_seen !== payload.old.last_seen;
           
           // Sadece gerçek değişiklik varsa ve modal açık değilse güncelle
           if ((isOnlineChanged || isLastSeenChanged) && !anyAvatarModalOpen) {
-            // Tüm listeyi yenilemek yerine sadece değişen kullanıcıyı güncelle
-            setUsers(prevUsers => 
-              prevUsers.map(user => 
-                user.id === payload.new.id ? { ...user, ...payload.new } : user
-              )
-            );
+            // Debounce ile güncelleme
+            if (updateTimeout) {
+              clearTimeout(updateTimeout);
+            }
+            
+            updateTimeout = setTimeout(() => {
+              setUsers(prevUsers => 
+                prevUsers.map(user => 
+                  user.id === payload.new.id ? { ...user, ...payload.new } : user
+                )
+              );
+            }, 100); // 100ms debounce
           }
         }
       )
@@ -178,6 +186,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
       .subscribe();
 
     return () => {
+      if (updateTimeout) {
+        clearTimeout(updateTimeout);
+      }
       subscription.unsubscribe();
     };
   }, [currentUser?.id, activeSection, anyAvatarModalOpen]);

@@ -4284,8 +4284,6 @@ export const getUserOnlineStatus = async (userId) => {
 // Eski oturumları temizleme fonksiyonu
 export const cleanupOldSessions = async () => {
   try {
-    console.log('🧹 Eski oturumlar temizleniyor...');
-    
     // 5 dakikadan eski last_seen değerlerine sahip kullanıcıları offline yap
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
@@ -4300,17 +4298,11 @@ export const cleanupOldSessions = async () => {
       .select();
 
     if (error) {
-      console.error('❌ Eski oturumlar temizlenirken hata:', error);
       return { success: false, error };
-    }
-
-    if (data && data.length > 0) {
-      console.log(`✅ ${data.length} kullanıcının eski oturumu temizlendi:`, data.map(u => u.email));
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Eski oturumlar temizleme hatası:', error);
     return { success: false, error };
   }
 };

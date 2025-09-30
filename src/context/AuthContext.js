@@ -161,8 +161,6 @@ export const AuthProvider = ({ children }) => {
     
     // Tarayıcı kapatma olayları
     const handleBeforeUnload = async (event) => {
-      console.log('🚪 Tarayıcı kapatılıyor, online durumu güncelleniyor...');
-      
       // Online durumunu false yap
       try {
         const { data: userData, error: userError } = await supabase
@@ -186,7 +184,7 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('❌ Tarayıcı kapatma sırasında online durumu güncelleme hatası:', error);
+        // Sessizce hata yönetimi
       }
     };
     
@@ -332,7 +330,6 @@ export const AuthProvider = ({ children }) => {
         
         if (!userError && userData) {
           await updateUserOnlineStatus(userData.id, true);
-          console.log('✅ Giriş: Online durumu güncellendi');
         } else {
           // Alternatif olarak auth user ID ile dene
           const { data: userDataById, error: userErrorById } = await supabase
@@ -343,13 +340,10 @@ export const AuthProvider = ({ children }) => {
           
           if (!userErrorById && userDataById) {
             await updateUserOnlineStatus(userDataById.id, true);
-            console.log('✅ Giriş (Auth ID): Online durumu güncellendi');
-          } else {
-            console.error('❌ Giriş: Kullanıcı bulunamadı');
           }
         }
       } catch (onlineError) {
-        console.error('❌ Giriş: Online durumu güncelleme hatası:', onlineError);
+        // Sessizce hata yönetimi
       }
       
       return { success: true, data };
@@ -402,8 +396,6 @@ export const AuthProvider = ({ children }) => {
 
       // Online durumunu güncelle
       try {
-        console.log('🔄 Çıkış sırasında online durumu güncelleniyor...', currentUser?.email);
-        
         // Önce users tablosundan kullanıcıyı bul
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -411,15 +403,9 @@ export const AuthProvider = ({ children }) => {
           .eq('email', currentUser?.email)
           .single();
         
-        console.log('🔍 Çıkış sorgu sonucu:', { userData, userError });
-        
         if (!userError && userData) {
-          console.log('✅ Users tablosunda kullanıcı bulundu (çıkış):', userData);
-          const updateResult = await updateUserOnlineStatus(userData.id, false);
-          console.log('📊 Çıkış güncelleme sonucu:', updateResult);
+          await updateUserOnlineStatus(userData.id, false);
         } else {
-          console.error('❌ Users tablosunda kullanıcı bulunamadı (çıkış):', currentUser?.email);
-          
           // Alternatif olarak auth user ID ile dene
           const { data: userDataById, error: userErrorById } = await supabase
             .from('users')
@@ -428,13 +414,11 @@ export const AuthProvider = ({ children }) => {
             .single();
           
           if (!userErrorById && userDataById) {
-            console.log('✅ Auth ID ile kullanıcı bulundu (çıkış):', userDataById);
-            const updateResult = await updateUserOnlineStatus(userDataById.id, false);
-            console.log('📊 Auth ID ile çıkış güncelleme sonucu:', updateResult);
+            await updateUserOnlineStatus(userDataById.id, false);
           }
         }
       } catch (onlineError) {
-        console.error('❌ Online durumu güncelleme hatası (çıkış):', onlineError);
+        // Sessizce hata yönetimi
       }
       
       // 5. Local storage'ı temizle

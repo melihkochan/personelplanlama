@@ -4212,10 +4212,15 @@ function MainApp() {
                                 src={onlineUser.avatar_url} 
                                 alt={onlineUser.full_name || onlineUser.username}
                                 className="w-12 h-12 rounded-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
                               />
-                            ) : (
-                              (onlineUser.full_name || onlineUser.username || 'U').charAt(0).toUpperCase()
-                            )}
+                            ) : null}
+                            <div className={`w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-lg ${onlineUser.avatar_url ? 'hidden' : 'flex'}`}>
+                              {(onlineUser.full_name || onlineUser.username || 'U').charAt(0).toUpperCase()}
+                            </div>
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900 text-lg">

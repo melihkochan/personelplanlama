@@ -4339,7 +4339,13 @@ export const getOnlineUsers = async (currentUserId) => {
       return { success: false, error };
     }
 
-    return { success: true, data: data || [] };
+    // Avatar URL'lerini dönüştür
+    const processedData = (data || []).map(user => ({
+      ...user,
+      avatar_url: user.avatar_url ? avatarService.getAvatarUrl(user.avatar_url) : null
+    }));
+
+    return { success: true, data: processedData };
   } catch (error) {
     console.error('❌ Çevrimiçi kullanıcılar alma hatası:', error);
     return { success: false, error };

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Car, Truck, MapPin, Calendar, Filter, Search, RefreshCw, 
   Download, Eye, EyeOff, Sun, Moon, Clock, AlertCircle, CheckCircle,
-  BarChart3, Settings, RotateCcw, Save, FileText, UserCheck, Plus, Minus
+  BarChart3, Settings, RotateCcw, Save, FileText, UserCheck, Plus, Minus, Printer, ArrowLeft
 } from 'lucide-react';
 import { 
   getAllPersonnel, 
@@ -14,23 +14,14 @@ import {
   getPersonnelShiftDetails,
   supabase
 } from '../../services/supabase';
-import { Table, Card, Button, Space, Tag, Tooltip, Alert, Spin, Row, Col, Statistic } from 'antd';
+import { Table, Card, Button, Space, Tag, Tooltip, Alert, Spin, Row, Col, Statistic, message } from 'antd';
 
-const AkilliDagitim = ({ userRole, onDataUpdate }) => {
+const AkilliDagitim = ({ userRole, onDataUpdate, user }) => {
   const [personnelData, setPersonnelData] = useState([]);
   const [vehicleData, setVehicleData] = useState([]);
   const [storeData, setStoreData] = useState([]);
   const [currentShifts, setCurrentShifts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [weeklyPlan, setWeeklyPlan] = useState(null);
-  const [currentWeek, setCurrentWeek] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState({
-    enableLeaveExclusion: true,
-    enablePreviousDayConsideration: true,
-    allowEmptySpotsForSmallVehicles: true,
-    enableBalikesirAvsa: false // Balıkesir-Avşa kapalı (sezonluk)
-  });
 
   // Vardiya bilgileri için state
   const [shiftInfo, setShiftInfo] = useState({
@@ -51,6 +42,207 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
   
   // Personel atama geçmişi (peş peşe aynı plakaya atanmasın)
   const [personnelAssignmentHistory, setPersonnelAssignmentHistory] = useState({});
+  
+  // Kaydedilen planlar
+  const [savedPlans, setSavedPlans] = useState([]);
+  const [showSavedPlans, setShowSavedPlans] = useState(true); // İlk açılışta true
+  const [currentView, setCurrentView] = useState('list'); // 'list' veya 'detail'
+  
+  // Plan oluşturma durumu
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  
+  // Ayarlar durumu
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({
+    enableLeaveExclusion: true,
+    enablePreviousDayConsideration: true,
+    enableWorkloadBalancing: true
+  });
+  
+  // Hafta bilgisi
+  const [currentWeek, setCurrentWeek] = useState('28-04 Ekim 2025');
+  
+  // Haftalık plan
+  const [weeklyPlan, setWeeklyPlan] = useState(null);
+  
+  // Özet bilgiler
+  const [summary, setSummary] = useState(null);
+
+  // İlk açılışta kaydedilen planları yükle
+  useEffect(() => {
+    loadSavedPlans();
+  }, []);
+
+  // A3 yazdırma fonksiyonu
+  const handlePrint = () => {
+    const printContent = document.getElementById('printable-plan');
+    if (!printContent) {
+      message.error('Yazdırılacak içerik bulunamadı');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Akıllı Personel Dağıtım Planı - A3 Format</title>
+          <style>
+            @page {
+              size: A3;
+              margin: 1cm;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 12px;
+              line-height: 1.4;
+            }
+            .print-header {
+              text-align: center;
+              margin-bottom: 20px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+            }
+            .print-title {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .print-subtitle {
+              font-size: 14px;
+              color: #666;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
+            }
+            th, td {
+              border: 1px solid #333;
+              padding: 8px;
+              text-align: center;
+              vertical-align: top;
+            }
+            th {
+              background-color: #f5f5f5;
+              font-weight: bold;
+            }
+            .day-row {
+              background-color: #f9f9f9;
+            }
+            .driver-cell {
+              background-color: #e3f2fd;
+              font-weight: bold;
+            }
+            .staff-cell {
+              background-color: #e8f5e8;
+            }
+            .print-footer {
+              margin-top: 20px;
+              text-align: center;
+              font-size: 10px;
+              color: #666;
+              border-top: 1px solid #333;
+              padding-top: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <div class="print-title">Akıllı Personel Dağıtım Planı - Gece Vardiyası</div>
+            <div class="print-subtitle">8 araç - Ekip Kuralı: 1 Şoför + 2 Sevkiyat Elemanı</div>
+            <div class="print-subtitle">Tarih: ${new Date().toLocaleDateString('tr-TR')}</div>
+          </div>
+          ${printContent.innerHTML}
+          <div class="print-footer">
+            Bu plan otomatik olarak oluşturulmuştur. Tarih: ${new Date().toLocaleString('tr-TR')}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  // Planı kaydetme fonksiyonu
+  const handleSavePlan = async () => {
+    if (!weeklyPlan) {
+      message.error('Kaydedilecek plan bulunamadı');
+      return;
+    }
+
+    try {
+      const planData = {
+        plan_name: `Gece Vardiyası Planı - ${new Date().toLocaleDateString('tr-TR')}`,
+        plan_data: weeklyPlan,
+        personnel_stats: personnelStats,
+        created_at: new Date().toISOString(),
+        created_by: user?.full_name || user?.email || 'Sistem'
+      };
+
+      const { data, error } = await supabase
+        .from('saved_plans')
+        .insert([planData])
+        .select();
+
+      if (error) {
+        console.error('Plan kaydetme hatası:', error);
+        message.error('Plan kaydedilemedi: ' + error.message);
+        return;
+      }
+
+      message.success('Plan başarıyla kaydedildi!');
+      loadSavedPlans(); // Kaydedilen planları yeniden yükle
+      setCurrentView('detail'); // Plan oluşturulduktan sonra detay sayfasına git
+    } catch (error) {
+      console.error('Plan kaydetme hatası:', error);
+      message.error('Plan kaydedilemedi');
+    }
+  };
+
+  // Kaydedilen planları yükleme fonksiyonu
+  const loadSavedPlans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('saved_plans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Planlar yüklenirken hata:', error);
+        return;
+      }
+
+      setSavedPlans(data || []);
+    } catch (error) {
+      console.error('Planlar yüklenirken hata:', error);
+    }
+  };
+
+  // Kaydedilen planı yükleme fonksiyonu
+  const loadSavedPlan = async (planId) => {
+    try {
+      const { data, error } = await supabase
+        .from('saved_plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
+
+      if (error) {
+        console.error('Plan yüklenirken hata:', error);
+        message.error('Plan yüklenemedi');
+        return;
+      }
+
+      setWeeklyPlan(data.plan_data);
+      setPersonnelStats(data.personnel_stats || {});
+      setCurrentView('detail');
+      message.success('Plan başarıyla yüklendi!');
+    } catch (error) {
+      console.error('Plan yüklenirken hata:', error);
+      message.error('Plan yüklenemedi');
+    }
+  };
   
     // Haftalık bölge hedefleri kaldırıldı - Sadece personel dağılımına odaklanıyoruz
 
@@ -632,6 +824,9 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
 
     // Akıllı Personel Dağıtım Sistemi - Ana Plan Oluşturma
   const generateWeeklyPlan = () => {
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    
     // Haftalık bölge hedefleri kaldırıldı - Sadece personel dağılımına odaklanıyoruz
 
     const { 
@@ -642,6 +837,9 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     // Sadece gece vardiyası personelini kullan
     const availableGeceDrivers = filterAvailablePersonnel(geceSoforler);
     const availableGeceDeliveryStaff = filterAvailablePersonnel(geceSevkiyatElemanlari);
+    
+    // Gece vardiyası araçları
+    const geceVehicles = getFixedVehicles();
 
     console.log('🌙 Müsait gece şoförleri:', availableGeceDrivers.length, availableGeceDrivers.map(d => d.full_name));
     console.log('🌙 Müsait gece sevkiyat elemanları:', availableGeceDeliveryStaff.length, availableGeceDeliveryStaff.map(s => s.full_name));
@@ -1074,6 +1272,23 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     
     console.log('📊 Personel Çalışma Yoğunluğu:', workload);
     console.log('📊 Personel İstatistikleri:', stats);
+    
+    // Özet bilgileri hesapla
+    const planSummary = {
+      totalVehicles: geceVehicles.length,
+      totalDrivers: availableGeceDrivers.length,
+      totalDeliveryStaff: availableGeceDeliveryStaff.length,
+      shortage: {
+        driverShortage: Math.max(0, geceVehicles.length - availableGeceDrivers.length),
+        deliveryStaffShortage: Math.max(0, geceVehicles.length * 2 - availableGeceDeliveryStaff.length)
+      }
+    };
+    setSummary(planSummary);
+    
+    setIsGenerating(false);
+    setGenerationProgress(100);
+    setCurrentView('detail'); // Plan oluşturulduktan sonra detay sayfasına git
+    message.success('Plan başarıyla oluşturuldu!');
   };
 
   // Gün için tarih hesapla
@@ -1218,8 +1433,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
       </div>
     );
   }
-
-  const summary = generateSummary();
 
 
   // Günlük atanmamış personeli hesapla - Gece Vardiyası
@@ -1434,13 +1647,6 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
             >
               Ayarlar
             </Button>
-            <Button 
-              type="primary" 
-              icon={<RefreshCw />} 
-              onClick={generateWeeklyPlan}
-            >
-              Plan Oluştur
-            </Button>
             {/* {weeklyPlan && (
               <Button 
                 type="primary" 
@@ -1469,7 +1675,132 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
         )}
       </Card>
 
-      {/* Ayarlar */}
+      {/* Liste Görünümü */}
+      {currentView === 'list' && (
+        <Card 
+          title={
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FileText className="w-5 h-5 text-blue-600 mr-2" />
+                Kaydedilen Planlar
+              </div>
+              <Button 
+                type="primary" 
+                icon={<RefreshCw />} 
+                onClick={generateWeeklyPlan}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Yeni Plan Oluştur
+              </Button>
+            </div>
+          }
+        >
+          {savedPlans.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedPlans.map((plan) => (
+                <div 
+                  key={plan.id} 
+                  className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-300 transition-all duration-300 group"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                        <h4 className="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors">
+                          {plan.plan_name}
+                        </h4>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-600 flex items-center">
+                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                          {new Date(plan.created_at).toLocaleDateString('tr-TR')}
+                        </p>
+                        <p className="text-sm text-gray-600 flex items-center">
+                          <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                          {new Date(plan.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        <p className="text-xs text-gray-500 flex items-center">
+                          <Users className="w-4 h-4 mr-2 text-gray-400" />
+                          {plan.created_by || 'Sistem'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2 pt-4 border-t border-gray-100">
+                    <Button 
+                      type="primary" 
+                      size="small"
+                      onClick={() => loadSavedPlan(plan.id)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 border-0 rounded-lg font-medium"
+                      icon={<Eye className="w-4 h-4" />}
+                    >
+                      Aç
+                    </Button>
+                    <Button 
+                      type="default" 
+                      size="small"
+                      onClick={() => {
+                        setWeeklyPlan(plan.plan_data);
+                        setPersonnelStats(plan.personnel_stats || {});
+                        setCurrentView('detail');
+                        // Yazdırma işlemini biraz geciktir
+                        setTimeout(() => {
+                          handlePrint();
+                        }, 500);
+                      }}
+                      className="flex-1 border-gray-300 hover:border-blue-300 hover:text-blue-600 rounded-lg font-medium"
+                      icon={<Printer className="w-4 h-4" />}
+                    >
+                      Yazdır
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <div className="bg-gray-50 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                <FileText className="w-12 h-12 text-gray-300" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Henüz plan yok</h3>
+              <p className="text-gray-500 mb-6">İlk planınızı oluşturmak için aşağıdaki butona tıklayın</p>
+              <Button 
+                type="primary" 
+                size="large"
+                onClick={generateWeeklyPlan}
+                className="bg-blue-600 hover:bg-blue-700 border-0 rounded-lg font-medium px-8"
+                icon={<RefreshCw className="w-5 h-5" />}
+              >
+                İlk Planı Oluştur
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Detay Görünümü */}
+      {currentView === 'detail' && (
+        <>
+          {/* Geri Dön Butonu */}
+          <Card>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Plan Detayları</h3>
+                <p className="text-sm text-gray-600">Oluşturulan planın detaylı görünümü</p>
+              </div>
+              <Button 
+                type="default" 
+                icon={<ArrowLeft className="w-4 h-4" />}
+                onClick={() => setCurrentView('list')}
+                className="border-gray-300"
+              >
+                Geri Dön
+              </Button>
+            </div>
+          </Card>
+
+          {/* Ayarlar */}
       {showSettings && (
         <Card title="Dağıtım Ayarları">
           <Space direction="vertical" style={{ width: '100%' }}>
@@ -1525,9 +1856,41 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
               </div>
             }
             extra={
+              <div className="flex items-center space-x-3">
               <span className="text-gray-600 text-sm">8 araç - Ekip Kuralı: 1 Şoför + 2 Sevkiyat Elemanı</span>
+                <Button 
+                  type="primary" 
+                  icon={<Printer className="w-4 h-4" />}
+                  onClick={handlePrint}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  A3 Yazdır
+                </Button>
+                <Button 
+                  type="default" 
+                  icon={<Save className="w-4 h-4" />}
+                  onClick={handleSavePlan}
+                  className="border-green-500 text-green-600 hover:bg-green-50"
+                >
+                  Planı Kaydet
+                </Button>
+                <Button 
+                  type="default" 
+                  icon={<FileText className="w-4 h-4" />}
+                  onClick={() => {
+                    setShowSavedPlans(!showSavedPlans);
+                    if (!showSavedPlans) {
+                      loadSavedPlans();
+                    }
+                  }}
+                  className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                >
+                  Kaydedilen Planlar
+                </Button>
+              </div>
             }
           >
+            <div id="printable-plan" className="printable-content">
             <Table
               dataSource={createNightShiftTableData()}
               columns={nightShiftColumns}
@@ -1535,8 +1898,9 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
               scroll={{ x: 1000 }}
               size="small"
               bordered
-              rowClassName={(record) => record.className || ''}
+                rowClassName={(record) => record.className || ''}
             />
+            </div>
             
             {/* Personel İstatistikleri - Şoför ve Sevkiyatçı Ayrı */}
             {Object.keys(personnelStats).length > 0 ? (
@@ -1743,6 +2107,8 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
           type="warning"
           showIcon
         />
+      )}
+        </>
       )}
     </div>
   );

@@ -1962,9 +1962,6 @@ function MainApp() {
                   <Users className={`w-2 h-2 ${activeTab === 'akilli-dagitim' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Akıllı Dağıtım</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-300 shadow-sm">
-                  Geliştirme
-                </span>
               </button>
 
             </div>

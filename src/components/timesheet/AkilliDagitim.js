@@ -529,9 +529,41 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
       return {};
     }
     
-    Object.values(weeklyPlan.gece).forEach(dayPlan => {
-      console.log('🔍 DEBUG - dayPlan:', dayPlan);
+    // Tüm personeli önce başlat (yazılmadığı gün sayısını hesaplamak için)
+    // shiftInfo boşsa personnelData'dan al
+    let allPersonnel = [];
+    if (shiftInfo.geceDrivers && shiftInfo.geceDeliveryStaff && shiftInfo.geceDrivers.length > 0) {
+      allPersonnel = [...shiftInfo.geceDrivers, ...shiftInfo.geceDeliveryStaff];
+    } else {
+      // Fallback: personnelData'dan gece vardiyası personelini al
+      const gecePersonnel = personnelData.filter(person => {
+        const shiftStatus = getCurrentShiftStatus(person.employee_code);
+        return shiftStatus === 'gece';
+      });
+      allPersonnel = gecePersonnel;
+    }
+    
+    allPersonnel.forEach(person => {
+      stats[person.employee_code] = {
+        name: person.full_name,
+        position: person.position || (person.position === 'ŞOFÖR' ? 'ŞOFÖR' : 'SEVKİYAT ELEMANI'),
+        kamyon: 0,
+        kamyonet: 0,
+        panelvan: 0,
+        total: 0,
+        unassignedDays: 0
+      };
+    });
+    
+    // Haftalık planı analiz et
+    const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+    
+    weekDays.forEach(day => {
+      const dayPlan = weeklyPlan.gece[day];
       if (!dayPlan || !dayPlan.vehicles) return;
+      
+      // Günlük atanan personeli topla
+      const dailyAssigned = new Set();
       
       Object.values(dayPlan.vehicles).forEach(vehicleAssignment => {
         console.log('🔍 DEBUG - vehicleAssignment:', vehicleAssignment);
@@ -552,53 +584,44 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
         // Şoför istatistikleri
         if (vehicleAssignment.driver) {
           const driverCode = vehicleAssignment.driver.employee_code;
-          if (!stats[driverCode]) {
-            stats[driverCode] = {
-              name: vehicleAssignment.driver.full_name,
-              position: vehicleAssignment.driver.position || 'ŞOFÖR',
-              kamyon: 0,
-              kamyonet: 0,
-              panelvan: 0,
-              total: 0
-            };
+          if (stats[driverCode]) {
+            // Araç tipine göre sayacı artır
+            if (normalizedType === 'kamyon') {
+              stats[driverCode].kamyon++;
+            } else if (normalizedType === 'kamyonet') {
+              stats[driverCode].kamyonet++;
+            } else if (normalizedType === 'panelvan') {
+              stats[driverCode].panelvan++;
+            }
+            stats[driverCode].total++;
+            dailyAssigned.add(driverCode);
           }
-          
-          // Araç tipine göre sayacı artır
-          if (normalizedType === 'kamyon') {
-            stats[driverCode].kamyon++;
-          } else if (normalizedType === 'kamyonet') {
-            stats[driverCode].kamyonet++;
-          } else if (normalizedType === 'panelvan') {
-            stats[driverCode].panelvan++;
-          }
-          stats[driverCode].total++;
         }
         
         // Sevkiyat elemanı istatistikleri
         if (vehicleAssignment.deliveryStaff && Array.isArray(vehicleAssignment.deliveryStaff)) {
           vehicleAssignment.deliveryStaff.forEach(staff => {
             const staffCode = staff.employee_code;
-            if (!stats[staffCode]) {
-              stats[staffCode] = {
-                name: staff.full_name,
-                position: staff.position || 'SEVKİYAT ELEMANI',
-                kamyon: 0,
-                kamyonet: 0,
-                panelvan: 0,
-                total: 0
-              };
+            if (stats[staffCode]) {
+              // Araç tipine göre sayacı artır
+              if (normalizedType === 'kamyon') {
+                stats[staffCode].kamyon++;
+              } else if (normalizedType === 'kamyonet') {
+                stats[staffCode].kamyonet++;
+              } else if (normalizedType === 'panelvan') {
+                stats[staffCode].panelvan++;
+              }
+              stats[staffCode].total++;
+              dailyAssigned.add(staffCode);
             }
-            
-            // Araç tipine göre sayacı artır
-            if (normalizedType === 'kamyon') {
-              stats[staffCode].kamyon++;
-            } else if (normalizedType === 'kamyonet') {
-              stats[staffCode].kamyonet++;
-            } else if (normalizedType === 'panelvan') {
-              stats[staffCode].panelvan++;
-            }
-            stats[staffCode].total++;
           });
+        }
+      });
+      
+      // Bu gün atanmayan personeli işaretle
+      allPersonnel.forEach(person => {
+        if (!dailyAssigned.has(person.employee_code)) {
+          stats[person.employee_code].unassignedDays++;
         }
       });
     });
@@ -1108,13 +1131,62 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
     }
     });
 
-    // Atanmamış personeli bul
-    const unassignedDrivers = shiftInfo.geceDrivers.filter(
-      driver => !assignedDrivers.has(driver.employee_code)
-    );
-    const unassignedDeliveryStaff = shiftInfo.geceDeliveryStaff.filter(
-      staff => !assignedDeliveryStaff.has(staff.employee_code)
-    );
+    // Atanmamış personeli bul ve kaç kez atanmadığını hesapla
+    const unassignedDrivers = shiftInfo.geceDrivers
+      .filter(driver => !assignedDrivers.has(driver.employee_code))
+      .map(driver => {
+        // Bu personelin kaç kez atanmadığını hesapla
+        let unassignedCount = 0;
+        const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+        
+        weekDays.forEach(checkDay => {
+          const checkDayPlan = weeklyPlan.gece[checkDay];
+          if (checkDayPlan) {
+            let wasAssigned = false;
+            Object.values(checkDayPlan.vehicles).forEach(vehicle => {
+              if (vehicle.driver && vehicle.driver.employee_code === driver.employee_code) {
+                wasAssigned = true;
+              }
+            });
+            if (!wasAssigned) {
+              unassignedCount++;
+            }
+          }
+        });
+        
+        return {
+          ...driver,
+          unassignedCount
+        };
+      });
+      
+    const unassignedDeliveryStaff = shiftInfo.geceDeliveryStaff
+      .filter(staff => !assignedDeliveryStaff.has(staff.employee_code))
+      .map(staff => {
+        // Bu personelin kaç kez atanmadığını hesapla
+        let unassignedCount = 0;
+        const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+        
+        weekDays.forEach(checkDay => {
+          const checkDayPlan = weeklyPlan.gece[checkDay];
+          if (checkDayPlan) {
+            let wasAssigned = false;
+            Object.values(checkDayPlan.vehicles).forEach(vehicle => {
+              if (vehicle.deliveryStaff && vehicle.deliveryStaff.some(s => s.employee_code === staff.employee_code)) {
+                wasAssigned = true;
+              }
+            });
+            if (!wasAssigned) {
+              unassignedCount++;
+            }
+          }
+        });
+        
+        return {
+          ...staff,
+          unassignedCount
+        };
+      });
 
     return { unassignedDrivers, unassignedDeliveryStaff };
   };
@@ -1379,6 +1451,21 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
                               <span className="text-gray-700 font-bold">Toplam Atama:</span>
                               <span className="font-bold text-gray-800 bg-gray-200 px-2 py-1 rounded-full">{stats.total} kez</span>
                             </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Yazılmadığı Gün:
+                              </span>
+                              <span className={`font-bold px-2 py-1 rounded-full ${
+                                stats.unassignedDays === 0 
+                                  ? 'text-green-600 bg-green-200' 
+                                  : stats.unassignedDays <= 2 
+                                    ? 'text-yellow-600 bg-yellow-200' 
+                                    : 'text-red-600 bg-red-200'
+                              }`}>
+                                {stats.unassignedDays} gün
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1424,6 +1511,21 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
                               <span className="text-gray-700 font-bold">Toplam Atama:</span>
                               <span className="font-bold text-gray-800 bg-gray-200 px-2 py-1 rounded-full">{stats.total} kez</span>
                             </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-gray-600 flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Yazılmadığı Gün:
+                              </span>
+                              <span className={`font-bold px-2 py-1 rounded-full ${
+                                stats.unassignedDays === 0 
+                                  ? 'text-green-600 bg-green-200' 
+                                  : stats.unassignedDays <= 2 
+                                    ? 'text-yellow-600 bg-yellow-200' 
+                                    : 'text-red-600 bg-red-200'
+                              }`}>
+                                {stats.unassignedDays} gün
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1457,8 +1559,11 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
                           <div className="text-xs text-gray-500">Şoförler:</div>
                           <div className="text-xs space-y-1">
                             {unassignedDrivers.map((driver, index) => (
-                              <div key={index} className="p-1 bg-green-50 rounded text-green-700 text-xs">
-                                {driver.full_name}
+                              <div key={index} className="p-1 bg-green-50 rounded text-green-700 text-xs flex justify-between items-center">
+                                <span>{driver.full_name}</span>
+                                <span className="bg-green-200 text-green-800 px-1 rounded text-xs font-bold">
+                                  {driver.unassignedCount} kez
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -1469,8 +1574,11 @@ const AkilliDagitim = ({ userRole, onDataUpdate }) => {
                           <div className="text-xs text-gray-500">Sevkiyat:</div>
                           <div className="text-xs space-y-1">
                             {unassignedDeliveryStaff.map((staff, index) => (
-                              <div key={index} className="p-1 bg-blue-50 rounded text-blue-700 text-xs">
-                                {staff.full_name}
+                              <div key={index} className="p-1 bg-blue-50 rounded text-blue-700 text-xs flex justify-between items-center">
+                                <span>{staff.full_name}</span>
+                                <span className="bg-blue-200 text-blue-800 px-1 rounded text-xs font-bold">
+                                  {staff.unassignedCount} kez
+                                </span>
                               </div>
                             ))}
                           </div>

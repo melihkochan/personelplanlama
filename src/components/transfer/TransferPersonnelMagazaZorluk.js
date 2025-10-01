@@ -83,10 +83,47 @@ const TransferPersonnelMagazaZorluk = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Güncel ay için hedef ayı belirle
-      const targetMonth = selectedMonth === 'current' ? 
+      // AKILLI AY SEÇİMİ: Önce güncel ayın verilerini kontrol et
+      let targetMonth = selectedMonth === 'current' ? 
         String(new Date().getMonth() + 1).padStart(2, '0') : 
         selectedMonth;
+      
+      // Eğer güncel ay seçiliyse, önce o ayın verisi var mı kontrol et
+      if (selectedMonth === 'current') {
+        const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+        
+        // Güncel ay için veri sayısını kontrol et
+        const { count: currentMonthCount, error: countError } = await supabase
+          .from('aktarma_personel_magaza_zorluk')
+          .select('*', { count: 'exact', head: true })
+          .eq('ay', currentMonth);
+        
+        if (countError) {
+          console.error('Güncel ay veri kontrolü hatası:', countError);
+        } else if (!currentMonthCount || currentMonthCount === 0) {
+          // Güncel ayın verisi yok, en son verisi olan ayı bul
+          console.log('⚠️ Güncel ayın verisi yok, en son verisi olan ay aranıyor...');
+          
+          const { data: monthsData, error: monthsError } = await supabase
+            .from('aktarma_personel_magaza_zorluk')
+            .select('ay')
+            .order('ay', { ascending: false });
+          
+          if (monthsError) {
+            console.error('Ay listesi alma hatası:', monthsError);
+          } else if (monthsData && monthsData.length > 0) {
+            // En son ayı al
+            const latestMonth = monthsData[0].ay;
+            targetMonth = latestMonth;
+            console.log(`✅ En son verisi olan ay bulundu: ${latestMonth}`);
+            
+            // UI'da seçilen ayı güncelle (kullanıcıya göster)
+            setSelectedMonth(latestMonth);
+          }
+        } else {
+          console.log(`✅ Güncel ayın verisi bulundu: ${currentMonth} (${currentMonthCount} kayıt)`);
+        }
+      }
 
       // Önce toplam sayıyı al
       let countQuery = supabase

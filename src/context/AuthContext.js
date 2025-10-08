@@ -28,8 +28,8 @@ export const AuthProvider = ({ children }) => {
   const countdownRef = useRef(null);
   
   // Oturum zaman aşımı ayarları (dakika cinsinden)
-  const SESSION_TIMEOUT_MINUTES = 60; // 60 dakika (1 saat) hareketsizlik
-  const WARNING_BEFORE_TIMEOUT_MINUTES = 5; // 5 dakika önce uyarı
+  const SESSION_TIMEOUT_MINUTES = 30; // 30 dakika hareketsizlik
+  const WARNING_BEFORE_TIMEOUT_MINUTES = 2; // 2 dakika önce uyarı
   const COUNTDOWN_SECONDS = 60; // 60 saniye geri sayım
 
   // Kullanıcı aktivitesini takip eden fonksiyon

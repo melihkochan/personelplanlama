@@ -105,34 +105,43 @@ const FuelReceiptAnalytics = ({ receipts = [], vehicleData = [], personnelData =
     };
   };
 
-  // KM Tüketim Analizi
-  const calculateConsumptionAnalysis = () => {
-    const vehicleConsumption = {};
+  // Plaka Bazında Yakıt Analizi
+  const calculateVehicleFuelAnalysis = () => {
+    const vehicleStats = {};
     
     filteredData.forEach(receipt => {
-      if (!vehicleConsumption[receipt.vehicle_plate]) {
-        vehicleConsumption[receipt.vehicle_plate] = {
+      if (!vehicleStats[receipt.vehicle_plate]) {
+        vehicleStats[receipt.vehicle_plate] = {
+          totalAmount: 0,
           totalLiters: 0,
-          totalKm: 0,
-          receipts: []
+          receiptCount: 0,
+          receipts: [],
+          fuelTypes: new Set()
         };
       }
       
-      vehicleConsumption[receipt.vehicle_plate].totalLiters += receipt.quantity_liters;
-      vehicleConsumption[receipt.vehicle_plate].receipts.push(receipt);
+      vehicleStats[receipt.vehicle_plate].totalAmount += receipt.total_amount;
+      vehicleStats[receipt.vehicle_plate].totalLiters += receipt.quantity_liters;
+      vehicleStats[receipt.vehicle_plate].receiptCount += 1;
+      vehicleStats[receipt.vehicle_plate].receipts.push(receipt);
+      vehicleStats[receipt.vehicle_plate].fuelTypes.add(receipt.fuel_type);
     });
 
-    // KM hesaplama (basit örnek - gerçek implementasyonda önceki KM okumalarından hesaplanacak)
-    Object.keys(vehicleConsumption).forEach(plate => {
-      const data = vehicleConsumption[plate];
-      if (data.receipts.length > 1) {
-        const firstReceipt = data.receipts[data.receipts.length - 1];
-        const lastReceipt = data.receipts[0];
-        data.totalKm = lastReceipt.km_reading - firstReceipt.km_reading;
-      }
-    });
-
-    return vehicleConsumption;
+    return Object.entries(vehicleStats).map(([plate, data]) => {
+      const averagePrice = data.totalLiters > 0 ? data.totalAmount / data.totalLiters : 0;
+      const sortedReceipts = data.receipts.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      return {
+        plate,
+        totalAmount: data.totalAmount,
+        totalLiters: data.totalLiters,
+        receiptCount: data.receiptCount,
+        averagePrice,
+        fuelTypes: Array.from(data.fuelTypes),
+        firstReceiptDate: sortedReceipts[0]?.date || '-',
+        lastReceiptDate: sortedReceipts[sortedReceipts.length - 1]?.date || '-'
+      };
+    }).sort((a, b) => b.totalAmount - a.totalAmount);
   };
 
   // Şoför Performansı - Personnel verileri ile karşılaştır
@@ -173,69 +182,10 @@ const FuelReceiptAnalytics = ({ receipts = [], vehicleData = [], personnelData =
     })).sort((a, b) => b.totalAmount - a.totalAmount);
   };
 
-  // İstasyon Bazlı Harcama
-  const calculateStationExpenses = () => {
-    const stationStats = {};
-    
-    filteredData.forEach(receipt => {
-      const station = receipt.station_name || 'Bilinmeyen';
-      if (!stationStats[station]) {
-        stationStats[station] = {
-          totalAmount: 0,
-          receiptCount: 0
-        };
-      }
-      
-      stationStats[station].totalAmount += receipt.total_amount;
-      stationStats[station].receiptCount += 1;
-    });
-
-    return Object.entries(stationStats).map(([name, stats]) => ({
-      name,
-      ...stats
-    })).sort((a, b) => b.totalAmount - a.totalAmount);
-  };
-
-  // Aylık Harcama Grafiği (Mock data)
-  const monthlyExpenses = [
-    { month: 'Ocak', amount: 25000, receipts: 15 },
-    { month: 'Şubat', amount: 32000, receipts: 18 },
-    { month: 'Mart', amount: 28000, receipts: 16 },
-    { month: 'Nisan', amount: 35000, receipts: 20 },
-    { month: 'Mayıs', amount: 42000, receipts: 24 },
-    { month: 'Haziran', amount: 38000, receipts: 22 }
-  ];
 
   const stats = calculateStats();
-  const consumptionAnalysis = calculateConsumptionAnalysis();
+  const vehicleFuelAnalysis = calculateVehicleFuelAnalysis();
   const driverPerformance = calculateDriverPerformance();
-  const stationExpenses = calculateStationExpenses();
-
-  // Anormal tüketim tespiti
-  const detectAbnormalConsumption = () => {
-    const abnormalVehicles = [];
-    
-    Object.entries(consumptionAnalysis).forEach(([plate, data]) => {
-      if (data.totalKm > 0) {
-        const consumptionPer100km = (data.totalLiters / data.totalKm) * 100;
-        
-        // Normal tüketim 25-35 L/100km arasında kabul ediliyor
-        if (consumptionPer100km > 35 || consumptionPer100km < 15) {
-          abnormalVehicles.push({
-            plate,
-            consumptionPer100km: consumptionPer100km.toFixed(2),
-            totalKm: data.totalKm,
-            totalLiters: data.totalLiters,
-            status: consumptionPer100km > 35 ? 'high' : 'low'
-          });
-        }
-      }
-    });
-    
-    return abnormalVehicles;
-  };
-
-  const abnormalConsumption = detectAbnormalConsumption();
 
   return (
     <div className="space-y-6">
@@ -301,133 +251,124 @@ const FuelReceiptAnalytics = ({ receipts = [], vehicleData = [], personnelData =
       </div>
 
       {/* Özet İstatistikler */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3">
+            <DollarSign className="w-5 h-5 text-blue-500" />
             <div>
-              <p className="text-sm text-blue-600 font-medium">Toplam Harcama</p>
-              <p className="text-2xl font-bold text-blue-900">
+              <p className="text-xs text-gray-600">Toplam Harcama</p>
+              <p className="text-lg font-semibold text-gray-900">
                 {stats.totalAmount.toLocaleString('tr-TR', { 
                   style: 'currency', 
                   currency: 'TRY' 
                 })}
               </p>
             </div>
-            <DollarSign className="w-8 h-8 text-blue-500" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3">
+            <Fuel className="w-5 h-5 text-green-500" />
             <div>
-              <p className="text-sm text-green-600 font-medium">Toplam Litre</p>
-              <p className="text-2xl font-bold text-green-900">{stats.totalLiters.toFixed(2)}L</p>
+              <p className="text-xs text-gray-600">Toplam Litre</p>
+              <p className="text-lg font-semibold text-gray-900">{stats.totalLiters.toFixed(2)}L</p>
             </div>
-            <Fuel className="w-8 h-8 text-green-500" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3">
+            <Car className="w-5 h-5 text-purple-500" />
             <div>
-              <p className="text-sm text-purple-600 font-medium">Toplam Fiş</p>
-              <p className="text-2xl font-bold text-purple-900">{stats.totalReceipts}</p>
+              <p className="text-xs text-gray-600">Toplam Fiş</p>
+              <p className="text-lg font-semibold text-gray-900">{stats.totalReceipts}</p>
             </div>
-            <Car className="w-8 h-8 text-purple-500" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="w-5 h-5 text-orange-500" />
             <div>
-              <p className="text-sm text-orange-600 font-medium">Ortalama Fiş</p>
-              <p className="text-2xl font-bold text-orange-900">
+              <p className="text-xs text-gray-600">Ortalama Fiş</p>
+              <p className="text-lg font-semibold text-gray-900">
                 {stats.averageAmount.toLocaleString('tr-TR', { 
                   style: 'currency', 
                   currency: 'TRY' 
                 })}
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-orange-500" />
           </div>
         </div>
       </div>
 
-      {/* KM Tüketim Analizi */}
+      {/* Plaka Bazında Yakıt Analizi */}
       <div className="bg-white rounded-xl p-6 shadow-lg">
         <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
           <Car className="w-5 h-5 text-blue-600" />
-          KM Tüketim Analizi
+          Plaka Bazında Yakıt Analizi
         </h3>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <h4 className="text-md font-medium text-gray-700 mb-4">Araç Bazlı Tüketim (L/100KM)</h4>
-            <div className="space-y-3">
-              {Object.entries(consumptionAnalysis).map(([plate, data]) => {
-                const consumptionPer100km = data.totalKm > 0 ? (data.totalLiters / data.totalKm) * 100 : 0;
-                const isAbnormal = consumptionPer100km > 35 || consumptionPer100km < 15;
-                
-                return (
-                  <div key={plate} className={`p-4 rounded-lg border ${isAbnormal ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">{plate}</p>
-                        <p className="text-sm text-gray-600">
-                          {data.totalKm} KM • {data.totalLiters.toFixed(2)}L
-                        </p>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plaka</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fiş Sayısı</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Litre</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ortalama Fiyat/L</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Tutar</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İlk Fiş</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Son Fiş</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {vehicleFuelAnalysis.map((vehicle, index) => (
+                  <tr key={index} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Car className="w-5 h-5 text-blue-500 mr-2" />
+                        <span className="text-sm font-medium text-gray-900">{vehicle.plate}</span>
                       </div>
-                      <div className="text-right">
-                        <p className={`font-bold ${isAbnormal ? 'text-red-600' : 'text-gray-900'}`}>
-                          {consumptionPer100km.toFixed(2)} L/100KM
-                        </p>
-                        {isAbnormal && (
-                          <span className="text-xs text-red-600 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Anormal
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          
-          <div>
-            <h4 className="text-md font-medium text-gray-700 mb-4">Anormal Tüketim Uyarıları</h4>
-            {abnormalConsumption.length > 0 ? (
-              <div className="space-y-3">
-                {abnormalConsumption.map((vehicle, index) => (
-                  <div key={index} className="p-4 rounded-lg border border-red-200 bg-red-50">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-red-900">{vehicle.plate}</p>
-                        <p className="text-sm text-red-700">
-                          {vehicle.totalKm} KM • {vehicle.totalLiters.toFixed(2)}L
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-red-600">
-                          {vehicle.consumptionPer100km} L/100KM
-                        </p>
-                        <span className="text-xs text-red-600">
-                          {vehicle.status === 'high' ? 'Yüksek Tüketim' : 'Düşük Tüketim'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{vehicle.receiptCount} adet</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{vehicle.totalLiters.toFixed(2)}L</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{vehicle.averagePrice.toFixed(2)} TL</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {vehicle.totalAmount.toLocaleString('tr-TR', {
+                          style: 'currency',
+                          currency: 'TRY'
+                        })}
                         </span>
-                      </div>
-                    </div>
-                  </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{vehicle.firstReceiptDate}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{vehicle.lastReceiptDate}</span>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                <p className="text-green-600 font-medium">Tüm araçlar normal tüketimde</p>
-              </div>
-            )}
+              </tbody>
+            </table>
           </div>
         </div>
+        
+        {vehicleFuelAnalysis.length === 0 && (
+          <div className="text-center py-8">
+            <Car className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600">Henüz yakıt verisi bulunmuyor</p>
+          </div>
+        )}
       </div>
 
       {/* Şoför Performansı */}
@@ -437,127 +378,68 @@ const FuelReceiptAnalytics = ({ receipts = [], vehicleData = [], personnelData =
           Şoför Performansı
         </h3>
         
-        <div>
+          <div>
           <h4 className="text-md font-medium text-gray-700 mb-4">Tüm Şoför İstatistikleri</h4>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {driverPerformance.map((driver, index) => (
-              <div key={index} className={`p-4 rounded-lg border ${driver.isInPersonnel ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <p className="font-medium text-gray-900">{driver.name}</p>
-                      {driver.isInPersonnel && (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                          Personel
-                        </span>
-                      )}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Araç</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fiş Sayısı</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Litre</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ortalama/Fiş</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Tutar</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {driverPerformance.map((driver, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <User className="w-5 h-5 text-green-500 mr-2" />
+                          <span className="text-sm font-medium text-gray-900">{driver.name}</span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-500">Araç</p>
-                        <p className="font-medium">{driver.vehicle}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Fiş Sayısı</p>
-                        <p className="font-medium">{driver.receiptCount} adet</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Toplam Litre</p>
-                        <p className="font-medium">{driver.totalLiters.toFixed(2)}L</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Ortalama/Fiş</p>
-                        <p className="font-medium">
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{driver.vehicle}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{driver.receiptCount} adet</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{driver.totalLiters.toFixed(2)}L</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">
                           {driver.averageAmount.toLocaleString('tr-TR', { 
+                          style: 'currency', 
+                          currency: 'TRY' 
+                        })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {driver.totalAmount.toLocaleString('tr-TR', { 
                             style: 'currency', 
                             currency: 'TRY' 
                           })}
-                        </p>
-                      </div>
-                    </div>
-                    {driver.personnelInfo && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        ID: {driver.personnelInfo.id} • Tel: {driver.personnelInfo.phone || 'N/A'}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right ml-4">
-                    <p className="font-bold text-lg text-gray-900">
-                      {driver.totalAmount.toLocaleString('tr-TR', { 
-                        style: 'currency', 
-                        currency: 'TRY' 
-                      })}
-                    </p>
-                    <p className="text-sm text-gray-600">Toplam Tutar</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {driverPerformance.length === 0 && (
-              <div className="text-center py-8">
-                <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">Henüz fiş verisi bulunmuyor</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* İstasyon Bazlı Harcama */}
-      <div className="bg-white rounded-xl p-6 shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-red-600" />
-          İstasyon Bazlı Harcama Dağılımı
-        </h3>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <h4 className="text-md font-medium text-gray-700 mb-4">En Çok Harcama Yapılan İstasyonlar</h4>
-            <div className="space-y-3">
-              {stationExpenses.slice(0, 5).map((station, index) => (
-                <div key={index} className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{station.name}</p>
-                      <p className="text-sm text-gray-600">{station.receiptCount} fiş</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">
-                        {station.totalAmount.toLocaleString('tr-TR', { 
-                          style: 'currency', 
-                          currency: 'TRY' 
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
           
-          <div>
-            <h4 className="text-md font-medium text-gray-700 mb-4">Aylık Harcama Trendi</h4>
-            <div className="space-y-3">
-              {monthlyExpenses.map((month, index) => (
-                <div key={index} className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{month.month}</p>
-                      <p className="text-sm text-gray-600">{month.receipts} fiş</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">
-                        {month.amount.toLocaleString('tr-TR', { 
-                          style: 'currency', 
-                          currency: 'TRY' 
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          {driverPerformance.length === 0 && (
+            <div className="text-center py-8">
+              <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600">Henüz fiş verisi bulunmuyor</p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

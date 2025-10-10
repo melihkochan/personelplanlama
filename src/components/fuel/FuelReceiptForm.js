@@ -32,7 +32,8 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
     station_name: '',
     station_location: '',
     km_reading: '',
-    qr_code_data: ''
+    qr_code_data: '',
+    receipt_image: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -160,7 +161,8 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
       station_name: '',
       station_location: '',
       km_reading: '',
-      qr_code_data: ''
+      qr_code_data: '',
+      receipt_image: ''
     });
     setErrors({});
   };
@@ -218,15 +220,15 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Temel Bilgiler */}
-        <div className="bg-gray-50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-600" />
             Temel Bilgiler
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Fiş Numarası *
@@ -291,13 +293,13 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
         </div>
 
         {/* Araç ve Şoför Bilgileri */}
-        <div className="bg-gray-50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <Car className="w-5 h-5 text-green-600" />
             Araç ve Şoför Bilgileri
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Araç Plakası *
@@ -373,13 +375,13 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
         </div>
 
         {/* Yakıt Bilgileri */}
-        <div className="bg-gray-50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <Fuel className="w-5 h-5 text-orange-600" />
             Yakıt Bilgileri
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Yakıt Türü *
@@ -483,13 +485,13 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
         </div>
 
         {/* İstasyon Bilgileri */}
-        <div className="bg-gray-50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <MapPin className="w-5 h-5 text-red-600" />
             İstasyon Bilgileri
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 İstasyon Adı *
@@ -534,14 +536,73 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
           </div>
         </div>
 
+        {/* Fiş Görseli */}
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <Camera className="w-5 h-5 text-purple-600" />
+            Fiş Görseli
+          </h3>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fiş Fotoğrafı
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        setFormData(prev => ({ ...prev, receipt_image: e.target.result }));
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                  id="receipt-image"
+                />
+                <label htmlFor="receipt-image" className="cursor-pointer">
+                  {formData.receipt_image ? (
+                    <div className="space-y-2">
+                      <img 
+                        src={formData.receipt_image} 
+                        alt="Fiş görseli" 
+                        className="max-h-48 mx-auto rounded-lg border border-gray-200"
+                      />
+                      <p className="text-sm text-green-600">Görsel yüklendi</p>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, receipt_image: '' }))}
+                        className="text-sm text-red-600 hover:text-red-800"
+                      >
+                        Kaldır
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Camera className="w-12 h-12 text-gray-400 mx-auto" />
+                      <p className="text-gray-600">Fiş fotoğrafını yüklemek için tıklayın</p>
+                      <p className="text-xs text-gray-500">PNG, JPG, JPEG formatları desteklenir</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Ek Bilgiler */}
-        <div className="bg-gray-50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <Calculator className="w-5 h-5 text-purple-600" />
             Ek Bilgiler
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 KM Okuma
@@ -581,18 +642,18 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
         </div>
 
         {/* Form Butonları */}
-        <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
           <button
             type="button"
             onClick={resetForm}
-            className="px-6 py-3 bg-gray-300 text-gray-700 rounded-xl hover:bg-gray-400 transition-colors font-medium"
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-medium text-sm"
           >
             Temizle
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             {loading ? (
               <>
@@ -612,10 +673,10 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
       {/* Yeni Araç Ekleme Modal */}
       {showNewVehicleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4">
-            <h3 className="text-2xl font-bold mb-6 text-gray-900">Yeni Araç Ekle</h3>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full m-4">
+            <h3 className="text-xl font-bold mb-4 text-gray-900">Yeni Araç Ekle</h3>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Plaka</label>
                 <input
@@ -650,16 +711,16 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={() => setShowNewVehicleModal(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors text-sm"
               >
                 İptal
               </button>
               <button
                 onClick={handleAddNewVehicle}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
               >
                 Ekle
               </button>

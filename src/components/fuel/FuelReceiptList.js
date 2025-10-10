@@ -53,6 +53,7 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
       station_location: 'Gebze/Kocaeli',
       km_reading: 125000,
       status: 'approved',
+      receipt_image: 'https://via.placeholder.com/300x400/4F46E5/FFFFFF?text=Fiş+0092',
       created_at: '2025-01-10T14:32:00Z'
     },
     {
@@ -72,6 +73,7 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
       station_location: 'Gebze/Kocaeli',
       km_reading: 98000,
       status: 'pending',
+      receipt_image: 'https://via.placeholder.com/300x400/059669/FFFFFF?text=Fiş+0053',
       created_at: '2025-01-10T14:34:00Z'
     },
     {
@@ -91,6 +93,7 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
       station_location: 'İstanbul/Beşiktaş',
       km_reading: 75000,
       status: 'rejected',
+      receipt_image: 'https://via.placeholder.com/300x400/DC2626/FFFFFF?text=Fiş+0123',
       created_at: '2025-01-09T16:45:00Z'
     }
   ];
@@ -469,6 +472,19 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
+                {selectedReceipt.receipt_image && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Fiş Görseli</label>
+                    <div className="border border-gray-200 rounded-lg p-2">
+                      <img 
+                        src={selectedReceipt.receipt_image} 
+                        alt="Fiş görseli" 
+                        className="w-full h-auto rounded-lg max-h-64 object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Fiş Numarası</label>
                   <p className="text-gray-900 font-medium">#{selectedReceipt.receipt_number}</p>
@@ -537,10 +553,6 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
                   </p>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Durum</label>
-                  {getStatusBadge(selectedReceipt.status)}
-                </div>
               </div>
             </div>
           </div>

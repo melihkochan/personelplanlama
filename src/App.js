@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake, Wind, Wifi } from 'lucide-react';
+import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake, Wind, Wifi, Fuel, List, Plus } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
 import PersonelList from './components/personnel/PersonelList';
 import VehicleList from './components/vehicles/VehicleList';
 import StoreList from './components/stores/StoreList';
+import YakıtTakip from './components/fuel/YakıtTakip';
+import FuelReceiptList from './components/fuel/FuelReceiptList';
+import FuelReceiptForm from './components/fuel/FuelReceiptForm';
+import FuelReceiptAnalytics from './components/fuel/FuelReceiptAnalytics';
 import StoreDistanceCalculator from './components/stores/StoreDistanceCalculator';
 import StoreDifficultyManager from './components/stores/StoreDifficultyManager';
 import TransferPersonnelList from './components/transfer/TransferPersonnelList';
@@ -45,12 +49,14 @@ function MainApp() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // URL'den aktif tab'i al
-  const [activeTab, setActiveTab] = useState(() => {
+  // URL'den aktif tab'i doğrudan türet (state yerine)
+  const getActiveTab = () => {
     const path = location.pathname;
     if (path === '/') return 'home';
-    return path.substring(1) || 'home';
-  });
+    return decodeURIComponent(path.substring(1)) || 'home';
+  };
+  
+  const activeTab = getActiveTab();
 
   const [personnelData, setPersonnelData] = useState([]);
   const [vehicleData, setVehicleData] = useState([]);
@@ -515,7 +521,7 @@ function MainApp() {
 
   // Tab değiştiğinde URL'yi güncelle
   const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
+    console.log('Tab changing to:', tabId);
     if (tabId === 'home') {
       navigate('/');
     } else {
@@ -532,14 +538,7 @@ function MainApp() {
   };
 
   // URL değişikliklerini dinle
-  useEffect(() => {
-    const path = location.pathname;
-    if (path === '/') {
-      setActiveTab('home');
-    } else {
-      setActiveTab(path.substring(1));
-    }
-  }, [location]);
+  // Bu useEffect artık gerekli değil, activeTab URL'den türetiliyor
 
   // Kullanıcı rolünü al
   useEffect(() => {
@@ -1128,7 +1127,6 @@ function MainApp() {
       await signOut();
       // Çıkış yaptıktan sonra ana sayfaya yönlendir
       navigate('/');
-      setActiveTab('home');
       
       // Başarı mesajını göster ama localStorage'a kaydetme
       showNotification('Başarıyla çıkış yapıldı!', 'success', false);
@@ -1931,6 +1929,78 @@ function MainApp() {
 
             </div>
 
+            {/* YAKIT TAKİP Grubu */}
+            <div className="space-y-2 mt-6">
+              {/* Modern Section Header */}
+              <div className="px-2 py-1">
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-1 h-3 bg-gradient-to-b from-orange-500 to-red-600 rounded-full"></div>
+                  <span className="border-b-2 border-orange-500">Yakıt Takip</span>
+                </h3>
+              </div>
+
+              <button
+                onClick={() => handleTabChange('fuel-receipt-list')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'fuel-receipt-list'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'fuel-receipt-list' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <List className={`w-2 h-2 ${activeTab === 'fuel-receipt-list' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Fiş Listesi</span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('fuel-receipt-form')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'fuel-receipt-form'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'fuel-receipt-form' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <Plus className={`w-2 h-2 ${activeTab === 'fuel-receipt-form' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Yeni Fiş</span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('fuel-receipt-analytics')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'fuel-receipt-analytics'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'fuel-receipt-analytics' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <BarChart3 className={`w-2 h-2 ${activeTab === 'fuel-receipt-analytics' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Analizler</span>
+              </button>
+
+            </div>
+
             {/* Akıllı Personel Dağıtım Grubu */}
             <div className="space-y-2 mt-6">
               {/* Modern Section Header */}
@@ -2489,6 +2559,67 @@ function MainApp() {
                     >
                       <FileExcelOutlined className="w-5 h-5 mr-3" />
                       Puantaj Takip
+                    </button>
+
+                  </div>
+
+                  {/* YAKIT TAKİP Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-700 uppercase tracking-wider">YAKIT TAKİP</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('fuel-receipt-list');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'fuel-receipt-list'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <List className="w-5 h-5 mr-3" />
+                      Fiş Listesi
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('fuel-receipt-form');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'fuel-receipt-form'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Plus className="w-5 h-5 mr-3" />
+                      Yeni Fiş
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('fuel-receipt-analytics');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'fuel-receipt-analytics'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <BarChart3 className="w-5 h-5 mr-3" />
+                      Analizler
                     </button>
 
                   </div>
@@ -4008,7 +4139,38 @@ function MainApp() {
               <PuantajTakvim />
             )}
 
+            {/* Yakıt Fiş Listesi */}
+            {activeTab === 'fuel-receipt-list' && (
+              <FuelReceiptList 
+                vehicleData={vehicleData}
+                personnelData={personnelData}
+                currentUser={user}
+              />
+            )}
 
+            {/* Yakıt Fiş Formu */}
+            {activeTab === 'fuel-receipt-form' && (
+              <FuelReceiptForm 
+                vehicleData={vehicleData}
+                personnelData={personnelData}
+                currentUser={user}
+                onSave={(receiptData) => {
+                  console.log('Fiş kaydedildi:', receiptData);
+                  // Burada fiş kaydetme işlemi yapılacak
+                  handleTabChange('fuel-receipt-list');
+                }}
+                onCancel={() => handleTabChange('fuel-receipt-list')}
+              />
+            )}
+
+            {/* Yakıt Analizleri */}
+            {activeTab === 'fuel-receipt-analytics' && (
+              <FuelReceiptAnalytics 
+                receipts={[]} // Mock data yerine gerçek fiş verileri geçilecek
+                vehicleData={vehicleData}
+                personnelData={personnelData}
+              />
+            )}
 
             {/* Ekip Personel Bilgileri */}
             {activeTab === 'team-personnel' && (

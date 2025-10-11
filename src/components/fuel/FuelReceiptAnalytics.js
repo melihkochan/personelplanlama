@@ -18,6 +18,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { fuelReceiptService } from '../../services/supabase';
+import * as XLSX from 'xlsx';
 
 const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
   const [receipts, setReceipts] = useState([]);
@@ -160,6 +161,89 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
   const vehicleFuelAnalysis = calculateVehicleFuelAnalysis();
   const driverPerformance = calculateDriverPerformance();
 
+  // Excel indirme
+  const handleExportExcel = () => {
+    try {
+      // Analiz verilerini hazırla
+      const analysisData = {
+        'Plaka Bazında Yakıt Analizi': vehicleFuelAnalysis.map(vehicle => ({
+          'Araç Plakası': vehicle.vehicle,
+          'Toplam Tutar (₺)': vehicle.totalAmount,
+          'Toplam Litre': vehicle.totalLiters,
+          'Ortalama Fiyat': vehicle.averagePrice,
+          'Fiş Sayısı': vehicle.receiptCount,
+          'İlk Fiş Tarihi': vehicle.firstReceipt,
+          'Son Fiş Tarihi': vehicle.lastReceipt,
+          'Yakıt Türleri': vehicle.fuelTypes.join(', ')
+        })),
+        'Şoför Performansı': driverPerformance.map(driver => ({
+          'Şoför Adı': driver.name,
+          'Araç': driver.vehicle,
+          'Fiş Sayısı': driver.receiptCount,
+          'Toplam Litre': driver.totalLiters,
+          'Ortalama/Fiş': driver.averageAmount,
+          'Toplam Tutar (₺)': driver.totalAmount
+        }))
+      };
+
+      // Workbook oluşturma
+      const workbook = XLSX.utils.book_new();
+
+      // Her analiz için ayrı worksheet oluştur
+      Object.keys(analysisData).forEach(sheetName => {
+        const worksheet = XLSX.utils.json_to_sheet(analysisData[sheetName]);
+        
+        // Stil ayarları
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        
+        // Font ayarları (Calibri 8)
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!worksheet[cellAddress]) continue;
+            
+            if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+            worksheet[cellAddress].s.font = {
+              name: 'Calibri',
+              sz: 8,
+              color: { rgb: '000000' }
+            };
+            
+            // Başlık satırı için kalın font
+            if (R === 0) {
+              worksheet[cellAddress].s.font.bold = true;
+              worksheet[cellAddress].s.fill = {
+                fgColor: { rgb: 'F2F2F2' }
+              };
+            }
+            
+            // Kenarlık ekleme
+            worksheet[cellAddress].s.border = {
+              top: { style: 'thin', color: { rgb: '000000' } },
+              bottom: { style: 'thin', color: { rgb: '000000' } },
+              left: { style: 'thin', color: { rgb: '000000' } },
+              right: { style: 'thin', color: { rgb: '000000' } }
+            };
+          }
+        }
+
+        // Sütun genişliklerini ayarla
+        worksheet['!cols'] = Array(Object.keys(analysisData[sheetName][0] || {}).length).fill({ wch: 15 });
+
+        // Worksheet'i workbook'a ekle
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      });
+
+      // Dosyayı indir
+      const fileName = `yakıt-analizleri-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+    } catch (error) {
+      console.error('Excel indirme hatası:', error);
+      alert('Excel dosyası indirilirken hata oluştu: ' + error.message);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -178,7 +262,10 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
           </div>
           
           <div className="flex items-center gap-3">
-            <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors">
+            <button 
+              onClick={handleExportExcel}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
+            >
               <Download className="w-4 h-4" />
               Excel İndir
             </button>

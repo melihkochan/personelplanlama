@@ -18,6 +18,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { fuelReceiptService } from '../../services/supabase';
+import * as XLSX from 'xlsx';
 
 const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) => {
   const [receipts, setReceipts] = useState([]);
@@ -121,33 +122,88 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
 
   // Excel indirme
   const handleExportExcel = () => {
-    const csvContent = [
-      ['Fiş No', 'Tarih', 'Saat', 'Araç Plakası', 'Şoför', 'İstasyon', 'Yakıt Türü', 'Miktar (L)', 'Birim Fiyat', 'Toplam Tutar', 'Araç KM', 'Notlar'].join(','),
-      ...filteredReceipts.map(receipt => [
-        receipt.receipt_number,
-        receipt.date,
-        receipt.time,
-        receipt.vehicle_plate,
-        receipt.driver_name,
-        receipt.station_name,
-        receipt.fuel_type,
-        receipt.quantity_liters,
-        receipt.unit_price,
-        receipt.total_amount,
-        receipt.km_reading || '',
-        receipt.notes || ''
-      ].map(field => `"${field}"`).join(','))
-    ].join('\n');
+    try {
+      // Veri hazırlama
+      const data = filteredReceipts.map(receipt => ({
+        'Fiş No': receipt.receipt_number,
+        'Tarih': receipt.date,
+        'Saat': receipt.time,
+        'Araç Plakası': receipt.vehicle_plate,
+        'Şoför': receipt.driver_name,
+        'İstasyon': receipt.station_name,
+        'Yakıt Türü': receipt.fuel_type,
+        'Miktar (L)': receipt.quantity_liters,
+        'Birim Fiyat (₺)': receipt.unit_price,
+        'Toplam Tutar (₺)': receipt.total_amount,
+        'Araç KM': receipt.km_reading || '',
+        'Notlar': receipt.notes || ''
+      }));
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `yakıt-fişleri-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Workbook oluşturma
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(data);
+
+      // Stil ayarları
+      const range = XLSX.utils.decode_range(worksheet['!ref']);
+      
+      // Font ayarları (Calibri 8)
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!worksheet[cellAddress]) continue;
+          
+          if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+          worksheet[cellAddress].s.font = {
+            name: 'Calibri',
+            sz: 8,
+            color: { rgb: '000000' }
+          };
+          
+          // Başlık satırı için kalın font
+          if (R === 0) {
+            worksheet[cellAddress].s.font.bold = true;
+            worksheet[cellAddress].s.fill = {
+              fgColor: { rgb: 'F2F2F2' }
+            };
+          }
+          
+          // Kenarlık ekleme
+          worksheet[cellAddress].s.border = {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          };
+        }
+      }
+
+      // Sütun genişliklerini ayarla
+      worksheet['!cols'] = [
+        { wch: 12 }, // Fiş No
+        { wch: 12 }, // Tarih
+        { wch: 10 }, // Saat
+        { wch: 15 }, // Araç Plakası
+        { wch: 20 }, // Şoför
+        { wch: 25 }, // İstasyon
+        { wch: 15 }, // Yakıt Türü
+        { wch: 12 }, // Miktar
+        { wch: 15 }, // Birim Fiyat
+        { wch: 15 }, // Toplam Tutar
+        { wch: 12 }, // Araç KM
+        { wch: 30 }  // Notlar
+      ];
+
+      // Worksheet'i workbook'a ekle
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Yakıt Fişleri');
+
+      // Dosyayı indir
+      const fileName = `yakıt-fişleri-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+    } catch (error) {
+      console.error('Excel indirme hatası:', error);
+      alert('Excel dosyası indirilirken hata oluştu: ' + error.message);
+    }
   };
 
   // Fiş detayını görüntüleme

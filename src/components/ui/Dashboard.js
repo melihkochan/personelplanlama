@@ -65,13 +65,13 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
     const colors = getColorClasses(color);
     
     return (
-      <div className={`bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 ${colors.border} hover:scale-105 transform cursor-pointer relative overflow-hidden group`}>
+      <div className={`bg-white rounded-lg md:rounded-xl p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 ${colors.border} hover:scale-105 transform cursor-pointer relative overflow-hidden group`}>
         <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-transparent via-transparent to-gray-50 rounded-full -translate-y-12 translate-x-12 group-hover:scale-110 transition-transform duration-300"></div>
         
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-3">
-            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors.gradient} flex items-center justify-center text-white shadow-lg`}>
-              <Icon className="w-5 h-5" />
+          <div className="flex items-center justify-between mb-2 md:mb-3">
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br ${colors.gradient} flex items-center justify-center text-white shadow-lg`}>
+              <Icon className="w-4 h-4 md:w-5 md:h-5" />
             </div>
             {trend && (
               <div className={`flex items-center gap-1 text-xs font-medium ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -81,11 +81,11 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
             )}
           </div>
           
-          <div className="space-y-1">
-            <h3 className="text-lg font-bold text-gray-900">{value}</h3>
-            <p className="text-xs text-gray-600">{title}</p>
+          <div className="space-y-0.5 md:space-y-1">
+            <h3 className="text-base md:text-lg font-bold text-gray-900">{value}</h3>
+            <p className="text-xs text-gray-600 truncate">{title}</p>
             {trendText && (
-              <p className="text-xs text-gray-500">{trendText}</p>
+              <p className="text-xs text-gray-500 hidden md:block">{trendText}</p>
             )}
           </div>
         </div>
@@ -99,18 +99,18 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
     return (
       <button
         onClick={onClick}
-        className={`bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 border ${colors.hover} hover:scale-105 transform cursor-pointer relative overflow-hidden group text-left w-full`}
+        className={`bg-white rounded-lg md:rounded-xl p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-300 border ${colors.hover} hover:scale-105 transform cursor-pointer relative overflow-hidden group text-left w-full`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-transparent to-gray-50 rounded-full -translate-y-6 translate-x-6 group-hover:scale-110 transition-transform duration-300"></div>
         
         <div className="relative z-10">
-          <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors.gradient} flex items-center justify-center text-white shadow-lg mb-3`}>
-            <Icon className="w-5 h-5" />
+          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br ${colors.gradient} flex items-center justify-center text-white shadow-lg mb-2 md:mb-3`}>
+            <Icon className="w-4 h-4 md:w-5 md:h-5" />
           </div>
           
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-            <p className="text-xs text-gray-600">{description}</p>
+          <div className="space-y-0.5 md:space-y-1">
+            <h3 className="text-xs md:text-sm font-semibold text-gray-900">{title}</h3>
+            <p className="text-xs text-gray-600 hidden md:block">{description}</p>
           </div>
         </div>
       </button>
@@ -118,14 +118,14 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-xl md:rounded-2xl p-4 md:p-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.1\"%3E%3Ccircle cx=\"3\" cy=\"3\" r=\"3\"/%3E%3Ccircle cx=\"13\" cy=\"13\" r=\"3\"/%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
         
         <div className="relative z-10">
-          <h1 className="text-xl font-bold mb-2">Hoş Geldiniz! 👋</h1>
-          <p className="text-blue-100 mb-4 text-sm">Personel Planlama Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
+          <h1 className="text-lg md:text-xl font-bold mb-2">Hoş Geldiniz! 👋</h1>
+          <p className="text-blue-100 mb-3 md:mb-4 text-xs md:text-sm">Personel Planlama Sistemi Dashboard'una hoş geldiniz. Sisteminizin genel durumunu buradan takip edebilirsiniz.</p>
           
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <StatCard 
           title="Toplam Personel" 
           value={stats.totalPersonnel} 
@@ -177,10 +177,10 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
       </div>
 
       {/* Detaylı İstatistikler */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
         {/* Personel Detayları */}
-        <div className="bg-white rounded-xl p-4 shadow-lg">
-          <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+        <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 shadow-lg">
+          <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-2 md:mb-3 flex items-center gap-2">
             <Users className="w-4 h-4 text-blue-600" />
             Personel Detayları
           </h3>
@@ -201,8 +201,8 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
         </div>
 
         {/* Araç Detayları */}
-        <div className="bg-white rounded-xl p-4 shadow-lg">
-          <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+        <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 shadow-lg">
+          <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-2 md:mb-3 flex items-center gap-2">
             <Car className="w-4 h-4 text-green-600" />
             Araç Detayları
           </h3>
@@ -226,8 +226,8 @@ const Dashboard = ({ personnelData, vehicleData, storeData, generatedPlan, onNav
 
       {/* Hızlı Erişim */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Hızlı Erişim</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h3 className="text-base md:text-lg font-bold text-gray-900 mb-3 md:mb-4">Hızlı Erişim</h3>
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           <QuickActionCard
             title="Personel Yönetimi"
             description="Personel listesini görüntüle ve yönet"

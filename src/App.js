@@ -1296,8 +1296,8 @@ function MainApp() {
 
       {/* Main Layout */}
       <div className="relative z-10 flex h-screen">
-        {/* Sidebar */}
-        <div className="sidebar-container w-64 bg-white backdrop-blur-md border-r border-gray-200 shadow-2xl flex flex-col h-screen relative z-20 pointer-events-auto">
+        {/* Sidebar - Desktop Only */}
+        <div className="sidebar-container hidden lg:flex w-64 bg-white backdrop-blur-md border-r border-gray-200 shadow-2xl flex-col h-screen relative z-20 pointer-events-auto">
           {/* Modern Sidebar Header */}
           <div className="p-4 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
@@ -2725,12 +2725,12 @@ function MainApp() {
           )}
 
           {/* Main Content */}
-          <main className="main-content flex-1 overflow-auto p-8">
+          <main className="main-content flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {/* Ana Sayfa Dashboard */}
             {activeTab === 'home' && (
-              <div className="space-y-8">
+              <div className="space-y-4 md:space-y-6 lg:space-y-8">
                 {/* Ultra Modern Hero Section - Time Based Background */}
-                <div className={`relative overflow-hidden rounded-3xl p-6 text-white shadow-2xl border border-white/10 ${
+                <div className={`relative overflow-hidden rounded-2xl md:rounded-3xl p-4 md:p-6 text-white shadow-2xl border border-white/10 ${
                   (() => {
                     const hour = currentTime.getHours();
                     if (hour >= 5 && hour < 12) {
@@ -2810,7 +2810,7 @@ function MainApp() {
                             {/* Avatar */}
                             <div className="relative">
                               {userAvatar ? (
-                                <div className="w-20 h-20 rounded-full overflow-hidden shadow-2xl border-4 border-white/20">
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full overflow-hidden shadow-2xl border-4 border-white/20">
                                   <img 
                                     src={userAvatar} 
                                     alt="Avatar" 
@@ -2821,27 +2821,27 @@ function MainApp() {
                                     }}
                                   />
                                   <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20" style={{display: 'none'}}>
-                                    <span className="text-2xl font-bold text-white">
+                                    <span className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                                       {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                           </span>
                         </div>
                                 </div>
                               ) : (
-                                <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
-                                  <span className="text-2xl font-bold text-white">
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
+                                  <span className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                                     {userDetails?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                                   </span>
                                 </div>
                               )}
                               {/* Online indicator */}
-                              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 bg-green-500 rounded-full border-2 sm:border-3 md:border-4 border-white flex items-center justify-center">
                                 <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                               </div>
                             </div>
                             
                             {/* Greeting Message */}
                             <div>
-                              <h1 className="text-4xl lg:text-5xl font-bold text-white whitespace-nowrap">
+                              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white">
                                 {(() => {
                                   const hour = currentTime.getHours();
                                   if (hour >= 5 && hour < 12) {
@@ -2864,7 +2864,7 @@ function MainApp() {
                           </div>
                           
                           {/* Biraz sollu orta - Mesaj */}
-                          <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
+                          <div className="hidden lg:block absolute top-1/2 right-8 transform -translate-y-1/2">
                             <div className="flex items-center gap-3">
                               {(() => {
                                 const hour = currentTime.getHours();
@@ -2910,9 +2910,9 @@ function MainApp() {
 
 
                 {/* Modern Dashboard Cards */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                   {/* Bugünün Durumları - Sol Yarı */}
-                  <div className="relative bg-white/80 backdrop-blur-lg rounded-2xl lg:rounded-3xl shadow-2xl border border-white/20 p-4 lg:p-8 overflow-hidden">
+                  <div className="relative bg-white/80 backdrop-blur-lg rounded-2xl lg:rounded-3xl shadow-2xl border border-white/20 p-4 md:p-6 lg:p-8 overflow-hidden">
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-5">
                       <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600"></div>

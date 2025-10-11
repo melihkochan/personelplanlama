@@ -54,6 +54,7 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
       km_reading: 125000,
       status: 'approved',
       receipt_image: 'https://via.placeholder.com/300x400/4F46E5/FFFFFF?text=Fiş+0092',
+      notes: 'Acil yakıt ikmali yapıldı. İstanbul rotası için gerekli.',
       created_at: '2025-01-10T14:32:00Z'
     },
     {
@@ -94,6 +95,7 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
       km_reading: 75000,
       status: 'rejected',
       receipt_image: 'https://via.placeholder.com/300x400/DC2626/FFFFFF?text=Fiş+0123',
+      notes: 'Şehir içi seyahat için benzin alımı.',
       created_at: '2025-01-09T16:45:00Z'
     }
   ];
@@ -554,6 +556,16 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
                 </div>
                 
               </div>
+              
+              {/* Notlar Bölümü */}
+              {selectedReceipt.notes && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Açıklama / Notlar</label>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-gray-900 text-sm whitespace-pre-wrap">{selectedReceipt.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

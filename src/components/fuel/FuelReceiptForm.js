@@ -13,7 +13,6 @@ import {
   AlertCircle,
   CheckCircle,
   Camera,
-  QrCode,
   Plus
 } from 'lucide-react';
 
@@ -29,11 +28,11 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
     unit_price: '',
     total_amount: '',
     vat_amount: '',
-    station_name: '',
+    station_name: 'Shell Petrol A.Ş.',
     station_location: '',
     km_reading: '',
-    qr_code_data: '',
-    receipt_image: ''
+    receipt_image: '',
+    notes: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -158,11 +157,11 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
       unit_price: '',
       total_amount: '',
       vat_amount: '',
-      station_name: '',
+      station_name: 'Shell Petrol A.Ş.',
       station_location: '',
       km_reading: '',
-      qr_code_data: '',
-      receipt_image: ''
+      receipt_image: '',
+      notes: ''
     });
     setErrors({});
   };
@@ -299,7 +298,30 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
             Araç ve Şoför Bilgileri
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Araç KM
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="999999"
+                value={formData.km_reading}
+                onChange={(e) => setFormData(prev => ({ ...prev, km_reading: e.target.value }))}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.km_reading ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="125000"
+              />
+              {errors.km_reading && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.km_reading}
+                </p>
+              )}
+            </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Araç Plakası *
@@ -342,22 +364,22 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Şoför Adı *
               </label>
-        <select
-          value={formData.driver_name}
-          onChange={(e) => setFormData(prev => ({ ...prev, driver_name: e.target.value }))}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-            errors.driver_name ? 'border-red-500' : 'border-gray-300'
-          }`}
-        >
-          <option value="" disabled>Şoför Seçin</option>
-          {drivers
-            .sort((a, b) => a.full_name.localeCompare(b.full_name, 'tr'))
-            .map((driver, index) => (
-            <option key={index} value={driver.full_name}>
-              {driver.full_name} {driver.phone && `(${driver.phone})`}
-            </option>
-          ))}
-        </select>
+              <select
+                value={formData.driver_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, driver_name: e.target.value }))}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.driver_name ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="" disabled>Şoför Seçin</option>
+                {drivers
+                  .sort((a, b) => a.full_name.localeCompare(b.full_name, 'tr'))
+                  .map((driver, index) => (
+                  <option key={index} value={driver.full_name}>
+                    {driver.full_name} {driver.phone && `(${driver.phone})`}
+                  </option>
+                ))}
+              </select>
               {errors.driver_name && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
@@ -494,23 +516,15 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                İstasyon Adı *
+                İstasyon Adı
               </label>
               <input
                 type="text"
                 value={formData.station_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, station_name: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.station_name ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Shell Petrol A.Ş."
+                disabled
+                className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
               />
-              {errors.station_name && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.station_name}
-                </p>
-              )}
+              <p className="text-xs text-gray-500 mt-1">Anlaşmalı istasyon</p>
             </div>
 
             <div>
@@ -534,6 +548,22 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
               )}
             </div>
           </div>
+        </div>
+
+        {/* Açıklama / Notlar */}
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-purple-600" />
+            Açıklama / Notlar
+          </h3>
+          
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            rows="3"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            placeholder="Ek bilgi veya notlar buraya yazılabilir (opsiyonel)"
+          />
         </div>
 
         {/* Fiş Görseli */}
@@ -591,52 +621,6 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
                   )}
                 </label>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Ek Bilgiler */}
-        <div className="bg-gray-50 rounded-xl p-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-purple-600" />
-            Ek Bilgiler
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                KM Okuma
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="999999"
-                value={formData.km_reading}
-                onChange={(e) => setFormData(prev => ({ ...prev, km_reading: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.km_reading ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="125000"
-              />
-              {errors.km_reading && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.km_reading}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                QR Kod Verisi
-              </label>
-              <input
-                type="text"
-                value={formData.qr_code_data}
-                onChange={(e) => setFormData(prev => ({ ...prev, qr_code_data: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="QR kod verisi (opsiyonel)"
-              />
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Camera, 
   Car, 
@@ -42,6 +42,11 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     license_plate: '',
     vehicle_type: 'Kamyon'
   });
+
+  // Sayfa yüklendiğinde en üste scroll yap
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const getVatRate = (fuelType) => {
     switch (fuelType) {
@@ -265,16 +270,24 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">KM Okuma</label>
-              <input
-                type="text"
-                name="km_reading"
-                value={formData.km_reading}
-                onChange={handleChange}
-                className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.km_reading ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="803945 (virgülsüz girin)"
-              />
-              {errors.km_reading && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.km_reading}</p>}
-              <p className="text-xs text-gray-500 mt-1">💡 Sadece rakam girin, virgül ve nokta kullanmayın</p>
+              <div className="relative">
+                <input
+                  type="tel"
+                  name="km_reading"
+                  value={formData.km_reading}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-4 text-center text-2xl font-bold tracking-wider border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 ${errors.km_reading ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
+                  placeholder="000000"
+                  maxLength="7"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                  <span className="text-sm font-medium text-gray-500">KM</span>
+                </div>
+              </div>
+              {errors.km_reading && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.km_reading}</p>}
+              <p className="text-xs text-gray-500 mt-2 text-center">💡 Sadece rakam girin, virgül ve nokta kullanmayın</p>
             </div>
 
             <div>
@@ -330,14 +343,17 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Fiş Numarası *</label>
               <input
-                type="text"
+                type="tel"
                 name="receipt_number"
                 value={formData.receipt_number}
                 onChange={handleChange}
                 className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.receipt_number ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="örn: 123456789"
+                placeholder="123456789"
+                inputMode="numeric"
+                pattern="[0-9]*"
               />
               {errors.receipt_number && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.receipt_number}</p>}
+              <p className="text-xs text-gray-500 mt-1">💡 Sadece rakam girin</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -405,6 +421,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
                 placeholder="örn: 50.25"
               />
               {errors.quantity_liters && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.quantity_liters}</p>}
+              <p className="text-xs text-gray-500 mt-1">💡 Virgül veya nokta koymazsanız hatalı hesaplıyor</p>
             </div>
 
             <div>
@@ -420,6 +437,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
                 placeholder="örn: 45.75"
               />
               {errors.unit_price && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.unit_price}</p>}
+              <p className="text-xs text-gray-500 mt-1">💡 Virgül veya nokta koymazsanız hatalı hesaplıyor</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

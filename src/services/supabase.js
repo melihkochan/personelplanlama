@@ -5429,9 +5429,16 @@ export const fuelReceiptService = {
   // Yeni fiş ekle
   async createReceipt(receiptData) {
     try {
+      // Geçici çözüm: Fiş numarasına timestamp ekle (unique olması için)
+      const uniqueReceiptNumber = `${receiptData.receipt_number}_${Date.now()}`;
+      const modifiedReceiptData = {
+        ...receiptData,
+        receipt_number: uniqueReceiptNumber
+      };
+
       const { data, error } = await supabase
         .from('fuel_receipts')
-        .insert([receiptData])
+        .insert([modifiedReceiptData])
         .select()
         .single();
 

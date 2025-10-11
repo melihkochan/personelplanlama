@@ -23,7 +23,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     driver_name: selectedDriver?.full_name || '',
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().slice(0, 5),
-    fuel_type: 'Motorin',
+    fuel_type: 'MOTORIN SVPD',
     quantity_liters: '',
     unit_price: '',
     total_amount: '',
@@ -45,9 +45,9 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
 
   const getVatRate = (fuelType) => {
     switch (fuelType) {
-      case 'Benzin': return 0.20;
-      case 'Motorin': return 0.20;
-      case 'LPG': return 0.20;
+      case 'BENZIN SVPD': return 0.20;
+      case 'MOTORIN SVPD': return 0.20;
+      case 'LPG SVPD': return 0.20;
       default: return 0.20;
     }
   };
@@ -110,7 +110,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
       driver_name: selectedDriver?.full_name || '',
       date: new Date().toISOString().split('T')[0],
       time: new Date().toTimeString().slice(0, 5),
-      fuel_type: 'Motorin',
+      fuel_type: 'MOTORIN SVPD',
       quantity_liters: '',
       unit_price: '',
       total_amount: '',
@@ -201,9 +201,12 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
 
       const result = await fuelReceiptService.createReceipt(receiptData);
       if (result.success) {
-        alert('Fiş başarıyla kaydedildi!');
+        alert('✅ Fiş başarıyla kaydedildi!');
         resetForm();
-        onSuccess();
+        // 1 saniye bekle sonra geri dön
+        setTimeout(() => {
+          onSuccess('Fiş başarıyla kaydedildi!');
+        }, 1000);
       } else {
         throw new Error(result.error);
       }
@@ -271,20 +274,31 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Araç Plakası *</label>
               <div className="flex gap-2">
-                <select
-                  name="vehicle_plate"
-                  value={formData.vehicle_plate}
-                  onChange={handleChange}
-                  className={`flex-1 px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white shadow-sm ${errors.vehicle_plate ? 'border-red-500' : 'border-gray-300'}`}
-                  style={{ fontSize: '16px', WebkitAppearance: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
-                >
-                  <option value="" disabled>Araç Seçin</option>
-                  {sortedVehicles.map((vehicle, index) => (
-                    <option key={index} value={vehicle.license_plate}>
-                      {vehicle.license_plate} - {vehicle.vehicle_type}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1 relative">
+                  <select
+                    name="vehicle_plate"
+                    value={formData.vehicle_plate}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white shadow-sm ${errors.vehicle_plate ? 'border-red-500' : 'border-gray-300'}`}
+                    style={{ 
+                      fontSize: '16px', 
+                      WebkitAppearance: 'none', 
+                      appearance: 'none',
+                      backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', 
+                      backgroundPosition: 'right 0.75rem center', 
+                      backgroundRepeat: 'no-repeat', 
+                      backgroundSize: '1.25em 1.25em', 
+                      paddingRight: '2.5rem'
+                    }}
+                  >
+                    <option value="" disabled>Araç Seçin</option>
+                    {sortedVehicles.map((vehicle, index) => (
+                      <option key={index} value={vehicle.license_plate}>
+                        {vehicle.license_plate} - {vehicle.vehicle_type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowNewVehicleModal(true)}
@@ -347,17 +361,28 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Yakıt Türü *</label>
-              <select
-                name="fuel_type"
-                value={formData.fuel_type}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white shadow-sm ${errors.fuel_type ? 'border-red-500' : 'border-gray-300'}`}
-                style={{ fontSize: '16px', WebkitAppearance: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
-              >
-                <option value="Motorin">⛽ Motorin</option>
-                <option value="Benzin">⛽ Benzin</option>
-                <option value="LPG">🔥 LPG</option>
-              </select>
+              <div className="relative">
+                <select
+                  name="fuel_type"
+                  value={formData.fuel_type}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white shadow-sm ${errors.fuel_type ? 'border-red-500' : 'border-gray-300'}`}
+                  style={{ 
+                    fontSize: '16px', 
+                    WebkitAppearance: 'none', 
+                    appearance: 'none',
+                    backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', 
+                    backgroundPosition: 'right 0.75rem center', 
+                    backgroundRepeat: 'no-repeat', 
+                    backgroundSize: '1.25em 1.25em', 
+                    paddingRight: '2.5rem'
+                  }}
+                >
+                  <option value="MOTORIN SVPD">⛽ Motorin SVPD</option>
+                  <option value="BENZIN SVPD">⛽ Benzin</option>
+                  <option value="LPG SVPD">🔥 LPG </option>
+                </select>
+              </div>
               {errors.fuel_type && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.fuel_type}</p>}
             </div>
 
@@ -527,6 +552,23 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
             Fişi Kaydet
           </button>
         </div>
+
+        {/* Developer Credit */}
+        <div className="text-center pb-6">
+          <div className="border-t border-gray-200 pt-4">
+            <p className="text-xs text-gray-400">
+              Developed by{' '}
+              <a 
+                href="https://www.melihkochan.com/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:text-blue-600 font-medium underline"
+              >
+                Melih KOÇHAN
+              </a>
+            </p>
+          </div>
+        </div>
       </form>
 
       {/* Yeni Araç Ekle Modal */}
@@ -558,17 +600,28 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Araç Tipi *</label>
-                <select
-                  value={newVehicle.vehicle_type}
-                  onChange={(e) => setNewVehicle(prev => ({ ...prev, vehicle_type: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-base bg-white shadow-sm"
-                  style={{ fontSize: '16px', WebkitAppearance: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
-                >
-                  <option value="Kamyon">🚛 Kamyon</option>
-                  <option value="Kamyonet">🚚 Kamyonet</option>
-                  <option value="Panelvan">🚐 Panelvan</option>
-                  <option value="Otomobil">🚗 Otomobil</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={newVehicle.vehicle_type}
+                    onChange={(e) => setNewVehicle(prev => ({ ...prev, vehicle_type: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-base bg-white shadow-sm"
+                    style={{ 
+                      fontSize: '16px', 
+                      WebkitAppearance: 'none', 
+                      appearance: 'none',
+                      backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', 
+                      backgroundPosition: 'right 0.75rem center', 
+                      backgroundRepeat: 'no-repeat', 
+                      backgroundSize: '1.25em 1.25em', 
+                      paddingRight: '2.5rem'
+                    }}
+                  >
+                    <option value="Kamyon">🚛 Kamyon</option>
+                    <option value="Kamyonet">🚚 Kamyonet</option>
+                    <option value="Panelvan">🚐 Panelvan</option>
+                    <option value="Otomobil">🚗 Otomobil</option>
+                  </select>
+                </div>
               </div>
               
               <div className="bg-blue-50 border border-blue-200 text-blue-700 p-3 rounded-lg flex items-center gap-2 text-sm">

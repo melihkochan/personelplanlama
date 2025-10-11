@@ -55,7 +55,7 @@ const MobileApp = () => {
   };
 
   const handleSuccess = (message) => {
-    alert(message);
+    // Mesajı göster ve şoför seçimine dön
     setCurrentScreen('driver-selection');
   };
 

@@ -15,7 +15,9 @@ import {
   Eye, 
   Download,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { fuelReceiptService } from '../../services/supabase';
 import * as XLSX from 'xlsx';
@@ -32,6 +34,8 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
   const [showImageModal, setShowImageModal] = useState(false);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [editingReceipt, setEditingReceipt] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Veritabanından fişleri çek
   useEffect(() => {
@@ -51,6 +55,48 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
       console.error('Fişler yüklenirken hata:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fiş düzenleme
+  const handleEdit = (receipt) => {
+    setEditingReceipt(receipt);
+    setShowEditModal(true);
+  };
+
+  // Fiş silme
+  const handleDelete = async (receiptId) => {
+    if (window.confirm('Bu fişi silmek istediğinizden emin misiniz?')) {
+      try {
+        const result = await fuelReceiptService.deleteReceipt(receiptId);
+        if (result.success) {
+          alert('Fiş başarıyla silindi!');
+          loadReceipts(); // Listeyi yenile
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('Fiş silme hatası:', error);
+        alert('Fiş silinirken hata oluştu: ' + error.message);
+      }
+    }
+  };
+
+  // Fiş güncelleme
+  const handleUpdate = async (updatedReceipt) => {
+    try {
+      const result = await fuelReceiptService.updateReceipt(updatedReceipt.id, updatedReceipt);
+      if (result.success) {
+        alert('Fiş başarıyla güncellendi!');
+        setShowEditModal(false);
+        setEditingReceipt(null);
+        loadReceipts(); // Listeyi yenile
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Fiş güncelleme hatası:', error);
+      alert('Fiş güncellenirken hata oluştu: ' + error.message);
     }
   };
 
@@ -372,24 +418,24 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
       </div>
 
       {/* Fiş Listesi - Tablo Format */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fiş No</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih/Saat</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Araç</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İstasyon</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yakıt</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutar</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Fiş No</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Tarih/Saat</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Araç</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Şoför</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">İstasyon</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Yakıt</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Tutar</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">İşlemler</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
         {filteredReceipts.map((receipt) => (
-                <tr key={receipt.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={receipt.id} className="hover:bg-blue-50 transition-all duration-200 border-l-4 border-transparent hover:border-blue-400">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center mr-3">
@@ -438,14 +484,28 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleViewDetail(receipt)}
+                      <button
+                        onClick={() => handleViewDetail(receipt)}
                         className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
                         title="Detay"
-              >
-                <Eye className="w-4 h-4" />
-                  </button>
-                </div>
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(receipt)}
+                        className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition-colors"
+                        title="Düzenle"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(receipt.id)}
+                        className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -617,7 +677,12 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                   Açıklama / Notlar
                 </h4>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-gray-900 text-sm whitespace-pre-wrap">{selectedReceipt.notes}</p>
+                  <p className="text-gray-900 text-sm whitespace-pre-wrap">
+                    {selectedReceipt.notes && selectedReceipt.notes.trim() 
+                      ? selectedReceipt.notes 
+                      : 'Açıklama girilmemiş'
+                    }
+                  </p>
                 </div>
               </div>
             )}
@@ -626,6 +691,134 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
       )}
 
       {/* Tam Ekran Görsel Modal */}
+      {/* Düzenleme Modal */}
+      {showEditModal && editingReceipt && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Fiş Düzenle</h2>
+                  <p className="text-sm text-gray-500 mt-1">#{editingReceipt.receipt_number}</p>
+                </div>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Temel Bilgiler */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Fiş Numarası</label>
+                    <input
+                      type="text"
+                      value={editingReceipt.receipt_number || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, receipt_number: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Araç Plakası</label>
+                    <input
+                      type="text"
+                      value={editingReceipt.vehicle_plate || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, vehicle_plate: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Şoför Adı</label>
+                    <input
+                      type="text"
+                      value={editingReceipt.driver_name || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, driver_name: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tarih</label>
+                    <input
+                      type="date"
+                      value={editingReceipt.date || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, date: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Yakıt Bilgileri */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Yakıt Türü</label>
+                    <select
+                      value={editingReceipt.fuel_type || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, fuel_type: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    >
+                      <option value="MOTORIN SVPD">Motorin SVPD</option>
+                      <option value="BENZIN SVPD">Benzin SVPD</option>
+                      <option value="LPG SVPD">LPG SVPD</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Miktar (L)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingReceipt.quantity_liters || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, quantity_liters: parseFloat(e.target.value)})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Toplam Tutar (₺)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingReceipt.total_amount || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, total_amount: parseFloat(e.target.value)})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Notlar */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Notlar</label>
+                  <textarea
+                    value={editingReceipt.notes || ''}
+                    onChange={(e) => setEditingReceipt({...editingReceipt, notes: e.target.value})}
+                    rows="3"
+                    placeholder="Açıklama yazın (opsiyonel)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Butonlar */}
+              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={() => handleUpdate(editingReceipt)}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all font-medium shadow-lg"
+                >
+                  ✓ Güncelle
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showImageModal && selectedReceipt && selectedReceipt.receipt_image && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setShowImageModal(false)}>
           <div className="relative max-w-4xl max-h-[90vh] w-full m-4">

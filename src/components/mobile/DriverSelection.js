@@ -94,10 +94,23 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
       </div>
 
       {/* Footer */}
-      <div className="mt-8 text-center">
+      <div className="mt-8 text-center space-y-3">
         <p className="text-xs text-gray-500">
           Sadece yetkili şoförler giriş yapabilir
         </p>
+        <div className="border-t border-gray-200 pt-3">
+          <p className="text-xs text-gray-400">
+            Developed by{' '}
+            <a 
+              href="https://www.melihkochan.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:text-blue-600 font-medium underline"
+            >
+              Melih KOÇHAN
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );

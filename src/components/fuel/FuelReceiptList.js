@@ -63,7 +63,21 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
 
     const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
     
-    return matchesSearch && matchesVehicle;
+    // Tarih aralığı filtresi
+    let matchesDate = true;
+    if (selectedDateRange) {
+      const receiptDate = new Date(receipt.date);
+      const today = new Date();
+      const daysAgo = parseInt(selectedDateRange);
+      
+      if (daysAgo > 0) {
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - daysAgo);
+        matchesDate = receiptDate >= startDate;
+      }
+    }
+    
+    return matchesSearch && matchesVehicle && matchesDate;
   }).sort((a, b) => {
     let aValue, bValue;
     
@@ -99,17 +113,41 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
   // İstatistikler
   const stats = {
     total: receipts.length,
-    totalAmount: receipts.reduce((sum, r) => sum + (r.total_amount || 0), 0)
+    totalAmount: receipts.reduce((sum, r) => sum + (r.total_amount || 0), 0),
+    totalFuel: receipts.reduce((sum, r) => sum + (r.quantity_liters || 0), 0),
+    totalVehicles: new Set(receipts.map(r => r.vehicle_plate)).size
   };
 
 
-  // Fiş onaylama/reddetme
-  const handleStatusChange = (receiptId, newStatus) => {
-    setReceipts(prev => prev.map(receipt => 
-      receipt.id === receiptId 
-        ? { ...receipt, status: newStatus }
-        : receipt
-    ));
+  // Excel indirme
+  const handleExportExcel = () => {
+    const csvContent = [
+      ['Fiş No', 'Tarih', 'Saat', 'Araç Plakası', 'Şoför', 'İstasyon', 'Yakıt Türü', 'Miktar (L)', 'Birim Fiyat', 'Toplam Tutar', 'Araç KM', 'Notlar'].join(','),
+      ...filteredReceipts.map(receipt => [
+        receipt.receipt_number,
+        receipt.date,
+        receipt.time,
+        receipt.vehicle_plate,
+        receipt.driver_name,
+        receipt.station_name,
+        receipt.fuel_type,
+        receipt.quantity_liters,
+        receipt.unit_price,
+        receipt.total_amount,
+        receipt.km_reading || '',
+        receipt.notes || ''
+      ].map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `yakıt-fişleri-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Fiş detayını görüntüleme
@@ -149,6 +187,25 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
             </div>
           </div>
           
+          <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-600 font-medium">Toplam Yakıt</p>
+                <p className="text-2xl font-bold text-green-900">{stats.totalFuel.toFixed(2)}L</p>
+              </div>
+              <Fuel className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-orange-600 font-medium">Toplam Araç</p>
+                <p className="text-2xl font-bold text-orange-900">{stats.totalVehicles}</p>
+              </div>
+              <Car className="w-8 h-8 text-orange-500" />
+            </div>
+          </div>
           
           <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
             <div className="flex items-center justify-between">
@@ -207,6 +264,14 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
             <Filter className="w-5 h-5" />
             Filtreler
           </button>
+          
+          <button
+            onClick={handleExportExcel}
+            className="bg-green-100 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 hover:bg-green-200 transition-colors"
+          >
+            <Download className="w-5 h-5" />
+            Excel İndir
+          </button>
         </div>
 
         {/* Filtre Paneli */}
@@ -238,10 +303,11 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Tüm Tarihler</option>
-                  <option value="today">Bugün</option>
-                  <option value="week">Bu Hafta</option>
-                  <option value="month">Bu Ay</option>
-                  <option value="year">Bu Yıl</option>
+                  <option value="1">Son 1 Gün</option>
+                  <option value="7">Son 7 Gün</option>
+                  <option value="30">Son 30 Gün</option>
+                  <option value="90">Son 90 Gün</option>
+                  <option value="365">Son 1 Yıl</option>
                 </select>
               </div>
             </div>
@@ -266,15 +332,15 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredReceipts.map((receipt) => (
+        {filteredReceipts.map((receipt) => (
                 <tr key={receipt.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center mr-3">
                         <Fuel className="w-4 h-4 text-white" />
-                      </div>
+                </div>
                       <span className="text-sm font-medium text-gray-900">#{receipt.receipt_number}</span>
-                    </div>
+                </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{receipt.date}</div>
@@ -284,52 +350,52 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                     <div className="flex items-center text-sm text-gray-900">
                       <Car className="w-4 h-4 text-blue-600 mr-2" />
                       {receipt.vehicle_plate}
-                    </div>
+              </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <User className="w-4 h-4 text-green-600 mr-2" />
                       {receipt.driver_name}
-                    </div>
+            </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <MapPin className="w-4 h-4 text-red-600 mr-2" />
                       {receipt.station_name}
-                    </div>
+              </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <Fuel className="w-4 h-4 text-orange-600 mr-2" />
                       {receipt.quantity_liters}L
-                    </div>
+              </div>
                     <div className="text-xs text-gray-500">{receipt.fuel_type}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm font-medium text-gray-900">
                       <DollarSign className="w-4 h-4 text-purple-600 mr-2" />
-                      {receipt.total_amount.toLocaleString('tr-TR', { 
-                        style: 'currency', 
-                        currency: 'TRY' 
-                      })}
-                    </div>
+                  {receipt.total_amount.toLocaleString('tr-TR', { 
+                    style: 'currency', 
+                    currency: 'TRY' 
+                  })}
+              </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleViewDetail(receipt)}
+              <button
+                onClick={() => handleViewDetail(receipt)}
                         className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
                         title="Detay"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </div>
+              >
+                <Eye className="w-4 h-4" />
+                  </button>
+                </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
       </div>
 
       {filteredReceipts.length === 0 && (
@@ -397,27 +463,27 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                       <p className="text-gray-900 font-semibold">#{selectedReceipt.receipt_number}</p>
                     </div>
                     
-                    <div>
+                <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">Tarih</label>
                       <p className="text-gray-900">{selectedReceipt.date}</p>
-                    </div>
-                    
-                    <div>
+                </div>
+                
+                <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">Saat</label>
                       <p className="text-gray-900">{selectedReceipt.time}</p>
-                    </div>
-                    
-                    <div>
+                </div>
+                
+                <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">Araç</label>
                       <p className="text-gray-900">{selectedReceipt.vehicle_plate}</p>
-                    </div>
-                    
-                    <div>
+                </div>
+                
+                <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">Şoför</label>
-                      <p className="text-gray-900">{selectedReceipt.driver_name}</p>
-                    </div>
-                    
-                    <div>
+                  <p className="text-gray-900">{selectedReceipt.driver_name}</p>
+                </div>
+                
+                <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">İstasyon</label>
                       <p className="text-gray-900 text-sm">{selectedReceipt.station_name}</p>
                     </div>
@@ -449,44 +515,44 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-600">Miktar</span>
                       <span className="text-gray-900 font-medium">{selectedReceipt.quantity_liters} Litre</span>
-                    </div>
-                    
+                </div>
+                
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-600">Birim Fiyat</span>
                       <span className="text-gray-900 font-medium">
-                        {selectedReceipt.unit_price.toLocaleString('tr-TR', { 
-                          style: 'currency', 
-                          currency: 'TRY' 
-                        })}
+                    {selectedReceipt.unit_price.toLocaleString('tr-TR', { 
+                      style: 'currency', 
+                      currency: 'TRY' 
+                    })}
                       </span>
-                    </div>
-                    
+                </div>
+                
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-600">KDV</span>
                       <span className="text-gray-900 font-medium">
-                        {selectedReceipt.vat_amount.toLocaleString('tr-TR', { 
-                          style: 'currency', 
-                          currency: 'TRY' 
-                        })}
+                    {selectedReceipt.vat_amount.toLocaleString('tr-TR', { 
+                      style: 'currency', 
+                      currency: 'TRY' 
+                    })}
                       </span>
-                    </div>
-                    
+                </div>
+                
                     <div className="border-t border-orange-200 pt-3">
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold text-gray-800">Toplam Tutar</span>
                         <span className="text-xl font-bold text-orange-600">
-                          {selectedReceipt.total_amount.toLocaleString('tr-TR', { 
-                            style: 'currency', 
-                            currency: 'TRY' 
-                          })}
+                    {selectedReceipt.total_amount.toLocaleString('tr-TR', { 
+                      style: 'currency', 
+                      currency: 'TRY' 
+                    })}
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-              
+                </div>
+                
             {/* Notlar Bölümü - Alt Kısım */}
             {selectedReceipt.notes && (
               <div className="mt-4 pt-4 border-t border-gray-200">

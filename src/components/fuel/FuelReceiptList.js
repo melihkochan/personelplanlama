@@ -32,6 +32,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
   const [showFilters, setShowFilters] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -424,100 +425,181 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
               </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                {selectedReceipt.receipt_image && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Fiş Görseli</label>
-                    <div className="border border-gray-200 rounded-lg p-2">
-                      <img 
-                        src={selectedReceipt.receipt_image} 
-                        alt="Fiş görseli" 
-                        className="w-full h-auto rounded-lg max-h-64 object-contain"
-                      />
+            {/* Fiş Görseli - Üst Kısım */}
+            {selectedReceipt.receipt_image && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Fiş Görseli</label>
+                <div className="relative group cursor-pointer" onClick={() => setShowImageModal(true)}>
+                  <div className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-400 transition-all duration-200 hover:shadow-lg">
+                    <img 
+                      src={selectedReceipt.receipt_image} 
+                      alt="Fiş görseli" 
+                      className="w-full h-auto rounded-lg max-h-96 object-contain mx-auto"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white bg-opacity-90 rounded-full p-3">
+                        <Eye className="w-8 h-8 text-blue-600" />
+                      </div>
                     </div>
                   </div>
-                )}
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fiş Numarası</label>
-                  <p className="text-gray-900 font-medium">#{selectedReceipt.receipt_number}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tarih ve Saat</label>
-                  <p className="text-gray-900">{selectedReceipt.date} {selectedReceipt.time}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Araç Plakası</label>
-                  <p className="text-gray-900 font-medium">{selectedReceipt.vehicle_plate}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Şoför</label>
-                  <p className="text-gray-900">{selectedReceipt.driver_name}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">İstasyon</label>
-                  <p className="text-gray-900">{selectedReceipt.station_name}</p>
-                  <p className="text-sm text-gray-600">{selectedReceipt.station_location}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Yakıt Türü</label>
-                  <p className="text-gray-900">{selectedReceipt.fuel_type}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Miktar</label>
-                  <p className="text-gray-900 font-medium">{selectedReceipt.quantity_liters} Litre</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Birim Fiyat</label>
-                  <p className="text-gray-900">
-                    {selectedReceipt.unit_price.toLocaleString('tr-TR', { 
-                      style: 'currency', 
-                      currency: 'TRY' 
-                    })}
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">KDV</label>
-                  <p className="text-gray-900">
-                    {selectedReceipt.vat_amount.toLocaleString('tr-TR', { 
-                      style: 'currency', 
-                      currency: 'TRY' 
-                    })}
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Toplam Tutar</label>
-                  <p className="text-gray-900 font-bold text-lg">
-                    {selectedReceipt.total_amount.toLocaleString('tr-TR', { 
-                      style: 'currency', 
-                      currency: 'TRY' 
-                    })}
-                  </p>
-                </div>
-                
-              </div>
-              
-              {/* Notlar Bölümü */}
-              {selectedReceipt.notes && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Açıklama / Notlar</label>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-gray-900 text-sm whitespace-pre-wrap">{selectedReceipt.notes}</p>
+                  <div className="mt-3 text-center">
+                    <span className="text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium">
+                      📸 Tam ekran için tıklayın
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Fiş Bilgileri - Grid Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Sol Kolon - Genel Bilgiler */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  Genel Bilgiler
+                </h4>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Fiş No</label>
+                      <p className="text-gray-900 font-semibold">#{selectedReceipt.receipt_number}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Tarih</label>
+                      <p className="text-gray-900">{selectedReceipt.date}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Saat</label>
+                      <p className="text-gray-900">{selectedReceipt.time}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Araç</label>
+                      <p className="text-gray-900">{selectedReceipt.vehicle_plate}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Şoför</label>
+                      <p className="text-gray-900">{selectedReceipt.driver_name}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">İstasyon</label>
+                      <p className="text-gray-900 text-sm">{selectedReceipt.station_name}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Sağ Kolon - Yakıt Bilgileri */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Fuel className="w-5 h-5 text-orange-600" />
+                  Yakıt Bilgileri
+                </h4>
+                
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600">Yakıt Türü</span>
+                      <span className="text-gray-900 font-medium">{selectedReceipt.fuel_type}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600">Miktar</span>
+                      <span className="text-gray-900 font-medium">{selectedReceipt.quantity_liters} Litre</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600">Birim Fiyat</span>
+                      <span className="text-gray-900 font-medium">
+                        {selectedReceipt.unit_price.toLocaleString('tr-TR', { 
+                          style: 'currency', 
+                          currency: 'TRY' 
+                        })}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600">KDV</span>
+                      <span className="text-gray-900 font-medium">
+                        {selectedReceipt.vat_amount.toLocaleString('tr-TR', { 
+                          style: 'currency', 
+                          currency: 'TRY' 
+                        })}
+                      </span>
+                    </div>
+                    
+                    <div className="border-t border-orange-200 pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-800">Toplam Tutar</span>
+                        <span className="text-xl font-bold text-orange-600">
+                          {selectedReceipt.total_amount.toLocaleString('tr-TR', { 
+                            style: 'currency', 
+                            currency: 'TRY' 
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+              
+            {/* Notlar Bölümü - Alt Kısım */}
+            {selectedReceipt.notes && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                  Açıklama / Notlar
+                </h4>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-gray-900 whitespace-pre-wrap">{selectedReceipt.notes}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tam Ekran Görsel Modal */}
+      {showImageModal && selectedReceipt && selectedReceipt.receipt_image && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={() => setShowImageModal(false)}>
+          <div className="relative max-w-4xl max-h-[90vh] w-full m-4">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-4 right-4 z-10 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-2 transition-all duration-200"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+            
+            <div className="bg-white rounded-lg p-4 max-h-full overflow-auto">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Fiş Görseli - #{selectedReceipt.receipt_number}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {selectedReceipt.date} • {selectedReceipt.vehicle_plate}
+                </p>
+              </div>
+              
+              <div className="flex justify-center">
+                <img 
+                  src={selectedReceipt.receipt_image} 
+                  alt="Fiş görseli - tam ekran" 
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                />
+              </div>
+              
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-500">
+                  Kapatmak için dışarı tıklayın
+                </p>
+              </div>
             </div>
           </div>
         </div>

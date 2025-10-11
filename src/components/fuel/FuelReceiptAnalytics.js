@@ -106,14 +106,14 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
       const sortedReceipts = data.receipts.sort((a, b) => new Date(a.date) - new Date(b.date));
       
       return {
-        plate,
+        vehicle: plate,
         totalAmount: data.totalAmount,
         totalLiters: data.totalLiters,
         receiptCount: data.receiptCount,
         averagePrice,
         fuelTypes: Array.from(data.fuelTypes),
-        firstReceiptDate: sortedReceipts[0]?.date || '-',
-        lastReceiptDate: sortedReceipts[sortedReceipts.length - 1]?.date || '-'
+        firstReceipt: sortedReceipts[0]?.date || '-',
+        lastReceipt: sortedReceipts[sortedReceipts.length - 1]?.date || '-'
       };
     }).sort((a, b) => b.totalAmount - a.totalAmount);
   };
@@ -164,6 +164,11 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
   // Excel indirme
   const handleExportExcel = () => {
     try {
+      if (vehicleFuelAnalysis.length === 0) {
+        alert('Excel için veri bulunamadı. Lütfen önce fiş verilerini kontrol edin.');
+        return;
+      }
+      
       // Analiz verilerini hazırla
       const analysisData = {
         'Plaka Bazında Yakıt Analizi': vehicleFuelAnalysis.map(vehicle => ({
@@ -390,7 +395,7 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Car className="w-5 h-5 text-blue-500 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">{vehicle.plate}</span>
+                        <span className="text-sm font-medium text-gray-900">{vehicle.vehicle}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -411,10 +416,10 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
                         </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{vehicle.firstReceiptDate}</span>
+                      <span className="text-sm text-gray-900">{vehicle.firstReceipt}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{vehicle.lastReceiptDate}</span>
+                      <span className="text-sm text-gray-900">{vehicle.lastReceipt}</span>
                     </td>
                   </tr>
                 ))}

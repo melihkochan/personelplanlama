@@ -15,8 +15,9 @@ import {
   Camera,
   Plus
 } from 'lucide-react';
+import { fuelReceiptService, vehicleService } from '../../services/supabase';
 
-const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, onSave, onCancel }) => {
+const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, onSave, onCancel, onVehicleAdded }) => {
   const [formData, setFormData] = useState({
     receipt_number: '',
     vehicle_plate: '',
@@ -127,18 +128,34 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
 
     setLoading(true);
     try {
-      // Mock save - gerçek implementasyon Supabase'den gelecek
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Veritabanına kaydet
+      const receiptData = {
+        ...formData,
+        created_by: currentUser?.id || null,
+        // Sayısal değerleri dönüştür
+        quantity_liters: parseFloat(formData.quantity_liters),
+        unit_price: parseFloat(formData.unit_price),
+        total_amount: parseFloat(formData.total_amount),
+        vat_amount: formData.vat_amount ? parseFloat(formData.vat_amount) : null,
+        km_reading: formData.km_reading ? parseInt(formData.km_reading) : null
+      };
+
+      const result = await fuelReceiptService.createReceipt(receiptData);
       
-      if (onSave) {
-        onSave(formData);
+      if (result.success) {
+        alert('Fiş başarıyla kaydedildi!');
+        
+        if (onSave) {
+          onSave(result.data);
+        }
+        
+        resetForm();
+      } else {
+        throw new Error(result.error);
       }
-      
-      alert('Fiş başarıyla kaydedildi!');
-      resetForm();
     } catch (error) {
       console.error('Fiş kaydetme hatası:', error);
-      alert('Fiş kaydedilirken hata oluştu!');
+      alert('Fiş kaydedilirken hata oluştu: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -167,37 +184,45 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
   };
 
   // Yeni araç ekleme
-  const handleAddNewVehicle = () => {
+  const handleAddNewVehicle = async () => {
     if (!newVehicle.license_plate || !newVehicle.vehicle_type) {
       alert('Lütfen plaka ve araç tipini girin!');
       return;
     }
 
-    // Mock araç ekleme - gerçek implementasyon Supabase'den gelecek
-    const newVehicleData = {
-      ...newVehicle,
-      id: Date.now(),
-      license_plate: newVehicle.license_plate.toUpperCase()
-    };
-    
-    // Araç listesine ekle (parent component'e bildir)
-    if (onSave) {
-      onSave({ type: 'ADD_VEHICLE', data: newVehicleData });
+    setLoading(true);
+    try {
+      const result = await vehicleService.createVehicle(newVehicle);
+      
+      if (result.success) {
+        alert('Araç başarıyla eklendi!');
+        
+        // Form'da yeni eklenen aracı seç
+        setFormData(prev => ({
+          ...prev,
+          vehicle_plate: result.data.license_plate
+        }));
+        
+        // Parent component'e bildir (araç listesini yenile)
+        if (onVehicleAdded) {
+          onVehicleAdded(result.data);
+        }
+        
+        // Modal'ı kapat ve formu temizle
+        setNewVehicle({
+          license_plate: '',
+          vehicle_type: 'Kamyon'
+        });
+        setShowNewVehicleModal(false);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Araç ekleme hatası:', error);
+      alert('Araç eklenirken hata oluştu: ' + error.message);
+    } finally {
+      setLoading(false);
     }
-    
-    // Form'da seç
-    setFormData(prev => ({
-      ...prev,
-      vehicle_plate: newVehicleData.license_plate
-    }));
-    
-    setNewVehicle({
-      license_plate: '',
-      vehicle_type: 'Kamyon'
-    });
-    setShowNewVehicleModal(false);
-    
-    alert('Araç başarıyla eklendi!');
   };
 
   return (

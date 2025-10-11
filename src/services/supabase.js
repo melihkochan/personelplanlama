@@ -5309,3 +5309,267 @@ export const getUserProfile = async (userId) => {
     return { success: false, error: error.message };
   }
 };
+
+// Araç Yönetimi
+export const vehicleService = {
+  // Tüm araçları getir
+  async getAllVehicles() {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .order('license_plate', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Araç verileri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Yeni araç ekle
+  async createVehicle(vehicleData) {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .insert([{
+          license_plate: vehicleData.license_plate.toUpperCase(),
+          vehicle_type: vehicleData.vehicle_type,
+          location_point: null,
+          is_active: true,
+          notes: null,
+          first_driver: null,
+          second_driver: null,
+          location: null,
+          assigned_store: null
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Araç eklenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Araç güncelle
+  async updateVehicle(id, vehicleData) {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update(vehicleData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Araç güncellenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Araç sil
+  async deleteVehicle(id) {
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Araç silinirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Yakıt Fişleri Yönetimi
+export const fuelReceiptService = {
+  // Tüm fişleri getir
+  async getAllReceipts() {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_receipts')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Fiş verileri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Belirli bir fişi getir
+  async getReceiptById(id) {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_receipts')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Fiş detayı getirilirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Yeni fiş ekle
+  async createReceipt(receiptData) {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_receipts')
+        .insert([receiptData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Fiş eklenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Fiş güncelle
+  async updateReceipt(id, receiptData) {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_receipts')
+        .update(receiptData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Fiş güncellenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Fiş sil
+  async deleteReceipt(id) {
+    try {
+      const { error } = await supabase
+        .from('fuel_receipts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Fiş silinirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Tarih aralığına göre fişleri getir
+  async getReceiptsByDateRange(startDate, endDate) {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_receipts')
+        .select('*')
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Tarih aralığına göre fişler getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Araç plakasına göre fişleri getir
+  async getReceiptsByVehicle(vehiclePlate) {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_receipts')
+        .select('*')
+        .eq('vehicle_plate', vehiclePlate)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Araç fişleri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Şoför adına göre fişleri getir
+  async getReceiptsByDriver(driverName) {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_receipts')
+        .select('*')
+        .eq('driver_name', driverName)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Şoför fişleri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Fiş görseli yükle
+  async uploadReceiptImage(file, receiptNumber) {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `receipts/${receiptNumber}_${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('fuel-receipts')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('fuel-receipts')
+        .getPublicUrl(fileName);
+      
+      return { success: true, url: publicUrl, path: fileName };
+    } catch (error) {
+      console.error('Fiş görseli yüklenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Fiş görselini sil
+  async deleteReceiptImage(imagePath) {
+    try {
+      const { error } = await supabase.storage
+        .from('fuel-receipts')
+        .remove([imagePath]);
+      
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Fiş görseli silinirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};

@@ -4156,10 +4156,14 @@ function MainApp() {
                 currentUser={user}
                 onSave={(receiptData) => {
                   console.log('Fiş kaydedildi:', receiptData);
-                  // Burada fiş kaydetme işlemi yapılacak
                   handleTabChange('fuel-receipt-list');
                 }}
                 onCancel={() => handleTabChange('fuel-receipt-list')}
+                onVehicleAdded={(newVehicle) => {
+                  console.log('Yeni araç eklendi:', newVehicle);
+                  // Araç listesini yenile
+                  setVehicleData(prev => [...prev, newVehicle]);
+                }}
               />
             )}
 

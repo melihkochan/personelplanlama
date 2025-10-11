@@ -17,61 +17,34 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react';
+import { fuelReceiptService } from '../../services/supabase';
 
-const FuelReceiptAnalytics = ({ receipts = [], vehicleData = [], personnelData = [] }) => {
+const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
+  const [receipts, setReceipts] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Mock data - gerçek veriler Supabase'den gelecek
-  const mockReceipts = [
-    {
-      id: 1,
-      vehicle_plate: '34NVK210',
-      driver_name: 'Ahmet Yılmaz',
-      date: '2025-01-10',
-      fuel_type: 'MOTORIN SVPD',
-      quantity_liters: 99.62,
-      total_amount: 5328.67,
-      km_reading: 125000,
-      status: 'approved'
-    },
-    {
-      id: 2,
-      vehicle_plate: '34NVK156',
-      driver_name: 'Mehmet Demir',
-      date: '2025-01-10',
-      fuel_type: 'MOTORIN SVPD',
-      quantity_liters: 113.48,
-      total_amount: 6070.05,
-      km_reading: 98000,
-      status: 'approved'
-    },
-    {
-      id: 3,
-      vehicle_plate: '34ABC123',
-      driver_name: 'Ali Kaya',
-      date: '2025-01-09',
-      fuel_type: 'BENZIN',
-      quantity_liters: 45.20,
-      total_amount: 2495.04,
-      km_reading: 75000,
-      status: 'approved'
-    },
-    {
-      id: 4,
-      vehicle_plate: '34NVK210',
-      driver_name: 'Ahmet Yılmaz',
-      date: '2025-01-08',
-      fuel_type: 'MOTORIN SVPD',
-      quantity_liters: 85.30,
-      total_amount: 4561.55,
-      km_reading: 124500,
-      status: 'approved'
-    }
-  ];
+  // Veritabanından fişleri çek
+  useEffect(() => {
+    loadReceipts();
+  }, []);
 
-  const [analyticsData, setAnalyticsData] = useState(mockReceipts);
+  const loadReceipts = async () => {
+    setLoading(true);
+    try {
+      const result = await fuelReceiptService.getAllReceipts();
+      if (result.success) {
+        setReceipts(result.data);
+      } else {
+        console.error('Fişler yüklenirken hata:', result.error);
+      }
+    } catch (error) {
+      console.error('Fişler yüklenirken hata:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Personnel tablosundan şoförleri çek
   const getDriversFromPersonnel = () => {
@@ -83,7 +56,7 @@ const FuelReceiptAnalytics = ({ receipts = [], vehicleData = [], personnelData =
   const drivers = getDriversFromPersonnel();
 
   // Filtreleme
-  const filteredData = analyticsData.filter(receipt => {
+  const filteredData = receipts.filter(receipt => {
     const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
     return matchesVehicle;
   });

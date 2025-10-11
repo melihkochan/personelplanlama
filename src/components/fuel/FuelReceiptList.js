@@ -20,8 +20,9 @@ import {
   XCircle,
   Clock as PendingIcon
 } from 'lucide-react';
+import { fuelReceiptService } from '../../services/supabase';
 
-const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
+const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) => {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,75 +35,26 @@ const FuelReceiptList = ({ vehicleData = [], currentUser }) => {
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
 
-  // Mock data - gerçek veriler Supabase'den gelecek
-  const mockReceipts = [
-    {
-      id: 1,
-      receipt_number: '0092',
-      vehicle_plate: '34NVK210',
-      driver_name: 'Ahmet Yılmaz',
-      date: '2025-01-10',
-      time: '14:32',
-      fuel_type: 'MOTORIN SVPD',
-      quantity_liters: 99.62,
-      unit_price: 53.49,
-      total_amount: 5328.67,
-      vat_amount: 888.11,
-      pump_number: '04',
-      station_name: 'Shell Petrol A.Ş.',
-      station_location: 'Gebze/Kocaeli',
-      km_reading: 125000,
-      status: 'approved',
-      receipt_image: 'https://via.placeholder.com/300x400/4F46E5/FFFFFF?text=Fiş+0092',
-      notes: 'Acil yakıt ikmali yapıldı. İstanbul rotası için gerekli.',
-      created_at: '2025-01-10T14:32:00Z'
-    },
-    {
-      id: 2,
-      receipt_number: '0053',
-      vehicle_plate: '34NVK156',
-      driver_name: 'Mehmet Demir',
-      date: '2025-01-10',
-      time: '14:34',
-      fuel_type: 'MOTORIN SVPD',
-      quantity_liters: 113.48,
-      unit_price: 53.49,
-      total_amount: 6070.05,
-      vat_amount: 1011.67,
-      pump_number: '01',
-      station_name: 'Shell Petrol A.Ş. Sultanorhan',
-      station_location: 'Gebze/Kocaeli',
-      km_reading: 98000,
-      status: 'pending',
-      receipt_image: 'https://via.placeholder.com/300x400/059669/FFFFFF?text=Fiş+0053',
-      created_at: '2025-01-10T14:34:00Z'
-    },
-    {
-      id: 3,
-      receipt_number: '0123',
-      vehicle_plate: '34ABC123',
-      driver_name: 'Ali Kaya',
-      date: '2025-01-09',
-      time: '16:45',
-      fuel_type: 'BENZIN',
-      quantity_liters: 45.20,
-      unit_price: 55.20,
-      total_amount: 2495.04,
-      vat_amount: 415.84,
-      pump_number: '02',
-      station_name: 'Petrol Ofisi',
-      station_location: 'İstanbul/Beşiktaş',
-      km_reading: 75000,
-      status: 'rejected',
-      receipt_image: 'https://via.placeholder.com/300x400/DC2626/FFFFFF?text=Fiş+0123',
-      notes: 'Şehir içi seyahat için benzin alımı.',
-      created_at: '2025-01-09T16:45:00Z'
-    }
-  ];
-
+  // Veritabanından fişleri çek
   useEffect(() => {
-    setReceipts(mockReceipts);
+    loadReceipts();
   }, []);
+
+  const loadReceipts = async () => {
+    setLoading(true);
+    try {
+      const result = await fuelReceiptService.getAllReceipts();
+      if (result.success) {
+        setReceipts(result.data);
+      } else {
+        console.error('Fişler yüklenirken hata:', result.error);
+      }
+    } catch (error) {
+      console.error('Fişler yüklenirken hata:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtreleme ve Sıralama
   const filteredReceipts = receipts.filter(receipt => {

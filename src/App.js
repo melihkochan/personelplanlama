@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import useMobileDetection from './hooks/useMobileDetection';
+import MobileApp from './components/mobile/MobileApp';
 import { Upload, Users, Calendar, BarChart3, Sparkles, Store, LogOut, Shield, Car, Home, Menu, X, Check, AlertCircle, ChevronDown, ChevronRight, Clock, Truck, Package, MapPin, Bell, MessageCircle, BookOpen, Map, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Search, Phone, Sunrise, Sun, Sunset, Moon, Cloud, CloudRain, CloudFog, CloudLightning, Snowflake, Wind, Wifi, Fuel, List, Plus } from 'lucide-react';
 import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
@@ -48,6 +50,7 @@ function MainApp() {
   const { user, isAuthenticated, loading, signOut, isLoggingOut, isLoggingIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useMobileDetection();
 
   // URL'den aktif tab'i doğrudan türet (state yerine)
   const getActiveTab = () => {
@@ -1234,6 +1237,11 @@ function MainApp() {
   };
 
   // Loading state
+  // Mobil uygulama için özel render - login olmadan direkt mobil uygulama
+  if (isMobile) {
+    return <MobileApp />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

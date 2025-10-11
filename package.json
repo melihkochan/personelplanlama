@@ -20,6 +20,10 @@
   "license": "MIT",
   "dependencies": {
     "@ant-design/icons": "^6.0.2",
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/camera": "^7.0.2",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
     "@supabase/supabase-js": "^2.51.0",
     "antd": "^5.27.4",
     "date-fns": "^2.30.0",

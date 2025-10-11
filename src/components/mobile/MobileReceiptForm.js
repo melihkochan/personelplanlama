@@ -421,7 +421,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
                 placeholder="örn: 50.25"
               />
               {errors.quantity_liters && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.quantity_liters}</p>}
-              <p className="text-xs text-gray-500 mt-1">💡 Virgül veya nokta koymazsanız hatalı hesaplıyor</p>
+              <p className="text-xs text-gray-500 mt-1">💡 Virgül veya nokta koyunuz</p>
             </div>
 
             <div>
@@ -437,7 +437,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
                 placeholder="örn: 45.75"
               />
               {errors.unit_price && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.unit_price}</p>}
-              <p className="text-xs text-gray-500 mt-1">💡 Virgül veya nokta koymazsanız hatalı hesaplıyor</p>
+              <p className="text-xs text-gray-500 mt-1">💡 Virgül veya nokta koyunuz</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

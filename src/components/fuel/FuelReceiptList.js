@@ -15,10 +15,7 @@ import {
   Eye, 
   Download,
   TrendingUp,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock as PendingIcon
+  AlertTriangle
 } from 'lucide-react';
 import { fuelReceiptService } from '../../services/supabase';
 
@@ -27,7 +24,6 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedDateRange, setSelectedDateRange] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
@@ -66,9 +62,8 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
       receipt.station_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
-    const matchesStatus = !selectedStatus || receipt.status === selectedStatus;
     
-    return matchesSearch && matchesVehicle && matchesStatus;
+    return matchesSearch && matchesVehicle;
   }).sort((a, b) => {
     let aValue, bValue;
     
@@ -104,42 +99,9 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
   // İstatistikler
   const stats = {
     total: receipts.length,
-    pending: receipts.filter(r => r.status === 'pending').length,
-    approved: receipts.filter(r => r.status === 'approved').length,
-    rejected: receipts.filter(r => r.status === 'rejected').length,
-    totalAmount: receipts.reduce((sum, r) => sum + r.total_amount, 0)
+    totalAmount: receipts.reduce((sum, r) => sum + (r.total_amount || 0), 0)
   };
 
-  // Durum badge'i
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      pending: { 
-        icon: PendingIcon, 
-        color: 'bg-yellow-100 text-yellow-800', 
-        text: 'Beklemede' 
-      },
-      approved: { 
-        icon: CheckCircle, 
-        color: 'bg-green-100 text-green-800', 
-        text: 'Onaylandı' 
-      },
-      rejected: { 
-        icon: XCircle, 
-        color: 'bg-red-100 text-red-800', 
-        text: 'Reddedildi' 
-      }
-    };
-    
-    const config = statusConfig[status] || statusConfig.pending;
-    const Icon = config.icon;
-    
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
-        <Icon className="w-3 h-3" />
-        {config.text}
-      </span>
-    );
-  };
 
   // Fiş onaylama/reddetme
   const handleStatusChange = (receiptId, newStatus) => {
@@ -169,7 +131,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
               Yakıt Fiş Takip Sistemi
             </h1>
             <p className="text-sm text-gray-600 mt-2">
-              Toplam {stats.total} fiş • {stats.pending} beklemede • {stats.approved} onaylandı
+              Toplam {stats.total} fiş
             </p>
           </div>
           
@@ -187,25 +149,6 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
             </div>
           </div>
           
-          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-xl border border-yellow-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-yellow-600 font-medium">Beklemede</p>
-                <p className="text-2xl font-bold text-yellow-900">{stats.pending}</p>
-              </div>
-              <PendingIcon className="w-8 h-8 text-yellow-500" />
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-600 font-medium">Onaylandı</p>
-                <p className="text-2xl font-bold text-green-900">{stats.approved}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
-            </div>
-          </div>
           
           <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
             <div className="flex items-center justify-between">
@@ -269,7 +212,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
         {/* Filtre Paneli */}
         {showFilters && (
           <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Araç</label>
                 <select
@@ -286,19 +229,6 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                 </select>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Durum</label>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Tüm Durumlar</option>
-                  <option value="pending">Beklemede</option>
-                  <option value="approved">Onaylandı</option>
-                  <option value="rejected">Reddedildi</option>
-                </select>
-              </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tarih Aralığı</label>
@@ -412,9 +342,9 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
       {/* Fiş Detay Modal */}
       {showDetailModal && selectedReceipt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">
+          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full m-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
                 Fiş Detayı #{selectedReceipt.receipt_number}
               </h3>
               <button
@@ -427,23 +357,23 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
             
             {/* Fiş Görseli - Üst Kısım */}
             {selectedReceipt.receipt_image && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">Fiş Görseli</label>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fiş Görseli</label>
                 <div className="relative group cursor-pointer" onClick={() => setShowImageModal(true)}>
-                  <div className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-400 transition-all duration-200 hover:shadow-lg">
+                  <div className="border-2 border-gray-200 rounded-lg p-3 hover:border-blue-400 transition-all duration-200 hover:shadow-lg">
                     <img 
                       src={selectedReceipt.receipt_image} 
                       alt="Fiş görseli" 
-                      className="w-full h-auto rounded-lg max-h-96 object-contain mx-auto"
+                      className="w-full h-auto rounded-lg max-h-64 object-contain mx-auto"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white bg-opacity-90 rounded-full p-3">
-                        <Eye className="w-8 h-8 text-blue-600" />
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white bg-opacity-90 rounded-full p-2">
+                        <Eye className="w-6 h-6 text-blue-600" />
                       </div>
                     </div>
                   </div>
-                  <div className="mt-3 text-center">
-                    <span className="text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium">
+                  <div className="mt-2 text-center">
+                    <span className="text-xs text-blue-600 hover:text-blue-800 transition-colors font-medium">
                       📸 Tam ekran için tıklayın
                     </span>
                   </div>
@@ -452,15 +382,15 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
             )}
 
             {/* Fiş Bilgileri - Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Sol Kolon - Genel Bilgiler */}
-              <div className="space-y-4">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
                   Genel Bilgiler
                 </h4>
                 
-                <div className="bg-gray-50 rounded-lg p-4">
+                <div className="bg-gray-50 rounded-lg p-3">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">Fiş No</label>
@@ -491,18 +421,25 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                       <label className="block text-sm font-medium text-gray-600 mb-1">İstasyon</label>
                       <p className="text-gray-900 text-sm">{selectedReceipt.station_name}</p>
                     </div>
+                    
+                    {selectedReceipt.km_reading && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Araç KM</label>
+                        <p className="text-gray-900 font-medium">{selectedReceipt.km_reading.toLocaleString('tr-TR')} km</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
               
               {/* Sağ Kolon - Yakıt Bilgileri */}
-              <div className="space-y-4">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Fuel className="w-5 h-5 text-orange-600" />
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Fuel className="w-4 h-4 text-orange-600" />
                   Yakıt Bilgileri
                 </h4>
                 
-                <div className="bg-orange-50 rounded-lg p-4">
+                <div className="bg-orange-50 rounded-lg p-3">
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-600">Yakıt Türü</span>
@@ -552,13 +489,13 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
               
             {/* Notlar Bölümü - Alt Kısım */}
             {selectedReceipt.notes && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-base font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
                   Açıklama / Notlar
                 </h4>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-gray-900 whitespace-pre-wrap">{selectedReceipt.notes}</p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-gray-900 text-sm whitespace-pre-wrap">{selectedReceipt.notes}</p>
                 </div>
               </div>
             )}

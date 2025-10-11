@@ -54,7 +54,14 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // KM girişi için virgül ve nokta karakterlerini temizle
+    let processedValue = value;
+    if (name === 'km_reading') {
+      processedValue = value.replace(/[,.]/g, '');
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
 
     // Miktar veya birim fiyat değiştiğinde hesaplamaları yap
     if (name === 'quantity_liters' || name === 'unit_price') {
@@ -229,16 +236,16 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 p-4">
+      <div className="bg-white shadow-sm border-b border-gray-200 pt-safe-top pb-4 px-4">
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center text-blue-600 hover:text-blue-800"
+            className="flex items-center text-blue-600 hover:text-blue-800 py-2"
           >
             <ArrowLeft className="w-6 h-6 mr-2" />
             <span className="font-medium">Geri</span>
           </button>
-          <h1 className="text-xl font-bold text-gray-900">Yeni Fiş</h1>
+          <h1 className="text-lg font-bold text-gray-900">Yeni Fiş</h1>
           <div className="w-12"></div>
         </div>
         <div className="mt-2 flex items-center text-sm text-gray-600">
@@ -259,16 +266,15 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">KM Okuma</label>
               <input
-                type="number"
+                type="text"
                 name="km_reading"
-                min="0"
-                max="9999999"
                 value={formData.km_reading}
                 onChange={handleChange}
                 className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.km_reading ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="125000"
+                placeholder="803945 (virgülsüz girin)"
               />
               {errors.km_reading && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.km_reading}</p>}
+              <p className="text-xs text-gray-500 mt-1">💡 Sadece rakam girin, virgül ve nokta kullanmayın</p>
             </div>
 
             <div>

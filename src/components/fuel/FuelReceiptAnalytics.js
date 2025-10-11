@@ -183,7 +183,6 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
         })),
         'Şoför Performansı': driverPerformance.map(driver => ({
           'Şoför Adı': driver.name,
-          'Araç': driver.vehicle,
           'Fiş Sayısı': driver.receiptCount,
           'Toplam Litre': driver.totalLiters,
           'Ortalama/Fiş': driver.averageAmount,
@@ -451,7 +450,6 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Araç</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fiş Sayısı</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Litre</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ortalama/Fiş</th>
@@ -466,9 +464,6 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
                           <User className="w-5 h-5 text-green-500 mr-2" />
                           <span className="text-sm font-medium text-gray-900">{driver.name}</span>
                     </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">{driver.vehicle}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">{driver.receiptCount} adet</span>

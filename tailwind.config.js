@@ -13,6 +13,12 @@ module.exports = {
         'slide-out-right': 'slideOutRight 0.3s ease-in',
         'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
       keyframes: {
         fadeIn: {
           '0%': { 

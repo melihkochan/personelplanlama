@@ -3,12 +3,16 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.yakitfistakip.app"
     compileSdk rootProject.ext.compileSdkVersion
+    
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
         applicationId "com.yakitfistakip.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -17,9 +21,27 @@ android {
         }
     }
     buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+            buildConfigField "String", "BUILD_TYPE", '"debug"'
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            buildConfigField "String", "BUILD_TYPE", '"release"'
+        }
+    }
+
+    // APK dosya ismini özelleştir
+    android.applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def appName = "YakıtTakip"
+            def buildType = variant.buildType.name
+            def versionName = variant.versionName
+            def versionCode = variant.versionCode
+            
+            outputFileName = "${appName}-v${versionName}(${versionCode})-${buildType}.apk"
         }
     }
 }

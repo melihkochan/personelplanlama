@@ -270,9 +270,6 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
               </div>
               Yakıt Fiş Takip Sistemi
             </h1>
-            <p className="text-sm text-gray-600 mt-2">
-              Toplam {stats.total} fiş
-            </p>
           </div>
           
         </div>

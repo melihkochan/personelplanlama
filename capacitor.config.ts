@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.yakitfistakip.app',
-  appName: 'Yakıt Fiş Takip',
+  appName: 'Yakıt Takip',
   webDir: 'build',
   server: {
     androidScheme: 'https'

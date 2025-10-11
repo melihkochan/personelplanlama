@@ -4273,9 +4273,11 @@ export const updateUserOnlineStatusWithSession = async (userId, isOnline) => {
       last_seen: new Date().toISOString()
     };
 
-    // Eğer online yapılıyorsa session_start'ı da ekle
+    // Eğer online yapılıyorsa session_start'ı da ekle, offline yapılıyorsa null yap
     if (isOnline) {
       updateData.session_start = new Date().toISOString();
+    } else {
+      updateData.session_start = null;
     }
 
     // Önce normal client ile dene
@@ -4304,6 +4306,31 @@ export const updateUserOnlineStatusWithSession = async (userId, isOnline) => {
     return { success: true, data };
   } catch (error) {
     console.error('❌ Online durumu güncelleme hatası:', error);
+    return { success: false, error };
+  }
+};
+
+// Yanlış session_start değerlerini temizle
+export const cleanupInvalidSessionStarts = async () => {
+  try {
+    // 24 saatten eski session_start'ları temizle
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update({ session_start: null })
+      .or(`and(is_online.eq.false,session_start.not.is.null),and(session_start.lt.${twentyFourHoursAgo})`)
+      .select();
+
+    if (error) {
+      console.error('❌ Session temizleme hatası:', error);
+      return { success: false, error };
+    }
+
+    console.log(`✅ ${data?.length || 0} kullanıcının session_start değeri temizlendi`);
+    return { success: true, cleanedCount: data?.length || 0 };
+  } catch (error) {
+    console.error('❌ Session temizleme hatası:', error);
     return { success: false, error };
   }
 };

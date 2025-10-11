@@ -4317,6 +4317,9 @@ function MainApp() {
                       ? Math.floor((new Date() - new Date(onlineUser.session_start)) / 1000 / 60)
                       : 0;
                     
+                    // Eğer süre 24 saatten fazlaysa, 0 olarak göster
+                    const displayDuration = sessionDuration > 1440 ? 0 : sessionDuration;
+                    
                     return (
                       <div key={onlineUser.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors">
                         <div className="flex items-center space-x-4">
@@ -4348,11 +4351,11 @@ function MainApp() {
                             <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-green-600 font-medium">Çevrimiçi</span>
                           </div>
-                          {sessionDuration > 0 && (
+                          {displayDuration > 0 && (
                             <p className="text-sm text-gray-500">
-                              {sessionDuration >= 60 
-                                ? `${Math.floor(sessionDuration / 60)}s ${sessionDuration % 60}dk`
-                                : `${sessionDuration} dakika`
+                              {displayDuration >= 60 
+                                ? `${Math.floor(displayDuration / 60)}s ${displayDuration % 60}dk`
+                                : `${displayDuration} dakika`
                               }
                             </p>
                           )}

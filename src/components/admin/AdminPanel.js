@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText, RefreshCw, UserPlus, MessageCircle, UserCheck } from 'lucide-react';
-import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, deletePuantajData, getAuditLogs, getAuditLogStats, getPendingRegistrations, getPendingRegistrationsCount, approveRegistration, rejectRegistration, supabase, avatarService, updateUserProfile } from '../../services/supabase';
+import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, deletePuantajData, getAuditLogs, getAuditLogStats, getPendingRegistrations, getPendingRegistrationsCount, approveRegistration, rejectRegistration, supabase, avatarService, updateUserProfile, cleanupInvalidSessionStarts } from '../../services/supabase';
 import ModernAvatarUpload from '../ui/ModernAvatarUpload';
 import * as XLSX from 'xlsx';
 
@@ -27,6 +27,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
   
   // Puantaj verilerini temizleme state'i
   const [deletingPuantajData, setDeletingPuantajData] = useState(false);
+  
+  // Session temizleme state'i
+  const [cleaningSessions, setCleaningSessions] = useState(false);
   
   // Şifre değiştirme modal'ı için state
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -557,6 +560,32 @@ Devam etmek istediğinizden emin misiniz?`;
     }
   };
 
+  // Session temizleme fonksiyonu
+  const handleCleanupSessions = async () => {
+    if (!window.confirm('❓ Yanlış oturum sürelerini temizlemek istediğinizden emin misiniz?\n\nBu işlem 24 saatten eski ve çevrimdışı kullanıcıların session_start değerlerini temizleyecek.')) {
+      return;
+    }
+    
+    setCleaningSessions(true);
+    
+    try {
+      const result = await cleanupInvalidSessionStarts();
+      
+      if (result.success) {
+        alert(`✅ Başarılı!\n\n${result.cleanedCount} kullanıcının yanlış oturum süresi temizlendi.\n\nSayfa yenilenecek.`);
+        // Sayfayı yenile
+        window.location.reload();
+      } else {
+        alert(`❌ Hata!\n\nSession temizleme hatası:\n${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Session temizleme genel hatası:', error);
+      alert(`❌ Beklenmeyen Hata!\n\nSession temizleme hatası:\n${error.message}`);
+    } finally {
+      setCleaningSessions(false);
+    }
+  };
+
   const MenuButton = ({ id, icon: Icon, label, active, onClick, count }) => (
     <button
       onClick={() => onClick(id)}
@@ -747,11 +776,18 @@ Devam etmek istediğinizden emin misiniz?`;
                    {user.is_online ? 'Çevrimiçi' : formatLastSeen(user.last_seen)}
                  </span>
                </div>
-               {user.session_start && (
+               {user.session_start && user.is_online && (
                  <div className="flex items-center space-x-1 text-xs text-gray-500">
                    <Activity className="w-3 h-3" />
                    <span>
-                     {Math.floor((new Date() - new Date(user.session_start)) / (1000 * 60))} dk
+                     {(() => {
+                       const sessionDuration = Math.floor((new Date() - new Date(user.session_start)) / (1000 * 60));
+                       // Eğer süre 24 saatten fazlaysa (1440 dakika), "Çevrimdışı" olarak göster
+                       if (sessionDuration > 1440) {
+                         return 'Çevrimdışı';
+                       }
+                       return `${sessionDuration} dk`;
+                     })()}
                    </span>
                  </div>
                )}
@@ -946,6 +982,30 @@ Devam etmek istediğinizden emin misiniz?`;
                 <>
                   <Trash2 className="w-4 h-4" />
                   <span>Temizle</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <span className="text-sm font-medium text-gray-700">Yanlış Oturum Sürelerini Temizle</span>
+              <p className="text-xs text-gray-500 mt-1">24 saatten eski ve çevrimdışı kullanıcıların session_start değerlerini temizler</p>
+            </div>
+            <button 
+              onClick={handleCleanupSessions}
+              disabled={cleaningSessions}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {cleaningSessions ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Temizleniyor...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Oturumları Temizle</span>
                 </>
               )}
             </button>

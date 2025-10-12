@@ -600,25 +600,36 @@ Devam etmek istediğinizden emin misiniz?`;
     <button
       onClick={() => onClick(id)}
       className={`
-        flex items-center gap-2 w-full px-2 py-2 rounded-md transition-all duration-200 text-sm
+        relative flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium group
         ${active 
-          ? 'bg-blue-600 text-white shadow-sm' 
-          : 'text-gray-600 hover:bg-gray-100'
+          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25 transform scale-[1.02]' 
+          : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:text-gray-900 hover:shadow-md'
         }
       `}
     >
-      <Icon className="w-4 h-4" />
-      <span className="font-medium">{label}</span>
+      <div className={`
+        p-2 rounded-lg transition-all duration-300
+        ${active 
+          ? 'bg-white/20 text-white' 
+          : 'bg-gray-100 text-gray-600 group-hover:bg-blue-100 group-hover:text-blue-600'
+        }
+      `}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <span className="flex-1 text-left">{label}</span>
       {count > 0 && (
         <span className={`
-          ml-auto px-1.5 py-0.5 rounded text-xs font-bold
+          px-2 py-1 rounded-full text-xs font-bold transition-all duration-300
           ${active 
-            ? 'bg-white/20 text-white' 
-            : 'bg-red-100 text-red-600'
+            ? 'bg-white/25 text-white shadow-sm' 
+            : 'bg-red-100 text-red-600 group-hover:bg-red-200'
           }
         `}>
           {count}
         </span>
+      )}
+      {active && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"></div>
       )}
     </button>
   );
@@ -1253,7 +1264,7 @@ Devam etmek istediğinizden emin misiniz?`;
     };
 
     return (
-      <div className="space-y-4">
+      <div className="p-6 space-y-6">
         {/* İstatistikler */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
@@ -1636,46 +1647,53 @@ Devam etmek istediğinizden emin misiniz?`;
 
         <div className="bg-white p-6">
 
-          {/* Compact Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all">
+          {/* Modern Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="group bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 transform hover:-translate-y-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-xs font-medium">Toplam Kullanıcı</p>
-                  <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                  <p className="text-blue-600 text-sm font-semibold mb-1">Toplam Kullanıcı</p>
+                  <p className="text-3xl font-bold text-blue-900">{users.length}</p>
+                  <p className="text-blue-500 text-xs mt-1">Sistem kullanıcıları</p>
                 </div>
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Users className="w-4 h-4 text-blue-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all">
+            <div className="group bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 transform hover:-translate-y-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-xs font-medium">Admin</p>
-                  <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.role === 'admin').length}</p>
+                  <p className="text-purple-600 text-sm font-semibold mb-1">Yönetici</p>
+                  <p className="text-3xl font-bold text-purple-900">{users.filter(u => u.role === 'admin' || u.role === 'yönetici').length}</p>
+                  <p className="text-purple-500 text-xs mt-1">Yönetici kullanıcılar</p>
                 </div>
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Crown className="w-4 h-4 text-purple-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <Crown className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200 hover:border-green-300 hover:shadow-md transition-all">
+            <div className="group bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border border-green-200 hover:border-green-300 hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300 transform hover:-translate-y-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-xs font-medium">Aktif</p>
-                  <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.is_active).length}</p>
+                  <p className="text-green-600 text-sm font-semibold mb-1">Aktif</p>
+                  <p className="text-3xl font-bold text-green-900">{users.filter(u => u.is_active).length}</p>
+                  <p className="text-green-500 text-xs mt-1">Çalışan hesaplar</p>
                 </div>
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Check className="w-4 h-4 text-green-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <Check className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Left Menu */}
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Modern Left Menu */}
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 space-y-2">
+              <div className="mb-4">
+                <h2 className="text-lg font-bold text-gray-900 mb-1">Admin Paneli</h2>
+                <p className="text-sm text-gray-500">Sistem yönetimi araçları</p>
+              </div>
               <MenuButton
                 id="users"
                 icon={Users}
@@ -1722,10 +1740,11 @@ Devam etmek istediğinizden emin misiniz?`;
 
             </div>
 
-            {/* Main Content */}
+            {/* Modern Main Content */}
             <div className="lg:col-span-3">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 min-h-[600px]">
               {activeSection === 'users' && (
-                <div className="space-y-6">
+                <div className="p-6 space-y-6">
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -1785,6 +1804,7 @@ Devam etmek istediğinizden emin misiniz?`;
                 <PendingRegistrationsSection />
               )}
               
+              </div>
             </div>
           </div>
         </div>
@@ -2164,8 +2184,17 @@ const AvatarManagementSection = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-900">Görsel Düzenleme</h3>
-        <p className="text-sm text-gray-600">Kullanıcı avatar'larını yönetin</p>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Upload className="w-4 h-4 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Görsel Düzenleme</h3>
+              <p className="text-xs text-gray-500">Kullanıcı avatar'larını yönetin</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {loadingSettings ? (

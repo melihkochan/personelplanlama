@@ -494,25 +494,15 @@ const PersonelDagilimi = () => {
               Hangi personelin kiminle kaç kez çıktığını görüntüleyin
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          {teamMatrix && Object.keys(teamMatrix).length > 0 && (
             <button
-              onClick={refreshData}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={exportToExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
-              Yenile
+              <Download className="w-4 h-4" />
+              Dışa Aktar
             </button>
-            
-            {teamMatrix && Object.keys(teamMatrix).length > 0 && (
-              <button
-                onClick={exportToExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Dışa Aktar
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 

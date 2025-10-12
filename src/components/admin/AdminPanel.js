@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Shield, Users, Settings, Database, AlertTriangle, Check, X, Plus, Edit3, Trash2, User, Crown, Star, Upload, CheckCircle, XCircle, Activity, Clock, Filter, Search, Calendar, Eye, FileText, RefreshCw, UserPlus, MessageCircle, UserCheck } from 'lucide-react';
-import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, deletePuantajData, getAuditLogs, getAuditLogStats, getPendingRegistrations, getPendingRegistrationsCount, approveRegistration, rejectRegistration, supabase, avatarService, updateUserProfile, cleanupInvalidSessionStarts } from '../../services/supabase';
+import { getAllUsers, addUserWithAudit, updateUserWithAudit, deleteUserWithAudit, resendConfirmationEmail, deleteAllPerformanceDataWithAudit, clearAllShiftDataWithAudit, getAuditLogs, getAuditLogStats, getPendingRegistrations, getPendingRegistrationsCount, approveRegistration, rejectRegistration, supabase, avatarService, updateUserProfile, cleanupInvalidSessionStarts } from '../../services/supabase';
 import ModernAvatarUpload from '../ui/ModernAvatarUpload';
 import * as XLSX from 'xlsx';
 
@@ -24,9 +24,6 @@ const AdminPanel = ({ userRole, currentUser }) => {
   
   // Personel kontrol verilerini temizleme state'i
   const [deletingShiftData, setDeletingShiftData] = useState(false);
-  
-  // Puantaj verilerini temizleme state'i
-  const [deletingPuantajData, setDeletingPuantajData] = useState(false);
   
   // Session temizleme state'i
   const [cleaningSessions, setCleaningSessions] = useState(false);
@@ -527,49 +524,6 @@ Devam etmek istediğinizden emin misiniz?`;
     }
   };
 
-  // Tüm puantaj verilerini sil
-  const handleDeleteAllPuantajData = async () => {
-    const confirmMessage = `⚠️ DİKKAT: Bu işlem TÜM puantaj takip verilerini kalıcı olarak silecek!
-
-Bu işlem:
-• Tüm puantaj kayıtlarını silecek
-• Tüm Excel yüklenen verileri silecek
-• Tüm istatistikleri sıfırlayacak
-• Bu işlem GERİ ALINAMAZ!
-
-Devam etmek istediğinizden emin misiniz?`;
-
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    // İkinci onay
-    const secondConfirm = window.confirm('❗ SON UYARI: Tüm puantaj takip verileri silinecek. Bu işlem geri alınamaz!\n\nDevam etmek için "Tamam"a basın.');
-    if (!secondConfirm) {
-      return;
-    }
-
-    setDeletingPuantajData(true);
-
-    try {
-      const result = await deletePuantajData('all');
-      
-      if (result.success) {
-        alert(`✅ Başarılı!\n\nTüm puantaj takip verileri başarıyla silindi.\n\nSayfa yenilenecek.`);
-        // Sayfayı yenile
-        window.location.reload();
-      } else {
-        alert(`❌ Hata!\n\nPuantaj verileri silinemedi:\n${result.error}`);
-        console.error('❌ Puantaj verisi silme hatası:', result);
-      }
-    } catch (error) {
-      console.error('❌ Puantaj verisi silme genel hatası:', error);
-      alert(`❌ Beklenmeyen Hata!\n\nPuantaj verileri silinemedi:\n${error.message}`);
-    } finally {
-      setDeletingPuantajData(false);
-    }
-  };
-
   // Session temizleme fonksiyonu
   const handleCleanupSessions = async () => {
     if (!window.confirm('❓ Yanlış oturum sürelerini temizlemek istediğinizden emin misiniz?\n\nBu işlem 24 saatten eski ve çevrimdışı kullanıcıların session_start değerlerini temizleyecek.')) {
@@ -971,30 +925,6 @@ Devam etmek istediğinizden emin misiniz?`;
               className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {deletingShiftData ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Siliniyor...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  <span>Temizle</span>
-                </>
-              )}
-            </button>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
-              <span className="text-sm font-medium text-gray-700">Puantaj Takip Verilerini Temizle</span>
-              <p className="text-xs text-gray-500 mt-1">Tüm puantaj kayıtları, Excel verileri ve istatistikleri kalıcı olarak siler</p>
-            </div>
-            <button 
-              onClick={handleDeleteAllPuantajData}
-              disabled={deletingPuantajData}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {deletingPuantajData ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   <span>Siliniyor...</span>

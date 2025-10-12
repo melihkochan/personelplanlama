@@ -27,8 +27,6 @@ import StoreDistribution from './components/stores/StoreDistribution';
 import VehicleDistribution from './components/vehicles/VehicleDistribution';
 import Statistics from './components/statistics/Statistics';
 import TeamShifts from './components/timesheet/TeamShifts';
-import PuantajTakvim from './components/puantaj/PuantajTakvim';
-import PuantajTakip from './components/puantaj/PuantajTakip';
 import TeamPersonnel from './components/timesheet/TeamPersonnel';
 import AdminPanel from './components/admin/AdminPanel';
 import LoginForm from './components/ui/LoginForm';
@@ -1884,59 +1882,6 @@ function MainApp() {
               </button>
 
             </div>
-
-            {/* PUANTAJ TAKİP Grubu */}
-            <div className="space-y-2 mt-6">
-              {/* Modern Section Header */}
-              <div className="px-2 py-1">
-                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <div className="w-1 h-3 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full"></div>
-                  <span className="border-b-2 border-indigo-500">Puantaj Takip</span>
-                </h3>
-              </div>
-
-              <button
-                onClick={() => handleTabChange('puantaj-takip')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'puantaj-takip'
-                    ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'puantaj-takip' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <FileExcelOutlined className={`w-2 h-2 ${activeTab === 'puantaj-takip' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Puantaj Takip</span>
-              </button>
-
-              <button
-                onClick={() => handleTabChange('puantaj-takvim')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'puantaj-takvim'
-                    ? 'bg-gradient-to-r from-lime-500 to-green-600 text-white shadow-lg shadow-lime-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'puantaj-takvim' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <Package className={`w-2 h-2 ${activeTab === 'puantaj-takvim' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Puantaj Takvim</span>
-              </button>
-
-            </div>
-
             {/* YAKIT TAKİP Grubu */}
             <div className="space-y-2 mt-6">
               {/* Modern Section Header */}
@@ -2523,50 +2468,6 @@ function MainApp() {
                     >
                       <Users className="w-5 h-5 mr-3" />
                       Ekip Personel Bilgileri
-                    </button>
-
-                  </div>
-
-                  {/* PUANTAJ TAKİP Grubu */}
-                  <div className="space-y-2">
-                    <div className="flex items-center px-4 py-2">
-                      <div className="flex-1 h-px bg-gray-300"></div>
-                      <span className="px-3 text-xs font-medium text-gray-700 uppercase tracking-wider">PUANTAJ TAKİP</span>
-                      <div className="flex-1 h-px bg-gray-300"></div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        handleTabChange('puantaj-takvim');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'puantaj-takvim'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <Package className="w-5 h-5 mr-3" />
-                      Puantaj Takvim
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        handleTabChange('puantaj-takip');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'puantaj-takip'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <FileExcelOutlined className="w-5 h-5 mr-3" />
-                      Puantaj Takip
                     </button>
 
                   </div>
@@ -4137,14 +4038,6 @@ function MainApp() {
             {/* Ekip Vardiyaları */}
             {activeTab === 'team-shifts' && (
               <TeamShifts />
-            )}
-            {/* Puantaj Takip */}
-            {activeTab === 'puantaj-takip' && (
-              <PuantajTakip />
-            )}
-            {/* Puantaj Takvim */}
-            {activeTab === 'puantaj-takvim' && (
-              <PuantajTakvim />
             )}
 
             {/* Yakıt Takip - Tüm yakıt işlemleri tek bir component'te */}

@@ -581,15 +581,16 @@ const PersonelDagilimi = () => {
               )}
             </div>
             
-            <div className="overflow-x-auto" style={{
+            <div className="overflow-auto" style={{
               scrollbarWidth: 'thin',
               scrollbarColor: '#9CA3AF #F3F4F6',
               maxHeight: '600px'
             }}>
               {/* Webkit scrollbar styles */}
-              <style jsx>{`
+              <style jsx="true">{`
                 div::-webkit-scrollbar {
                   height: 12px;
+                  width: 12px;
                 }
                 div::-webkit-scrollbar-track {
                   background: #F3F4F6;
@@ -606,13 +607,13 @@ const PersonelDagilimi = () => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b-2 border-gray-300">
-                    <th className="text-left py-3 px-2 font-semibold text-gray-900 min-w-[200px] sticky left-0 bg-white z-10">
+                    <th className="text-left py-3 px-2 font-semibold text-gray-900 min-w-[200px] sticky left-0 top-0 bg-white z-[100]" style={{ position: 'sticky', left: 0, top: 0, zIndex: 100 }}>
                       Personel
                     </th>
                     {getMatrixPersonnel().map((person, idx) => (
                       <th 
                         key={idx}
-                        className={`text-center py-3 px-1 font-semibold min-w-[60px] sticky top-0 bg-white z-20 ${
+                        className={`text-center py-3 px-1 font-semibold min-w-[60px] sticky top-0 bg-white z-[90] ${
                           selectedPersonnel.includes(person.id) ? 'bg-yellow-50 border-b-4 border-yellow-400' : 'text-gray-900'
                         }`}
                         style={{ writingMode: 'vertical-rl' }}
@@ -641,9 +642,9 @@ const PersonelDagilimi = () => {
                       key={rowIdx} 
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <td className={`py-3 px-2 sticky left-0 bg-white z-10 ${
+                      <td className={`py-3 px-2 sticky left-0 bg-white z-[80] ${
                         selectedPersonnel.includes(person.id) ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''
-                      }`}>
+                      }`} style={{ position: 'sticky', left: 0, zIndex: 80, top: 'auto' }}>
                         <div className="flex flex-col">
                           <span className={`font-medium text-xs ${
                             selectedPersonnel.includes(person.id) ? 'text-yellow-800 font-bold' : 'text-gray-900'

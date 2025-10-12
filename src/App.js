@@ -4147,40 +4147,14 @@ function MainApp() {
               <PuantajTakvim />
             )}
 
-            {/* Yakıt Fiş Listesi */}
-            {activeTab === 'fuel-receipt-list' && (
-              <FuelReceiptList 
+            {/* Yakıt Takip - Tüm yakıt işlemleri tek bir component'te */}
+            {(activeTab === 'fuel-receipt-list' || activeTab === 'fuel-receipt-form' || activeTab === 'fuel-receipt-analytics') && (
+              <YakıtTakip 
                 vehicleData={vehicleData}
                 personnelData={personnelData}
                 currentUser={user}
-              />
-            )}
-
-            {/* Yakıt Fiş Formu */}
-            {activeTab === 'fuel-receipt-form' && (
-              <FuelReceiptForm 
-                vehicleData={vehicleData}
-                personnelData={personnelData}
-                currentUser={user}
-                onSave={(receiptData) => {
-                  console.log('Fiş kaydedildi:', receiptData);
-                  handleTabChange('fuel-receipt-list');
-                }}
-                onCancel={() => handleTabChange('fuel-receipt-list')}
-                onVehicleAdded={(newVehicle) => {
-                  console.log('Yeni araç eklendi:', newVehicle);
-                  // Araç listesini yenile
-                  setVehicleData(prev => [...prev, newVehicle]);
-                }}
-              />
-            )}
-
-            {/* Yakıt Analizleri */}
-            {activeTab === 'fuel-receipt-analytics' && (
-              <FuelReceiptAnalytics 
-                receipts={[]} // Mock data yerine gerçek fiş verileri geçilecek
-                vehicleData={vehicleData}
-                personnelData={personnelData}
+                initialTab={activeTab}
+                onTabChange={handleTabChange}
               />
             )}
 

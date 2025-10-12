@@ -38,6 +38,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showNewVehicleModal, setShowNewVehicleModal] = useState(false);
   const [newVehicle, setNewVehicle] = useState({
     license_plate: '',
@@ -128,7 +129,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
 
     setLoading(true);
     try {
-      // Veritabanına kaydet
+      // Veritabanına kaydet - ID'yi kaldır ki veritabanı otomatik oluştursun
       const receiptData = {
         ...formData,
         created_by: currentUser?.id || null,
@@ -139,11 +140,15 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
         vat_amount: formData.vat_amount ? parseFloat(formData.vat_amount) : null,
         km_reading: formData.km_reading ? parseInt(formData.km_reading) : null
       };
+      
+      // ID'yi kaldır (varsa) - veritabanı otomatik oluştursun
+      delete receiptData.id;
 
       const result = await fuelReceiptService.createReceipt(receiptData);
       
       if (result.success) {
-        alert('Fiş başarıyla kaydedildi!');
+        // Modern başarı modalını göster
+        setShowSuccessModal(true);
         
         if (onSave) {
           onSave(result.data);
@@ -732,6 +737,43 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
                 className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
               >
                 Ekle
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Başarı Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full m-4 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Fiş Başarıyla Kaydedildi!
+            </h3>
+            
+            <p className="text-gray-600 mb-6">
+              Yakıt fişi veritabanına kaydedildi ve listeye eklendi.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="flex-1 bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              >
+                Yeni Fiş Ekle
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  if (onCancel) onCancel();
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Fiş Listesine Git
               </button>
             </div>
           </div>

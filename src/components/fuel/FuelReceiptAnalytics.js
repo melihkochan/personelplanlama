@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -17,53 +17,60 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react';
-import { fuelReceiptService } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
-const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
-  const [receipts, setReceipts] = useState([]);
+const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts = [], onRefresh }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedVehicle, setSelectedVehicle] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  // Veritabanından fişleri çek
-  useEffect(() => {
-    loadReceipts();
-  }, []);
-
-  const loadReceipts = async () => {
-    setLoading(true);
-    try {
-      const result = await fuelReceiptService.getAllReceipts();
-      if (result.success) {
-        setReceipts(result.data);
-      } else {
-        console.error('Fişler yüklenirken hata:', result.error);
-      }
-    } catch (error) {
-      console.error('Fişler yüklenirken hata:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Personnel tablosundan şoförleri çek
-  const getDriversFromPersonnel = () => {
+  // Personnel tablosundan şoförleri çek - useMemo ile optimize
+  const drivers = useMemo(() => {
     return personnelData.filter(person => 
       person.position && person.position.toUpperCase() === 'ŞOFÖR'
     );
-  };
+  }, [personnelData]);
 
-  const drivers = getDriversFromPersonnel();
+  // Filtreleme - useMemo ile optimize
+  const filteredData = useMemo(() => {
+    return receipts.filter(receipt => {
+      const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
+      
+      // Dönem filtresi
+      let matchesPeriod = true;
+      if (selectedPeriod) {
+        const receiptDate = new Date(receipt.date);
+        const today = new Date();
+        
+        switch (selectedPeriod) {
+          case 'week':
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 7);
+            matchesPeriod = receiptDate >= weekAgo;
+            break;
+          case 'month':
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(today.getMonth() - 1);
+            matchesPeriod = receiptDate >= monthAgo;
+            break;
+          case 'quarter':
+            const quarterAgo = new Date(today);
+            quarterAgo.setMonth(today.getMonth() - 3);
+            matchesPeriod = receiptDate >= quarterAgo;
+            break;
+          case 'year':
+            const yearAgo = new Date(today);
+            yearAgo.setFullYear(today.getFullYear() - 1);
+            matchesPeriod = receiptDate >= yearAgo;
+            break;
+        }
+      }
+      
+      return matchesVehicle && matchesPeriod;
+    });
+  }, [receipts, selectedVehicle, selectedPeriod]);
 
-  // Filtreleme
-  const filteredData = receipts.filter(receipt => {
-    const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
-    return matchesVehicle;
-  });
-
-  // İstatistikler hesaplama
-  const calculateStats = () => {
+  // İstatistikler hesaplama - useMemo ile optimize
+  const stats = useMemo(() => {
     const totalAmount = filteredData.reduce((sum, r) => sum + r.total_amount, 0);
     const totalLiters = filteredData.reduce((sum, r) => sum + r.quantity_liters, 0);
     const totalReceipts = filteredData.length;
@@ -77,10 +84,10 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
       averageAmount,
       averageLiters
     };
-  };
+  }, [filteredData]);
 
-  // Plaka Bazında Yakıt Analizi
-  const calculateVehicleFuelAnalysis = () => {
+  // Plaka Bazında Yakıt Analizi - useMemo ile optimize
+  const vehicleFuelAnalysis = useMemo(() => {
     const vehicleStats = {};
     
     filteredData.forEach(receipt => {
@@ -116,10 +123,10 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
         lastReceipt: sortedReceipts[sortedReceipts.length - 1]?.date || '-'
       };
     }).sort((a, b) => b.totalAmount - a.totalAmount);
-  };
+  }, [filteredData]);
 
-  // Şoför Performansı - Personnel verileri ile karşılaştır
-  const calculateDriverPerformance = () => {
+  // Şoför Performansı - Personnel verileri ile karşılaştır - useMemo ile optimize
+  const driverPerformance = useMemo(() => {
     const driverStats = {};
     
     // Fiş verilerinden şoför istatistiklerini hesapla
@@ -154,12 +161,7 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
       ...stats,
       averageAmount: stats.totalAmount / stats.receiptCount
     })).sort((a, b) => b.totalAmount - a.totalAmount);
-  };
-
-
-  const stats = calculateStats();
-  const vehicleFuelAnalysis = calculateVehicleFuelAnalysis();
-  const driverPerformance = calculateDriverPerformance();
+  }, [filteredData, drivers]);
 
   // Excel indirme
   const handleExportExcel = () => {
@@ -250,66 +252,60 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Filtreler ve İşlemler */}
       <div className="bg-white rounded-xl p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-white" />
-              </div>
-              Yakıt Analiz ve Raporlar
-            </h1>
-            <p className="text-sm text-gray-600 mt-2">
-              Detaylı yakıt tüketimi ve performans analizleri
-            </p>
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="week">Bu Hafta</option>
+                <option value="month">Bu Ay</option>
+                <option value="quarter">Bu Çeyrek</option>
+                <option value="year">Bu Yıl</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Car className="w-4 h-4 text-gray-500" />
+              <select
+                value={selectedVehicle}
+                onChange={(e) => setSelectedVehicle(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="">Tüm Araçlar</option>
+                {/* Sadece fişi olan araçları göster */}
+                {Array.from(new Set(receipts.map(r => r.vehicle_plate)))
+                  .filter(plate => plate) // Boş plakaları filtrele
+                  .sort()
+                  .map((plate, index) => (
+                    <option key={index} value={plate}>
+                      {plate} ({receipts.filter(r => r.vehicle_plate === plate).length} fiş)
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex gap-2">
             <button 
               onClick={handleExportExcel}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-600 transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
               Excel İndir
             </button>
-            <button className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-600 transition-colors">
+            <button 
+              onClick={onRefresh}
+              className="bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-600 transition-colors text-sm"
+            >
               <RefreshCw className="w-4 h-4" />
               Yenile
             </button>
-          </div>
-        </div>
-
-        {/* Filtreler */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Dönem</label>
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="week">Bu Hafta</option>
-              <option value="month">Bu Ay</option>
-              <option value="quarter">Bu Çeyrek</option>
-              <option value="year">Bu Yıl</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Araç</label>
-            <select
-              value={selectedVehicle}
-              onChange={(e) => setSelectedVehicle(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Tüm Araçlar</option>
-              {vehicleData.map((vehicle, index) => (
-                <option key={index} value={vehicle.license_plate}>
-                  {vehicle.license_plate}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
@@ -506,4 +502,4 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [] }) => {
   );
 };
 
-export default FuelReceiptAnalytics;
+export default React.memo(FuelReceiptAnalytics);

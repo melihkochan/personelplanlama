@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Search, 
   Plus, 
@@ -22,9 +22,7 @@ import {
 import { fuelReceiptService } from '../../services/supabase';
 import * as XLSX from 'xlsx';
 
-const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) => {
-  const [receipts, setReceipts] = useState([]);
-  const [loading, setLoading] = useState(false);
+const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, receipts = [], onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [selectedDateRange, setSelectedDateRange] = useState('');
@@ -36,27 +34,6 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
   const [sortOrder, setSortOrder] = useState('desc');
   const [editingReceipt, setEditingReceipt] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-
-  // Veritabanından fişleri çek
-  useEffect(() => {
-    loadReceipts();
-  }, []);
-
-  const loadReceipts = async () => {
-    setLoading(true);
-    try {
-      const result = await fuelReceiptService.getAllReceipts();
-      if (result.success) {
-        setReceipts(result.data);
-      } else {
-        console.error('Fişler yüklenirken hata:', result.error);
-      }
-    } catch (error) {
-      console.error('Fişler yüklenirken hata:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Fiş düzenleme
   const handleEdit = (receipt) => {
@@ -71,7 +48,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
         const result = await fuelReceiptService.deleteReceipt(receiptId);
         if (result.success) {
           alert('Fiş başarıyla silindi!');
-          loadReceipts(); // Listeyi yenile
+          if (onRefresh) await onRefresh(); // Parent'ı yenile
         } else {
           throw new Error(result.error);
         }
@@ -90,7 +67,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
         alert('Fiş başarıyla güncellendi!');
         setShowEditModal(false);
         setEditingReceipt(null);
-        loadReceipts(); // Listeyi yenile
+        if (onRefresh) await onRefresh(); // Parent'ı yenile
       } else {
         throw new Error(result.error);
       }
@@ -100,70 +77,72 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
     }
   };
 
-  // Filtreleme ve Sıralama
-  const filteredReceipts = receipts.filter(receipt => {
-    const matchesSearch = 
-      receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.vehicle_plate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.driver_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.station_name?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtreleme ve Sıralama - useMemo ile optimize edildi
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter(receipt => {
+      const matchesSearch = 
+        receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.vehicle_plate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.driver_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.station_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
-    
-    // Tarih aralığı filtresi
-    let matchesDate = true;
-    if (selectedDateRange) {
-      const receiptDate = new Date(receipt.date);
-      const today = new Date();
-      const daysAgo = parseInt(selectedDateRange);
+      const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
       
-      if (daysAgo > 0) {
-        const startDate = new Date(today);
-        startDate.setDate(today.getDate() - daysAgo);
-        matchesDate = receiptDate >= startDate;
+      // Tarih aralığı filtresi
+      let matchesDate = true;
+      if (selectedDateRange) {
+        const receiptDate = new Date(receipt.date);
+        const today = new Date();
+        const daysAgo = parseInt(selectedDateRange);
+        
+        if (daysAgo > 0) {
+          const startDate = new Date(today);
+          startDate.setDate(today.getDate() - daysAgo);
+          matchesDate = receiptDate >= startDate;
+        }
       }
-    }
-    
-    return matchesSearch && matchesVehicle && matchesDate;
-  }).sort((a, b) => {
-    let aValue, bValue;
-    
-    switch (sortBy) {
-      case 'date':
-        aValue = new Date(a.date);
-        bValue = new Date(b.date);
-        break;
-      case 'driver_name':
-        aValue = a.driver_name?.toLowerCase() || '';
-        bValue = b.driver_name?.toLowerCase() || '';
-        break;
-      case 'vehicle_plate':
-        aValue = a.vehicle_plate?.toLowerCase() || '';
-        bValue = b.vehicle_plate?.toLowerCase() || '';
-        break;
-      case 'total_amount':
-        aValue = a.total_amount || 0;
-        bValue = b.total_amount || 0;
-        break;
-      default:
-        aValue = a[sortBy] || '';
-        bValue = b[sortBy] || '';
-    }
-    
-    if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
-  });
+      
+      return matchesSearch && matchesVehicle && matchesDate;
+    }).sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'date':
+          aValue = new Date(a.date);
+          bValue = new Date(b.date);
+          break;
+        case 'driver_name':
+          aValue = a.driver_name?.toLowerCase() || '';
+          bValue = b.driver_name?.toLowerCase() || '';
+          break;
+        case 'vehicle_plate':
+          aValue = a.vehicle_plate?.toLowerCase() || '';
+          bValue = b.vehicle_plate?.toLowerCase() || '';
+          break;
+        case 'total_amount':
+          aValue = a.total_amount || 0;
+          bValue = b.total_amount || 0;
+          break;
+        default:
+          aValue = a[sortBy] || '';
+          bValue = b[sortBy] || '';
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+  }, [receipts, searchTerm, selectedVehicle, selectedDateRange, sortBy, sortOrder]);
 
-  // İstatistikler
-  const stats = {
+  // İstatistikler - useMemo ile optimize edildi
+  const stats = useMemo(() => ({
     total: receipts.length,
     totalAmount: receipts.reduce((sum, r) => sum + (r.total_amount || 0), 0),
     totalFuel: receipts.reduce((sum, r) => sum + (r.quantity_liters || 0), 0),
     totalVehicles: new Set(receipts.map(r => r.vehicle_plate)).size
-  };
+  }), [receipts]);
 
 
   // Excel indirme
@@ -260,69 +239,8 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Fuel className="w-6 h-6 text-white" />
-              </div>
-              Yakıt Fiş Takip Sistemi
-            </h1>
-          </div>
-          
-        </div>
-
-        {/* İstatistik Kartları */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Toplam Fiş</p>
-                <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
-              </div>
-              <Fuel className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-600 font-medium">Toplam Yakıt</p>
-                <p className="text-2xl font-bold text-green-900">{stats.totalFuel.toFixed(2)}L</p>
-              </div>
-              <Fuel className="w-8 h-8 text-green-500" />
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-600 font-medium">Toplam Araç</p>
-                <p className="text-2xl font-bold text-orange-900">{stats.totalVehicles}</p>
-              </div>
-              <Car className="w-8 h-8 text-orange-500" />
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-purple-600 font-medium">Toplam Tutar</p>
-                <p className="text-2xl font-bold text-purple-900">
-                  {stats.totalAmount.toLocaleString('tr-TR', { 
-                    style: 'currency', 
-                    currency: 'TRY' 
-                  })}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-purple-500" />
-            </div>
-          </div>
-        </div>
-
-        {/* Arama, Filtreler ve Sıralama */}
+      {/* Arama ve Sıralama */}
+      <div className="bg-white rounded-xl p-6 shadow-lg">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -385,14 +303,17 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Tüm Araçlar</option>
-                  {vehicleData.map((vehicle, index) => (
-                    <option key={index} value={vehicle.license_plate}>
-                      {vehicle.license_plate}
-                    </option>
-                  ))}
+                  {/* Sadece fişi olan araçları göster */}
+                  {Array.from(new Set(receipts.map(r => r.vehicle_plate)))
+                    .filter(plate => plate) // Boş plakaları filtrele
+                    .sort()
+                    .map((plate, index) => (
+                      <option key={index} value={plate}>
+                        {plate} ({receipts.filter(r => r.vehicle_plate === plate).length} fiş)
+                      </option>
+                    ))}
                 </select>
               </div>
-              
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tarih Aralığı</label>
@@ -857,4 +778,4 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser }) 
   );
 };
 
-export default FuelReceiptList;
+export default React.memo(FuelReceiptList);

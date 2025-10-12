@@ -12,6 +12,7 @@ const PersonelDagilimi = () => {
   const [analysisDate, setAnalysisDate] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc', personId: null });
+  const [maxCountInfo, setMaxCountInfo] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -173,6 +174,37 @@ const PersonelDagilimi = () => {
       direction = 'desc';
     }
     setSortConfig({ key: 'personCount', direction, personId });
+  };
+
+  // Personelin en çok çıktığı sayıyı bul
+  const getMaxCountForPerson = (person) => {
+    const personName = person.full_name;
+    const partners = teamMatrix[personName] || {};
+    
+    if (Object.keys(partners).length === 0) {
+      return { count: 0, partnerName: 'Kimse ile çıkış yapmamış' };
+    }
+    
+    let maxCount = 0;
+    let maxPartner = '';
+    
+    Object.entries(partners).forEach(([partnerName, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        maxPartner = partnerName;
+      }
+    });
+    
+    return { count: maxCount, partnerName: maxPartner };
+  };
+
+  // Üstteki isme tıklama fonksiyonu
+  const handleNameClick = (person) => {
+    const maxInfo = getMaxCountForPerson(person);
+    setMaxCountInfo({
+      personName: person.full_name,
+      ...maxInfo
+    });
   };
 
   // Personelin toplam çıkış sayısını hesapla
@@ -477,6 +509,16 @@ const PersonelDagilimi = () => {
                   </span>
                 )}
               </h3>
+              {maxCountInfo && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+                  <div className="text-sm font-medium text-blue-900">
+                    {maxCountInfo.personName}
+                  </div>
+                  <div className="text-xs text-blue-700">
+                    En çok çıktığı: {maxCountInfo.partnerName} ({maxCountInfo.count} kez)
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="overflow-x-auto" style={{
@@ -514,9 +556,12 @@ const PersonelDagilimi = () => {
                           selectedPersonnel.includes(person.id) ? 'bg-yellow-50 border-b-4 border-yellow-400' : 'text-gray-900'
                         }`}
                         style={{ writingMode: 'vertical-rl' }}
-                        title={`${person.full_name} (${person.employee_code}) - ${person.position}`}
+                        title={`${person.full_name} (${person.employee_code}) - ${person.position} - Tıkla: En çok çıktığı kişiyi göster`}
                       >
-                        <div className="flex flex-col items-center">
+                        <button
+                          onClick={() => handleNameClick(person)}
+                          className="flex flex-col items-center w-full hover:bg-gray-100 rounded transition-colors"
+                        >
                           <span className={`text-xs font-medium truncate max-w-[45px] ${
                             selectedPersonnel.includes(person.id) ? 'text-yellow-800 font-bold' : ''
                           }`}>
@@ -525,7 +570,7 @@ const PersonelDagilimi = () => {
                           <span className="text-xs text-gray-500">
                             {person.employee_code}
                           </span>
-                        </div>
+                        </button>
                       </th>
                     ))}
                   </tr>
@@ -579,20 +624,11 @@ const PersonelDagilimi = () => {
                             {isDiagonal ? (
                               <span className="text-gray-400 text-sm">-</span>
                             ) : count > 0 ? (
-                              <button
-                                onClick={() => handleSort(otherPerson.id)}
-                                className={`inline-flex items-center justify-center w-8 h-8 ${colors.bg} ${colors.text} rounded-full text-sm font-semibold hover:ring-2 hover:ring-blue-400 hover:ring-opacity-50 transition-all ${
-                                  isSelectedIntersection ? 'ring-2 ring-yellow-400 ring-opacity-50' : ''
-                                } ${sortConfig.personId === otherPerson.id ? 'ring-2 ring-blue-600 ring-opacity-50' : ''}`}
-                                title={`${otherPerson.full_name} ile ${count} çıkış - Sırala için tıkla`}
-                              >
+                              <span className={`inline-flex items-center justify-center w-8 h-8 ${colors.bg} ${colors.text} rounded-full text-sm font-semibold ${
+                                isSelectedIntersection ? 'ring-2 ring-yellow-400 ring-opacity-50' : ''
+                              }`}>
                                 {count}
-                                {sortConfig.personId === otherPerson.id && (
-                                  <span className="ml-0.5 text-xs">
-                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                  </span>
-                                )}
-                              </button>
+                              </span>
                             ) : (
                               <span className="text-gray-300 text-sm">0</span>
                             )}

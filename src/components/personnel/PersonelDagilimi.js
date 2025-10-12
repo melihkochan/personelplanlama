@@ -692,17 +692,18 @@ const PersonelDagilimi = () => {
                         className={`text-center py-3 px-1 font-semibold min-w-[60px] sticky top-0 bg-white z-[90] ${
                           selectedPersonnel.includes(person.id) ? 'bg-yellow-50 border-b-4 border-yellow-400' : 'text-gray-900'
                         }`}
-                        style={{ writingMode: 'vertical-rl' }}
                         title={`${person.full_name} (${person.employee_code}) - ${person.position} - Tıkla: En çok çıktığı kişiyi göster`}
                       >
                         <button
                           onClick={() => handleNameClick(person)}
                           className="flex flex-col items-center w-full hover:bg-gray-100 rounded transition-colors"
                         >
-                          <span className={`text-xs font-medium truncate max-w-[45px] ${
+                          <span className={`text-xs font-medium text-center leading-tight ${
                             selectedPersonnel.includes(person.id) ? 'text-yellow-800 font-bold' : ''
                           }`}>
-                            {person.full_name.split(' ')[0]}
+                            {person.full_name.split(' ').map((name, index) => 
+                              index === 0 ? `${name.charAt(0)}.` : name
+                            ).join(' ')}
                           </span>
                           <span className="text-xs text-gray-500">
                             {person.employee_code}

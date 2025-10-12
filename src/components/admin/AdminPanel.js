@@ -39,18 +39,6 @@ const AdminPanel = ({ userRole, currentUser }) => {
     confirmPassword: ''
   });
 
-  // Audit Log state'leri
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [auditStats, setAuditStats] = useState({});
-  const [auditFilters, setAuditFilters] = useState({
-    userEmail: '',
-    action: '',
-    tableName: '',
-    dateFrom: '',
-    dateTo: '',
-    limit: 50
-  });
-  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
 
   // Pending Registrations state'leri
   const [pendingRegistrations, setPendingRegistrations] = useState([]);
@@ -59,6 +47,9 @@ const AdminPanel = ({ userRole, currentUser }) => {
 
   // Avatar modal state'i - global
   const [anyAvatarModalOpen, setAnyAvatarModalOpen] = useState(false);
+
+  // Audit logs yükleme tracker
+  const auditLogsLoadedRef = React.useRef(false);
 
 
   // Mevcut kullanıcının email'ini al
@@ -133,6 +124,16 @@ const AdminPanel = ({ userRole, currentUser }) => {
     if (activeSection === 'pending_registrations') {
       loadPendingRegistrations();
       loadPendingCount();
+    }
+  }, [activeSection]);
+
+  // Audit logs section'ına geçildiğinde sadece bir kez yükle
+  useEffect(() => {
+    if (activeSection === 'audit_logs' && !auditLogsLoadedRef.current) {
+      auditLogsLoadedRef.current = true;
+      loadAuditLogs();
+      loadAuditStats();
+      loadAvailableFilters();
     }
   }, [activeSection]);
 
@@ -1062,111 +1063,102 @@ Devam etmek istediğinizden emin misiniz?`;
     </div>
   );
 
+  // Audit logs state'lerini ana component seviyesinde tut
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditStats, setAuditStats] = useState({});
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [availableActions, setAvailableActions] = useState([]);
+  const [availableTables, setAvailableTables] = useState([]);
+  const [auditFilters, setAuditFilters] = useState({
+    userEmail: '',
+    action: '',
+    tableName: '',
+    dateFrom: '',
+    dateTo: '',
+    limit: 50
+  });
+
+  // Audit logs fonksiyonlarını ana component seviyesinde tanımla
+  const loadAuditLogs = async () => {
+    setLoadingAuditLogs(true);
+    try {
+      const result = await getAuditLogs(auditFilters);
+      if (result.success) {
+        setAuditLogs(result.data);
+      } else {
+        console.error('Audit logları yüklenemedi:', result.error);
+      }
+    } catch (error) {
+      console.error('Audit log yükleme hatası:', error);
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
+
+  const loadAuditStats = async () => {
+    try {
+      const result = await getAuditLogStats();
+      if (result.success) {
+        setAuditStats(result.data);
+      }
+    } catch (error) {
+      console.error('Audit stats yükleme hatası:', error);
+    }
+  };
+
+  const loadAvailableFilters = async () => {
+    try {
+      const { data: allLogs, error } = await supabase
+        .from('audit_logs')
+        .select('user_email, user_name, action, table_name')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        return;
+      }
+      
+      if (allLogs && allLogs.length > 0) {
+        const uniqueUsers = [...new Set(allLogs.map(log => `${log.user_name} (${log.user_email})`))];
+        setAvailableUsers(uniqueUsers);
+        
+        const uniqueActions = [...new Set(allLogs.map(log => log.action))];
+        setAvailableActions(uniqueActions);
+        
+        const uniqueTables = [...new Set(allLogs.map(log => log.table_name))];
+        setAvailableTables(uniqueTables);
+      }
+    } catch (error) {
+      // Hata durumunda sessizce devam et
+    }
+  };
+
   const AuditLogsSection = () => {
-    const [logs, setLogs] = useState([]);
-    const [stats, setStats] = useState({});
-    const [loadingLogs, setLoadingLogs] = useState(false);
-    const [availableUsers, setAvailableUsers] = useState([]);
-    const [availableActions, setAvailableActions] = useState([]);
-    const [availableTables, setAvailableTables] = useState([]);
-    const [filters, setFilters] = useState({
-      userEmail: '',
-      action: '',
-      tableName: '',
-      dateFrom: '',
-      dateTo: '',
-      limit: 50
-    });
-
-    useEffect(() => {
-      loadAuditLogs();
-      loadAuditStats();
-      loadAvailableFilters();
-    }, []);
-    
-    const loadAvailableFilters = async () => {
-      try {
-        // Mevcut audit loglardan kullanıcıları, action'ları ve tabloları çıkar
-        const { data: allLogs, error } = await supabase
-          .from('audit_logs')
-          .select('user_email, user_name, action, table_name')
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          return;
-        }
-        
-        if (allLogs && allLogs.length > 0) {
-          // Benzersiz kullanıcıları çıkar
-          const uniqueUsers = [...new Set(allLogs.map(log => `${log.user_name} (${log.user_email})`))];
-          setAvailableUsers(uniqueUsers);
-          
-          // Benzersiz action'ları çıkar
-          const uniqueActions = [...new Set(allLogs.map(log => log.action))];
-          setAvailableActions(uniqueActions);
-          
-          // Benzersiz tabloları çıkar
-          const uniqueTables = [...new Set(allLogs.map(log => log.table_name))];
-          setAvailableTables(uniqueTables);
-        }
-      } catch (error) {
-        // Hata durumunda sessizce devam et
-      }
-    };
-
-    const loadAuditLogs = async () => {
-      setLoadingLogs(true);
-      try {
-        const result = await getAuditLogs(filters);
-        if (result.success) {
-          setLogs(result.data);
-        } else {
-          console.error('Audit logları yüklenemedi:', result.error);
-        }
-      } catch (error) {
-        console.error('Audit log yükleme hatası:', error);
-      } finally {
-        setLoadingLogs(false);
-      }
-    };
-
-    const loadAuditStats = async () => {
-      try {
-        const result = await getAuditLogStats();
-        if (result.success) {
-          setStats(result.data);
-        }
-      } catch (error) {
-        console.error('Audit stats yükleme hatası:', error);
-      }
-    };
 
     const handleFilterChange = (e) => {
       const { name, value } = e.target;
       const newFilters = {
-        ...filters,
+        ...auditFilters,
         [name]: value
       };
       
-      setFilters(newFilters);
-      
-      // Otomatik filtreleme kaldırıldı - sadece "Filtrele" butonuna basıldığında yüklensin
+      setAuditFilters(newFilters);
     };
     
     const loadAuditLogsWithFilters = async (customFilters = null) => {
-      setLoadingLogs(true);
+      setLoadingAuditLogs(true);
       try {
-        const filtersToUse = customFilters || filters;
+        const filtersToUse = customFilters || auditFilters;
         const result = await getAuditLogs(filtersToUse);
         if (result.success) {
-          setLogs(result.data);
+          setAuditLogs(result.data);
         } else {
           console.error('Audit logları yüklenemedi:', result.error);
         }
       } catch (error) {
         console.error('Audit log yükleme hatası:', error);
       } finally {
-        setLoadingLogs(false);
+        setLoadingAuditLogs(false);
       }
     };
 
@@ -1218,7 +1210,7 @@ Devam etmek istediğinizden emin misiniz?`;
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Toplam İşlem</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalCount || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{auditStats.totalCount || 0}</p>
               </div>
               <div className="p-3 rounded-xl bg-blue-500">
                 <Activity className="w-6 h-6 text-white" />
@@ -1230,7 +1222,7 @@ Devam etmek istediğinizden emin misiniz?`;
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Son 7 Gün</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.recentCount || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{auditStats.recentCount || 0}</p>
               </div>
               <div className="p-3 rounded-xl bg-green-500">
                 <Clock className="w-6 h-6 text-white" />
@@ -1242,7 +1234,7 @@ Devam etmek istediğinizden emin misiniz?`;
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Aktif Kullanıcı</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.topUsers?.length || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{auditStats.topUsers?.length || 0}</p>
               </div>
               <div className="p-3 rounded-xl bg-purple-500">
                 <Users className="w-6 h-6 text-white" />
@@ -1263,7 +1255,7 @@ Devam etmek istediğinizden emin misiniz?`;
               <label className="block text-sm font-medium text-gray-700 mb-1">Kullanıcı</label>
               <select
                 name="userEmail"
-                value={filters.userEmail}
+                value={auditFilters.userEmail}
                 onChange={handleFilterChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -1280,7 +1272,7 @@ Devam etmek istediğinizden emin misiniz?`;
               <label className="block text-sm font-medium text-gray-700 mb-1">İşlem Türü</label>
               <select
                 name="action"
-                value={filters.action}
+                value={auditFilters.action}
                 onChange={handleFilterChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -1297,7 +1289,7 @@ Devam etmek istediğinizden emin misiniz?`;
               <label className="block text-sm font-medium text-gray-700 mb-1">Tablo</label>
               <select
                 name="tableName"
-                value={filters.tableName}
+                value={auditFilters.tableName}
                 onChange={handleFilterChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -1315,7 +1307,7 @@ Devam etmek istediğinizden emin misiniz?`;
               <input
                 type="date"
                 name="dateFrom"
-                value={filters.dateFrom}
+                value={auditFilters.dateFrom}
                 onChange={handleFilterChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -1326,7 +1318,7 @@ Devam etmek istediğinizden emin misiniz?`;
               <input
                 type="date"
                 name="dateTo"
-                value={filters.dateTo}
+                value={auditFilters.dateTo}
                 onChange={handleFilterChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -1336,9 +1328,9 @@ Devam etmek istediğinizden emin misiniz?`;
               <button
                 onClick={handleApplyFilters}
                 className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-                disabled={loadingLogs}
+                disabled={loadingAuditLogs}
               >
-                {loadingLogs ? (
+                {loadingAuditLogs ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Yükleniyor...</span>
@@ -1364,14 +1356,14 @@ Devam etmek istediğinizden emin misiniz?`;
             İşlem Geçmişi
           </h3>
           
-          {loadingLogs ? (
+          {loadingAuditLogs ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
               <p className="mt-2 text-gray-600">Yükleniyor...</p>
             </div>
           ) : (
             <>
-              {logs.length === 0 ? (
+              {auditLogs.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <FileText className="w-8 h-8 text-gray-400" />
@@ -1417,7 +1409,7 @@ Devam etmek istediğinizden emin misiniz?`;
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {logs.map((log, index) => (
+                      {auditLogs.map((log, index) => (
                         <tr key={log.id || index} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(log.created_at).toLocaleString('tr-TR')}

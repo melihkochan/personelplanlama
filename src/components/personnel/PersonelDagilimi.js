@@ -13,10 +13,18 @@ const PersonelDagilimi = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc', personId: null });
   const [maxCountInfo, setMaxCountInfo] = useState(null);
+  const [availableMonths, setAvailableMonths] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('all');
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (performanceData.length > 0) {
+      analyzeTeamData(performanceData);
+    }
+  }, [selectedMonth, performanceData]);
 
   const loadData = async () => {
     setLoading(true);
@@ -37,6 +45,8 @@ const PersonelDagilimi = () => {
         setPerformanceData(performanceResult.data);
         // Veriler yüklendikten sonra analiz et
         analyzeTeamData(performanceResult.data);
+        // Mevcut ayları çıkar
+        extractAvailableMonths(performanceResult.data);
       }
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
@@ -46,12 +56,51 @@ const PersonelDagilimi = () => {
   };
 
   // Takım verilerini analiz et
+  // Mevcut ayları çıkar
+  const extractAvailableMonths = (data) => {
+    const months = new Set();
+    data.forEach(record => {
+      if (record.date) {
+        const date = new Date(record.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthLabel = `${date.getFullYear()} ${getMonthName(date.getMonth())}`;
+        months.add(JSON.stringify({ key: monthKey, label: monthLabel }));
+      }
+    });
+    
+    const monthsArray = Array.from(months).map(m => JSON.parse(m));
+    monthsArray.sort((a, b) => b.key.localeCompare(a.key)); // En yeni ay önce
+    setAvailableMonths(monthsArray);
+  };
+
+  // Ay adını getir
+  const getMonthName = (monthIndex) => {
+    const months = [
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+    ];
+    return months[monthIndex];
+  };
+
   const analyzeTeamData = (data) => {
     const teamMatrix = {};
     
+    // Ay filtresi uygula
+    let filteredData = data;
+    if (selectedMonth !== 'all') {
+      filteredData = data.filter(record => {
+        if (record.date) {
+          const date = new Date(record.date);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          return monthKey === selectedMonth;
+        }
+        return false;
+      });
+    }
+    
     // Tarih bazında grupla
     const dateGroups = {};
-    data.forEach(record => {
+    filteredData.forEach(record => {
       const date = record.date;
       if (!dateGroups[date]) {
         dateGroups[date] = [];
@@ -561,14 +610,34 @@ const PersonelDagilimi = () => {
         {teamMatrix && Object.keys(teamMatrix).length > 0 && (
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Personel Çıkış Matrix
-                {selectedPersonnel.length > 0 && (
-                  <span className="ml-2 text-sm text-gray-500">
-                    ({selectedPersonnel.length} personel seçili - vurgulanıyor)
-                  </span>
-                )}
-              </h3>
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Personel Çıkış Matrix
+                  {selectedPersonnel.length > 0 && (
+                    <span className="ml-2 text-sm text-gray-500">
+                      ({selectedPersonnel.length} personel seçili - vurgulanıyor)
+                    </span>
+                  )}
+                </h3>
+                
+                {/* Ay Filtresi */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Ay:</label>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Tüm Aylar</option>
+                    {availableMonths.map(month => (
+                      <option key={month.key} value={month.key}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
               {maxCountInfo && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
                   <div className="text-sm font-medium text-blue-900">

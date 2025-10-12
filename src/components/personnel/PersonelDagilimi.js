@@ -179,7 +179,36 @@ const PersonelDagilimi = () => {
   // Personelin en çok çıktığı sayıyı bul
   const getMaxCountForPerson = (person) => {
     const personName = person.full_name;
-    const partners = teamMatrix[personName] || {};
+    
+    // Tüm olası isim formatlarını kontrol et
+    const possibleNames = [
+      personName,
+      person.employee_code,
+      personName.toUpperCase(),
+      personName.toLowerCase()
+    ];
+    
+    let partners = {};
+    let foundKey = '';
+    
+    // Doğru anahtarı bul
+    for (const key of possibleNames) {
+      if (teamMatrix[key]) {
+        partners = teamMatrix[key];
+        foundKey = key;
+        break;
+      }
+    }
+    
+    // Eğer hiç bulunamadıysa, tüm teamMatrix'i kontrol et
+    if (Object.keys(partners).length === 0) {
+      Object.keys(teamMatrix).forEach(key => {
+        if (key.includes(personName.split(' ')[0]) || key.includes(person.employee_code)) {
+          partners = teamMatrix[key];
+          foundKey = key;
+        }
+      });
+    }
     
     if (Object.keys(partners).length === 0) {
       return { count: 0, partnerName: 'Kimse ile çıkış yapmamış' };
@@ -195,12 +224,43 @@ const PersonelDagilimi = () => {
       }
     });
     
+    console.log(`Person: ${personName}, Found key: ${foundKey}, Max count: ${maxCount}, Partner: ${maxPartner}`);
+    console.log('Available keys in teamMatrix:', Object.keys(teamMatrix));
+    console.log('Partners data:', partners);
+    
     return { count: maxCount, partnerName: maxPartner };
+  };
+
+  // Matrix'ten direkt veri al (alternatif yöntem)
+  const getMaxCountFromMatrix = (person) => {
+    const personName = person.full_name;
+    let maxCount = 0;
+    let maxPartner = '';
+    
+    // Tüm personeller arasında bu kişinin en yüksek sayısını bul
+    getMatrixPersonnel().forEach(otherPerson => {
+      if (otherPerson.id !== person.id) {
+        const count = getTeamCount(person, otherPerson);
+        if (count > maxCount && count !== '-') {
+          maxCount = count;
+          maxPartner = otherPerson.full_name;
+        }
+      }
+    });
+    
+    return { count: maxCount, partnerName: maxPartner || 'Kimse ile çıkış yapmamış' };
   };
 
   // Üstteki isme tıklama fonksiyonu
   const handleNameClick = (person) => {
-    const maxInfo = getMaxCountForPerson(person);
+    // Önce matrix'ten direkt al, sonra teamMatrix'ten dene
+    let maxInfo = getMaxCountFromMatrix(person);
+    
+    // Eğer matrix'ten 0 geldiyse, teamMatrix'ten dene
+    if (maxInfo.count === 0) {
+      maxInfo = getMaxCountForPerson(person);
+    }
+    
     setMaxCountInfo({
       personName: person.full_name,
       ...maxInfo

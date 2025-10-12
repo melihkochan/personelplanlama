@@ -17,7 +17,8 @@ import {
   TrendingUp,
   AlertTriangle,
   Edit,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import { fuelReceiptService } from '../../services/supabase';
 import * as XLSX from 'xlsx';
@@ -282,6 +283,13 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
             Filtreler
           </button>
           
+          <button
+            onClick={onRefresh}
+            className="bg-blue-100 text-blue-700 px-4 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-200 transition-colors"
+          >
+            <RefreshCw className="w-5 h-5" />
+            Yenile
+          </button>
           <button
             onClick={handleExportExcel}
             className="bg-green-100 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 hover:bg-green-200 transition-colors"

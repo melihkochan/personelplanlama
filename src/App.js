@@ -1392,7 +1392,7 @@ function MainApp() {
 
 
             {/* Anadolu Grubu */}
-            <div className="space-y-2 mt-6">
+            <div className="space-y-2 mt-8">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
                 <h3 className="text-base font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
@@ -1656,7 +1656,7 @@ function MainApp() {
             </div>
 
             {/* Aktarma Depo Grubu */}
-            <div className="space-y-2 mt-6">
+            <div className="space-y-2 mt-8">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
                 <h3 className="text-base font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
@@ -1831,59 +1831,8 @@ function MainApp() {
               </div>
             </div>
 
-            {/* TUZLA EKİP BİLGİLERİ Grubu */}
-            <div className="space-y-2 mt-6">
-              {/* Modern Section Header */}
-              <div className="px-2 py-1">
-                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <div className="w-1 h-3 bg-gradient-to-b from-green-500 to-teal-600 rounded-full"></div>
-                  <span className="border-b-2 border-green-500">Tuzla Ekip Bilgileri</span>
-                </h3>
-              </div>
-
-              <button
-                onClick={() => handleTabChange('team-shifts')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'team-shifts'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'team-shifts' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <Clock className={`w-2 h-2 ${activeTab === 'team-shifts' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Ekip Vardiyaları</span>
-              </button>
-
-              <button
-                onClick={() => handleTabChange('team-personnel')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'team-personnel'
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'team-personnel' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <Users className={`w-2 h-2 ${activeTab === 'team-personnel' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Ekip Personel Bilgileri</span>
-              </button>
-
-            </div>
             {/* YAKIT TAKİP Grubu */}
-            <div className="space-y-2 mt-6">
+            <div className="space-y-2 mt-8">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
                 <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
@@ -1955,7 +1904,7 @@ function MainApp() {
             </div>
 
             {/* Akıllı Personel Dağıtım Grubu */}
-            <div className="space-y-2 mt-6">
+            <div className="space-y-2 mt-8">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
                 <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
@@ -1963,9 +1912,6 @@ function MainApp() {
                   <span className="border-b-2 border-pink-500">Akıllı Personel Dağıtım</span>
                 </h3>
               </div>
-
-
-
 
               <button
                 onClick={() => handleTabChange('akilli-dagitim')}
@@ -1985,6 +1931,58 @@ function MainApp() {
                   <Users className={`w-2 h-2 ${activeTab === 'akilli-dagitim' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Akıllı Dağıtım</span>
+              </button>
+
+            </div>
+
+            {/* TUZLA EKİP BİLGİLERİ Grubu */}
+            <div className="space-y-2 mt-8">
+              {/* Modern Section Header */}
+              <div className="px-2 py-1">
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-1 h-3 bg-gradient-to-b from-green-500 to-teal-600 rounded-full"></div>
+                  <span className="border-b-2 border-green-500">Tuzla Ekip Bilgileri</span>
+                </h3>
+              </div>
+
+              <button
+                onClick={() => handleTabChange('team-shifts')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'team-shifts'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'team-shifts' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <Clock className={`w-2 h-2 ${activeTab === 'team-shifts' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Ekip Vardiyaları</span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('team-personnel')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'team-personnel'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'team-personnel' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <Users className={`w-2 h-2 ${activeTab === 'team-personnel' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Ekip Personel Bilgileri</span>
               </button>
 
             </div>
@@ -2427,51 +2425,6 @@ function MainApp() {
                     </button>
                   </div>
 
-                  {/* TUZLA EKİP BİLGİLERİ Grubu */}
-                  <div className="space-y-2">
-                    <div className="flex items-center px-4 py-2">
-                      <div className="flex-1 h-px bg-gray-300"></div>
-                      <span className="px-3 text-xs font-medium text-gray-700 uppercase tracking-wider">TUZLA EKİP BİLGİLERİ</span>
-                      <div className="flex-1 h-px bg-gray-300"></div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        handleTabChange('team-shifts');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'team-shifts'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <Clock className="w-5 h-5 mr-3" />
-                      Ekip Vardiyaları
-
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        handleTabChange('team-personnel');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${activeTab === 'team-personnel'
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <Users className="w-5 h-5 mr-3" />
-                      Ekip Personel Bilgileri
-                    </button>
-
-                  </div>
-
                   {/* YAKIT TAKİP Grubu */}
                   <div className="space-y-2">
                     <div className="flex items-center px-4 py-2">
@@ -2541,7 +2494,49 @@ function MainApp() {
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
 
+                  </div>
 
+                  {/* TUZLA EKİP BİLGİLERİ Grubu */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-4 py-2">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="px-3 text-xs font-medium text-gray-700 uppercase tracking-wider">TUZLA EKİP BİLGİLERİ</span>
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('team-shifts');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'team-shifts'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Clock className="w-5 h-5 mr-3" />
+                      Ekip Vardiyaları
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('team-personnel');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'team-personnel'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Users className="w-5 h-5 mr-3" />
+                      Ekip Personel Bilgileri
+                    </button>
 
                   </div>
 

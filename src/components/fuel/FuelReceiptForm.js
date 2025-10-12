@@ -330,22 +330,43 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Araç KM
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Araç Kilometre
               </label>
-              <input
-                type="number"
-                min="0"
-                max="999999"
-                value={formData.km_reading}
-                onChange={(e) => setFormData(prev => ({ ...prev, km_reading: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.km_reading ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="125000 (nokta veya virgül kullanmayın)"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2"/>
+                  </svg>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max="999999"
+                  value={formData.km_reading}
+                  onChange={(e) => setFormData(prev => ({ ...prev, km_reading: e.target.value }))}
+                  className={`w-full pl-10 pr-12 py-2 border rounded-lg font-mono font-semibold tracking-wider focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                    errors.km_reading ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="000000"
+                  style={{ letterSpacing: '0.05em' }}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <span className="text-sm font-semibold text-gray-500 bg-white px-2 py-1 rounded border border-gray-300">KM</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                Araç göstergesindeki km değerini girin (sadece rakam)
+              </p>
               {errors.km_reading && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1 font-medium">
                   <AlertCircle className="w-3 h-3" />
                   {errors.km_reading}
                 </p>

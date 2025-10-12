@@ -342,7 +342,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.km_reading ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="125000"
+                placeholder="125000 (nokta veya virgül kullanmayın)"
               />
               {errors.km_reading && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -473,7 +473,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.quantity_liters ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="99.62"
+                placeholder="99.62 (nokta veya virgül kullanın)"
               />
               {errors.quantity_liters && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -497,7 +497,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.unit_price ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="53.49"
+                placeholder="53.49 (nokta veya virgül kullanın)"
               />
               {errors.unit_price && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">

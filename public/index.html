@@ -15,28 +15,9 @@
     <title>Personel Takip Sistemi</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script>
-      // Service Worker registration for cache control
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('SW registered: ', registration);
-              // Force update on new version
-              registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // New version available, reload page
-                    window.location.reload();
-                  }
-                });
-              });
-            })
-            .catch(registrationError => {
-              console.log('SW registration failed: ', registrationError);
-            });
-        });
-      }
+      // Service Worker - disabled for development
+      // Production'da cache kontrolü için aktif edilebilir
+      console.log('Service Worker disabled for development');
     </script>
     <style>
         * {

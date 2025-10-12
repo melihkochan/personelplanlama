@@ -2,10 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import { checkForUpdates } from './utils/versionCheck';
+// import { checkForUpdates } from './utils/versionCheck';
 
-// Version kontrolü yap
-checkForUpdates();
+// Version kontrolü - development için devre dışı
+// checkForUpdates();
 
 // Console warnings'i azalt (development için)
 if (process.env.NODE_ENV === 'development') {

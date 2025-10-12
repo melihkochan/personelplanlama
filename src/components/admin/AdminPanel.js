@@ -131,9 +131,18 @@ const AdminPanel = ({ userRole, currentUser }) => {
   useEffect(() => {
     if (activeSection === 'audit_logs' && !auditLogsLoadedRef.current) {
       auditLogsLoadedRef.current = true;
+      // İlk yükleme için filtreleri temizle
+      setAuditFilters({
+        userEmail: '',
+        action: '',
+        tableName: '',
+        dateFrom: '',
+        dateTo: '',
+        limit: 50
+      });
       loadAuditLogs();
       loadAuditStats();
-      loadAvailableFilters();
+      loadAvailableFilters(); // Available filters'ı da yükle
     }
   }, [activeSection]);
 
@@ -1083,14 +1092,25 @@ Devam etmek istediğinizden emin misiniz?`;
   const loadAuditLogs = async () => {
     setLoadingAuditLogs(true);
     try {
-      const result = await getAuditLogs(auditFilters);
+      // İlk yükleme için temiz filtreler kullan
+      const cleanFilters = {
+        userEmail: '',
+        action: '',
+        tableName: '',
+        dateFrom: '',
+        dateTo: '',
+        limit: 50
+      };
+      const result = await getAuditLogs(cleanFilters);
       if (result.success) {
         setAuditLogs(result.data);
       } else {
         console.error('Audit logları yüklenemedi:', result.error);
+        setAuditLogs([]);
       }
     } catch (error) {
       console.error('Audit log yükleme hatası:', error);
+      setAuditLogs([]);
     } finally {
       setLoadingAuditLogs(false);
     }
@@ -1115,25 +1135,39 @@ Devam etmek istediğinizden emin misiniz?`;
         .order('created_at', { ascending: false });
       
       if (error) {
+        console.error('Filter verileri yüklenemedi:', error);
+        // Hata durumunda varsayılan değerler
+        setAvailableUsers([]);
+        setAvailableActions([]);
+        setAvailableTables([]);
         return;
       }
       
       if (allLogs && allLogs.length > 0) {
-        const uniqueUsers = [...new Set(allLogs.map(log => `${log.user_name} (${log.user_email})`))];
+        const uniqueUsers = [...new Set(allLogs.map(log => `${log.user_name || 'Bilinmeyen'} (${log.user_email})`))];
         setAvailableUsers(uniqueUsers);
         
-        const uniqueActions = [...new Set(allLogs.map(log => log.action))];
+        const uniqueActions = [...new Set(allLogs.map(log => log.action).filter(action => action))];
         setAvailableActions(uniqueActions);
         
-        const uniqueTables = [...new Set(allLogs.map(log => log.table_name))];
+        const uniqueTables = [...new Set(allLogs.map(log => log.table_name).filter(table => table))];
         setAvailableTables(uniqueTables);
+      } else {
+        // Veri yoksa varsayılan değerler
+        setAvailableUsers([]);
+        setAvailableActions([]);
+        setAvailableTables([]);
       }
     } catch (error) {
-      // Hata durumunda sessizce devam et
+      console.error('Filter yükleme hatası:', error);
+      // Hata durumunda varsayılan değerler
+      setAvailableUsers([]);
+      setAvailableActions([]);
+      setAvailableTables([]);
     }
   };
 
-  const AuditLogsSection = () => {
+  const AuditLogsSection = React.useCallback(() => {
 
     const handleFilterChange = (e) => {
       const { name, value } = e.target;
@@ -1142,27 +1176,43 @@ Devam etmek istediğinizden emin misiniz?`;
         [name]: value
       };
       
+      // State'i güncelle
       setAuditFilters(newFilters);
+      
+      // Debug için log ekle
+      console.log('Filter değişti:', name, value);
+      
+      // Otomatik filtreleme yap
+      setTimeout(() => {
+        loadAuditLogsWithFilters(newFilters);
+      }, 100); // 100ms gecikme ile
     };
     
-    const loadAuditLogsWithFilters = async (customFilters = null) => {
-      setLoadingAuditLogs(true);
-      try {
-        const filtersToUse = customFilters || auditFilters;
-        const result = await getAuditLogs(filtersToUse);
-        if (result.success) {
-          setAuditLogs(result.data);
-        } else {
-          console.error('Audit logları yüklenemedi:', result.error);
-        }
-      } catch (error) {
-        console.error('Audit log yükleme hatası:', error);
-      } finally {
-        setLoadingAuditLogs(false);
+  const loadAuditLogsWithFilters = async (customFilters = null) => {
+    setLoadingAuditLogs(true);
+    try {
+      const filtersToUse = customFilters || auditFilters;
+      console.log('Filtreleme yapılıyor:', filtersToUse);
+      const result = await getAuditLogs(filtersToUse);
+      console.log('Filtreleme sonucu:', result);
+      if (result.success) {
+        setAuditLogs(result.data);
+        console.log('Audit logs güncellendi:', result.data.length, 'kayıt');
+      } else {
+        console.error('Audit logları yüklenemedi:', result.error);
+        setAuditLogs([]); // Hata durumunda listeyi temizle
       }
-    };
+    } catch (error) {
+      console.error('Audit log yükleme hatası:', error);
+      setAuditLogs([]); // Hata durumunda listeyi temizle
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
 
     const handleApplyFilters = () => {
+      // Sadece filtreleme yap, available filters zaten yüklenmiş
+      console.log('Filtreleme başlatılıyor:', auditFilters);
       loadAuditLogsWithFilters();
     };
 
@@ -1440,7 +1490,7 @@ Devam etmek istediğinizden emin misiniz?`;
         </div>
       </div>
     );
-  };
+  }, [auditLogs, auditStats, loadingAuditLogs, availableUsers, availableActions, availableTables, auditFilters]);
 
   const PendingRegistrationsSection = () => {
     const formatDate = (dateString) => {

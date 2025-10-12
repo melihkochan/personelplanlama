@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, TrendingUp, Calendar, Filter, Download, RefreshCw } from 'lucide-react';
 import { getAllPersonnel, getPerformanceData } from '../../services/supabase';
+import * as XLSX from 'xlsx';
 
 const PersonelDagilimi = () => {
   const [personnelData, setPersonnelData] = useState([]);
@@ -415,7 +416,7 @@ const PersonelDagilimi = () => {
 
     const personnel = getMatrixPersonnel();
     
-    // Başlık satırı
+    // Başlık satırı - tam isimler
     const headers = ['Personel', 'Sicil No', 'Pozisyon', ...personnel.map(p => p.full_name)];
     
     // Veri satırları
@@ -431,6 +432,38 @@ const PersonelDagilimi = () => {
 
     // Excel oluştur
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    
+    // Stil ayarları - Calibri, boyut 8
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    
+    // Tüm hücreleri Calibri, boyut 8 yap
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' };
+        ws[cellAddress].s = {
+          font: {
+            name: 'Calibri',
+            sz: 8
+          }
+        };
+      }
+    }
+    
+    // Başlık satırını kalın yap
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (ws[cellAddress]) {
+        ws[cellAddress].s = {
+          ...ws[cellAddress].s,
+          font: {
+            ...ws[cellAddress].s.font,
+            bold: true
+          }
+        };
+      }
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Personel Dağılımı Matrix');
     
@@ -461,71 +494,64 @@ const PersonelDagilimi = () => {
               Hangi personelin kiminle kaç kez çıktığını görüntüleyin
             </p>
           </div>
-          <button
-            onClick={refreshData}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Yenile
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refreshData}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Yenile
+            </button>
+            
+            {teamMatrix && Object.keys(teamMatrix).length > 0 && (
+              <button
+                onClick={exportToExcel}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Dışa Aktar
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Info Section */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Veri Analizi</h2>
-          </div>
-          {teamMatrix && Object.keys(teamMatrix).length > 0 && (
-            <button
-              onClick={exportToExcel}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Dışa Aktar
-            </button>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="text-blue-600 text-sm font-medium mb-1">Toplam Personel</div>
-            <div className="text-2xl font-bold text-blue-900">
-              {personnelData.length}
-            </div>
-          </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="text-green-600 text-sm font-medium mb-1">Analiz Edilen</div>
-            <div className="text-2xl font-bold text-green-900">
-              {Object.keys(teamMatrix).length}
-            </div>
-          </div>
-          <div className="bg-purple-50 rounded-lg p-4">
-            <div className="text-purple-600 text-sm font-medium mb-1">Analiz Tarihi</div>
-            <div className="text-lg font-bold text-purple-900">
-              {analysisDate || 'Bilinmiyor'}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Filtre Butonu */}
       <div className="mb-6">
-        <button
-          onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <Filter className="w-5 h-5 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Personel Filtrele</span>
-          {selectedPersonnel.length > 0 && (
-            <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-              {selectedPersonnel.length}
-            </span>
-          )}
-          <span className={`ml-2 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}>▼</span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <Filter className="w-5 h-5 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">Personel Filtrele</span>
+            {selectedPersonnel.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                {selectedPersonnel.length}
+              </span>
+            )}
+            <span className={`ml-2 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}>▼</span>
+          </button>
+          
+          {/* Ay Filtresi */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Ay:</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Tüm Aylar</option>
+              {availableMonths.map(month => (
+                <option key={month.key} value={month.key}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Açılır Filtre Paneli */}
@@ -610,33 +636,14 @@ const PersonelDagilimi = () => {
         {teamMatrix && Object.keys(teamMatrix).length > 0 && (
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Personel Çıkış Matrix
-                  {selectedPersonnel.length > 0 && (
-                    <span className="ml-2 text-sm text-gray-500">
-                      ({selectedPersonnel.length} personel seçili - vurgulanıyor)
-                    </span>
-                  )}
-                </h3>
-                
-                {/* Ay Filtresi */}
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">Ay:</label>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Tüm Aylar</option>
-                    {availableMonths.map(month => (
-                      <option key={month.key} value={month.key}>
-                        {month.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Personel Çıkış Matrix
+                {selectedPersonnel.length > 0 && (
+                  <span className="ml-2 text-sm text-gray-500">
+                    ({selectedPersonnel.length} personel seçili - vurgulanıyor)
+                  </span>
+                )}
+              </h3>
               
               {maxCountInfo && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">

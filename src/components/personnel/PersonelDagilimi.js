@@ -552,7 +552,7 @@ const PersonelDagilimi = () => {
                     {getMatrixPersonnel().map((person, idx) => (
                       <th 
                         key={idx}
-                        className={`text-center py-3 px-1 font-semibold min-w-[60px] ${
+                        className={`text-center py-3 px-1 font-semibold min-w-[60px] sticky top-0 bg-white z-20 ${
                           selectedPersonnel.includes(person.id) ? 'bg-yellow-50 border-b-4 border-yellow-400' : 'text-gray-900'
                         }`}
                         style={{ writingMode: 'vertical-rl' }}

@@ -15,7 +15,8 @@ import {
   LineChart,
   Download,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Receipt
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -314,7 +315,7 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <div className="flex items-center gap-3">
-            <DollarSign className="w-5 h-5 text-blue-500" />
+            <span className="text-2xl text-blue-500 font-bold">₺</span>
             <div>
               <p className="text-xs text-gray-600">Toplam Harcama</p>
               <p className="text-lg font-semibold text-gray-900">
@@ -339,7 +340,7 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
         
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <div className="flex items-center gap-3">
-            <Car className="w-5 h-5 text-purple-500" />
+            <Receipt className="w-5 h-5 text-purple-500" />
             <div>
               <p className="text-xs text-gray-600">Toplam Fiş</p>
               <p className="text-lg font-semibold text-gray-900">{stats.totalReceipts}</p>

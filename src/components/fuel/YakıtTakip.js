@@ -13,7 +13,9 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Download
+  Download,
+  Receipt,
+  DollarSign
 } from 'lucide-react';
 import FuelReceiptList from './FuelReceiptList';
 import FuelReceiptForm from './FuelReceiptForm';
@@ -217,7 +219,7 @@ const YakıtTakip = ({ vehicleData = [], personnelData = [], currentUser, initia
                     <p className="text-sm text-blue-600 font-medium">Toplam Fiş</p>
                     <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
                   </div>
-                  <Fuel className="w-8 h-8 text-blue-500" />
+                  <Receipt className="w-8 h-8 text-blue-500" />
                 </div>
               </div>
               
@@ -258,7 +260,7 @@ const YakıtTakip = ({ vehicleData = [], personnelData = [], currentUser, initia
                       })}
                     </p>
                   </div>
-                  <TrendingUp className="w-8 h-8 text-purple-500" />
+                  <span className="text-3xl text-purple-500 font-bold">₺</span>
                 </div>
               </div>
             </div>

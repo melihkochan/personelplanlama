@@ -279,8 +279,8 @@ const ShellMapView = () => {
   }, {});
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-2">
+      <div className="w-full">
         {/* Başlık */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Shell Petrol İstasyonları</h1>
@@ -352,8 +352,8 @@ const ShellMapView = () => {
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6 relative">
           <div 
             ref={mapRef} 
-            className="h-[600px] md:h-[700px] rounded-lg"
-            style={{ minHeight: '600px' }}
+            className="h-[700px] md:h-[800px] lg:h-[900px] rounded-lg"
+            style={{ minHeight: '700px' }}
           />
           
           {/* İstasyon Detay Paneli - Haritanın Sağ Üstünde */}
@@ -447,7 +447,7 @@ const ShellMapView = () => {
               <p>İstasyon bulunamadı</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
               {Object.entries(groupedStations).map(([city, stations]) => (
                 <div key={city} className="border border-gray-200 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 mb-3 text-center bg-orange-50 py-2 rounded">

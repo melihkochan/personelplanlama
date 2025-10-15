@@ -1725,25 +1725,6 @@ function MainApp() {
                       </div>
                       <span className="flex-1 text-left">Aktarma Şoförleri</span>
                     </button>
-                    <button
-                      onClick={() => handleTabChange('shell-harita')}
-                      className={`
-                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
-                        ${activeTab === 'shell-harita'
-                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                        activeTab === 'shell-harita' 
-                          ? 'bg-white/20' 
-                          : 'bg-gray-100 group-hover:bg-gray-200'
-                      }`}>
-                        <Map className={`w-3 h-3 ${activeTab === 'shell-harita' ? 'text-white' : 'text-gray-700'}`} />
-                      </div>
-                      <span className="flex-1 text-left">Shell Harita</span>
-                    </button>
 
                     <button
                       onClick={() => handleTabChange('aktarma-personel-list')}
@@ -1961,6 +1942,26 @@ function MainApp() {
                   <BarChart3 className={`w-2 h-2 ${activeTab === 'fuel-receipt-analytics' ? 'text-white' : 'text-gray-700'}`} />
                 </div>
                 <span className="flex-1 text-left whitespace-nowrap">Analizler</span>
+              </button>
+
+              <button
+                onClick={() => handleTabChange('shell-harita')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'shell-harita'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'shell-harita' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <Map className={`w-2 h-2 ${activeTab === 'shell-harita' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Shell Harita</span>
               </button>
 
             </div>
@@ -2595,6 +2596,23 @@ function MainApp() {
                     >
                       <BarChart3 className="w-5 h-5 mr-3" />
                       Analizler
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('shell-harita');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'shell-harita'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Map className="w-5 h-5 mr-3" />
+                      Shell Harita
                     </button>
 
                   </div>

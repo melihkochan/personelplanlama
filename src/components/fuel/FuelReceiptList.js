@@ -27,6 +27,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [selectedDateRange, setSelectedDateRange] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -88,6 +89,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
         receipt.station_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
+      const matchesRegion = !selectedRegion || receipt.region === selectedRegion;
       
       // Tarih aralığı filtresi
       let matchesDate = true;
@@ -103,7 +105,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
         }
       }
       
-      return matchesSearch && matchesVehicle && matchesDate;
+      return matchesSearch && matchesVehicle && matchesRegion && matchesDate;
     }).sort((a, b) => {
       let aValue, bValue;
       
@@ -156,6 +158,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
         'Saat': receipt.time,
         'Araç Plakası': receipt.vehicle_plate,
         'Şoför': receipt.driver_name,
+        'Bölge': receipt.region || '',
         'İstasyon': receipt.station_name,
         'Yakıt Türü': receipt.fuel_type,
         'Miktar (L)': receipt.quantity_liters,
@@ -210,6 +213,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
         { wch: 10 }, // Saat
         { wch: 15 }, // Araç Plakası
         { wch: 20 }, // Şoför
+        { wch: 15 }, // Bölge
         { wch: 25 }, // İstasyon
         { wch: 15 }, // Yakıt Türü
         { wch: 12 }, // Miktar
@@ -302,7 +306,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
         {/* Filtre Paneli */}
         {showFilters && (
           <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Araç</label>
                 <select
@@ -318,6 +322,25 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
                     .map((plate, index) => (
                       <option key={index} value={plate}>
                         {plate} ({receipts.filter(r => r.vehicle_plate === plate).length} fiş)
+                      </option>
+                    ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bölge</label>
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Tüm Bölgeler</option>
+                  {Array.from(new Set(receipts.map(r => r.region)))
+                    .filter(region => region) // Boş bölgeleri filtrele
+                    .sort()
+                    .map((region, index) => (
+                      <option key={index} value={region}>
+                        {region}
                       </option>
                     ))}
                 </select>
@@ -353,6 +376,7 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Tarih/Saat</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Araç</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Şoför</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Bölge</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">İstasyon</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Yakıt</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Tutar</th>
@@ -384,6 +408,14 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
                     <div className="flex items-center text-sm text-gray-900">
                       <User className="w-4 h-4 text-green-600 mr-2" />
                       {receipt.driver_name}
+            </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center text-sm text-gray-900">
+                      <MapPin className="w-4 h-4 text-purple-600 mr-2" />
+                      {receipt.region === 'ISTANBUL_AND' ? 'ISTANBUL (Anadolu)' :
+                       receipt.region === 'ISTANBUL_AVR' ? 'ISTANBUL (Avrupa)' : 
+                       receipt.region || '-'}
             </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -526,6 +558,15 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
                 </div>
                 
                 <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Bölge</label>
+                      <p className="text-gray-900">
+                        {selectedReceipt.region === 'ISTANBUL_AND' ? 'ISTANBUL (Anadolu)' :
+                         selectedReceipt.region === 'ISTANBUL_AVR' ? 'ISTANBUL (Avrupa)' : 
+                         selectedReceipt.region || '-'}
+                      </p>
+                </div>
+                
+                <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">İstasyon</label>
                       <p className="text-gray-900 text-sm">{selectedReceipt.station_name}</p>
                     </div>
@@ -664,6 +705,29 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
                       onChange={(e) => setEditingReceipt({...editingReceipt, driver_name: e.target.value})}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Bölge</label>
+                    <select
+                      value={editingReceipt.region || ''}
+                      onChange={(e) => setEditingReceipt({...editingReceipt, region: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    >
+                      <option value="">Bölge Seçin</option>
+                      <option value="ADANA">ADANA</option>
+                      <option value="ANKARA">ANKARA</option>
+                      <option value="ANTALYA">ANTALYA</option>
+                      <option value="BALIKESIR">BALIKESIR</option>
+                      <option value="BURSA">BURSA</option>
+                      <option value="DIYARBAKIR">DIYARBAKIR</option>
+                      <option value="GAZIANTEP">GAZIANTEP</option>
+                      <option value="ISTANBUL_AND">ISTANBUL (Anadolu)</option>
+                      <option value="ISTANBUL_AVR">ISTANBUL (Avrupa)</option>
+                      <option value="IZMIR">IZMIR</option>
+                      <option value="KONYA">KONYA</option>
+                      <option value="SAMSUN">SAMSUN</option>
+                      <option value="TRABZON">TRABZON</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tarih</label>

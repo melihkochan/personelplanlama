@@ -15,7 +15,7 @@ import {
   Camera,
   Plus
 } from 'lucide-react';
-import { fuelReceiptService, vehicleService } from '../../services/supabase';
+import { fuelReceiptService, vehicleService, transferVehicleService, aktarmaSoforService } from '../../services/supabase';
 
 const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, onSave, onCancel, onVehicleAdded }) => {
   const [formData, setFormData] = useState({
@@ -31,6 +31,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
     vat_amount: '',
     station_name: 'Shell Petrol A.Ş.',
     station_location: '',
+    region: '',
     km_reading: '',
     receipt_image: '',
     notes: ''
@@ -45,14 +46,115 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
     vehicle_type: 'Kamyon'
   });
 
-  // Personnel tablosundan şoförleri çek
-  const getDriversFromPersonnel = () => {
-    return personnelData.filter(person => 
-      person.position && person.position.toUpperCase() === 'ŞOFÖR'
-    );
+  // Birleşik araç ve şoför verileri
+  const [allVehicles, setAllVehicles] = useState([]);
+  const [allDrivers, setAllDrivers] = useState([]);
+  const [filteredVehicles, setFilteredVehicles] = useState([]);
+  const [filteredDrivers, setFilteredDrivers] = useState([]);
+
+  // Verileri yükle
+  useEffect(() => {
+    loadCombinedData();
+  }, []);
+
+  const loadCombinedData = async () => {
+    try {
+      // Transfer araçlarını çek
+      const transferResult = await transferVehicleService.getAllTransferVehicles();
+      const transferVehicles = transferResult.success ? transferResult.data.map(vehicle => ({
+        id: vehicle.id,
+        license_plate: vehicle.plate,
+        vehicle_type: 'Kamyon',
+        location: vehicle.region,
+        notes: `Bölge: ${vehicle.region}`,
+        is_active: true
+      })) : [];
+
+      // Aktarma şoförlerini çek
+      const aktarmaResult = await aktarmaSoforService.getAllDrivers();
+      const aktarmaDrivers = aktarmaResult.success ? aktarmaResult.data.map(driver => ({
+        id: driver.id,
+        full_name: driver.ad_soyad,
+        position: 'ŞOFÖR',
+        region: driver.bolge,
+        username: driver.kullanici_adi
+      })) : [];
+
+      // Sadece bizim yeni tablolarımızdan veri kullan
+      setAllVehicles(transferVehicles);
+      setAllDrivers(aktarmaDrivers);
+      
+      // Başlangıçta tüm verileri göster
+      setFilteredVehicles(transferVehicles);
+      setFilteredDrivers(aktarmaDrivers);
+
+    } catch (error) {
+      console.error('Veri yükleme hatası:', error);
+      // Hata durumunda boş array kullan
+      setAllVehicles([]);
+      setAllDrivers([]);
+      setFilteredVehicles([]);
+      setFilteredDrivers([]);
+    }
   };
 
-  const drivers = getDriversFromPersonnel();
+  // Araç seçildiğinde şoförleri filtrele
+  const handleVehicleChange = (selectedPlate) => {
+    const selectedVehicle = allVehicles.find(vehicle => vehicle.license_plate === selectedPlate);
+    const region = selectedVehicle?.location || selectedVehicle?.notes?.replace('Bölge: ', '') || '';
+    
+    // Aynı bölgedeki şoförleri filtrele
+    const driversInRegion = allDrivers.filter(driver => driver.region === region);
+    setFilteredDrivers(driversInRegion);
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      vehicle_plate: selectedPlate,
+      region: region
+      // Şoför seçimini sıfırlama - kullanıcı isterse değiştirsin
+    }));
+  };
+
+  // Şoför seçildiğinde araçları filtrele
+  const handleDriverChange = (selectedDriverName) => {
+    const selectedDriver = allDrivers.find(driver => driver.full_name === selectedDriverName);
+    const region = selectedDriver?.region || '';
+    
+    // Aynı bölgedeki araçları filtrele
+    const vehiclesInRegion = allVehicles.filter(vehicle => 
+      vehicle.location === region || vehicle.notes?.includes(region)
+    );
+    setFilteredVehicles(vehiclesInRegion);
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      driver_name: selectedDriverName,
+      region: region
+      // Araç seçimini sıfırlama - kullanıcı isterse değiştirsin
+    }));
+  };
+
+  // Tüm araçları göster
+  const showAllVehicles = () => {
+    setFilteredVehicles(allVehicles);
+    setFormData(prev => ({ 
+      ...prev, 
+      vehicle_plate: '',
+      driver_name: '',
+      region: ''
+    }));
+  };
+
+  // Tüm şoförleri göster
+  const showAllDrivers = () => {
+    setFilteredDrivers(allDrivers);
+    setFormData(prev => ({ 
+      ...prev, 
+      vehicle_plate: '',
+      driver_name: '',
+      region: ''
+    }));
+  };
 
   // KDV oranları
   const getVatRate = (fuelType) => {
@@ -380,13 +482,24 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
               <div className="flex gap-2">
                 <select
                   value={formData.vehicle_plate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, vehicle_plate: e.target.value }))}
+                  onChange={(e) => {
+                    if (e.target.value === 'show_all') {
+                      showAllVehicles();
+                    } else {
+                      handleVehicleChange(e.target.value);
+                    }
+                  }}
                   className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.vehicle_plate ? 'border-red-500' : 'border-gray-300'
                   }`}
                 >
                   <option value="" disabled>Araç Seçin</option>
-                  {vehicleData
+                  {filteredVehicles.length < allVehicles.length && (
+                    <option value="show_all" style={{ color: '#3B82F6', fontWeight: 'bold' }}>
+                      🔄 Tümünü Göster ({allVehicles.length} araç)
+                    </option>
+                  )}
+                  {filteredVehicles
                     .sort((a, b) => a.license_plate.localeCompare(b.license_plate, 'tr'))
                     .map((vehicle, index) => (
                     <option key={index} value={vehicle.license_plate}>
@@ -417,13 +530,24 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
               </label>
               <select
                 value={formData.driver_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, driver_name: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value === 'show_all') {
+                    showAllDrivers();
+                  } else {
+                    handleDriverChange(e.target.value);
+                  }
+                }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.driver_name ? 'border-red-500' : 'border-gray-300'
                 }`}
               >
                 <option value="" disabled>Şoför Seçin</option>
-                {drivers
+                {filteredDrivers.length < allDrivers.length && (
+                  <option value="show_all" style={{ color: '#3B82F6', fontWeight: 'bold' }}>
+                    🔄 Tümünü Göster ({allDrivers.length} şoför)
+                  </option>
+                )}
+                {filteredDrivers
                   .sort((a, b) => a.full_name.localeCompare(b.full_name, 'tr'))
                   .map((driver, index) => (
                   <option key={index} value={driver.full_name}>
@@ -437,7 +561,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
                   {errors.driver_name}
                 </p>
               )}
-              {drivers.length === 0 && (
+              {filteredDrivers.length === 0 && (
                 <p className="text-yellow-600 text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   Personnel tablosunda position'ı "ŞOFÖR" olan kayıt bulunamadı
@@ -578,6 +702,19 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
               <p className="text-xs text-gray-500 mt-1">Anlaşmalı istasyon</p>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bölge
+              </label>
+              <input
+                type="text"
+                value={formData.region}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                placeholder="Araç seçildiğinde otomatik doldurulur"
+              />
+            </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 İstasyon Konumu *

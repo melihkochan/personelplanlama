@@ -122,7 +122,7 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex flex-col">
       {/* Header */}
       <div className="text-center mb-8 pt-safe-top">
         <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -137,11 +137,12 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
       </div>
 
       {/* Giriş Formu */}
-      <div className="max-w-md mx-auto">
+      <div className="flex-1 flex items-center justify-center">
+        <div className="max-w-md w-full">
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Kullanıcı Adı / İsim
+              Kullanıcı Adı
             </label>
             <div className="relative">
               <input
@@ -200,10 +201,11 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
             )}
           </button>
         </form>
+        </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-12 text-center space-y-4">
+      {/* Footer - Sayfa altında */}
+      <div className="mt-auto text-center space-y-4 pb-4">
         <p className="text-xs text-gray-400">
           Sadece yetkili şoförler giriş yapabilir
         </p>

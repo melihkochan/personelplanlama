@@ -31,7 +31,8 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     total_amount: '',
     vat_amount: '',
     station_name: 'Shell Petrol A.Ş.',
-    station_location: 'Gebze/Kocaeli',
+    station_location: '',
+    region: '',
     km_reading: '',
     receipt_image: '',
     notes: ''
@@ -56,6 +57,26 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
   // Dinamik station_location belirleme - boş bırak
   const getStationLocation = (driver) => {
     return ''; // İstasyon konumu boş kalsın
+  };
+
+  // Bölge mapping fonksiyonu
+  const getRegionDisplayName = (region) => {
+    const regionMappings = {
+      'ISTANBUL_AND': 'ISTANBUL (Anadolu)',
+      'ISTANBUL_AVR': 'ISTANBUL (Avrupa)',
+      'ADANA': 'ADANA',
+      'ANKARA': 'ANKARA',
+      'ANTALYA': 'ANTALYA',
+      'BALIKESIR': 'BALIKESIR',
+      'BURSA': 'BURSA',
+      'DIYARBAKIR': 'DIYARBAKIR',
+      'GAZIANTEP': 'GAZIANTEP',
+      'IZMIR': 'IZMIR',
+      'KONYA': 'KONYA',
+      'SAMSUN': 'SAMSUN',
+      'TRABZON': 'TRABZON'
+    };
+    return regionMappings[region] || region;
   };
 
   // Sayfa yüklendiğinde en üste scroll yap
@@ -93,6 +114,18 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     }
     
     setFormData(prev => ({ ...prev, [name]: processedValue }));
+
+    // Araç plakası değiştiğinde bölgeyi otomatik çek
+    if (name === 'vehicle_plate' && value) {
+      const selectedVehicle = vehicleData.find(vehicle => vehicle.license_plate === value);
+      if (selectedVehicle) {
+        const region = selectedVehicle.location || selectedVehicle.notes?.replace('Bölge: ', '') || '';
+        setFormData(prev => ({
+          ...prev,
+          region: region
+        }));
+      }
+    }
 
     // Miktar veya birim fiyat değiştiğinde hesaplamaları yap
     if (name === 'quantity_liters' || name === 'unit_price') {
@@ -133,8 +166,8 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     if (!formData.total_amount || parseFloat(formData.total_amount) <= 0) {
       newErrors.total_amount = 'Toplam tutar 0\'dan büyük olmalı';
     }
-    if (formData.km_reading && (parseInt(formData.km_reading) < 0 || parseInt(formData.km_reading) > 9999999)) {
-      newErrors.km_reading = 'KM okuma 0-9999999 arasında olmalı';
+    if (formData.km_reading && (parseInt(formData.km_reading) < 0 || parseInt(formData.km_reading) > 999999)) {
+      newErrors.km_reading = 'KM okuma 0-999999 arasında olmalı';
     }
     
     setErrors(newErrors);
@@ -368,7 +401,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
                   onChange={handleChange}
                   className={`w-full px-4 py-4 text-center text-2xl font-bold tracking-wider border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 ${errors.km_reading ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
                   placeholder="000000"
-                  maxLength="7"
+                  maxLength="6"
                   inputMode="numeric"
                   pattern="[0-9]*"
                 />

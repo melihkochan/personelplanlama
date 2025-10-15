@@ -5186,6 +5186,23 @@ export const aktarmaSoforService = {
       console.error('Şoför giriş doğrulama hatası:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  // Tüm aktarma şoförlerini getir
+  async getAllDrivers() {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_soforleri')
+        .select('*')
+        .eq('durum', 'aktif')
+        .order('ad_soyad', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Aktarma şoförleri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
   }
 };
 

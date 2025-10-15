@@ -23,6 +23,7 @@ import * as XLSX from 'xlsx';
 const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts = [], onRefresh }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedVehicle, setSelectedVehicle] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('');
 
   // Personnel tablosundan şoförleri çek - useMemo ile optimize
   const drivers = useMemo(() => {
@@ -35,6 +36,7 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
   const filteredData = useMemo(() => {
     return receipts.filter(receipt => {
       const matchesVehicle = !selectedVehicle || receipt.vehicle_plate === selectedVehicle;
+      const matchesRegion = !selectedRegion || receipt.region === selectedRegion;
       
       // Dönem filtresi
       let matchesPeriod = true;
@@ -66,9 +68,9 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
         }
       }
       
-      return matchesVehicle && matchesPeriod;
+      return matchesVehicle && matchesRegion && matchesPeriod;
     });
-  }, [receipts, selectedVehicle, selectedPeriod]);
+  }, [receipts, selectedVehicle, selectedRegion, selectedPeriod]);
 
   // İstatistikler hesaplama - useMemo ile optimize
   const stats = useMemo(() => {
@@ -124,6 +126,41 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
         lastReceipt: sortedReceipts[sortedReceipts.length - 1]?.date || '-'
       };
     }).sort((a, b) => b.totalAmount - a.totalAmount);
+  }, [filteredData]);
+
+  // Bölge Bazlı Analiz - useMemo ile optimize
+  const regionAnalysis = useMemo(() => {
+    const regionStats = {};
+    
+    filteredData.forEach(receipt => {
+      const region = receipt.region || 'Belirtilmemiş';
+      
+      if (!regionStats[region]) {
+        regionStats[region] = {
+          totalAmount: 0,
+          totalLiters: 0,
+          receiptCount: 0,
+          vehicles: new Set(),
+          drivers: new Set()
+        };
+      }
+      
+      regionStats[region].totalAmount += receipt.total_amount;
+      regionStats[region].totalLiters += receipt.quantity_liters;
+      regionStats[region].receiptCount += 1;
+      regionStats[region].vehicles.add(receipt.vehicle_plate);
+      regionStats[region].drivers.add(receipt.driver_name);
+    });
+
+    return Object.entries(regionStats).map(([region, data]) => ({
+      region,
+      totalAmount: data.totalAmount,
+      totalLiters: data.totalLiters,
+      receiptCount: data.receiptCount,
+      vehicleCount: data.vehicles.size,
+      driverCount: data.drivers.size,
+      averagePerReceipt: data.receiptCount > 0 ? data.totalAmount / data.receiptCount : 0
+    })).sort((a, b) => b.totalAmount - a.totalAmount);
   }, [filteredData]);
 
   // Şoför Performansı - Personnel verileri ile karşılaştır - useMemo ile optimize
@@ -190,6 +227,16 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
           'Toplam Litre': driver.totalLiters,
           'Ortalama/Fiş': driver.averageAmount,
           'Toplam Tutar (₺)': driver.totalAmount
+        })),
+        'Bölge Bazlı Analiz': regionAnalysis.map(region => ({
+          'Bölge': region.region === 'ISTANBUL_AND' ? 'ISTANBUL (Anadolu)' :
+                  region.region === 'ISTANBUL_AVR' ? 'ISTANBUL (Avrupa)' : region.region,
+          'Fiş Sayısı': region.receiptCount,
+          'Toplam Litre': region.totalLiters,
+          'Araç Sayısı': region.vehicleCount,
+          'Şoför Sayısı': region.driverCount,
+          'Ortalama/Fiş': region.averagePerReceipt,
+          'Toplam Tutar (₺)': region.totalAmount
         }))
       };
 
@@ -288,6 +335,29 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
                       {plate} ({receipts.filter(r => r.vehicle_plate === plate).length} fiş)
                     </option>
                   ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-gray-500" />
+              <select
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="">Tüm Bölgeler</option>
+                {Array.from(new Set(receipts.map(r => r.region)))
+                  .filter(region => region) // Boş bölgeleri filtrele
+                  .sort()
+                  .map((region, index) => {
+                    const displayName = region === 'ISTANBUL_AND' ? 'ISTANBUL (Anadolu)' :
+                                      region === 'ISTANBUL_AVR' ? 'ISTANBUL (Avrupa)' : region;
+                    return (
+                      <option key={index} value={region}>
+                        {displayName} ({receipts.filter(r => r.region === region).length} fiş)
+                      </option>
+                    );
+                  })}
               </select>
             </div>
           </div>
@@ -428,6 +498,72 @@ const FuelReceiptAnalytics = ({ vehicleData = [], personnelData = [], receipts =
           <div className="text-center py-8">
             <Car className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-600">Henüz yakıt verisi bulunmuyor</p>
+          </div>
+        )}
+      </div>
+
+      {/* Bölge Bazlı Analiz */}
+      <div className="bg-white rounded-xl p-6 shadow-lg">
+        <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-purple-600" />
+          Bölge Bazlı Analiz
+        </h3>
+        
+        {regionAnalysis.length > 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bölge</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fiş Sayısı</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Litre</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Araç Sayısı</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför Sayısı</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ortalama/Fiş</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Tutar</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {regionAnalysis.map((region, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <MapPin className="w-4 h-4 text-purple-600 mr-2" />
+                          <span className="text-sm font-medium text-gray-900">
+                            {region.region === 'ISTANBUL_AND' ? 'ISTANBUL (Anadolu)' :
+                             region.region === 'ISTANBUL_AVR' ? 'ISTANBUL (Avrupa)' : region.region}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {region.receiptCount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {region.totalLiters.toFixed(2)}L
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {region.vehicleCount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {region.driverCount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₺{region.averagePerReceipt.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ₺{region.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Henüz bölge verisi bulunmuyor</p>
           </div>
         )}
       </div>

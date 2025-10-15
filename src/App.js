@@ -7,6 +7,7 @@ import { FileExcelOutlined } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 
 import PersonelList from './components/personnel/PersonelList';
+import AktarmaSoforleri from './components/personnel/AktarmaSoforleri';
 import VehicleList from './components/vehicles/VehicleList';
 import StoreList from './components/stores/StoreList';
 import YakıtTakip from './components/fuel/YakıtTakip';
@@ -1704,25 +1705,45 @@ function MainApp() {
                 
                 {expandedGroups['aktarma-personnel'] && (
                   <div className="ml-2 space-y-1 mt-2 border-l-2 border-gray-200 pl-2">
-              <button
-                onClick={() => handleTabChange('aktarma-personel-list')}
-                className={`
-                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'aktarma-personel-list'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                  activeTab === 'aktarma-personel-list' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
+                    <button
+                      onClick={() => handleTabChange('aktarma-soforleri')}
+                      className={`
+                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'aktarma-soforleri'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                        activeTab === 'aktarma-soforleri' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <Truck className={`w-3 h-3 ${activeTab === 'aktarma-soforleri' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left">Aktarma Şoförleri</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleTabChange('aktarma-personel-list')}
+                      className={`
+                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'aktarma-personel-list'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                        activeTab === 'aktarma-personel-list' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
                       <span className="flex-1 text-left">Aktarma Personel Performans Analizi</span>
-              </button>
+                    </button>
 
 
                   </div>
@@ -2427,6 +2448,23 @@ function MainApp() {
                       <span className="px-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Aktarma Depo</span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('aktarma-soforleri');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'aktarma-soforleri'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Truck className="w-5 h-5 mr-3" />
+                      Aktarma Şoförleri
+                    </button>
 
                     <button
                       onClick={() => {
@@ -3960,6 +3998,14 @@ function MainApp() {
               </div>
             )}
 
+
+            {/* Aktarma Şoförleri */}
+            {activeTab === 'aktarma-soforleri' && (
+              <AktarmaSoforleri 
+                userRole={userRole}
+                currentUser={user}
+              />
+            )}
 
             {/* Aktarma Depo Personel Kontrol */}
             {activeTab === 'aktarma-personel-list' && (

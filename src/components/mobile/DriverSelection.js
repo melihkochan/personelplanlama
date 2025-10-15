@@ -124,7 +124,7 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex flex-col">
       {/* Header */}
-      <div className="text-center mb-8 pt-safe-top">
+      <div className="text-center mb-8 pt-8">
         <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
           <Truck className="w-10 h-10 text-white" />
         </div>

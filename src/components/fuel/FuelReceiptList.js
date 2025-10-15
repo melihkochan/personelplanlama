@@ -111,8 +111,11 @@ const FuelReceiptList = ({ vehicleData = [], personnelData = [], currentUser, re
       
       switch (sortBy) {
         case 'date':
-          aValue = new Date(a.date);
-          bValue = new Date(b.date);
+          // Tarih ve saati birleştirerek sırala
+          const aDateTime = new Date(`${a.date}T${a.time || '00:00:00'}`);
+          const bDateTime = new Date(`${b.date}T${b.time || '00:00:00'}`);
+          aValue = aDateTime;
+          bValue = bDateTime;
           break;
         case 'driver_name':
           aValue = a.driver_name?.toLowerCase() || '';

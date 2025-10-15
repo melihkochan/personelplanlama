@@ -21,6 +21,7 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
   const [showAllPasswords, setShowAllPasswords] = useState(false);
   const [showEditPasswordModal, setShowEditPasswordModal] = useState(false);
   const [editAdminPassword, setEditAdminPassword] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   const [formData, setFormData] = useState({
     sicil: '',
@@ -54,6 +55,27 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
   useEffect(() => {
     loadPersonnelData();
   }, []);
+
+  // Toast bildirimi gösterme fonksiyonu
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
+  // Şifre görüntüleme sonrası otomatik kapanma
+  useEffect(() => {
+    if (showPassword || showAllPasswords) {
+      const timer = setTimeout(() => {
+        setShowPassword(false);
+        setShowAllPasswords(false);
+        setSelectedPersonnel(null);
+      }, 10000); // 10 saniye sonra otomatik kapanır
+
+      return () => clearTimeout(timer);
+    }
+  }, [showPassword, showAllPasswords]);
 
 
   // Filtreleme
@@ -98,8 +120,9 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
     if (adminPassword === '14') {
       setShowPassword(true);
       setShowPasswordModal(false);
+      showToast('Şifre başarıyla görüntülendi!', 'success');
     } else {
-      alert('Yanlış admin şifresi!');
+      showToast('Yanlış admin şifresi!', 'error');
       setAdminPassword('');
     }
   };
@@ -116,8 +139,9 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
     if (adminPassword === '14') {
       setShowAllPasswords(true);
       setShowPasswordModal(false);
+      showToast('Tüm şifreler başarıyla görüntülendi!', 'success');
     } else {
-      alert('Yanlış admin şifresi!');
+      showToast('Yanlış admin şifresi!', 'error');
       setAdminPassword('');
     }
   };
@@ -127,8 +151,9 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
     if (editAdminPassword === '14') {
       setShowEditPersonnelModal(true);
       setShowEditPasswordModal(false);
+      showToast('Düzenleme yetkisi verildi!', 'success');
     } else {
-      alert('Yanlış admin şifresi!');
+      showToast('Yanlış admin şifresi!', 'error');
       setEditAdminPassword('');
     }
   };
@@ -136,7 +161,7 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
   // Excel indirme fonksiyonu
   const handleExcelDownload = () => {
     if (!isAdmin) {
-      alert('Bu işlem için admin yetkisi gereklidir!');
+      showToast('Bu işlem için admin yetkisi gereklidir!', 'error');
       return;
     }
 
@@ -221,14 +246,13 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
     // Dosyayı indir
     const fileName = `Aktarma_Soforleri_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
-
-    alert('Excel dosyası başarıyla indirildi!');
+    showToast('Excel dosyası başarıyla indirildi!', 'success');
   };
 
   // Düzenleme fonksiyonları
   const handleEditPersonnel = (person) => {
     if (!isAdmin) {
-      alert('Bu işlem için admin yetkisi gereklidir!');
+      showToast('Bu işlem için admin yetkisi gereklidir!', 'error');
       return;
     }
     
@@ -281,10 +305,10 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
       });
       
       await loadPersonnelData();
-      alert('Aktarma şoförü başarıyla güncellendi!');
+      showToast('Aktarma şoförü başarıyla güncellendi!', 'success');
     } catch (error) {
       console.error('Güncelleme hatası:', error);
-      alert('Güncellenirken hata oluştu: ' + error.message);
+      showToast('Güncellenirken hata oluştu: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -294,7 +318,7 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
   const handleAddPersonnel = async (e) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert('Bu işlem için admin yetkisi gereklidir!');
+      showToast('Bu işlem için admin yetkisi gereklidir!', 'error');
       return;
     }
     setLoading(true);
@@ -326,10 +350,10 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
       });
       
       await loadPersonnelData();
-      alert('Aktarma şoförü başarıyla eklendi!');
+      showToast('Aktarma şoförü başarıyla eklendi!', 'success');
     } catch (error) {
       console.error('Ekleme hatası:', error);
-      alert('Eklenirken hata oluştu: ' + error.message);
+      showToast('Eklenirken hata oluştu: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -338,7 +362,7 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
   // Personel silme
   const handleDeletePersonnel = async (id) => {
     if (!isAdmin) {
-      alert('Bu işlem için admin yetkisi gereklidir!');
+      showToast('Bu işlem için admin yetkisi gereklidir!', 'error');
       return;
     }
     
@@ -357,10 +381,10 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
       if (error) throw error;
 
       await loadPersonnelData();
-      alert('Aktarma şoförü başarıyla silindi!');
+      showToast('Aktarma şoförü başarıyla silindi!', 'success');
     } catch (error) {
       console.error('Silme hatası:', error);
-      alert('Silinirken hata oluştu: ' + error.message);
+      showToast('Silinirken hata oluştu: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -398,6 +422,31 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
 
   return (
     <div className="space-y-4">
+      {/* Toast Bildirimi */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 transform ${
+          toast.type === 'success' 
+            ? 'bg-green-500 text-white' 
+            : 'bg-red-500 text-white'
+        }`}>
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              {toast.type === 'success' ? (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium">{toast.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300">
         <div className="flex items-center justify-between mb-4">
@@ -422,13 +471,27 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
               </button>
             )}
             
-            {isAdmin && (
+            {isAdmin && !showAllPasswords && !showPassword && (
               <button
                 onClick={handleShowAllPasswords}
                 className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
               >
                 <Search className="w-4 h-4" />
                 Tüm Şifreleri Göster
+              </button>
+            )}
+            
+            {(showAllPasswords || showPassword) && (
+              <button
+                onClick={() => {
+                  setShowAllPasswords(false);
+                  setShowPassword(false);
+                  setSelectedPersonnel(null);
+                }}
+                className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
+              >
+                <Search className="w-4 h-4" />
+                Şifreleri Gizle
               </button>
             )}
             
@@ -527,6 +590,22 @@ const AktarmaSoforleri = ({ userRole, currentUser }) => {
           </div>
         </div>
       </div>
+
+      {/* Şifre Görüntüleme Bilgisi */}
+      {(showAllPasswords || showPassword) && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-sm text-blue-700">
+              Şifreler görüntüleniyor. 10 saniye sonra otomatik olarak gizlenecektir.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* View Toggle */}
       <div className="flex items-center gap-3 mb-4">

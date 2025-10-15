@@ -12,13 +12,14 @@ import {
   MapPin,
   FileText,
   Plus,
-  Lock
+  Lock,
+  History
 } from 'lucide-react';
 import { fuelReceiptService, vehicleService, aktarmaSoforService } from '../../services/supabase';
 import { supabase } from '../../services/supabase';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
-const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onVehicleAdded }) => {
+const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onVehicleAdded, onShowHistory }) => {
   const [formData, setFormData] = useState({
     receipt_number: '',
     vehicle_plate: '',
@@ -356,8 +357,8 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 pt-safe-top pb-4 px-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white shadow-sm border-b border-gray-200 pt-4 pb-4 px-4">
+        <div className="flex items-center justify-between mb-3">
           <button
             onClick={onBack}
             className="flex items-center text-blue-600 hover:text-blue-800 py-2"
@@ -366,17 +367,24 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
             <span className="font-medium">Geri</span>
           </button>
           <h1 className="text-lg font-bold text-gray-900">Yeni Fiş</h1>
-          {selectedDriver?.username && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowChangePasswordModal(true)}
-              className="flex items-center px-3 py-2 text-blue-600 hover:text-blue-800 transition-colors"
+              onClick={onShowHistory}
+              className="flex items-center text-green-600 hover:text-green-800 py-2 px-2"
             >
-              <Lock className="w-4 h-4 mr-1" />
-              <span className="text-sm font-medium">Şifre</span>
+              <History className="w-5 h-5" />
             </button>
-          )}
+            {selectedDriver?.username && !selectedDriver.isAdmin && (
+              <button
+                onClick={() => setShowChangePasswordModal(true)}
+                className="flex items-center text-blue-600 hover:text-blue-800 py-2 px-2"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="mt-2 flex items-center text-sm text-gray-600">
+        <div className="flex items-center text-sm text-gray-600">
           <User className="w-4 h-4 mr-2" />
           <span>{selectedDriver?.full_name}</span>
         </div>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import DriverSelection from './DriverSelection';
 import MobileReceiptForm from './MobileReceiptForm';
+import ReceiptHistory from './ReceiptHistory';
 import { vehicleService, getAllPersonnel, transferVehicleService } from '../../services/supabase';
 
 const MobileApp = () => {
-  const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'success'
+  const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'receipt-history', 'success'
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [vehicleData, setVehicleData] = useState([]);
   const [personnelData, setPersonnelData] = useState([]);
@@ -47,8 +48,48 @@ const MobileApp = () => {
   const handleDriverSelect = async (driver) => {
     setSelectedDriver(driver);
     
-    // Eğer bölge bilgisi varsa, o bölgeye göre araçları çek
-    if (driver.region) {
+    // Admin ise tüm araçları yükle
+    if (driver.isAdmin) {
+      try {
+        // Hem transfer araçları hem de normal araçları yükle
+        const [transferResult, normalResult] = await Promise.all([
+          transferVehicleService.getAllTransferVehicles(),
+          vehicleService.getAllVehicles()
+        ]);
+        
+        let allVehicles = [];
+        
+        // Transfer araçlarını ekle
+        if (transferResult.success) {
+          const transferVehicles = transferResult.data.map(vehicle => ({
+            id: vehicle.id,
+            license_plate: vehicle.plate,
+            vehicle_type: 'Kamyon',
+            location_point: null,
+            is_active: true,
+            notes: `Bölge: ${vehicle.region}`,
+            first_driver: vehicle.driver_name || null,
+            second_driver: null,
+            location: vehicle.region,
+            assigned_store: null,
+            created_at: vehicle.created_at,
+            updated_at: vehicle.updated_at
+          }));
+          allVehicles = [...allVehicles, ...transferVehicles];
+        }
+        
+        // Normal araçları ekle
+        if (normalResult.success) {
+          allVehicles = [...allVehicles, ...normalResult.data];
+        }
+        
+        setVehicleData(allVehicles);
+        console.log('Admin için tüm araçlar yüklendi:', allVehicles.length);
+      } catch (error) {
+        console.error('Admin araçları yükleme hatası:', error);
+      }
+    } else if (driver.region) {
+      // Normal şoför için bölgeye göre araçları çek
       try {
         const result = await transferVehicleService.getVehiclesByRegion(driver.region);
         
@@ -128,6 +169,14 @@ const MobileApp = () => {
           onBack={handleBackToDriverSelection}
           onSuccess={handleSuccess}
           onVehicleAdded={handleVehicleAdded}
+          onShowHistory={() => setCurrentScreen('receipt-history')}
+        />
+      )}
+
+      {currentScreen === 'receipt-history' && selectedDriver && (
+        <ReceiptHistory
+          selectedDriver={selectedDriver}
+          onBack={() => setCurrentScreen('receipt-form')}
         />
       )}
     </div>

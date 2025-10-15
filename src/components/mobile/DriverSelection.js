@@ -29,6 +29,45 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
     setLoginError('');
 
     try {
+      // Admin kontrolü
+      if (loginData.username === 'admin' && loginData.password === '14') {
+        console.log('Admin girişi başarılı');
+        const adminData = {
+          id: 'admin',
+          full_name: 'Admin Kullanıcı',
+          region: 'ALL',
+          warehouse: 'Tüm Depolar',
+          registration_number: 'ADMIN',
+          username: 'admin',
+          isAdmin: true
+        };
+        
+        // Başarılı giriş mesajı
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg bg-green-500 text-white transition-all duration-300 transform';
+        successMessage.innerHTML = `
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium">Admin girişi başarılı! Hoş geldin Admin</p>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(successMessage);
+        
+        // 2 saniye sonra mesajı kaldır ve yönlendir
+        setTimeout(() => {
+          successMessage.remove();
+          onDriverSelect(adminData);
+        }, 2000);
+        
+        return;
+      }
+
       // Önce aktarma şoförleri tablosunda ara
       console.log('Aktarma şoförleri tablosunda aranıyor...');
       const aktarmaResult = await aktarmaSoforService.loginDriver(loginData.username, loginData.password);

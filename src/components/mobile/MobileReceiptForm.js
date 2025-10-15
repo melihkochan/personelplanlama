@@ -53,26 +53,9 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
   const [changePasswordLoading, setChangePasswordLoading] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState('');
 
-  // Dinamik station_location belirleme
+  // Dinamik station_location belirleme - boş bırak
   const getStationLocation = (driver) => {
-    if (driver?.region) {
-      const regionLocations = {
-        'ADANA': 'Adana Aktarma Deposu',
-        'ANKARA': 'Ankara Aktarma Deposu', 
-        'ANTALYA': 'Antalya Aktarma Deposu',
-        'BALIKESIR': 'Balıkesir Aktarma Deposu',
-        'BURSA': 'Bursa Aktarma Deposu',
-        'DIYARBAKIR': 'Diyarbakır Aktarma Deposu',
-        'GAZIANTEP': 'Gaziantep Aktarma Deposu',
-        'ISTANBUL': 'İstanbul Aktarma Deposu',
-        'IZMIR': 'İzmir Aktarma Deposu',
-        'KONYA': 'Konya Aktarma Deposu',
-        'SAMSUN': 'Samsun Aktarma Deposu',
-        'TRABZON': 'Trabzon Aktarma Deposu'
-      };
-      return regionLocations[driver.region] || `${driver.region} Aktarma Deposu`;
-    }
-    return 'Gebze/Kocaeli';
+    return ''; // İstasyon konumu boş kalsın
   };
 
   // Sayfa yüklendiğinde en üste scroll yap
@@ -263,6 +246,9 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
         newPassword: '',
         confirmPassword: ''
       });
+      
+      // Ana menüye dön (giriş ekranına)
+      onBack();
     } catch (error) {
       console.error('Şifre değiştirme hatası:', error);
       setChangePasswordError('Şifre değiştirilirken hata oluştu: ' + error.message);

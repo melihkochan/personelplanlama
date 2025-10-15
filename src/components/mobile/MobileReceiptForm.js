@@ -11,9 +11,11 @@ import {
   Clock,
   MapPin,
   FileText,
-  Plus
+  Plus,
+  Lock
 } from 'lucide-react';
-import { fuelReceiptService, vehicleService } from '../../services/supabase';
+import { fuelReceiptService, vehicleService, aktarmaSoforService } from '../../services/supabase';
+import { supabase } from '../../services/supabase';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onVehicleAdded }) => {
@@ -42,11 +44,52 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     license_plate: '',
     vehicle_type: 'Kamyon'
   });
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [changePasswordData, setChangePasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState('');
+
+  // Dinamik station_location belirleme
+  const getStationLocation = (driver) => {
+    if (driver?.region) {
+      const regionLocations = {
+        'ADANA': 'Adana Aktarma Deposu',
+        'ANKARA': 'Ankara Aktarma Deposu', 
+        'ANTALYA': 'Antalya Aktarma Deposu',
+        'BALIKESIR': 'Balıkesir Aktarma Deposu',
+        'BURSA': 'Bursa Aktarma Deposu',
+        'DIYARBAKIR': 'Diyarbakır Aktarma Deposu',
+        'GAZIANTEP': 'Gaziantep Aktarma Deposu',
+        'ISTANBUL': 'İstanbul Aktarma Deposu',
+        'IZMIR': 'İzmir Aktarma Deposu',
+        'KONYA': 'Konya Aktarma Deposu',
+        'SAMSUN': 'Samsun Aktarma Deposu',
+        'TRABZON': 'Trabzon Aktarma Deposu'
+      };
+      return regionLocations[driver.region] || `${driver.region} Aktarma Deposu`;
+    }
+    return 'Gebze/Kocaeli';
+  };
 
   // Sayfa yüklendiğinde en üste scroll yap
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // selectedDriver değiştiğinde station_location'ı güncelle
+  useEffect(() => {
+    if (selectedDriver) {
+      setFormData(prev => ({
+        ...prev,
+        driver_name: selectedDriver.full_name || '',
+        station_location: getStationLocation(selectedDriver)
+      }));
+    }
+  }, [selectedDriver]);
 
   const getVatRate = (fuelType) => {
     switch (fuelType) {
@@ -175,6 +218,59 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     }
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setChangePasswordLoading(true);
+    setChangePasswordError('');
+
+    if (changePasswordData.newPassword !== changePasswordData.confirmPassword) {
+      setChangePasswordError('Yeni şifreler eşleşmiyor!');
+      setChangePasswordLoading(false);
+      return;
+    }
+
+    if (changePasswordData.newPassword.length < 4) {
+      setChangePasswordError('Yeni şifre en az 4 karakter olmalıdır!');
+      setChangePasswordLoading(false);
+      return;
+    }
+
+    try {
+      const verifyResult = await aktarmaSoforService.loginDriver(
+        selectedDriver.username, 
+        changePasswordData.currentPassword
+      );
+
+      if (!verifyResult.success) {
+        setChangePasswordError('Mevcut şifre hatalı!');
+        setChangePasswordLoading(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('aktarma_soforleri')
+        .update({ sifre: changePasswordData.newPassword })
+        .eq('id', selectedDriver.id);
+
+      if (error) {
+        throw error;
+      }
+
+      alert('Şifre başarıyla değiştirildi!');
+      setShowChangePasswordModal(false);
+      setChangePasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error('Şifre değiştirme hatası:', error);
+      setChangePasswordError('Şifre değiştirilirken hata oluştu: ' + error.message);
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
   const takePhoto = async () => {
     try {
       const photo = await CapacitorCamera.getPhoto({
@@ -251,7 +347,15 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
             <span className="font-medium">Geri</span>
           </button>
           <h1 className="text-lg font-bold text-gray-900">Yeni Fiş</h1>
-          <div className="w-12"></div>
+          {selectedDriver?.username && (
+            <button
+              onClick={() => setShowChangePasswordModal(true)}
+              className="flex items-center px-3 py-2 text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <Lock className="w-4 h-4 mr-1" />
+              <span className="text-sm font-medium">Şifre</span>
+            </button>
+          )}
         </div>
         <div className="mt-2 flex items-center text-sm text-gray-600">
           <User className="w-4 h-4 mr-2" />
@@ -674,6 +778,87 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
                   '✓ Ekle'
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Şifre Değiştirme Modal */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                <Lock className="w-5 h-5 mr-2 text-blue-600" />
+                Şifre Değiştir
+              </h2>
+              
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mevcut Şifre
+                  </label>
+                  <input
+                    type="password"
+                    value={changePasswordData.currentPassword}
+                    onChange={(e) => setChangePasswordData({...changePasswordData, currentPassword: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Mevcut şifrenizi girin"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Yeni Şifre
+                  </label>
+                  <input
+                    type="password"
+                    value={changePasswordData.newPassword}
+                    onChange={(e) => setChangePasswordData({...changePasswordData, newPassword: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Yeni şifrenizi girin"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Yeni Şifre (Tekrar)
+                  </label>
+                  <input
+                    type="password"
+                    value={changePasswordData.confirmPassword}
+                    onChange={(e) => setChangePasswordData({...changePasswordData, confirmPassword: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Yeni şifrenizi tekrar girin"
+                    required
+                  />
+                </div>
+
+                {changePasswordError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-red-600 text-sm">{changePasswordError}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePasswordModal(false)}
+                    className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={changePasswordLoading}
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {changePasswordLoading ? 'Değiştiriliyor...' : 'Değiştir'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

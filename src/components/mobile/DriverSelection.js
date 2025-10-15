@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
-import { User, ChevronRight } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Truck } from 'lucide-react';
+import { aktarmaSoforService } from '../../services/supabase';
 
 const DriverSelection = ({ personnelData, onDriverSelect }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loginData, setLoginData] = useState({
+    username: '',
+    password: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Personnel tablosundan şoförleri çek
   const getDriversFromPersonnel = () => {
@@ -13,89 +20,148 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
 
   const drivers = getDriversFromPersonnel();
 
-  const filteredDrivers = drivers
-    .filter(driver =>
-      driver.full_name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => a.full_name.localeCompare(b.full_name, 'tr'));
+  // Giriş işlemi - tek sistem
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    console.log('=== GİRİŞ BAŞLADI ===');
+    console.log('Giriş verileri:', loginData);
+    setLoading(true);
+    setLoginError('');
+
+    try {
+      // Önce aktarma şoförleri tablosunda ara
+      console.log('Aktarma şoförleri tablosunda aranıyor...');
+      const aktarmaResult = await aktarmaSoforService.loginDriver(loginData.username, loginData.password);
+      console.log('Aktarma sonucu:', aktarmaResult);
+      
+      if (aktarmaResult.success) {
+        // Aktarma şoförü girişi başarılı
+        const driverData = {
+          id: aktarmaResult.data.id,
+          full_name: aktarmaResult.data.ad_soyad,
+          region: aktarmaResult.data.bolge,
+          warehouse: aktarmaResult.data.depo,
+          registration_number: aktarmaResult.data.sicil,
+          username: aktarmaResult.data.kullanici_adi
+        };
+        
+        console.log('Aktarma şoförü bulundu:', driverData);
+        console.log('onDriverSelect çağrılıyor...');
+        alert('Aktarma şoförü bulundu: ' + driverData.full_name);
+        onDriverSelect(driverData);
+        return;
+      }
+
+      // Aktarma şoförü değilse, anadolu şoförleri arasında ara
+      console.log('Aktarma şoförü bulunamadı, anadolu şoförleri aranıyor...');
+      console.log('Mevcut drivers:', drivers);
+      const anadoluDriver = drivers.find(driver => 
+        driver.full_name.toLowerCase().includes(loginData.username.toLowerCase()) ||
+        driver.registration_number === loginData.username
+      );
+
+      if (anadoluDriver) {
+        // Anadolu şoförü girişi (şifre kontrolü yok)
+        console.log('Anadolu şoförü bulundu:', anadoluDriver);
+        console.log('onDriverSelect çağrılıyor...');
+        onDriverSelect(anadoluDriver);
+      } else {
+        console.log('Hiçbir şoför bulunamadı!');
+        setLoginError('Kullanıcı adı veya şifre hatalı!');
+      }
+    } catch (error) {
+      console.error('Giriş hatası:', error);
+      setLoginError('Giriş yapılırken hata oluştu: ' + error.message);
+    } finally {
+      setLoading(false);
+      console.log('=== GİRİŞ BİTTİ ===');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       {/* Header */}
       <div className="text-center mb-8 pt-safe-top">
-        <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <User className="w-8 h-8 text-white" />
+        <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <Truck className="w-10 h-10 text-white" />
         </div>
-        <h1 className="text-xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Yakıt Fiş Takip
         </h1>
         <p className="text-gray-600">
-          İsminizi seçin
+          Şoför girişi yapın
         </p>
       </div>
 
-      {/* Arama */}
-      <div className="mb-6">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="İsminizi arayın..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 pl-12 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-          />
-          <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        </div>
-      </div>
-
-      {/* Şoför Listesi */}
-      <div className="space-y-3">
-        {filteredDrivers.length === 0 ? (
-          <div className="text-center py-8">
-            <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500">
-              {searchTerm ? 'Arama kriterlerine uygun kişi bulunamadı' : 'Henüz personel eklenmemiş'}
-            </p>
-            <p className="text-xs text-gray-400 mt-2">
-              Personnel tablosunda position'ı "ŞOFÖR" olan kayıtları kontrol edin
-            </p>
-          </div>
-        ) : (
-          filteredDrivers.map((driver, index) => (
-            <div
-              key={index}
-              onClick={() => onDriverSelect(driver)}
-              className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 active:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 text-lg">
-                      {driver.full_name}
-                    </h3>
-                    {driver.phone && (
-                      <p className="text-sm text-gray-600">
-                        {driver.phone}
-                      </p>
-                    )}
-                    <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block mt-1">
-                      ŞOFÖR
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </div>
+      {/* Giriş Formu */}
+      <div className="max-w-md mx-auto">
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Kullanıcı Adı / İsim
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={loginData.username}
+                onChange={(e) => setLoginData({...loginData, username: e.target.value})}
+                className="w-full px-4 py-4 pl-12 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg shadow-sm"
+                placeholder="Kullanıcı adınızı girin"
+                required
+              />
+              <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             </div>
-          ))
-        )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Şifre
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={loginData.password}
+                onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                className="w-full px-4 py-4 pl-12 pr-12 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg shadow-sm"
+                placeholder="Şifrenizi girin"
+              />
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {loginError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-600 text-sm">{loginError}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Giriş Yapılıyor...
+              </div>
+            ) : (
+              'Giriş Yap'
+            )}
+          </button>
+        </form>
       </div>
 
       {/* Footer */}
-      <div className="mt-8 text-center space-y-3">
-        <p className="text-xs text-gray-500">
+      <div className="mt-12 text-center space-y-4">
+        <p className="text-xs text-gray-400">
           Sadece yetkili şoförler giriş yapabilir
         </p>
         <div className="border-t border-gray-200 pt-3">

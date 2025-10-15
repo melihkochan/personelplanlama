@@ -5123,6 +5123,72 @@ export const getUserProfile = async (userId) => {
   }
 };
 
+// Transfer Vehicles Yönetimi
+export const transferVehicleService = {
+  // Bölgeye göre transfer araçlarını getir
+  async getVehiclesByRegion(region) {
+    try {
+      const { data, error } = await supabase
+        .from('transfer_vehicles')
+        .select('*')
+        .eq('region', region)
+        .eq('status', 'active')
+        .order('plate', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Transfer araç verileri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Tüm transfer araçlarını getir
+  async getAllTransferVehicles() {
+    try {
+      const { data, error } = await supabase
+        .from('transfer_vehicles')
+        .select('*')
+        .eq('status', 'active')
+        .order('plate', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Transfer araç verileri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+};
+
+// Aktarma Şoförleri Yönetimi
+export const aktarmaSoforService = {
+  // Kullanıcı adı ve şifre ile giriş doğrulama
+  async loginDriver(username, password) {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_soforleri')
+        .select('*')
+        .eq('kullanici_adi', username)
+        .eq('sifre', password)
+        .eq('durum', 'aktif')
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: false, error: 'Kullanıcı adı veya şifre hatalı!' };
+        }
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Şoför giriş doğrulama hatası:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};
+
 // Araç Yönetimi
 export const vehicleService = {
   // Tüm araçları getir

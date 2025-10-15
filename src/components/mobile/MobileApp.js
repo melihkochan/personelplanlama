@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import DriverSelection from './DriverSelection';
 import MobileReceiptForm from './MobileReceiptForm';
-import { vehicleService, getAllPersonnel } from '../../services/supabase';
+import { vehicleService, getAllPersonnel, transferVehicleService } from '../../services/supabase';
 
 const MobileApp = () => {
   const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'success'
@@ -44,8 +44,38 @@ const MobileApp = () => {
     }
   };
 
-  const handleDriverSelect = (driver) => {
+  const handleDriverSelect = async (driver) => {
     setSelectedDriver(driver);
+    
+    // Eğer bölge bilgisi varsa, o bölgeye göre araçları çek
+    if (driver.region) {
+      try {
+        const result = await transferVehicleService.getVehiclesByRegion(driver.region);
+        
+        if (result.success) {
+          // Transfer araçlarını vehicles formatına çevir
+          const transferVehicles = result.data.map(vehicle => ({
+            id: vehicle.id,
+            license_plate: vehicle.plate,
+            vehicle_type: 'Kamyon',
+            location_point: null,
+            is_active: true,
+            notes: `Bölge: ${vehicle.region}`,
+            first_driver: vehicle.driver_name || null,
+            second_driver: null,
+            location: vehicle.region,
+            assigned_store: null,
+            created_at: vehicle.created_at,
+            updated_at: vehicle.updated_at
+          }));
+          
+          setVehicleData(transferVehicles);
+        }
+      } catch (error) {
+        console.error('Bölge araçları yükleme hatası:', error);
+      }
+    }
+    
     setCurrentScreen('receipt-form');
   };
 

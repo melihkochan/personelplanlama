@@ -8,6 +8,7 @@ import 'antd/dist/reset.css';
 
 import PersonelList from './components/personnel/PersonelList';
 import AktarmaSoforleri from './components/personnel/AktarmaSoforleri';
+import ShellMapView from './components/maps/ShellMapView';
 import VehicleList from './components/vehicles/VehicleList';
 import StoreList from './components/stores/StoreList';
 import YakıtTakip from './components/fuel/YakıtTakip';
@@ -1724,6 +1725,25 @@ function MainApp() {
                       </div>
                       <span className="flex-1 text-left">Aktarma Şoförleri</span>
                     </button>
+                    <button
+                      onClick={() => handleTabChange('shell-harita')}
+                      className={`
+                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'shell-harita'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                        activeTab === 'shell-harita' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <Map className={`w-3 h-3 ${activeTab === 'shell-harita' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left">Shell Harita</span>
+                    </button>
 
                     <button
                       onClick={() => handleTabChange('aktarma-personel-list')}
@@ -2464,6 +2484,23 @@ function MainApp() {
                     >
                       <Truck className="w-5 h-5 mr-3" />
                       Aktarma Şoförleri
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleTabChange('shell-harita');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === 'shell-harita'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <Map className="w-5 h-5 mr-3" />
+                      Shell Harita
                     </button>
 
                     <button
@@ -4005,6 +4042,11 @@ function MainApp() {
                 userRole={userRole}
                 currentUser={user}
               />
+            )}
+
+            {/* Shell Harita */}
+            {activeTab === 'shell-harita' && (
+              <ShellMapView />
             )}
 
             {/* Aktarma Depo Personel Kontrol */}

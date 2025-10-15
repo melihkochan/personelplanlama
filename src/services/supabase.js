@@ -5469,3 +5469,236 @@ export const fuelReceiptService = {
     }
   }
 };
+
+// Shell İstasyonları Servisi
+export const shellStationService = {
+  // Tüm istasyonları getir
+  async getAllStations() {
+    try {
+      // İlk 1000 kaydı çek
+      const { data: firstBatch, error: firstError } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .order('il, ilce')
+        .range(0, 999);
+
+      if (firstError) throw firstError;
+
+      // Kalan kayıtları çek (1000'den sonraki)
+      const { data: secondBatch, error: secondError } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .order('il, ilce')
+        .range(1000, 1999);
+
+      if (secondError) throw secondError;
+
+      // Son kalan kayıtları çek (2000'den sonraki)
+      const { data: thirdBatch, error: thirdError } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .order('il, ilce')
+        .range(2000, 2999);
+
+      if (thirdError) throw thirdError;
+
+      // Tüm verileri birleştir
+      const allData = [
+        ...(firstBatch || []),
+        ...(secondBatch || []),
+        ...(thirdBatch || [])
+      ];
+
+      console.log(`Toplam ${allData.length} istasyon yüklendi`);
+      return { success: true, data: allData };
+    } catch (error) {
+      console.error('Shell istasyon listesi hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Bölge bazlı istasyonları getir
+  async getStationsByRegion(region) {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .eq('region', region)
+        .order('il, ilce');
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Bölge bazlı istasyon hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // İl bazlı istasyonları getir
+  async getStationsByCity(city) {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .eq('il', city)
+        .order('ilce');
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('İl bazlı istasyon hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // AdBlue olan istasyonları getir
+  async getStationsWithAdBlue() {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .eq('adblue', 'VAR')
+        .order('il, ilce');
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('AdBlue istasyon hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // UTTS olan istasyonları getir
+  async getStationsWithUTTS() {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .eq('utts', 'VAR')
+        .order('il, ilce');
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('UTTS istasyon hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Koordinat aralığında istasyonları getir
+  async getStationsByBounds(minLat, maxLat, minLng, maxLng) {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .select('*')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .order('il, ilce');
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Koordinat bazlı istasyon hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // İstasyon ekle
+  async addStation(stationData) {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .insert([stationData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('İstasyon ekleme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Toplu istasyon ekle
+  async addStationsBulk(stationsData) {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .insert(stationsData)
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Toplu istasyon ekleme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // İstasyon güncelle
+  async updateStation(id, stationData) {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .update(stationData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('İstasyon güncelleme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // İstasyon sil
+  async deleteStation(id) {
+    try {
+      const { error } = await supabase
+        .from('shell_stations')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('İstasyon silme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // İstatistikler
+  async getStatistics() {
+    try {
+      const { data, error } = await supabase
+        .from('shell_stations')
+        .select('region, adblue, utts');
+
+      if (error) throw error;
+      
+      const stats = {
+        total: data.length,
+        byRegion: {},
+        adblueCount: data.filter(s => s.adblue === 'VAR').length,
+        uttsCount: data.filter(s => s.utts === 'VAR').length
+      };
+
+      data.forEach(station => {
+        if (!stats.byRegion[station.region]) {
+          stats.byRegion[station.region] = 0;
+        }
+        stats.byRegion[station.region]++;
+      });
+
+      return { success: true, data: stats };
+    } catch (error) {
+      console.error('İstatistik hatası:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};

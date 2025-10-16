@@ -32,6 +32,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
   const [editingTracking, setEditingTracking] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState({});
+  const [editingEntries, setEditingEntries] = useState([]);
 
   // Veri yükleme fonksiyonu
   const loadTrackingData = async () => {
@@ -158,6 +159,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
       region: tracking.region,
       notes: tracking.notes || ''
     });
+    setEditingEntries(tracking.vehicle_tracking_entries || []);
     setShowEditModal(true);
   };
 
@@ -475,7 +477,13 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                       Bölge
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Giriş Sayısı
+                      Nokta Sayısı
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Başlangıç KM
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Bitiş KM
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       İşlemler
@@ -499,6 +507,18 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.vehicle_tracking_entries?.length || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {item.vehicle_tracking_entries?.length > 0 
+                          ? item.vehicle_tracking_entries[0].departure_km?.toLocaleString('tr-TR') || '-'
+                          : '-'
+                        }
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {item.vehicle_tracking_entries?.length > 0 
+                          ? item.vehicle_tracking_entries[item.vehicle_tracking_entries.length - 1].departure_km?.toLocaleString('tr-TR') || '-'
+                          : '-'
+                        }
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
@@ -535,8 +555,8 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
 
         {/* Detay Modalı */}
         {showDetailModal && selectedTracking && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-8 max-w-6xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+            <div className="bg-white rounded-xl p-8 w-[95vw] h-[95vh] overflow-y-auto shadow-2xl">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                   <Car className="w-6 h-6 text-blue-600" />
@@ -585,26 +605,44 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                         <Download className="w-5 h-5 text-green-600" />
                         Takip Belgeleri
                       </h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        {selectedTracking.images.map((image, index) => (
-                          <div key={index} className="relative group">
-                            {image && typeof image === 'string' && image.startsWith('data:image/') ? (
-                              <img 
-                                src={image} 
-                                alt={`Takip belgesi ${index + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
-                                onClick={() => window.open(image, '_blank')}
-                              />
-                            ) : (
-                              <div className="w-full h-24 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center">
+                      <div className="grid grid-cols-2 gap-4">
+                        {selectedTracking.images.map((image, index) => {
+                          // Görsel verisi string mi yoksa object mi kontrol et
+                          let imageSrc = image;
+                          if (typeof image === 'object' && image.data) {
+                            imageSrc = image.data;
+                          }
+                          
+                          return (
+                            <div key={index} className="relative group">
+                              {imageSrc && typeof imageSrc === 'string' && (imageSrc.startsWith('data:image/') || imageSrc.startsWith('blob:')) ? (
+                                <img 
+                                  src={imageSrc} 
+                                  alt={`Takip belgesi ${index + 1}`}
+                                  className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.open(imageSrc, '_blank');
+                                  }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div 
+                                className="w-full h-48 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center"
+                                style={{ display: imageSrc && typeof imageSrc === 'string' && imageSrc.startsWith('data:image/') ? 'none' : 'flex' }}
+                              >
                                 <span className="text-gray-500 text-sm">Görsel Yüklenemedi</span>
                               </div>
-                            )}
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
-                              <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
+                                <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -616,7 +654,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                     <Clock className="w-5 h-5 text-purple-600" />
                     Takip Girişleri ({selectedTracking.vehicle_tracking_entries?.length || 0})
                   </h4>
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                  <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-2">
                     {selectedTracking.vehicle_tracking_entries
                       ?.sort((a, b) => {
                         // Önce KM'ye göre sırala (küçükten büyüğe)
@@ -627,38 +665,34 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                         return a.entry_time.localeCompare(b.entry_time);
                       })
                       ?.map((entry, index) => (
-                      <div key={entry.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors shadow-sm">
-                        <div className="flex justify-between items-center mb-3">
+                      <div key={entry.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300 transition-colors shadow-sm">
+                        <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
                               {index + 1}
                             </div>
-                            <h5 className="font-semibold text-gray-900">{entry.departure_center}</h5>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-gray-500"># {index + 1}</div>
+                            <h5 className="font-medium text-gray-900 text-sm">{entry.departure_center}</h5>
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-3 mb-3">
-                          <div className="bg-green-50 rounded-lg p-2">
-                            <div className="text-xs text-green-600 font-medium mb-1">Giriş</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-green-50 rounded p-2">
+                            <div className="text-xs text-green-600 font-medium">Giriş</div>
                             <div className="text-sm font-semibold text-green-800">{entry.entry_time}</div>
                           </div>
-                          <div className="bg-blue-50 rounded-lg p-2">
-                            <div className="text-xs text-blue-600 font-medium mb-1">Çıkış</div>
+                          <div className="bg-blue-50 rounded p-2">
+                            <div className="text-xs text-blue-600 font-medium">Çıkış</div>
                             <div className="text-sm font-semibold text-blue-800">{entry.exit_time || '-'}</div>
                           </div>
-                          <div className="bg-purple-50 rounded-lg p-2">
-                            <div className="text-xs text-purple-600 font-medium mb-1">KM</div>
+                          <div className="bg-purple-50 rounded p-2">
+                            <div className="text-xs text-purple-600 font-medium">KM</div>
                             <div className="text-sm font-semibold text-purple-800">{entry.departure_km?.toLocaleString('tr-TR')}</div>
                           </div>
                         </div>
                         
                         {entry.entry_notes && (
-                          <div className="bg-gray-50 rounded-lg p-2">
-                            <div className="text-xs text-gray-600 font-medium mb-1">Not</div>
-                            <div className="text-sm text-gray-800">{entry.entry_notes}</div>
+                          <div className="bg-gray-50 rounded p-2 mt-2">
+                            <div className="text-xs text-gray-600 font-medium">Not: {entry.entry_notes}</div>
                           </div>
                         )}
                       </div>
@@ -803,6 +837,103 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                     placeholder="Ek notlar..."
                   />
                 </div>
+
+                {/* Nokta Detayları */}
+                {editingEntries && editingEntries.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-purple-600" />
+                      Nokta Detayları ({editingEntries.length})
+                    </h4>
+                    <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                      <div className="space-y-4">
+                        {editingEntries
+                          .sort((a, b) => a.departure_km - b.departure_km)
+                          .map((entry, index) => (
+                          <div key={entry.id} className="bg-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                  {index + 1}
+                                </div>
+                                <h5 className="font-medium text-gray-900">{entry.departure_center}</h5>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-600 font-medium mb-1">Giriş Saati</label>
+                                <input
+                                  type="time"
+                                  value={entry.entry_time}
+                                  onChange={(e) => {
+                                    const newEntries = [...editingEntries];
+                                    const entryIndex = newEntries.findIndex(e => e.id === entry.id);
+                                    if (entryIndex !== -1) {
+                                      newEntries[entryIndex].entry_time = e.target.value;
+                                      setEditingEntries(newEntries);
+                                    }
+                                  }}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 font-medium mb-1">Çıkış Saati</label>
+                                <input
+                                  type="time"
+                                  value={entry.exit_time || ''}
+                                  onChange={(e) => {
+                                    const newEntries = [...editingEntries];
+                                    const entryIndex = newEntries.findIndex(e => e.id === entry.id);
+                                    if (entryIndex !== -1) {
+                                      newEntries[entryIndex].exit_time = e.target.value;
+                                      setEditingEntries(newEntries);
+                                    }
+                                  }}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 font-medium mb-1">KM Okuma</label>
+                                <input
+                                  type="number"
+                                  value={entry.departure_km}
+                                  onChange={(e) => {
+                                    const newEntries = [...editingEntries];
+                                    const entryIndex = newEntries.findIndex(e => e.id === entry.id);
+                                    if (entryIndex !== -1) {
+                                      newEntries[entryIndex].departure_km = parseInt(e.target.value) || 0;
+                                      setEditingEntries(newEntries);
+                                    }
+                                  }}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  min="0"
+                                  max="999999"
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-3">
+                              <label className="block text-xs text-gray-600 font-medium mb-1">Notlar</label>
+                              <textarea
+                                value={entry.entry_notes || ''}
+                                onChange={(e) => {
+                                  const newEntries = [...editingEntries];
+                                  const entryIndex = newEntries.findIndex(e => e.id === entry.id);
+                                  if (entryIndex !== -1) {
+                                    newEntries[entryIndex].entry_notes = e.target.value;
+                                    setEditingEntries(newEntries);
+                                  }
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                rows={2}
+                                placeholder="Nokta notları..."
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex justify-end gap-3">
                   <button

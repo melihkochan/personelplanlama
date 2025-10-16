@@ -5278,9 +5278,18 @@ export const vehicleTrackingService = {
 
       if (error) throw error;
       
-      // Her kayıt için girişleri ayrı ayrı getir
-      const trackingRecords = [];
+      // Duplicate kayıtları temizle (aynı tarih, araç, şoför olanları birleştir)
+      const uniqueRecords = new Map();
       for (const record of data || []) {
+        const key = `${record.date}_${record.vehicle_plate}_${record.driver_name}`;
+        if (!uniqueRecords.has(key)) {
+          uniqueRecords.set(key, record);
+        }
+      }
+      
+      // Her unique kayıt için girişleri ayrı ayrı getir
+      const trackingRecords = [];
+      for (const record of uniqueRecords.values()) {
         const { data: entries, error: entriesError } = await supabase
           .from('vehicle_tracking_entries')
           .select('*')

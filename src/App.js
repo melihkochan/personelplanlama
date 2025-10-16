@@ -10,6 +10,8 @@ import PersonelList from './components/personnel/PersonelList';
 import AktarmaSoforleri from './components/personnel/AktarmaSoforleri';
 import ShellMapView from './components/maps/ShellMapView';
 import VehicleList from './components/vehicles/VehicleList';
+import VehicleTracking from './components/vehicles/VehicleTracking';
+import VehicleTrackingList from './components/vehicles/VehicleTrackingList';
 import StoreList from './components/stores/StoreList';
 import YakıtTakip from './components/fuel/YakıtTakip';
 import FuelReceiptList from './components/fuel/FuelReceiptList';
@@ -1874,76 +1876,159 @@ function MainApp() {
               </div>
             </div>
 
-            {/* YAKIT TAKİP Grubu */}
+            {/* YAKIT - ARAÇ TAKİP Grubu */}
             <div className="space-y-2 mt-8">
               {/* Modern Section Header */}
               <div className="px-2 py-1">
                 <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                   <div className="w-1 h-3 bg-gradient-to-b from-orange-500 to-red-600 rounded-full"></div>
-                  <span className="border-b-2 border-orange-500">Yakıt Takip</span>
+                  <span className="border-b-2 border-orange-500">YAKIT - ARAÇ Takip</span>
                 </h3>
               </div>
 
-              <button
-                onClick={() => handleTabChange('fuel-receipt-list')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'fuel-receipt-list'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'fuel-receipt-list' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <List className={`w-2 h-2 ${activeTab === 'fuel-receipt-list' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Fiş Listesi</span>
-              </button>
+              {/* Fiş Takip Alt Grubu */}
+              <div className="ml-1 mt-2">
+                <button
+                  onClick={() => toggleGroup('fuel-receipt-tracking')}
+                  className="w-full flex items-center px-2 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-gray-50 group"
+                >
+                  <span className="flex-1 text-left text-gray-700 text-xs font-medium">Fiş Takip</span>
+                  <div className={`w-4 h-4 rounded-md flex items-center justify-center ml-2 transition-all duration-300 ${
+                    expandedGroups['fuel-receipt-tracking'] ? 'bg-orange-100' : 'bg-gray-100 group-hover:bg-gray-200'
+                  }`}>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${
+                      expandedGroups['fuel-receipt-tracking'] ? 'rotate-180' : ''
+                    } ${expandedGroups['fuel-receipt-tracking'] ? 'text-orange-600' : 'text-gray-600'}`} />
+                  </div>
+                </button>
+                
+                {expandedGroups['fuel-receipt-tracking'] && (
+                  <div className="ml-2 space-y-1 mt-2 border-l-2 border-orange-200 pl-2">
+                    <button
+                      onClick={() => handleTabChange('fuel-receipt-list')}
+                      className={`
+                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'fuel-receipt-list'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                        activeTab === 'fuel-receipt-list' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <List className={`w-2 h-2 ${activeTab === 'fuel-receipt-list' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left whitespace-nowrap">Fiş Listesi</span>
+                    </button>
 
-              <button
-                onClick={() => handleTabChange('fuel-receipt-form')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'fuel-receipt-form'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'fuel-receipt-form' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <Plus className={`w-2 h-2 ${activeTab === 'fuel-receipt-form' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Yeni Fiş</span>
-              </button>
+                    <button
+                      onClick={() => handleTabChange('fuel-receipt-form')}
+                      className={`
+                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'fuel-receipt-form'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                        activeTab === 'fuel-receipt-form' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <Plus className={`w-2 h-2 ${activeTab === 'fuel-receipt-form' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left whitespace-nowrap">Yeni Fiş</span>
+                    </button>
 
-              <button
-                onClick={() => handleTabChange('fuel-receipt-analytics')}
-                className={`
-                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                  ${activeTab === 'fuel-receipt-analytics'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                  activeTab === 'fuel-receipt-analytics' 
-                    ? 'bg-white/20' 
-                    : 'bg-gray-100 group-hover:bg-gray-200'
-                }`}>
-                  <BarChart3 className={`w-2 h-2 ${activeTab === 'fuel-receipt-analytics' ? 'text-white' : 'text-gray-700'}`} />
-                </div>
-                <span className="flex-1 text-left whitespace-nowrap">Analizler</span>
-              </button>
+                    <button
+                      onClick={() => handleTabChange('fuel-receipt-analytics')}
+                      className={`
+                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'fuel-receipt-analytics'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                        activeTab === 'fuel-receipt-analytics' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <BarChart3 className={`w-2 h-2 ${activeTab === 'fuel-receipt-analytics' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left whitespace-nowrap">Analizler</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
+              {/* Araç Takip - Dışarıda */}
+              <div className="ml-1 mt-2">
+                <button
+                  onClick={() => toggleGroup('vehicle-tracking')}
+                  className="w-full flex items-center px-2 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-gray-50 group"
+                >
+                  <span className="flex-1 text-left text-gray-700 text-xs font-medium">Araç Takip</span>
+                  <div className={`w-4 h-4 rounded-md flex items-center justify-center ml-2 transition-all duration-300 ${
+                    expandedGroups['vehicle-tracking'] ? 'bg-orange-100' : 'bg-gray-100 group-hover:bg-gray-200'
+                  }`}>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${
+                      expandedGroups['vehicle-tracking'] ? 'rotate-180' : ''
+                    } ${expandedGroups['vehicle-tracking'] ? 'text-orange-600' : 'text-gray-600'}`} />
+                  </div>
+                </button>
+                
+                {expandedGroups['vehicle-tracking'] && (
+                  <div className="ml-2 space-y-1 mt-2 border-l-2 border-orange-200 pl-2">
+                    <button
+                      onClick={() => handleTabChange('vehicle-tracking-form')}
+                      className={`
+                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'vehicle-tracking-form'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                        activeTab === 'vehicle-tracking-form' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <Plus className={`w-2 h-2 ${activeTab === 'vehicle-tracking-form' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left whitespace-nowrap">Araç Takip Formu</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleTabChange('vehicle-tracking-list')}
+                      className={`
+                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'vehicle-tracking-list'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                        activeTab === 'vehicle-tracking-list' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <List className={`w-2 h-2 ${activeTab === 'vehicle-tracking-list' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left whitespace-nowrap">Araç Takip Listesi</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Shell Harita - Dışarıda */}
               <button
                 onClick={() => handleTabChange('shell-harita')}
                 className={`
@@ -4065,6 +4150,24 @@ function MainApp() {
             {/* Shell Harita */}
             {activeTab === 'shell-harita' && (
               <ShellMapView />
+            )}
+
+            {/* Araç Takip Formu */}
+            {activeTab === 'vehicle-tracking-form' && (
+              <VehicleTracking 
+                vehicleData={vehicleData}
+                personnelData={personnelData}
+                currentUser={user}
+              />
+            )}
+
+            {/* Araç Takip Listesi */}
+            {activeTab === 'vehicle-tracking-list' && (
+              <VehicleTrackingList 
+                vehicleData={vehicleData}
+                personnelData={personnelData}
+                currentUser={user}
+              />
             )}
 
             {/* Aktarma Depo Personel Kontrol */}

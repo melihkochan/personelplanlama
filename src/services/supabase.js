@@ -5162,6 +5162,261 @@ export const transferVehicleService = {
 };
 
 // Aktarma Şoförleri Yönetimi
+export const vehicleTrackingService = {
+  // Yeni takip kaydı oluştur
+  async createTracking(data) {
+    try {
+      const { data: result, error } = await supabase
+        .from('vehicle_tracking')
+        .insert([{
+          date: data.date,
+          vehicle_plate: data.vehicle_plate,
+          driver_name: data.driver_name,
+          region: data.region,
+          notes: data.notes,
+          images: data.images || [],
+          created_by: data.created_by || 'system'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Takip kaydı oluşturma hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Takip girişi ekle
+  async addTrackingEntry(trackingId, entryData) {
+    try {
+      const { data: result, error } = await supabase
+        .from('vehicle_tracking_entries')
+        .insert([{
+          tracking_id: trackingId,
+          departure_center: entryData.departure_center,
+          entry_time: entryData.entry_time,
+          exit_time: entryData.exit_time || null, // Boş string yerine null
+          departure_km: entryData.departure_km,
+          entry_notes: entryData.entry_notes
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Takip girişi ekleme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Toplu takip kaydı (mobil için)
+  async saveTrackingWithEntries(trackingData, entries) {
+    try {
+      // Ana takip kaydını oluştur
+      const trackingResult = await this.createTracking(trackingData);
+      if (!trackingResult.success) {
+        throw new Error(trackingResult.error);
+      }
+
+      const trackingId = trackingResult.data.id;
+
+      // Tüm girişleri ekle
+      const entryPromises = entries.map(entry => 
+        this.addTrackingEntry(trackingId, entry)
+      );
+
+      const entryResults = await Promise.all(entryPromises);
+      const failedEntries = entryResults.filter(result => !result.success);
+
+      if (failedEntries.length > 0) {
+        // Hata durumunda ana kaydı sil
+        await supabase.from('vehicle_tracking').delete().eq('id', trackingId);
+        throw new Error('Girişler kaydedilemedi');
+      }
+
+      return { 
+        success: true, 
+        data: { 
+          trackingId, 
+          entriesCount: entries.length 
+        } 
+      };
+    } catch (error) {
+      console.error('Toplu takip kaydı hatası:', error);
+      console.error('Hata detayı:', error);
+      return { success: false, error: error.message, details: error };
+    }
+  },
+
+  // Takip kayıtlarını getir
+  async getTrackingRecords(filters = {}) {
+    try {
+      // Önce ana kayıtları getir
+      let query = supabase
+        .from('vehicle_tracking')
+        .select('*')
+        .order('date', { ascending: false });
+
+      // Filtreler
+      if (filters.date) {
+        query = query.eq('date', filters.date);
+      }
+      if (filters.vehicle_plate) {
+        query = query.eq('vehicle_plate', filters.vehicle_plate);
+      }
+      if (filters.driver_name) {
+        query = query.eq('driver_name', filters.driver_name);
+      }
+      if (filters.region) {
+        query = query.eq('region', filters.region);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      
+      // Her kayıt için girişleri ayrı ayrı getir
+      const trackingRecords = [];
+      for (const record of data || []) {
+        const { data: entries, error: entriesError } = await supabase
+          .from('vehicle_tracking_entries')
+          .select('*')
+          .eq('tracking_id', record.id)
+          .order('departure_km', { ascending: true });
+        
+        if (entriesError) {
+          console.error('Girişler getirme hatası:', entriesError);
+        }
+        
+        trackingRecords.push({
+          ...record,
+          vehicle_tracking_entries: entries || []
+        });
+      }
+      
+      return { success: true, data: trackingRecords };
+    } catch (error) {
+      console.error('Takip kayıtları getirme hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Takip raporu getir
+  async getTrackingReport(filters = {}) {
+    try {
+      let query = supabase
+        .from('vehicle_tracking_report')
+        .select('*')
+        .order('date', { ascending: false });
+
+      // Filtreler
+      if (filters.date) {
+        query = query.eq('date', filters.date);
+      }
+      if (filters.vehicle_plate) {
+        query = query.eq('vehicle_plate', filters.vehicle_plate);
+      }
+      if (filters.driver_name) {
+        query = query.eq('driver_name', filters.driver_name);
+      }
+      if (filters.region) {
+        query = query.eq('region', filters.region);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Takip raporu getirme hatası:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Takip kaydını güncelle
+  async updateTracking(trackingId, updateData) {
+    try {
+      const { data, error } = await supabase
+        .from('vehicle_tracking')
+        .update(updateData)
+        .eq('id', trackingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Takip kaydı güncelleme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Takip kaydını sil
+  async deleteTracking(trackingId) {
+    try {
+      // Önce ilgili girişleri sil
+      const { error: entriesError } = await supabase
+        .from('vehicle_tracking_entries')
+        .delete()
+        .eq('tracking_id', trackingId);
+
+      if (entriesError) throw entriesError;
+
+      // Sonra ana kaydı sil
+      const { error } = await supabase
+        .from('vehicle_tracking')
+        .delete()
+        .eq('id', trackingId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Takip kaydı silme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // İstatistikler
+  async getTrackingStats(filters = {}) {
+    try {
+      let query = supabase
+        .from('vehicle_tracking_report')
+        .select('*');
+
+      // Filtreler
+      if (filters.date) {
+        query = query.eq('date', filters.date);
+      }
+      if (filters.region) {
+        query = query.eq('region', filters.region);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const stats = {
+        totalRecords: data.length,
+        totalEntries: data.reduce((sum, record) => sum + (record.total_entries || 0), 0),
+        totalKm: data.reduce((sum, record) => sum + (record.total_km || 0), 0),
+        uniqueVehicles: [...new Set(data.map(record => record.vehicle_plate))].length,
+        uniqueDrivers: [...new Set(data.map(record => record.driver_name))].length,
+        regions: [...new Set(data.map(record => record.region))],
+        avgEntriesPerRecord: data.length > 0 ? 
+          data.reduce((sum, record) => sum + (record.total_entries || 0), 0) / data.length : 0
+      };
+
+      return { success: true, data: stats };
+    } catch (error) {
+      console.error('Takip istatistikleri getirme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};
+
 export const aktarmaSoforService = {
   // Kullanıcı adı ve şifre ile giriş doğrulama
   async loginDriver(username, password) {

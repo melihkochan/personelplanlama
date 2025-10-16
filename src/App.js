@@ -1728,25 +1728,25 @@ function MainApp() {
                       <span className="flex-1 text-left">Aktarma Şoförleri</span>
                     </button>
 
-                    <button
-                      onClick={() => handleTabChange('aktarma-personel-list')}
-                      className={`
-                        w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
-                        ${activeTab === 'aktarma-personel-list'
-                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
-                        activeTab === 'aktarma-personel-list' 
-                          ? 'bg-white/20' 
-                          : 'bg-gray-100 group-hover:bg-gray-200'
-                      }`}>
-                        <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-gray-700'}`} />
-                      </div>
+              <button
+                onClick={() => handleTabChange('aktarma-personel-list')}
+                className={`
+                  w-full flex items-center px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'aktarma-personel-list'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-3 h-3 rounded-md flex items-center justify-center mr-2 transition-all duration-300 ${
+                  activeTab === 'aktarma-personel-list' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <Users className={`w-3 h-3 ${activeTab === 'aktarma-personel-list' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
                       <span className="flex-1 text-left">Aktarma Personel Performans Analizi</span>
-                    </button>
+              </button>
 
 
                   </div>
@@ -1904,65 +1904,65 @@ function MainApp() {
                 
                 {expandedGroups['fuel-receipt-tracking'] && (
                   <div className="ml-2 space-y-1 mt-2 border-l-2 border-orange-200 pl-2">
-                    <button
-                      onClick={() => handleTabChange('fuel-receipt-list')}
-                      className={`
-                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                        ${activeTab === 'fuel-receipt-list'
-                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                        activeTab === 'fuel-receipt-list' 
-                          ? 'bg-white/20' 
-                          : 'bg-gray-100 group-hover:bg-gray-200'
-                      }`}>
-                        <List className={`w-2 h-2 ${activeTab === 'fuel-receipt-list' ? 'text-white' : 'text-gray-700'}`} />
-                      </div>
-                      <span className="flex-1 text-left whitespace-nowrap">Fiş Listesi</span>
-                    </button>
+              <button
+                onClick={() => handleTabChange('fuel-receipt-list')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'fuel-receipt-list'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'fuel-receipt-list' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <List className={`w-2 h-2 ${activeTab === 'fuel-receipt-list' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Fiş Listesi</span>
+              </button>
 
-                    <button
-                      onClick={() => handleTabChange('fuel-receipt-form')}
-                      className={`
-                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                        ${activeTab === 'fuel-receipt-form'
-                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                        activeTab === 'fuel-receipt-form' 
-                          ? 'bg-white/20' 
-                          : 'bg-gray-100 group-hover:bg-gray-200'
-                      }`}>
-                        <Plus className={`w-2 h-2 ${activeTab === 'fuel-receipt-form' ? 'text-white' : 'text-gray-700'}`} />
-                      </div>
-                      <span className="flex-1 text-left whitespace-nowrap">Yeni Fiş</span>
-                    </button>
+              <button
+                onClick={() => handleTabChange('fuel-receipt-form')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'fuel-receipt-form'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'fuel-receipt-form' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <Plus className={`w-2 h-2 ${activeTab === 'fuel-receipt-form' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Yeni Fiş</span>
+              </button>
 
-                    <button
-                      onClick={() => handleTabChange('fuel-receipt-analytics')}
-                      className={`
-                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
-                        ${activeTab === 'fuel-receipt-analytics'
-                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
-                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
-                        }
-                      `}
-                    >
-                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
-                        activeTab === 'fuel-receipt-analytics' 
-                          ? 'bg-white/20' 
-                          : 'bg-gray-100 group-hover:bg-gray-200'
-                      }`}>
-                        <BarChart3 className={`w-2 h-2 ${activeTab === 'fuel-receipt-analytics' ? 'text-white' : 'text-gray-700'}`} />
-                      </div>
-                      <span className="flex-1 text-left whitespace-nowrap">Analizler</span>
-                    </button>
+              <button
+                onClick={() => handleTabChange('fuel-receipt-analytics')}
+                className={`
+                  w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                  ${activeTab === 'fuel-receipt-analytics'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                    : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                  activeTab === 'fuel-receipt-analytics' 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 group-hover:bg-gray-200'
+                }`}>
+                  <BarChart3 className={`w-2 h-2 ${activeTab === 'fuel-receipt-analytics' ? 'text-white' : 'text-gray-700'}`} />
+                </div>
+                <span className="flex-1 text-left whitespace-nowrap">Analizler</span>
+              </button>
                   </div>
                 )}
               </div>

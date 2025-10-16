@@ -595,6 +595,31 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                         <span className="text-gray-600 font-medium">Bölge:</span>
                         <span className="font-semibold text-gray-900">{getRegionDisplayName(selectedTracking.region)}</span>
                       </div>
+                      {selectedTracking.vehicle_tracking_entries && selectedTracking.vehicle_tracking_entries.length > 0 && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Başlangıç KM:</span>
+                            <span className="font-semibold text-gray-900 bg-green-100 px-2 py-1 rounded">
+                              {selectedTracking.vehicle_tracking_entries[0].departure_km?.toLocaleString('tr-TR') || '-'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Bitiş KM:</span>
+                            <span className="font-semibold text-gray-900 bg-red-100 px-2 py-1 rounded">
+                              {selectedTracking.vehicle_tracking_entries[selectedTracking.vehicle_tracking_entries.length - 1].departure_km?.toLocaleString('tr-TR') || '-'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Toplam KM:</span>
+                            <span className="font-semibold text-gray-900 bg-blue-100 px-2 py-1 rounded">
+                              {selectedTracking.vehicle_tracking_entries.length > 1 
+                                ? (selectedTracking.vehicle_tracking_entries[selectedTracking.vehicle_tracking_entries.length - 1].departure_km - selectedTracking.vehicle_tracking_entries[0].departure_km).toLocaleString('tr-TR')
+                                : '0'
+                              } km
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -605,7 +630,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                         <Download className="w-5 h-5 text-green-600" />
                         Takip Belgeleri
                       </h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {selectedTracking.images.map((image, index) => {
                           // Görsel verisi string mi yoksa object mi kontrol et
                           let imageSrc = image;
@@ -619,11 +644,27 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                 <img 
                                   src={imageSrc} 
                                   alt={`Takip belgesi ${index + 1}`}
-                                  className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                                  className="w-full h-64 object-contain rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    window.open(imageSrc, '_blank');
+                                    // Büyük modal aç
+                                    const modal = document.createElement('div');
+                                    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4';
+                                    modal.innerHTML = `
+                                      <div class="relative max-w-4xl max-h-[90vh] overflow-auto">
+                                        <img src="${imageSrc}" alt="Büyük görsel" class="w-full h-auto rounded-lg shadow-2xl" />
+                                        <button onclick="this.parentElement.parentElement.remove()" class="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100">
+                                          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    `;
+                                    document.body.appendChild(modal);
+                                    modal.onclick = (e) => {
+                                      if (e.target === modal) modal.remove();
+                                    };
                                   }}
                                   onError={(e) => {
                                     e.target.style.display = 'none';
@@ -632,7 +673,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                 />
                               ) : null}
                               <div 
-                                className="w-full h-48 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center"
+                                className="w-full h-64 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center"
                                 style={{ display: imageSrc && typeof imageSrc === 'string' && imageSrc.startsWith('data:image/') ? 'none' : 'flex' }}
                               >
                                 <span className="text-gray-500 text-sm">Görsel Yüklenemedi</span>

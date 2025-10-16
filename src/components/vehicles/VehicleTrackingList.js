@@ -343,7 +343,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                 <MapPin className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Toplam Giriş</p>
+                <p className="text-sm font-medium text-gray-600">Toplam Nokta</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalEntries}</p>
               </div>
             </div>
@@ -427,7 +427,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                     </div>
                     <div className="space-y-1 text-sm text-gray-600">
                       <div className="flex justify-between">
-                        <span>Toplam Giriş:</span>
+                        <span>Toplam Nokta:</span>
                         <span className="font-medium">{regionEntries}</span>
                       </div>
                       <div className="flex justify-between">

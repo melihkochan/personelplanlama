@@ -205,12 +205,12 @@ const MobileShellMap = ({ onBack }) => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 pt-6 pb-4 px-4">
         <div className="flex items-center justify-between mb-3">
-          <button onClick={onBack} className="flex items-center text-blue-600 hover:text-blue-800 py-2">
-            <ArrowLeft className="w-6 h-6 mr-2" />
-            <span className="font-medium">Geri</span>
+          <button onClick={onBack} className="flex items-center text-red-600 hover:text-red-800 py-2 group">
+            <ArrowLeft className="w-5 h-5 mr-1 group-hover:text-red-700" />
+            <span className="font-medium text-sm group-hover:text-red-700">Çıkış</span>
           </button>
           <h1 className="text-lg font-bold text-gray-900">Shell İstasyonları</h1>
-          <div className="w-8"></div>
+          <div className="w-20"></div>
         </div>
         
         {/* Arama ve Filtre */}

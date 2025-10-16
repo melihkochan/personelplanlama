@@ -345,12 +345,47 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-lg hover:bg-red-50 transition-colors group"
           >
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
+            <div className="flex items-center space-x-1">
+              <ArrowLeft className="w-5 h-5 text-red-600 group-hover:text-red-700" />
+              <span className="text-red-600 text-sm font-medium group-hover:text-red-700">Çıkış</span>
+            </div>
           </button>
           <h1 className="text-lg font-semibold text-gray-900">Araç Takip</h1>
           <div className="w-10"></div>
+        </div>
+      </div>
+
+      {/* Şoför Bilgi Kartı */}
+      <div className="px-4 py-4">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-lg">
+                  {selectedDriver?.full_name || 'Şoför'}
+                </h3>
+                <div className="flex items-center space-x-2 mt-1">
+                  <MapPin className="w-4 h-4 text-blue-200" />
+                  <span className="text-blue-200 text-sm">
+                    {selectedDriver?.region || 'Bölge'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="bg-white/20 rounded-lg px-3 py-2">
+                <p className="text-white text-xs font-medium">Sicil No</p>
+                <p className="text-white font-bold">
+                  {selectedDriver?.registration_number || 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -396,30 +431,6 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Şoför *</label>
-              <input
-                type="text"
-                name="driver_name"
-                value={formData.driver_name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-                readOnly
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bölge</label>
-              <input
-                type="text"
-                name="region"
-                value={formData.region}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                readOnly
-              />
-            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Notlar</label>

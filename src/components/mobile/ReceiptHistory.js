@@ -97,14 +97,15 @@ const ReceiptHistory = ({ selectedDriver, onBack }) => {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={onBack}
-            className="flex items-center text-blue-600 hover:text-blue-800 py-2"
+            className="flex items-center text-red-600 hover:text-red-800 py-2 group"
           >
-            <ArrowLeft className="w-6 h-6 mr-2" />
-            <span className="font-medium">Geri</span>
+            <ArrowLeft className="w-5 h-5 mr-1 group-hover:text-red-700" />
+            <span className="font-medium text-sm group-hover:text-red-700">Çıkış</span>
           </button>
           <h1 className="text-lg font-bold text-gray-900">
             {selectedDriver.isAdmin ? 'Tüm Fişler' : 'Fiş Geçmişi'}
           </h1>
+          <div className="w-20"></div>
           <button
             onClick={loadReceipts}
             className="flex items-center text-green-600 hover:text-green-800 py-2 px-2"

@@ -15,6 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { vehicleTrackingService, transferVehicleService, vehicleService, aktarmaSoforService } from '../../services/supabase';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
   const [formData, setFormData] = useState({
@@ -330,6 +331,35 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
     });
   };
 
+  // Kamera ile fotoğraf çekme
+  const takePhoto = async () => {
+    try {
+      // Maksimum 5 görsel kontrolü
+      if (formData.images.length >= 5) {
+        alert('Maksimum 5 görsel yükleyebilirsiniz!');
+        return;
+      }
+
+      const image = await CapacitorCamera.getPhoto({
+        quality: 80,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera
+      });
+
+      if (image.dataUrl) {
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, image.dataUrl]
+        }));
+        setImagePreview(prev => [...prev, image.dataUrl]);
+      }
+    } catch (error) {
+      console.error('Kamera hatası:', error);
+      alert('Kamera açılırken hata oluştu!');
+    }
+  };
+
   const removeImage = (index) => {
     setFormData(prev => ({
       ...prev,
@@ -620,27 +650,38 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
             Takip Belgeleri
           </h2>
           
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageUpload}
-              className="hidden"
-              id="image-upload"
-            />
-            <label
-              htmlFor="image-upload"
-              className="cursor-pointer flex flex-col items-center gap-2"
+          <div className="space-y-3">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="cursor-pointer flex flex-col items-center gap-2"
+              >
+                <Camera className="w-8 h-8 text-gray-400" />
+                <span className="text-sm text-gray-600">
+                  Galeriden seç
+                </span>
+                <span className="text-xs text-gray-500">
+                  Maksimum 5 görsel, 5MB'a kadar
+                </span>
+              </label>
+            </div>
+            
+            <button
+              type="button"
+              onClick={takePhoto}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
             >
-              <Camera className="w-8 h-8 text-gray-400" />
-              <span className="text-sm text-gray-600">
-                Görsel seçmek için tıklayın
-              </span>
-              <span className="text-xs text-gray-500">
-                Maksimum 5 görsel, 5MB'a kadar
-              </span>
-            </label>
+              <Camera className="w-5 h-5" />
+              <span>Kamera ile Çek</span>
+            </button>
           </div>
           
           {/* Görsel Önizlemeleri */}

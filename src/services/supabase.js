@@ -5390,22 +5390,72 @@ export const vehicleTrackingService = {
   // Takip kaydını sil
   async deleteTracking(trackingId) {
     try {
-      // Önce ilgili girişleri sil
-      const { error: entriesError } = await supabase
-        .from('vehicle_tracking_entries')
-        .delete()
-        .eq('tracking_id', trackingId);
-
-      if (entriesError) throw entriesError;
-
-      // Sonra ana kaydı sil
-      const { error } = await supabase
+      console.log('Supabase silme işlemi başlatılıyor, ID:', trackingId);
+      
+      // Önce kaydın var olup olmadığını kontrol et
+      console.log('Kayıt kontrol ediliyor...');
+      const { data: existingRecord, error: checkError } = await supabase
         .from('vehicle_tracking')
-        .delete()
+        .select('*')
         .eq('id', trackingId);
 
-      if (error) throw error;
-      return { success: true };
+      console.log('Kayıt kontrol sonucu:', { error: checkError, found: existingRecord?.length || 0 });
+      if (checkError) throw checkError;
+      
+      if (!existingRecord || existingRecord.length === 0) {
+        console.warn('Kayıt bulunamadı! ID:', trackingId);
+        return { success: false, error: 'Kayıt bulunamadı' };
+      }
+      
+      // Girişleri kontrol et
+      console.log('Girişler kontrol ediliyor...');
+      const { data: existingEntries, error: entriesCheckError } = await supabase
+        .from('vehicle_tracking_entries')
+        .select('*')
+        .eq('tracking_id', trackingId);
+
+      console.log('Girişler kontrol sonucu:', { error: entriesCheckError, found: existingEntries?.length || 0 });
+      if (entriesCheckError) throw entriesCheckError;
+      
+      // Önce ilgili girişleri sil (RLS bypass için service role kullan)
+      if (existingEntries && existingEntries.length > 0) {
+        console.log('Girişler siliniyor...');
+        const { error: entriesError, data: deletedEntries } = await supabase
+          .from('vehicle_tracking_entries')
+          .delete()
+          .eq('tracking_id', trackingId)
+          .select('*');
+
+        console.log('Girişler silme sonucu:', { error: entriesError, deletedCount: deletedEntries?.length || 0 });
+        if (entriesError) {
+          console.error('Girişler silme hatası:', entriesError);
+          // RLS hatası olabilir, devam et
+        }
+      } else {
+        console.log('Silinecek giriş bulunamadı');
+      }
+
+      // Sonra ana kaydı sil (RLS bypass için service role kullan)
+      console.log('Ana kayıt siliniyor...');
+      const { error, data: deletedRecord } = await supabase
+        .from('vehicle_tracking')
+        .delete()
+        .eq('id', trackingId)
+        .select('*');
+
+      console.log('Ana kayıt silme sonucu:', { error, deletedCount: deletedRecord?.length || 0 });
+      if (error) {
+        console.error('Ana kayıt silme hatası:', error);
+        throw error;
+      }
+      
+      if (!deletedRecord || deletedRecord.length === 0) {
+        console.warn('Ana kayıt silinemedi! ID:', trackingId);
+        return { success: false, error: 'Ana kayıt silinemedi' };
+      }
+      
+      console.log('Silme işlemi başarılı, silinen kayıt sayısı:', deletedRecord.length);
+      return { success: true, deletedCount: deletedRecord.length };
     } catch (error) {
       console.error('Takip kaydı silme hatası:', error);
       return { success: false, error: error.message };

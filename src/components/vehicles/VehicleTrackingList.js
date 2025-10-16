@@ -12,7 +12,8 @@ import {
   MapPin,
   Clock,
   RefreshCw,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { vehicleTrackingService } from '../../services/supabase';
 
@@ -33,13 +34,19 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [editingEntries, setEditingEntries] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [trackingToDelete, setTrackingToDelete] = useState(null);
 
   // Veri yükleme fonksiyonu
   const loadTrackingData = async () => {
     setLoading(true);
     try {
+      console.log('Veri yükleme başlatılıyor...');
       const result = await vehicleTrackingService.getTrackingRecords();
+      console.log('Veri yükleme sonucu:', result);
+      
       if (result.success) {
+        console.log('Yüklenen veri sayısı:', result.data?.length || 0);
         setTrackingData(result.data);
         setFilteredData(result.data);
       } else {
@@ -163,30 +170,61 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
     setShowEditModal(true);
   };
 
-  const handleDelete = async (trackingId) => {
-    if (window.confirm('Bu takip kaydını silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!')) {
-      try {
-        console.log('Silme işlemi başlatılıyor:', trackingId);
-        const result = await vehicleTrackingService.deleteTracking(trackingId);
-        console.log('Silme sonucu:', result);
+  const handleDelete = (trackingId) => {
+    const tracking = trackingData.find(item => item.id === trackingId);
+    setTrackingToDelete(tracking);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!trackingToDelete) return;
+    
+    try {
+      console.log('Silme işlemi başlatılıyor:', trackingToDelete.id);
+      const result = await vehicleTrackingService.deleteTracking(trackingToDelete.id);
+      console.log('Silme sonucu:', result);
+      
+      if (result.success) {
+        console.log('Silme başarılı, verileri yeniden yüklüyor...');
         
-        if (result.success) {
-          // Manuel olarak listeden kaldır (daha hızlı)
-          setTrackingData(prev => prev.filter(item => item.id !== trackingId));
-          setFilteredData(prev => prev.filter(item => item.id !== trackingId));
-          
-          alert('Takip kaydı başarıyla silindi!');
-          
-          // Alternatif: Verileri yeniden yükle
-          // loadTrackingData();
-        } else {
-          alert('Silme işlemi başarısız: ' + result.error);
-        }
-      } catch (error) {
-        console.error('Silme hatası:', error);
-        alert('Silme işlemi sırasında hata oluştu: ' + error.message);
+        // Verileri yeniden yükle (daha güvenli)
+        await loadTrackingData();
+        
+        // Başarı mesajı
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg bg-green-500 text-white transition-all duration-300 transform';
+        successMessage.innerHTML = `
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium">Takip kaydı başarıyla silindi!</p>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+          successMessage.remove();
+        }, 3000);
+      } else {
+        alert('Silme işlemi başarısız: ' + result.error);
       }
+    } catch (error) {
+      console.error('Silme hatası:', error);
+      alert('Silme işlemi sırasında hata oluştu: ' + error.message);
+    } finally {
+      setShowDeleteModal(false);
+      setTrackingToDelete(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setTrackingToDelete(null);
   };
 
   // Excel export
@@ -1103,6 +1141,82 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Silme Onay Modalı */}
+        {showDeleteModal && trackingToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                  Takip Kaydını Sil
+                </h3>
+                <button
+                  onClick={cancelDelete}
+                  className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <span className="text-red-800 font-semibold">Dikkat!</span>
+                  </div>
+                  <p className="text-red-700 text-sm">
+                    Bu işlem geri alınamaz. Takip kaydı ve tüm girişleri kalıcı olarak silinecektir.
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Silinecek Kayıt:</h4>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <div className="flex justify-between">
+                      <span>Tarih:</span>
+                      <span className="font-medium">{new Date(trackingToDelete.date).toLocaleDateString('tr-TR')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Araç:</span>
+                      <span className="font-medium">{trackingToDelete.vehicle_plate}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Şoför:</span>
+                      <span className="font-medium">{trackingToDelete.driver_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Bölge:</span>
+                      <span className="font-medium">{getRegionDisplayName(trackingToDelete.region)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Nokta Sayısı:</span>
+                      <span className="font-medium">{trackingToDelete.vehicle_tracking_entries?.length || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={cancelDelete}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Sil
+                </button>
+              </div>
             </div>
           </div>
         )}

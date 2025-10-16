@@ -12,6 +12,7 @@ import ShellMapView from './components/maps/ShellMapView';
 import VehicleList from './components/vehicles/VehicleList';
 import VehicleTracking from './components/vehicles/VehicleTracking';
 import VehicleTrackingList from './components/vehicles/VehicleTrackingList';
+import VehicleTrackingAnalytics from './components/vehicles/VehicleTrackingAnalytics';
 import StoreList from './components/stores/StoreList';
 import YakıtTakip from './components/fuel/YakıtTakip';
 import FuelReceiptList from './components/fuel/FuelReceiptList';
@@ -2023,6 +2024,26 @@ function MainApp() {
                         <List className={`w-2 h-2 ${activeTab === 'vehicle-tracking-list' ? 'text-white' : 'text-gray-700'}`} />
                       </div>
                       <span className="flex-1 text-left whitespace-nowrap">Araç Takip Listesi</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleTabChange('vehicle-tracking-analytics')}
+                      className={`
+                        w-full flex items-center px-1 py-0.5 rounded text-xs font-medium transition-all duration-300 relative group
+                        ${activeTab === 'vehicle-tracking-analytics'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/25'
+                          : 'text-gray-800 hover:text-gray-900 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-md flex items-center justify-center mr-1.5 transition-all duration-300 ${
+                        activeTab === 'vehicle-tracking-analytics' 
+                          ? 'bg-white/20' 
+                          : 'bg-gray-100 group-hover:bg-gray-200'
+                      }`}>
+                        <BarChart3 className={`w-2 h-2 ${activeTab === 'vehicle-tracking-analytics' ? 'text-white' : 'text-gray-700'}`} />
+                      </div>
+                      <span className="flex-1 text-left whitespace-nowrap">Araç Takip Analizi</span>
                     </button>
                   </div>
                 )}
@@ -4168,6 +4189,11 @@ function MainApp() {
                 personnelData={personnelData}
                 currentUser={user}
               />
+            )}
+
+            {/* Araç Takip Analizi */}
+            {activeTab === 'vehicle-tracking-analytics' && (
+              <VehicleTrackingAnalytics />
             )}
 
             {/* Aktarma Depo Personel Kontrol */}

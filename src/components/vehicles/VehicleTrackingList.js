@@ -310,10 +310,20 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="w-full">
-        {/* Başlık */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Araç Takip Listesi</h1>
-          <p className="text-gray-600">Araç hareketlerini ve takip verilerini görüntüleyin</p>
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
+                  <Car className="w-6 h-6 text-white" />
+                </div>
+                Araç Takip Sistemi
+              </h1>
+              <p className="text-gray-600">Araç hareketlerini ve takip verilerini görüntüleyin</p>
+            </div>
+            
+          </div>
         </div>
 
         {/* Filtreler */}
@@ -418,127 +428,48 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
         </div>
 
         {/* İstatistikler */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Car className="w-6 h-6 text-blue-600" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm font-medium">Toplam Kayıt</p>
+                <p className="text-3xl font-bold">{stats.totalRecords}</p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Toplam Kayıt</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalRecords}</p>
-              </div>
+              <Car className="w-8 h-8 text-blue-200" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <MapPin className="w-6 h-6 text-green-600" />
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm font-medium">Toplam Nokta</p>
+                <p className="text-3xl font-bold">{stats.totalEntries}</p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Toplam Nokta</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalEntries}</p>
-              </div>
+              <MapPin className="w-8 h-8 text-green-200" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Clock className="w-6 h-6 text-purple-600" />
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm font-medium">Toplam KM</p>
+                <p className="text-3xl font-bold">{stats.totalKm.toLocaleString()}</p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Toplam KM</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalKm.toLocaleString()}</p>
-              </div>
+              <Clock className="w-8 h-8 text-purple-200" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Car className="w-6 h-6 text-orange-600" />
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-sm font-medium">Araç Sayısı</p>
+                <p className="text-3xl font-bold">{stats.uniqueVehicles}</p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Araç Sayısı</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.uniqueVehicles}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <User className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Şoför Sayısı</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.uniqueDrivers}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <MapPin className="w-6 h-6 text-indigo-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Bölge Sayısı</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.regions.length}</p>
-              </div>
+              <Car className="w-8 h-8 text-orange-200" />
             </div>
           </div>
         </div>
 
-        {/* Bölge Bazlı Analiz */}
-        {stats.regions.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-indigo-600" />
-              Bölge Bazlı Analiz
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(stats.regions || []).map(region => {
-                const regionData = (filteredData || []).filter(item => item.region === region);
-                const regionEntries = regionData.reduce((sum, item) => sum + (item.vehicle_tracking_entries?.length || 0), 0);
-                const regionKm = regionData.reduce((sum, item) => {
-                  const entries = item.vehicle_tracking_entries || [];
-                  if (entries.length > 0) {
-                    const firstKm = entries[0].departure_km || 0;
-                    const lastKm = entries[entries.length - 1].departure_km || 0;
-                    return sum + (lastKm - firstKm);
-                  }
-                  return sum;
-                }, 0);
-                
-                return (
-                  <div key={region} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{getRegionDisplayName(region)}</h4>
-                      <span className="text-sm text-gray-500">{regionData.length} kayıt</span>
-                    </div>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <div className="flex justify-between">
-                        <span>Toplam Nokta:</span>
-                        <span className="font-medium">{regionEntries}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Toplam KM:</span>
-                        <span className="font-medium">{regionKm.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Araç Sayısı:</span>
-                        <span className="font-medium">{[...new Set(regionData.map(item => item.vehicle_plate))].length}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Veri Listesi */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">

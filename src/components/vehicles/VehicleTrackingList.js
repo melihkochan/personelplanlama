@@ -648,23 +648,39 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    // Yeni pencerede aç
-                                    const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-                                    newWindow.document.write(`
-                                      <html>
-                                        <head>
-                                          <title>Takip Belgesi ${index + 1}</title>
-                                          <style>
-                                            body { margin: 0; padding: 20px; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-                                            img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-                                          </style>
-                                        </head>
-                                        <body>
-                                          <img src="${imageSrc}" alt="Takip Belgesi ${index + 1}" />
-                                        </body>
-                                      </html>
-                                    `);
-                                    newWindow.document.close();
+                                    console.log('Resim tıklandı:', imageSrc);
+                                    
+                                    // Modal oluştur
+                                    const modal = document.createElement('div');
+                                    modal.style.cssText = `
+                                      position: fixed;
+                                      top: 0;
+                                      left: 0;
+                                      width: 100vw;
+                                      height: 100vh;
+                                      background: rgba(0,0,0,0.9);
+                                      display: flex;
+                                      justify-content: center;
+                                      align-items: center;
+                                      z-index: 99999;
+                                      cursor: pointer;
+                                    `;
+                                    
+                                    modal.innerHTML = `
+                                      <div style="position: relative; max-width: 80vw; max-height: 80vh; display: flex; justify-content: center; align-items: center;">
+                                        <img src="${imageSrc}" style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); object-fit: contain;" />
+                                        <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">×</button>
+                                      </div>
+                                    `;
+                                    
+                                    modal.onclick = (event) => {
+                                      if (event.target === modal) {
+                                        modal.remove();
+                                      }
+                                    };
+                                    
+                                    document.body.appendChild(modal);
+                                    console.log('Modal eklendi');
                                   }}
                                   onError={(e) => {
                                     e.target.style.display = 'none';
@@ -678,8 +694,50 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                               >
                                 <span className="text-gray-500 text-sm">Görsel Yüklenemedi</span>
                               </div>
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
-                                <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <div 
+                                className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('Overlay tıklandı:', imageSrc);
+                                  
+                                  // Modal oluştur
+                                  const modal = document.createElement('div');
+                                  modal.style.cssText = `
+                                    position: fixed;
+                                    top: 0;
+                                    left: 0;
+                                    width: 100vw;
+                                    height: 100vh;
+                                    background: rgba(0,0,0,0.9);
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    z-index: 99999;
+                                    cursor: pointer;
+                                  `;
+                                  
+                                  modal.innerHTML = `
+                                    <div style="position: relative; max-width: 80vw; max-height: 80vh; display: flex; justify-content: center; align-items: center;">
+                                      <img src="${imageSrc}" style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); object-fit: contain;" />
+                                      <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">×</button>
+                                    </div>
+                                  `;
+                                  
+                                  modal.onclick = (event) => {
+                                    if (event.target === modal) {
+                                      modal.remove();
+                                    }
+                                  };
+                                  
+                                  document.body.appendChild(modal);
+                                  console.log('Modal eklendi (overlay)');
+                                }}
+                              >
+                                <div className="text-center">
+                                  <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity mx-auto mb-1" />
+                                  <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">Tıklayarak büyüt</span>
+                                </div>
                               </div>
                             </div>
                           );

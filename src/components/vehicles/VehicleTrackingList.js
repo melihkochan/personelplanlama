@@ -900,11 +900,6 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                           </div>
                         </div>
                         
-                        {entry.entry_notes && (
-                          <div className="bg-gray-50 rounded p-2 mt-2">
-                            <div className="text-xs text-gray-600 font-medium">Not: {entry.entry_notes}</div>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -938,7 +933,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
         {/* Düzenleme Modalı */}
         {showEditModal && editingTracking && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="bg-white rounded-xl p-6 max-w-6xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <Edit className="w-5 h-5 text-green-600" />
@@ -964,8 +959,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                         departure_center: entry.departure_center,
                         entry_time: entry.entry_time,
                         exit_time: entry.exit_time || null,
-                        departure_km: entry.departure_km,
-                        entry_notes: entry.entry_notes
+                        departure_km: entry.departure_km
                       });
                     }
                     
@@ -1067,37 +1061,72 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                       <Clock className="w-5 h-5 text-purple-600" />
                       Nokta Detayları ({editingEntries.length})
                     </h4>
-                    <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                    <div className="bg-gray-50 rounded-lg p-4 max-h-80 overflow-y-auto">
                       <div className="space-y-4">
                         {editingEntries
                           .sort((a, b) => a.departure_km - b.departure_km)
                           .map((entry, index) => (
-                          <div key={entry.id} className="bg-white rounded-lg p-4 border border-gray-200">
+                          <div key={entry.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:border-blue-300 transition-colors">
                             <div className="flex justify-between items-center mb-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
                                   {index + 1}
                                 </div>
-                                <div className="flex-1">
-                                  <label className="block text-xs text-gray-600 font-medium mb-1">Gidilen Yer</label>
-                                  <input
-                                    type="text"
-                                    value={entry.departure_center}
-                                    onChange={(e) => {
-                                      const newEntries = [...editingEntries];
-                                      const entryIndex = newEntries.findIndex(e => e.id === entry.id);
-                                      if (entryIndex !== -1) {
+                                <h5 className="font-medium text-gray-900">Nokta {index + 1}</h5>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm('Bu noktayı silmek istediğinizden emin misiniz?')) {
+                                    const newEntries = editingEntries.filter(e => e.id !== entry.id);
+                                    setEditingEntries(newEntries);
+                                  }
+                                }}
+                                className="p-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                                title="Noktayı Sil"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-600 font-medium mb-1">Gidilen Yer</label>
+                                <input
+                                  type="text"
+                                  value={entry.departure_center}
+                                  onChange={(e) => {
+                                    const newEntries = [...editingEntries];
+                                    const entryIndex = newEntries.findIndex(e => e.id === entry.id);
+                                    if (entryIndex !== -1) {
                                         newEntries[entryIndex].departure_center = e.target.value;
                                         setEditingEntries(newEntries);
                                       }
                                     }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm font-medium"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     placeholder="Gidilen yer adı..."
                                   />
-                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 font-medium mb-1">KM Okuma</label>
+                                <input
+                                  type="number"
+                                  value={entry.departure_km}
+                                  onChange={(e) => {
+                                    const newEntries = [...editingEntries];
+                                    const entryIndex = newEntries.findIndex(e => e.id === entry.id);
+                                    if (entryIndex !== -1) {
+                                      newEntries[entryIndex].departure_km = parseInt(e.target.value) || 0;
+                                      setEditingEntries(newEntries);
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  min="0"
+                                  max="999999"
+                                />
                               </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs text-gray-600 font-medium mb-1">Giriş Saati</label>
                                 <input
@@ -1111,7 +1140,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                       setEditingEntries(newEntries);
                                     }
                                   }}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                               </div>
                               <div>
@@ -1127,44 +1156,9 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                       setEditingEntries(newEntries);
                                     }
                                   }}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                               </div>
-                              <div>
-                                <label className="block text-xs text-gray-600 font-medium mb-1">KM Okuma</label>
-                                <input
-                                  type="number"
-                                  value={entry.departure_km}
-                                  onChange={(e) => {
-                                    const newEntries = [...editingEntries];
-                                    const entryIndex = newEntries.findIndex(e => e.id === entry.id);
-                                    if (entryIndex !== -1) {
-                                      newEntries[entryIndex].departure_km = parseInt(e.target.value) || 0;
-                                      setEditingEntries(newEntries);
-                                    }
-                                  }}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  min="0"
-                                  max="999999"
-                                />
-                              </div>
-                            </div>
-                            <div className="mt-3">
-                              <label className="block text-xs text-gray-600 font-medium mb-1">Notlar</label>
-                              <textarea
-                                value={entry.entry_notes || ''}
-                                onChange={(e) => {
-                                  const newEntries = [...editingEntries];
-                                  const entryIndex = newEntries.findIndex(e => e.id === entry.id);
-                                  if (entryIndex !== -1) {
-                                    newEntries[entryIndex].entry_notes = e.target.value;
-                                    setEditingEntries(newEntries);
-                                  }
-                                }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                rows={2}
-                                placeholder="Nokta notları..."
-                              />
                             </div>
                           </div>
                         ))}

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import DriverSelection from './DriverSelection';
 import MobileReceiptForm from './MobileReceiptForm';
 import ReceiptHistory from './ReceiptHistory';
+import MobileShellMap from './MobileShellMap';
+import { FileText, History, Map } from 'lucide-react';
 import { vehicleService, getAllPersonnel, transferVehicleService } from '../../services/supabase';
 
 const MobileApp = () => {
-  const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'receipt-history', 'success'
+  const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'receipt-history', 'shell-map', 'success'
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [vehicleData, setVehicleData] = useState([]);
   const [personnelData, setPersonnelData] = useState([]);
@@ -170,6 +172,7 @@ const MobileApp = () => {
           onSuccess={handleSuccess}
           onVehicleAdded={handleVehicleAdded}
           onShowHistory={() => setCurrentScreen('receipt-history')}
+          onShowShellMap={() => setCurrentScreen('shell-map')}
         />
       )}
 
@@ -178,6 +181,55 @@ const MobileApp = () => {
           selectedDriver={selectedDriver}
           onBack={() => setCurrentScreen('receipt-form')}
         />
+      )}
+
+      {currentScreen === 'shell-map' && (
+        <MobileShellMap
+          onBack={() => setCurrentScreen('receipt-form')}
+        />
+      )}
+
+      {/* Alt Navigation Bar - Sadece receipt-form, receipt-history ve shell-map ekranlarında göster */}
+      {(currentScreen === 'receipt-form' || currentScreen === 'receipt-history' || currentScreen === 'shell-map') && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-[9999] safe-area-inset-bottom">
+          <div className="flex justify-around items-center">
+            <button
+              onClick={() => setCurrentScreen('receipt-form')}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+                currentScreen === 'receipt-form' 
+                  ? 'text-green-600 bg-green-50' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <FileText className="w-6 h-6 mb-1" />
+              <span className="text-xs font-medium">Yeni Fiş</span>
+            </button>
+            
+            <button
+              onClick={() => setCurrentScreen('receipt-history')}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+                currentScreen === 'receipt-history' 
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <History className="w-6 h-6 mb-1" />
+              <span className="text-xs font-medium">Geçmiş</span>
+            </button>
+            
+            <button
+              onClick={() => setCurrentScreen('shell-map')}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+                currentScreen === 'shell-map' 
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Map className="w-6 h-6 mb-1" />
+              <span className="text-xs font-medium">Shell</span>
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

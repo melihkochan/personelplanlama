@@ -13,13 +13,14 @@ import {
   FileText,
   Plus,
   Lock,
-  History
+  History,
+  Map
 } from 'lucide-react';
 import { fuelReceiptService, vehicleService, aktarmaSoforService } from '../../services/supabase';
 import { supabase } from '../../services/supabase';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
-const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onVehicleAdded, onShowHistory }) => {
+const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onVehicleAdded, onShowHistory, onShowShellMap }) => {
   const [formData, setFormData] = useState({
     receipt_number: '',
     vehicle_plate: '',
@@ -355,7 +356,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
   }, [vehicleData, sortedVehicles]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-24">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 pt-4 pb-4 px-4">
         <div className="flex items-center justify-between mb-3">
@@ -368,12 +369,6 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
           </button>
           <h1 className="text-lg font-bold text-gray-900">Yeni Fiş</h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={onShowHistory}
-              className="flex items-center text-green-600 hover:text-green-800 py-2 px-2"
-            >
-              <History className="w-5 h-5" />
-            </button>
             {selectedDriver?.username && !selectedDriver.isAdmin && (
               <button
                 onClick={() => setShowChangePasswordModal(true)}
@@ -693,7 +688,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
         </div>
 
         {/* Kaydet Butonu */}
-        <div className="pb-6">
+        <div className="pb-4">
           <button
             type="submit"
             className="w-full bg-green-600 text-white py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-green-700 transition-colors text-xl font-bold"
@@ -707,6 +702,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
             Fişi Kaydet
           </button>
         </div>
+
 
         {/* Developer Credit */}
         <div className="text-center pb-6">

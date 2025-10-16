@@ -91,7 +91,7 @@ const ReceiptHistory = ({ selectedDriver, onBack }) => {
   const totalLiters = receipts.reduce((sum, receipt) => sum + (parseFloat(receipt.quantity_liters) || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-24">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 pt-4 pb-4 px-4">
         <div className="flex items-center justify-between mb-3">

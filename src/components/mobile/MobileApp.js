@@ -3,11 +3,12 @@ import DriverSelection from './DriverSelection';
 import MobileReceiptForm from './MobileReceiptForm';
 import ReceiptHistory from './ReceiptHistory';
 import MobileShellMap from './MobileShellMap';
-import { FileText, History, Map } from 'lucide-react';
+import MobileVehicleTracking from './MobileVehicleTracking';
+import { FileText, History, Map, Car } from 'lucide-react';
 import { vehicleService, getAllPersonnel, transferVehicleService } from '../../services/supabase';
 
 const MobileApp = () => {
-  const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'receipt-history', 'shell-map', 'success'
+  const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'receipt-history', 'shell-map', 'vehicle-tracking', 'success'
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [vehicleData, setVehicleData] = useState([]);
   const [personnelData, setPersonnelData] = useState([]);
@@ -183,14 +184,21 @@ const MobileApp = () => {
         />
       )}
 
+      {currentScreen === 'vehicle-tracking' && (
+        <MobileVehicleTracking
+          selectedDriver={selectedDriver}
+          onBack={() => setCurrentScreen('receipt-form')}
+        />
+      )}
+
       {currentScreen === 'shell-map' && (
         <MobileShellMap
           onBack={() => setCurrentScreen('receipt-form')}
         />
       )}
 
-      {/* Alt Navigation Bar - Sadece receipt-form, receipt-history ve shell-map ekranlarında göster */}
-      {(currentScreen === 'receipt-form' || currentScreen === 'receipt-history' || currentScreen === 'shell-map') && (
+      {/* Alt Navigation Bar - Sadece receipt-form, receipt-history, shell-map ve vehicle-tracking ekranlarında göster */}
+      {(currentScreen === 'receipt-form' || currentScreen === 'receipt-history' || currentScreen === 'shell-map' || currentScreen === 'vehicle-tracking') && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-[9999] safe-area-inset-bottom">
           <div className="flex justify-around items-center">
             <button
@@ -214,7 +222,19 @@ const MobileApp = () => {
               }`}
             >
               <History className="w-6 h-6 mb-1" />
-              <span className="text-xs font-medium">Geçmiş</span>
+              <span className="text-xs font-medium">Fiş Geçmişi</span>
+            </button>
+            
+            <button
+              onClick={() => setCurrentScreen('vehicle-tracking')}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+                currentScreen === 'vehicle-tracking' 
+                  ? 'text-purple-600 bg-purple-50' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Car className="w-6 h-6 mb-1" />
+              <span className="text-xs font-medium">Araç Takip</span>
             </button>
             
             <button

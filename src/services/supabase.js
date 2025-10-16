@@ -5212,6 +5212,30 @@ export const vehicleTrackingService = {
     }
   },
 
+  // Takip girişi güncelle
+  async updateTrackingEntry(entryId, entryData) {
+    try {
+      const { data: result, error } = await supabase
+        .from('vehicle_tracking_entries')
+        .update({
+          departure_center: entryData.departure_center,
+          entry_time: entryData.entry_time,
+          exit_time: entryData.exit_time || null,
+          departure_km: entryData.departure_km,
+          entry_notes: entryData.entry_notes
+        })
+        .eq('id', entryId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Takip girişi güncelleme hatası:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
   // Toplu takip kaydı (mobil için)
   async saveTrackingWithEntries(trackingData, entries) {
     try {

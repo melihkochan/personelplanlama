@@ -648,23 +648,23 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    // Büyük modal aç
-                                    const modal = document.createElement('div');
-                                    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4';
-                                    modal.innerHTML = `
-                                      <div class="relative max-w-4xl max-h-[90vh] overflow-auto">
-                                        <img src="${imageSrc}" alt="Büyük görsel" class="w-full h-auto rounded-lg shadow-2xl" />
-                                        <button onclick="this.parentElement.parentElement.remove()" class="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100">
-                                          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                          </svg>
-                                        </button>
-                                      </div>
-                                    `;
-                                    document.body.appendChild(modal);
-                                    modal.onclick = (e) => {
-                                      if (e.target === modal) modal.remove();
-                                    };
+                                    // Yeni pencerede aç
+                                    const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                                    newWindow.document.write(`
+                                      <html>
+                                        <head>
+                                          <title>Takip Belgesi ${index + 1}</title>
+                                          <style>
+                                            body { margin: 0; padding: 20px; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                                            img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+                                          </style>
+                                        </head>
+                                        <body>
+                                          <img src="${imageSrc}" alt="Takip Belgesi ${index + 1}" />
+                                        </body>
+                                      </html>
+                                    `);
+                                    newWindow.document.close();
                                   }}
                                   onError={(e) => {
                                     e.target.style.display = 'none';
@@ -786,22 +786,34 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 try {
+                  // Ana kaydı güncelle
                   const result = await vehicleTrackingService.updateTracking(editingTracking.id, editFormData);
                   if (result.success) {
+                    // Girişleri de güncelle
+                    for (const entry of editingEntries) {
+                      await vehicleTrackingService.updateTrackingEntry(entry.id, {
+                        departure_center: entry.departure_center,
+                        entry_time: entry.entry_time,
+                        exit_time: entry.exit_time || null,
+                        departure_km: entry.departure_km,
+                        entry_notes: entry.entry_notes
+                      });
+                    }
+                    
                     // Manuel olarak listeyi güncelle (daha hızlı)
                     setTrackingData(prev => prev.map(item => 
                       item.id === editingTracking.id 
-                        ? { ...item, ...editFormData }
+                        ? { ...item, ...editFormData, vehicle_tracking_entries: editingEntries }
                         : item
                     ));
                     setFilteredData(prev => prev.map(item => 
                       item.id === editingTracking.id 
-                        ? { ...item, ...editFormData }
+                        ? { ...item, ...editFormData, vehicle_tracking_entries: editingEntries }
                         : item
                     ));
                     
                     setShowEditModal(false);
-                    alert('Takip kaydı başarıyla güncellendi!');
+                    alert('Takip kaydı ve girişleri başarıyla güncellendi!');
                     
                     // Alternatif: Verileri yeniden yükle
                     // loadTrackingData();
@@ -810,7 +822,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                   }
                 } catch (error) {
                   console.error('Güncelleme hatası:', error);
-                  alert('Güncelleme sırasında hata oluştu');
+                  alert('Güncelleme sırasında hata oluştu: ' + error.message);
                 }
               }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -897,7 +909,23 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                 <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
                                   {index + 1}
                                 </div>
-                                <h5 className="font-medium text-gray-900">{entry.departure_center}</h5>
+                                <div className="flex-1">
+                                  <label className="block text-xs text-gray-600 font-medium mb-1">Gidilen Yer</label>
+                                  <input
+                                    type="text"
+                                    value={entry.departure_center}
+                                    onChange={(e) => {
+                                      const newEntries = [...editingEntries];
+                                      const entryIndex = newEntries.findIndex(e => e.id === entry.id);
+                                      if (entryIndex !== -1) {
+                                        newEntries[entryIndex].departure_center = e.target.value;
+                                        setEditingEntries(newEntries);
+                                      }
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm font-medium"
+                                    placeholder="Gidilen yer adı..."
+                                  />
+                                </div>
                               </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

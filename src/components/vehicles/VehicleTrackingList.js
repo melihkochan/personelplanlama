@@ -707,7 +707,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                 <img 
                                   src={imageSrc} 
                                   alt={`Takip belgesi ${index + 1}`}
-                                  className="w-full h-64 object-contain rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                                  className="w-full h-48 object-contain rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -721,18 +721,42 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                       left: 0;
                                       width: 100vw;
                                       height: 100vh;
-                                      background: rgba(0,0,0,0.9);
+                                      background: rgba(0,0,0,0.8);
                                       display: flex;
                                       justify-content: center;
                                       align-items: center;
                                       z-index: 99999;
                                       cursor: pointer;
+                                      padding: 20px;
+                                      box-sizing: border-box;
                                     `;
                                     
                                     modal.innerHTML = `
-                                      <div style="position: relative; max-width: 80vw; max-height: 80vh; display: flex; justify-content: center; align-items: center;">
-                                        <img src="${imageSrc}" style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); object-fit: contain;" />
-                                        <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">×</button>
+                                      <div style="position: relative; max-width: 4xl; max-height: 90vh; width: 100%; margin: 16px;">
+                                        <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 16px; right: 16px; z-index: 10; background: white; background-opacity: 0.2; hover:background-opacity: 0.3; border-radius: 50%; padding: 8px; transition: all 0.2s; border: none; cursor: pointer;">
+                                          <span style="color: white; font-size: 24px; font-weight: bold;">×</span>
+                                        </button>
+                                        
+                                        <div style="background: white; border-radius: 8px; padding: 16px; max-height: 100%; overflow: auto;">
+                                          <div style="text-align: center; margin-bottom: 16px;">
+                                            <h3 style="font-size: 18px; font-weight: 600; color: #111827; margin: 0;">
+                                              Takip Belgesi - Görsel ${index + 1}
+                                            </h3>
+                                            <p style="font-size: 14px; color: #6b7280; margin: 4px 0 0 0;">
+                                              ${selectedTracking.date} • ${selectedTracking.vehicle_plate}
+                                            </p>
+                                          </div>
+                                          
+                                          <div style="display: flex; justify-content: center;">
+                                            <img src="${imageSrc}" alt="Takip belgesi - tam ekran" style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);" />
+                                          </div>
+                                          
+                                          <div style="margin-top: 16px; text-align: center;">
+                                            <p style="font-size: 14px; color: #6b7280; margin: 0;">
+                                              Kapatmak için dışarı tıklayın
+                                            </p>
+                                          </div>
+                                        </div>
                                       </div>
                                     `;
                                     
@@ -752,7 +776,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                 />
                               ) : null}
                               <div 
-                                className="w-full h-64 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center"
+                                className="w-full h-48 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center"
                                 style={{ display: imageSrc && typeof imageSrc === 'string' && imageSrc.startsWith('data:image/') ? 'none' : 'flex' }}
                               >
                                 <span className="text-gray-500 text-sm">Görsel Yüklenemedi</span>
@@ -764,7 +788,7 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                   e.stopPropagation();
                                   console.log('Overlay tıklandı:', imageSrc);
                                   
-                                  // Modal oluştur
+                                  // Modal oluştur - Fiş listesi gibi güzel görünüm
                                   const modal = document.createElement('div');
                                   modal.style.cssText = `
                                     position: fixed;
@@ -772,18 +796,42 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
                                     left: 0;
                                     width: 100vw;
                                     height: 100vh;
-                                    background: rgba(0,0,0,0.9);
+                                    background: rgba(0,0,0,0.8);
                                     display: flex;
                                     justify-content: center;
                                     align-items: center;
                                     z-index: 99999;
                                     cursor: pointer;
+                                    padding: 20px;
+                                    box-sizing: border-box;
                                   `;
                                   
                                   modal.innerHTML = `
-                                    <div style="position: relative; max-width: 80vw; max-height: 80vh; display: flex; justify-content: center; align-items: center;">
-                                      <img src="${imageSrc}" style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); object-fit: contain;" />
-                                      <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">×</button>
+                                    <div style="position: relative; max-width: 4xl; max-height: 90vh; width: 100%; margin: 16px;">
+                                      <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 16px; right: 16px; z-index: 10; background: white; background-opacity: 0.2; hover:background-opacity: 0.3; border-radius: 50%; padding: 8px; transition: all 0.2s; border: none; cursor: pointer;">
+                                        <span style="color: white; font-size: 24px; font-weight: bold;">×</span>
+                                      </button>
+                                      
+                                      <div style="background: white; border-radius: 8px; padding: 16px; max-height: 100%; overflow: auto;">
+                                        <div style="text-align: center; margin-bottom: 16px;">
+                                          <h3 style="font-size: 18px; font-weight: 600; color: #111827; margin: 0;">
+                                            Takip Belgesi - Görsel ${index + 1}
+                                          </h3>
+                                          <p style="font-size: 14px; color: #6b7280; margin: 4px 0 0 0;">
+                                            ${selectedTracking.date} • ${selectedTracking.vehicle_plate}
+                                          </p>
+                                        </div>
+                                        
+                                        <div style="display: flex; justify-content: center;">
+                                          <img src="${imageSrc}" alt="Takip belgesi - tam ekran" style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);" />
+                                        </div>
+                                        
+                                        <div style="margin-top: 16px; text-align: center;">
+                                          <p style="font-size: 14px; color: #6b7280; margin: 0;">
+                                            Kapatmak için dışarı tıklayın
+                                          </p>
+                                        </div>
+                                      </div>
                                     </div>
                                   `;
                                   

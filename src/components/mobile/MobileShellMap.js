@@ -203,7 +203,7 @@ const MobileShellMap = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 pt-4 pb-4 px-4">
+      <div className="bg-white shadow-sm border-b border-gray-200 pt-6 pb-4 px-4">
         <div className="flex items-center justify-between mb-3">
           <button onClick={onBack} className="flex items-center text-blue-600 hover:text-blue-800 py-2">
             <ArrowLeft className="w-6 h-6 mr-2" />

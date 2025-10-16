@@ -24,7 +24,7 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
     driver_name: '',
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().slice(0, 5),
-    fuel_type: '',
+    fuel_type: 'MOTORIN SVPD',
     quantity_liters: '',
     unit_price: '',
     total_amount: '',
@@ -583,25 +583,9 @@ const FuelReceiptForm = ({ vehicleData = [], personnelData = [], currentUser, on
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Yakıt Türü *
               </label>
-              <select
-                value={formData.fuel_type}
-                onChange={(e) => setFormData(prev => ({ ...prev, fuel_type: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.fuel_type ? 'border-red-500' : 'border-gray-300'
-                }`}
-              >
-                <option value="" disabled>Yakıt Türü Seçin</option>
-                <option value="MOTORIN SVPD">Motorin SVPD</option>
-                <option value="BENZIN">Benzin</option>
-                <option value="LPG">LPG</option>
-                <option value="ELEKTRIK">Elektrik</option>
-              </select>
-              {errors.fuel_type && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.fuel_type}
-                </p>
-              )}
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                Motorin SVPD
+              </div>
             </div>
 
             <div>

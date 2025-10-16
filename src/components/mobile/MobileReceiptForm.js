@@ -358,7 +358,7 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-24">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 pt-4 pb-4 px-4">
+      <div className="bg-white shadow-sm border-b border-gray-200 pt-6 pb-4 px-4">
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={onBack}
@@ -509,29 +509,9 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Yakıt Türü *</label>
-              <div className="relative">
-                <select
-                  name="fuel_type"
-                  value={formData.fuel_type}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white shadow-sm ${errors.fuel_type ? 'border-red-500' : 'border-gray-300'}`}
-                  style={{ 
-                    fontSize: '16px', 
-                    WebkitAppearance: 'none', 
-                    appearance: 'none',
-                    backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', 
-                    backgroundPosition: 'right 0.75rem center', 
-                    backgroundRepeat: 'no-repeat', 
-                    backgroundSize: '1.25em 1.25em', 
-                    paddingRight: '2.5rem'
-                  }}
-                >
-                  <option value="MOTORIN SVPD">⛽ Motorin SVPD</option>
-                  <option value="BENZIN SVPD">⛽ Benzin</option>
-                  <option value="LPG SVPD">🔥 LPG </option>
-                </select>
+              <div className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 text-base shadow-sm">
+                ⛽ Motorin SVPD
               </div>
-              {errors.fuel_type && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.fuel_type}</p>}
             </div>
 
             <div>

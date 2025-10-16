@@ -93,7 +93,7 @@ const ReceiptHistory = ({ selectedDriver, onBack }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-24">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 pt-4 pb-4 px-4">
+      <div className="bg-white shadow-sm border-b border-gray-200 pt-6 pb-4 px-4">
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={onBack}

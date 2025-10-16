@@ -191,8 +191,102 @@ const VehicleTrackingList = ({ vehicleData = [], personnelData = [], currentUser
 
   // Excel export
   const exportToExcel = () => {
-    // Excel export fonksiyonu burada implement edilecek
-    console.log('Excel export:', filteredData);
+    try {
+      // Ana veri sayfası
+      const mainData = (filteredData || []).map(item => ({
+        'Tarih': new Date(item.date).toLocaleDateString('tr-TR'),
+        'Araç Plakası': item.vehicle_plate,
+        'Şoför': item.driver_name,
+        'Bölge': getRegionDisplayName(item.region),
+        'Nokta Sayısı': item.vehicle_tracking_entries?.length || 0,
+        'Başlangıç KM': item.vehicle_tracking_entries?.length > 0 ? item.vehicle_tracking_entries[0].departure_km : '-',
+        'Bitiş KM': item.vehicle_tracking_entries?.length > 0 ? item.vehicle_tracking_entries[item.vehicle_tracking_entries.length - 1].departure_km : '-',
+        'Toplam KM': item.vehicle_tracking_entries?.length > 1 
+          ? item.vehicle_tracking_entries[item.vehicle_tracking_entries.length - 1].departure_km - item.vehicle_tracking_entries[0].departure_km
+          : 0,
+        'Notlar': item.notes || ''
+      }));
+
+      // Detay veri sayfası
+      const detailData = [];
+      (filteredData || []).forEach(item => {
+        item.vehicle_tracking_entries?.forEach((entry, index) => {
+          detailData.push({
+            'Tarih': new Date(item.date).toLocaleDateString('tr-TR'),
+            'Araç Plakası': item.vehicle_plate,
+            'Şoför': item.driver_name,
+            'Bölge': getRegionDisplayName(item.region),
+            'Nokta Sırası': index + 1,
+            'Gidilen Yer': entry.departure_center,
+            'Giriş Saati': entry.entry_time,
+            'Çıkış Saati': entry.exit_time || '-',
+            'KM Okuma': entry.departure_km,
+            'Notlar': entry.entry_notes || ''
+          });
+        });
+      });
+
+      // Bölge analizi
+      const regionData = [];
+      stats.regions.forEach(region => {
+        const regionItems = (filteredData || []).filter(item => item.region === region);
+        const regionEntries = regionItems.reduce((sum, item) => sum + (item.vehicle_tracking_entries?.length || 0), 0);
+        const regionKm = regionItems.reduce((sum, item) => {
+          const entries = item.vehicle_tracking_entries || [];
+          if (entries.length > 0) {
+            const firstKm = entries[0].departure_km || 0;
+            const lastKm = entries[entries.length - 1].departure_km || 0;
+            return sum + (lastKm - firstKm);
+          }
+          return sum;
+        }, 0);
+        
+        regionData.push({
+          'Bölge': getRegionDisplayName(region),
+          'Kayıt Sayısı': regionItems.length,
+          'Toplam Nokta': regionEntries,
+          'Toplam KM': regionKm,
+          'Araç Sayısı': [...new Set(regionItems.map(item => item.vehicle_plate))].length
+        });
+      });
+
+      // Excel dosyası oluştur
+      const XLSX = require('xlsx');
+      
+      // Çalışma kitabı oluştur
+      const wb = XLSX.utils.book_new();
+      
+      // Sayfaları ekle
+      const ws1 = XLSX.utils.json_to_sheet(mainData);
+      const ws2 = XLSX.utils.json_to_sheet(detailData);
+      const ws3 = XLSX.utils.json_to_sheet(regionData);
+      
+      // Sütun genişliklerini ayarla
+      ws1['!cols'] = [
+        { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, 
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 30 }
+      ];
+      ws2['!cols'] = [
+        { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, 
+        { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 30 }
+      ];
+      ws3['!cols'] = [
+        { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
+      ];
+      
+      XLSX.utils.book_append_sheet(wb, ws1, 'Ana Liste');
+      XLSX.utils.book_append_sheet(wb, ws2, 'Detay Listesi');
+      XLSX.utils.book_append_sheet(wb, ws3, 'Bölge Analizi');
+      
+      // Dosyayı indir
+      const fileName = `Arac_Takip_Listesi_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      console.log('Excel dosyası başarıyla oluşturuldu:', fileName);
+    } catch (error) {
+      console.error('Excel export hatası:', error);
+      alert('Excel dosyası oluşturulurken hata oluştu: ' + error.message);
+    }
   };
 
   // İstatistikler hesapla

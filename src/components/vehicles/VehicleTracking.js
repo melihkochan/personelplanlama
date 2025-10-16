@@ -315,11 +315,8 @@ const VehicleTracking = ({ vehicleData = [], personnelData = [], currentUser }) 
       return;
     }
 
-    // Depo'ya varış kontrolü
-    const isDepoArrival = formData.departure_center.toLowerCase().includes('depo') && !formData.exit_time;
-    
-    if (isDepoArrival) {
-      // Depo varış onayı için modal göster
+    // Çıkış saati boş ise genel uyarı ver (park ediyorlar)
+    if (!formData.exit_time) {
       setPendingEntry({
         departure_center: formData.departure_center,
         entry_time: formData.entry_time,
@@ -330,12 +327,6 @@ const VehicleTracking = ({ vehicleData = [], personnelData = [], currentUser }) 
       });
       setShowDepoConfirmModal(true);
       return; // Modal'dan onay bekleniyor
-    } else if (!formData.exit_time) {
-      // Diğer merkezler için çıkış saati zorunlu
-      setErrors({
-        exit_time: 'Çıkış saati gerekli'
-      });
-      return;
     }
 
     const newEntry = {
@@ -875,10 +866,10 @@ const VehicleTracking = ({ vehicleData = [], personnelData = [], currentUser }) 
                 
                 {/* Başlık */}
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  Depoya Varış
+                  Çıkış Saati Boş
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Sevkiyat bitti mi?
+                  Araç park ediyor mu?
                 </p>
 
                 {/* Detaylar */}
@@ -904,8 +895,8 @@ const VehicleTracking = ({ vehicleData = [], personnelData = [], currentUser }) 
                 {/* Açıklama */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
                   <p className="text-sm text-blue-800">
-                    <strong>Tamam</strong> dersen çıkış saati boş olarak kaydedilir (sevkiyat bitti).<br/>
-                    <strong>İptal</strong> dersen çıkış saatini girebilirsin (devam ediyor).
+                    <strong>Tamam</strong> dersen çıkış saati boş olarak kaydedilir (araç park ediyor).<br/>
+                    <strong>İptal</strong> dersen çıkış saatini girebilirsin (araç devam ediyor).
                   </p>
                 </div>
 

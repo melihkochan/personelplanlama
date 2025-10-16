@@ -62,12 +62,20 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
         ...(normalResult.data || [])
       ];
 
-      // Bölgeye göre filtrele
-      const filteredVehicles = selectedDriver?.region 
-        ? allVehicles.filter(vehicle => vehicle.region === selectedDriver.region)
-        : allVehicles;
+      // Admin kullanıcısı için bütün araçları göster, diğerleri için bölgeye göre filtrele
+      const filteredVehicles = (selectedDriver?.username === 'admin' || selectedDriver?.full_name === 'admin')
+        ? allVehicles // Admin için bütün araçlar
+        : selectedDriver?.region 
+          ? allVehicles.filter(vehicle => vehicle.region === selectedDriver.region)
+          : allVehicles;
 
-      setVehicles(filteredVehicles);
+      // Duplicate'leri kaldır
+      const uniqueVehicles = filteredVehicles.filter((vehicle, index, self) => 
+        index === self.findIndex(v => v.license_plate === vehicle.license_plate)
+      );
+
+      setVehicles(uniqueVehicles);
+      console.log('Araç takip - Yüklenen araç sayısı:', uniqueVehicles.length);
     } catch (error) {
       console.error('Araç yükleme hatası:', error);
     }
@@ -79,6 +87,19 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
       ...prev,
       [name]: value
     }));
+
+    // Araç plakası değiştiğinde bölgeyi otomatik doldur
+    if (name === 'vehicle_plate' && value) {
+      const selectedVehicle = vehicles.find(vehicle => 
+        (vehicle.license_plate || vehicle.plate) === value
+      );
+      if (selectedVehicle && selectedVehicle.region) {
+        setFormData(prev => ({
+          ...prev,
+          region: selectedVehicle.region
+        }));
+      }
+    }
 
     // Hataları temizle
     if (errors[name]) {
@@ -441,7 +462,12 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Araç Plakası *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Araç Plakası * 
+                {(selectedDriver?.username === 'admin' || selectedDriver?.full_name === 'admin') && (
+                  <span className="text-xs text-blue-600 ml-2">(Admin - Tüm Araçlar)</span>
+                )}
+              </label>
               <select
                 name="vehicle_plate"
                 value={formData.vehicle_plate}
@@ -450,9 +476,13 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
                 required
               >
                 <option value="">Araç seçiniz</option>
-                {vehicles.map(vehicle => (
-                  <option key={vehicle.id} value={vehicle.plate}>
-                    {vehicle.plate} {vehicle.brand && vehicle.model ? `- ${vehicle.brand} ${vehicle.model}` : ''}
+                {vehicles
+                  .sort((a, b) => (a.license_plate || a.plate).localeCompare(b.license_plate || b.plate, 'tr'))
+                  .map(vehicle => (
+                  <option key={vehicle.id} value={vehicle.license_plate || vehicle.plate}>
+                    {vehicle.license_plate || vehicle.plate} 
+                    {vehicle.region && ` - ${vehicle.region}`}
+                    {vehicle.vehicle_type && ` (${vehicle.vehicle_type})`}
                   </option>
                 ))}
               </select>
@@ -504,14 +534,18 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Giriş Saati *</label>
-                <input
-                  type="time"
-                  name="entry_time"
-                  value={entryFormData.entry_time}
-                  onChange={handleEntryChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="time"
+                    name="entry_time"
+                    value={entryFormData.entry_time}
+                    onChange={handleEntryChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    style={{ fontSize: '16px' }} // iOS'ta zoom'u önler
+                    required
+                  />
+                  <Clock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
                 {errors.entry_time && (
                   <p className="text-red-500 text-xs mt-1">{errors.entry_time}</p>
                 )}
@@ -519,13 +553,17 @@ const MobileVehicleTracking = ({ selectedDriver, onBack }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Çıkış Saati</label>
-                <input
-                  type="time"
-                  name="exit_time"
-                  value={entryFormData.exit_time}
-                  onChange={handleEntryChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="relative">
+                  <input
+                    type="time"
+                    name="exit_time"
+                    value={entryFormData.exit_time}
+                    onChange={handleEntryChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    style={{ fontSize: '16px' }} // iOS'ta zoom'u önler
+                  />
+                  <Clock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
               </div>
             </div>
 

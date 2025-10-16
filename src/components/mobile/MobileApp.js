@@ -23,11 +23,16 @@ const MobileApp = () => {
     try {
       console.log('Veri yükleniyor...');
       
-      // Araç verilerini yükle
+      // Araç verilerini yükle - sadece bir yerden
       const vehicleResult = await vehicleService.getAllVehicles();
       console.log('Araç verileri:', vehicleResult);
       if (vehicleResult.success) {
-        setVehicleData(vehicleResult.data);
+        // Duplicate'leri kaldır
+        const uniqueVehicles = vehicleResult.data.filter((vehicle, index, self) => 
+          index === self.findIndex(v => v.license_plate === vehicle.license_plate)
+        );
+        setVehicleData(uniqueVehicles);
+        console.log('Unique araç sayısı:', uniqueVehicles.length);
       } else {
         console.error('Araç verileri yüklenemedi:', vehicleResult.error);
       }

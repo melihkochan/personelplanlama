@@ -347,12 +347,17 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
     }
   };
 
-  const sortedVehicles = [...vehicleData].sort((a, b) => a.license_plate.localeCompare(b.license_plate, 'tr'));
+  // Duplicate'leri kaldır ve sırala
+  const sortedVehicles = [...vehicleData]
+    .filter((vehicle, index, self) => 
+      index === self.findIndex(v => v.license_plate === vehicle.license_plate)
+    )
+    .sort((a, b) => a.license_plate.localeCompare(b.license_plate, 'tr'));
   
   // Debug: Araç listesini konsola yazdır
   React.useEffect(() => {
     console.log('MobileReceiptForm: Araç verileri güncellendi:', vehicleData);
-    console.log('Sıralanmış araç listesi:', sortedVehicles);
+    console.log('Unique ve sıralanmış araç listesi:', sortedVehicles);
   }, [vehicleData, sortedVehicles]);
 
   return (
@@ -497,13 +502,17 @@ const MobileReceiptForm = ({ selectedDriver, vehicleData, onBack, onSuccess, onV
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Saat *</label>
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.time ? 'border-red-500' : 'border-gray-300'}`}
-                />
+                <div className="relative">
+                  <input
+                    type="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${errors.time ? 'border-red-500' : 'border-gray-300'}`}
+                    style={{ fontSize: '16px' }} // iOS'ta zoom'u önler
+                  />
+                  <Clock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
                 {errors.time && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.time}</p>}
               </div>
             </div>

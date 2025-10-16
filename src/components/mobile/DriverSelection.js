@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Lock, Eye, EyeOff, Truck } from 'lucide-react';
 import { aktarmaSoforService } from '../../services/supabase';
 
-const DriverSelection = ({ personnelData, onDriverSelect }) => {
+const DriverSelection = ({ onDriverSelect }) => {
   const [loginData, setLoginData] = useState({
     username: '',
     password: ''
@@ -10,15 +10,29 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [drivers, setDrivers] = useState([]);
 
-  // Personnel tablosundan şoförleri çek
-  const getDriversFromPersonnel = () => {
-    return personnelData.filter(person => 
-      person.position && person.position.toUpperCase() === 'ŞOFÖR'
-    );
+  // Aktarma şoförlerini yükle
+  useEffect(() => {
+    loadDrivers();
+  }, []);
+
+  const loadDrivers = async () => {
+    try {
+      console.log('Aktarma şoförleri yükleniyor...');
+      const result = await aktarmaSoforService.getAllDrivers();
+      console.log('getAllDrivers sonucu:', result);
+      if (result.success) {
+        setDrivers(result.data);
+        console.log('Aktarma şoförleri yüklendi:', result.data?.length, 'şoför');
+      } else {
+        console.error('getAllDrivers başarısız:', result);
+      }
+    } catch (error) {
+      console.error('Aktarma şoförleri yüklenirken hata:', error);
+      console.error('Hata detayı:', error.message);
+    }
   };
-
-  const drivers = getDriversFromPersonnel();
 
   // Giriş işlemi - tek sistem
   const handleLogin = async (e) => {
@@ -68,9 +82,9 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
         return;
       }
 
-      // Önce aktarma şoförleri tablosunda ara
-      console.log('Aktarma şoförleri tablosunda aranıyor...');
-      const aktarmaResult = await aktarmaSoforService.loginDriver(loginData.username, loginData.password);
+       // Önce aktarma şoförleri tablosunda ara
+       console.log('Aktarma şoförleri tablosunda aranıyor...');
+       const aktarmaResult = await aktarmaSoforService.getDriverByCredentials(loginData.username, loginData.password);
       console.log('Aktarma sonucu:', aktarmaResult);
       
       if (aktarmaResult.success) {
@@ -183,18 +197,18 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Kullanıcı Adı
             </label>
-            <div className="relative">
-              <input
-                type="text"
+        <div className="relative">
+          <input
+            type="text"
                 value={loginData.username}
                 onChange={(e) => setLoginData({...loginData, username: e.target.value})}
                 className="w-full px-4 py-4 pl-12 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg shadow-sm"
                 placeholder="Kullanıcı adınızı girin"
                 required
-              />
-              <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            </div>
-          </div>
+          />
+          <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        </div>
+      </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -222,7 +236,7 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
           {loginError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-red-600 text-sm">{loginError}</p>
-            </div>
+                  </div>
           )}
 
           <button
@@ -240,7 +254,7 @@ const DriverSelection = ({ personnelData, onDriverSelect }) => {
             )}
           </button>
         </form>
-        </div>
+            </div>
       </div>
 
       {/* Footer - Sayfa altında */}

@@ -160,7 +160,6 @@ const MobileApp = () => {
     <div className="mobile-app">
       {currentScreen === 'driver-selection' && (
         <DriverSelection
-          personnelData={personnelData}
           onDriverSelect={handleDriverSelect}
         />
       )}

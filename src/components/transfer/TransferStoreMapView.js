@@ -476,14 +476,15 @@ const TransferStoreMapView = () => {
             <div className={`absolute bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm z-[1000] ${isFullscreen ? 'top-4 right-4' : 'top-4 right-4'}`}
                  style={isFullscreen ? { top: '1rem', right: '1rem', maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' } : {}}
             >
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-lg font-bold text-orange-600 pr-2">{selectedStore.store_name}</h3>
+              <div className="flex items-start mb-3 relative">
                 <button
                   onClick={() => setSelectedStore(null)}
-                  className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0"
+                  className="text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full p-1 transition-all duration-200 flex-shrink-0 w-7 h-7 flex items-center justify-center mr-2 absolute left-0 top-0"
+                  title="Kapat"
                 >
-                  ×
+                  <span className="text-xl font-bold leading-none">×</span>
                 </button>
+                <h3 className="text-lg font-bold text-orange-600 flex-1 ml-9">{selectedStore.store_name}</h3>
               </div>
               
               <div className="space-y-2 text-sm">

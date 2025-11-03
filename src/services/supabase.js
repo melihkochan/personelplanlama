@@ -6040,3 +6040,116 @@ export const shellStationService = {
     }
   }
 };
+
+// Aktarma Mağazalar Servisi
+export const transferStoreService = {
+  // Tüm aktarma mağazalarını getir
+  async getAllStores() {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_stores')
+        .select('*')
+        .order('store_code', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Aktarma mağaza verileri getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Aktarma mağaza oluştur veya güncelle
+  async upsertStore(storeData) {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_stores')
+        .upsert([storeData], { 
+          onConflict: 'store_code',
+          ignoreDuplicates: false 
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Aktarma mağaza kaydedilirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Toplu aktarma mağaza kaydet
+  async bulkUpsertStores(storesData) {
+    try {
+      if (!storesData || storesData.length === 0) {
+        return { success: false, error: 'Veri bulunamadı' };
+      }
+
+      const { data, error } = await supabase
+        .from('aktarma_stores')
+        .upsert(storesData, { 
+          onConflict: 'store_code',
+          ignoreDuplicates: false 
+        })
+        .select();
+
+      if (error) throw error;
+      return { success: true, data, count: data.length };
+    } catch (error) {
+      console.error('Toplu aktarma mağaza kaydedilirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Aktarma mağaza güncelle
+  async updateStore(storeCode, storeData) {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_stores')
+        .update(storeData)
+        .eq('store_code', storeCode)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Aktarma mağaza güncellenirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Aktarma mağaza sil
+  async deleteStore(storeCode) {
+    try {
+      const { error } = await supabase
+        .from('aktarma_stores')
+        .delete()
+        .eq('store_code', storeCode);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Aktarma mağaza silinirken hata:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Belirli şehre göre mağazaları getir
+  async getStoresByCity(city) {
+    try {
+      const { data, error } = await supabase
+        .from('aktarma_stores')
+        .select('*')
+        .ilike('city', `%${city}%`)
+        .order('store_code', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Şehre göre mağaza getirilirken hata:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+};

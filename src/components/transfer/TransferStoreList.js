@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Store, Upload, MapPin, Building, SortAsc, SortDesc, User, UserCheck } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { Search, Store, Plus, MapPin, Building, SortAsc, SortDesc, User, UserCheck } from 'lucide-react';
 import StoreMap from '../stores/StoreMap';
 import { transferStoreService } from '../../services/supabase';
 
@@ -10,9 +9,25 @@ const TransferStoreList = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStore, setSelectedStore] = useState(null);
+  const [showAddStoreModal, setShowAddStoreModal] = useState(false);
   const [sortBy, setSortBy] = useState('store_code');
   const [sortOrder, setSortOrder] = useState('asc');
   const [selectedCity, setSelectedCity] = useState('');
+  const [newStore, setNewStore] = useState({
+    store_code: '',
+    store_name: '',
+    region: '',
+    store_type: '',
+    location: '',
+    city: '',
+    district: '',
+    phone: '',
+    email: '',
+    latitude: null,
+    longitude: null,
+    region_manager: '',
+    sales_manager: ''
+  });
 
   // Veritabanından mağaza verilerini yükle
   useEffect(() => {
@@ -47,196 +62,51 @@ const TransferStoreList = () => {
     loadStoresFromDatabase();
   }, []);
 
-  // Excel dosyasını işle
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  // Mağaza ekleme fonksiyonu
+  const handleAddStore = async () => {
+    if (!newStore.store_code || !newStore.store_name) {
+      alert('Lütfen mağaza kodu ve adını girin!');
+      return;
+    }
 
     setLoading(true);
-    const reader = new FileReader();
-    
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        
-        // Önce header: 1 ile oku (satır numarası ile)
-        const jsonDataWithHeaders = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        // İlk satırı başlık olarak al
-        const headers = jsonDataWithHeaders[0];
-        const rows = jsonDataWithHeaders.slice(1);
-        
-        // Veriyi işle
-        const processedData = rows
-          .filter(row => row[0] && row[0].toString().trim() !== '')
-          .map((row, index) => {
-            // Kolon eşleştirmesi - esnek yapı
-            const findColumn = (possibleNames) => {
-              for (let name of possibleNames) {
-                const colIndex = headers.findIndex(h => 
-                  h && h.toString().toLowerCase().includes(name.toLowerCase())
-                );
-                if (colIndex >= 0 && row[colIndex] !== undefined && row[colIndex] !== null && row[colIndex] !== '') {
-                  return row[colIndex];
-                }
-              }
-              return null;
-            };
-
-            // Koordinat parse fonksiyonu
-            const parseCoordinate = (value) => {
-              if (!value && value !== 0) return null;
-              
-              // String'e çevir
-              const strValue = value.toString().trim();
-              if (!strValue) return null;
-              
-              // Eğer zaten ondalık nokta varsa kontrol et
-              if (strValue.includes('.') || strValue.includes(',')) {
-                const parsed = parseFloat(strValue.replace(',', '.'));
-                // Koordinat kontrolü: Enlem -90 ile 90 arasında, Boylam -180 ile 180 arasında olmalı
-                if (!isNaN(parsed) && ((parsed >= -90 && parsed <= 90) || (parsed >= -180 && parsed <= 180))) {
-                  return parsed;
-                }
-                // Eğer sayı çok büyükse ama ondalık nokta varsa, muhtemelen yanlış formatlanmış (ör: 41076181.000000)
-                // Ondalık kısmı sıfırsa ve sayı büyükse düzelt
-                if (!isNaN(parsed) && Math.abs(parsed) > 90 && (strValue.endsWith('.000000') || strValue.endsWith(',000000') || strValue.endsWith('.00000'))) {
-                  // Ondalık kısmı kaldır ve tam sayı olarak işle
-                  const intPart = Math.abs(parsed).toString().split('.')[0];
-                  // Şimdi aşağıdaki mantıkla devam et
-                  const numValue = parseInt(intPart);
-                  if (intPart.length === 8) {
-                    const corrected = parseFloat(intPart.substring(0, 2) + '.' + intPart.substring(2));
-                    return parsed < 0 ? -corrected : corrected;
-                  }
-                  if (intPart.length === 7) {
-                    const corrected = parseFloat(intPart.substring(0, 2) + '.' + intPart.substring(2));
-                    return parsed < 0 ? -corrected : corrected;
-                  }
-                }
-                return null;
-              }
-              
-              // Eğer tam sayı olarak gelmişse (örneğin 41076181)
-              const numValue = parseFloat(strValue);
-              if (isNaN(numValue)) return null;
-              
-              // Eğer sayı çok büyükse, muhtemelen ondalık nokta eksik
-              // Enlem: Eğer 6-8 haneli bir sayıysa ve 90'dan büyükse, ondalık nokta ekle
-              if (Math.abs(numValue) > 90 && Math.abs(numValue) < 100000000) {
-                // Örnek: 41076181 -> 41.076181 (8 haneli)
-                const str = Math.abs(numValue).toString();
-                if (str.length === 8) {
-                  const corrected = parseFloat(str.substring(0, 2) + '.' + str.substring(2));
-                  return numValue < 0 ? -corrected : corrected;
-                }
-                // Örnek: 4107618 -> 41.07618 (7 haneli)
-                if (str.length === 7) {
-                  const corrected = parseFloat(str.substring(0, 2) + '.' + str.substring(2));
-                  return numValue < 0 ? -corrected : corrected;
-                }
-              }
-              
-              // Boylam: Eğer 180'den büyükse ve 7-9 haneli ise, ondalık nokta ekle
-              if (Math.abs(numValue) > 180 && Math.abs(numValue) < 1000000000) {
-                const str = Math.abs(numValue).toString();
-                // Örnek: 29013761 -> 29.013761 (8 haneli)
-                if (str.length === 8) {
-                  const corrected = parseFloat(str.substring(0, 2) + '.' + str.substring(2));
-                  return numValue < 0 ? -corrected : corrected;
-                }
-                // Örnek: 2901376 -> 29.01376 (7 haneli)
-                if (str.length === 7) {
-                  const corrected = parseFloat(str.substring(0, 2) + '.' + str.substring(2));
-                  return numValue < 0 ? -corrected : corrected;
-                }
-              }
-              
-              // Normal parse (zaten doğru formatlanmışsa)
-              if (numValue >= -90 && numValue <= 90) {
-                return numValue; // Enlem için
-              }
-              if (numValue >= -180 && numValue <= 180) {
-                return numValue; // Boylam için
-              }
-              
-              return null;
-            };
-
-            const latValue = findColumn(['enlem', 'latitude', 'lat']) || row[9];
-            const lngValue = findColumn(['boylam', 'longitude', 'lng', 'lon']) || row[10];
-
-            // Şehir bilgisini çıkar - önce şehir kolonundan, yoksa bölge'den
-            let cityValue = findColumn(['il', 'city', 'şehir', 'sehir']) || row[5] || '';
-            const regionValue = findColumn(['bölge', 'bolge', 'region']) || row[2] || '';
-            
-            // Eğer şehir yoksa, bölge'den şehir bilgisini çıkar
-            if (!cityValue && regionValue) {
-              // Bölge formatı: "İSTANBUL-AVR", "ANKARA", "ADANA" gibi
-              // "-" öncesi kısmı şehir adı
-              const cityMatch = regionValue.toString().split('-')[0].trim();
-              if (cityMatch) {
-                cityValue = cityMatch;
-              }
-            }
-
-            return {
-              // id alanını gönderme - Supabase otomatik UUID oluşturur
-              store_code: findColumn(['kod', 'code', 'mağaza kod', 'magaza kod']) || row[0] || '',
-              store_name: findColumn(['adı', 'ad', 'name', 'mağaza adı', 'magaza adi']) || row[1] || '',
-              region: regionValue,
-              store_type: findColumn(['tür', 'tur', 'type', 'tip']) || row[3] || '',
-              location: findColumn(['konum', 'location', 'adres', 'address']) || row[4] || '',
-              city: cityValue,
-              district: findColumn(['ilçe', 'ilce', 'district']) || row[6] || '',
-              phone: findColumn(['telefon', 'phone', 'tel']) || row[7] || '',
-              email: findColumn(['email', 'e-posta', 'eposta', 'mail']) || row[8] || '',
-              latitude: parseCoordinate(latValue),
-              longitude: parseCoordinate(lngValue),
-              region_manager: findColumn(['bölge müdürü', 'bolge muduru', 'region manager']) || row[11] || '',
-              sales_manager: findColumn(['satış müdürü', 'satis muduru', 'sales manager']) || row[12] || '',
-            };
-          });
-
-        // Veritabanına kaydet
-        setLoading(true);
-        const dbResult = await transferStoreService.bulkUpsertStores(processedData);
-        
-        if (dbResult.success) {
-          // Veritabanından tekrar çek (güncel veriler için)
-          const refreshResult = await transferStoreService.getAllStores();
-          if (refreshResult.success && refreshResult.data) {
-            setStoreData(refreshResult.data);
-            setFilteredStores(refreshResult.data);
-            // LocalStorage'a da kaydet
-            localStorage.setItem('transferStores', JSON.stringify(refreshResult.data));
-            alert(`✅ ${refreshResult.data.length} mağaza başarıyla veritabanına kaydedildi!`);
-          } else {
-            // Eğer veritabanından çekilemezse işlenen veriyi kullan
-            setStoreData(processedData);
-            setFilteredStores(processedData);
-            localStorage.setItem('transferStores', JSON.stringify(processedData));
-            alert(`✅ ${processedData.length} mağaza başarıyla yüklendi!`);
-          }
-        } else {
-          // Veritabanı kayıt hatası - sadece local'e kaydet
-          setStoreData(processedData);
-          setFilteredStores(processedData);
-          localStorage.setItem('transferStores', JSON.stringify(processedData));
-          alert(`⚠️ ${processedData.length} mağaza yüklendi ancak veritabanına kaydedilemedi: ${dbResult.error}`);
+    try {
+      const result = await transferStoreService.upsertStore(newStore);
+      if (result.success) {
+        // Veritabanından tekrar çek
+        const refreshResult = await transferStoreService.getAllStores();
+        if (refreshResult.success && refreshResult.data) {
+          setStoreData(refreshResult.data);
+          setFilteredStores(refreshResult.data);
+          localStorage.setItem('transferStores', JSON.stringify(refreshResult.data));
         }
-      } catch (error) {
-        console.error('Excel yükleme hatası:', error);
-        alert('Excel dosyası yüklenirken hata oluştu: ' + error.message);
-      } finally {
-        setLoading(false);
+        
+        setNewStore({
+          store_code: '',
+          store_name: '',
+          region: '',
+          store_type: '',
+          location: '',
+          city: '',
+          district: '',
+          phone: '',
+          email: '',
+          latitude: null,
+          longitude: null,
+          region_manager: '',
+          sales_manager: ''
+        });
+        setShowAddStoreModal(false);
+        alert('✅ Mağaza başarıyla eklendi!');
+      } else {
+        alert('❌ Mağaza eklenirken hata oluştu: ' + result.error);
       }
-    };
-    
-    reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error('Mağaza ekleme hatası:', error);
+      alert('Mağaza eklenirken hata oluştu!');
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -295,12 +165,19 @@ const TransferStoreList = () => {
   const cities = Array.from(new Set(
     storeData
       .map(s => {
-        // Eğer city yoksa region'dan çıkar
-        if (!s.city && s.region) {
+        // Önce region'dan şehir çıkarmaya çalış (daha güvenilir)
+        if (s.region) {
           const cityMatch = s.region.toString().split('-')[0].trim();
-          return cityMatch || null;
+          if (cityMatch) {
+            return cityMatch;
+          }
         }
-        return s.city || null;
+        // Eğer region'dan çıkarılamazsa city'yi kullan
+        if (s.city) {
+          // City değeri boş değilse ve şehir adı gibi görünüyorsa kullan
+          return s.city;
+        }
+        return null;
       })
       .filter(Boolean)
   )).sort();
@@ -344,16 +221,13 @@ const TransferStoreList = () => {
             </div>
             
             <div className="flex gap-2">
-              <label className="cursor-pointer bg-gradient-to-r from-orange-500 to-red-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:from-orange-600 hover:to-red-700 transition-all duration-300 text-sm shadow-md">
-                <Upload className="w-4 h-4" />
-                Excel Yükle
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
+              <button
+                onClick={() => setShowAddStoreModal(true)}
+                className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:from-orange-600 hover:to-red-700 transition-all duration-300 text-sm shadow-md"
+              >
+                <Plus className="w-4 h-4" />
+                Mağaza Ekle
+              </button>
             </div>
           </div>
 
@@ -549,6 +423,197 @@ const TransferStoreList = () => {
         )}
       </div>
 
+      {/* Mağaza Ekleme Modal */}
+      {showAddStoreModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full m-4 max-h-screen overflow-y-auto">
+            <h3 className="text-2xl font-bold mb-6 text-gray-900">Yeni Mağaza Ekle</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mağaza Kodu *</label>
+                <input
+                  type="text"
+                  value={newStore.store_code}
+                  onChange={(e) => setNewStore({...newStore, store_code: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="1234"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mağaza Adı *</label>
+                <input
+                  type="text"
+                  value={newStore.store_name}
+                  onChange={(e) => setNewStore({...newStore, store_name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Mağaza Adı"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bölge</label>
+                <input
+                  type="text"
+                  value={newStore.region}
+                  onChange={(e) => setNewStore({...newStore, region: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="İSTANBUL-AVR"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mağaza Tipi</label>
+                <select
+                  value={newStore.store_type}
+                  onChange={(e) => setNewStore({...newStore, store_type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="">Mağaza tipi seçin</option>
+                  <option value="AVM">AVM</option>
+                  <option value="Cadde">Cadde</option>
+                  <option value="Beauty">Beauty</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Şehir</label>
+                <input
+                  type="text"
+                  value={newStore.city}
+                  onChange={(e) => setNewStore({...newStore, city: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="İstanbul"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">İlçe</label>
+                <input
+                  type="text"
+                  value={newStore.district}
+                  onChange={(e) => setNewStore({...newStore, district: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Kadıköy"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Konum</label>
+                <input
+                  type="text"
+                  value={newStore.location}
+                  onChange={(e) => setNewStore({...newStore, location: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Adres"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Telefon</label>
+                <input
+                  type="text"
+                  value={newStore.phone}
+                  onChange={(e) => setNewStore({...newStore, phone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="0212 123 45 67"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">E-posta</label>
+                <input
+                  type="email"
+                  value={newStore.email}
+                  onChange={(e) => setNewStore({...newStore, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="ornek@email.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bölge Müdürü</label>
+                <input
+                  type="text"
+                  value={newStore.region_manager}
+                  onChange={(e) => setNewStore({...newStore, region_manager: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Ahmet Yılmaz"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Satış Müdürü</label>
+                <input
+                  type="text"
+                  value={newStore.sales_manager}
+                  onChange={(e) => setNewStore({...newStore, sales_manager: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Mehmet Demir"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Enlem</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={newStore.latitude || ''}
+                  onChange={(e) => setNewStore({...newStore, latitude: parseFloat(e.target.value) || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="41.0082"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Boylam</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={newStore.longitude || ''}
+                  onChange={(e) => setNewStore({...newStore, longitude: parseFloat(e.target.value) || null})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="28.9784"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddStoreModal(false);
+                  setNewStore({
+                    store_code: '',
+                    store_name: '',
+                    region: '',
+                    store_type: '',
+                    location: '',
+                    city: '',
+                    district: '',
+                    phone: '',
+                    email: '',
+                    latitude: null,
+                    longitude: null,
+                    region_manager: '',
+                    sales_manager: ''
+                  });
+                }}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleAddStore}
+                disabled={loading}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Ekleniyor...' : 'Ekle'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

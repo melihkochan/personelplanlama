@@ -49,6 +49,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { getAllPersonnel, getAllVehicles, getAllStores, getUserRole, getUserDetails, getDailyNotes, getWeeklySchedules, getPerformanceData, getUnreadNotificationCount, markAllNotificationsAsRead, deleteAllNotifications, createPendingApprovalNotification, createPersonnelNotification, createVehicleNotification, createStoreNotification, createShiftNotification, createPerformanceNotification, createSystemNotification, checkJuly7Data, supabase, avatarService, getUserProfile, updateUserProfile, getOnlineUsers } from './services/supabase';
 import { getPendingRegistrationsCount } from './services/supabase';
 import ModernAvatarUpload from './components/ui/ModernAvatarUpload';
+import { checkVersion, saveVersion, APP_VERSION } from './utils/versionCheck';
 import './App.css';
 
 // Ana uygulama component'i (Authentication wrapper içinde)
@@ -57,6 +58,91 @@ function MainApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMobileDetection();
+
+  // Bakım modu - Projeye ara verildi
+  const MAINTENANCE_MODE = true;
+
+  // Versiyon kontrolü - component mount olduğunda hemen çalıştır (loading'den bağımsız)
+  const [versionChecked, setVersionChecked] = useState(false);
+  const [versionError, setVersionError] = useState(null);
+  
+  useEffect(() => {
+    // Versiyon kontrolünü sadece bir kez çalıştır
+    if (!versionChecked) {
+      const versionResult = checkVersion();
+      
+      if (!versionResult.isValid) {
+        // Versiyon eski veya yok - hemen uyarı göster
+        setVersionError({
+          currentVersion: versionResult.currentVersion,
+          storedVersion: versionResult.storedVersion
+        });
+        
+        // Versiyonu kaydet ve sayfayı yenile
+        saveVersion();
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      } else {
+        // Versiyon geçerli - kaydet (yoksa)
+        saveVersion();
+      }
+      
+      setVersionChecked(true);
+    }
+  }, []); // Sadece mount olduğunda çalış
+
+  // Bakım modu kontrolü - HER ŞEYDEN ÖNCE (loading'den önce)
+  if (MAINTENANCE_MODE && !isMobile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full text-center">
+          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 md:p-12 border border-white/20 shadow-2xl">
+            <div className="mb-6">
+              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
+                <AlertTriangle className="w-12 h-12 text-white" />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 animate-pulse">
+                Üzgünüz
+              </h1>
+              <div className="w-24 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto mb-6"></div>
+            </div>
+            
+            <div className="space-y-4 text-white/90">
+              <p className="text-xl md:text-2xl font-medium">
+                Sistem şu anda bakım modunda
+              </p>
+              <p className="text-lg md:text-xl text-white/70">
+                Projeye ara verildi
+              </p>
+              <p className="text-base md:text-lg text-white/60 mt-6">
+                Lütfen daha sonra tekrar deneyin
+              </p>
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-white/20">
+              <div className="flex items-center justify-center">
+                <a 
+                  href="https://www.melihkochan.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-white/80 hover:text-white text-sm font-medium transition-colors underline underline-offset-4 hover:underline-offset-2"
+                >
+                  Developed by Melih Kochan
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobil uygulama için özel render - login olmadan direkt mobil uygulama
+  // Mobil uygulama içinde de bakım modu kontrolü var
+  if (isMobile) {
+    return <MobileApp />;
+  }
 
   // URL'den aktif tab'i doğrudan türet (state yerine)
   const getActiveTab = () => {
@@ -1242,22 +1328,6 @@ function MainApp() {
     }
   };
 
-  // Loading state
-  // Mobil uygulama için özel render - login olmadan direkt mobil uygulama
-  if (isMobile) {
-    return <MobileApp />;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Authentication check
   if (!isAuthenticated) {

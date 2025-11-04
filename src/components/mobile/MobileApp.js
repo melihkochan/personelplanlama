@@ -1,18 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DriverSelection from './DriverSelection';
 import MobileReceiptForm from './MobileReceiptForm';
 import ReceiptHistory from './ReceiptHistory';
 import MobileShellMap from './MobileShellMap';
 import MobileVehicleTracking from './MobileVehicleTracking';
-import { FileText, History, Map, Car } from 'lucide-react';
+import { FileText, History, Map, Car, AlertTriangle, Clock } from 'lucide-react';
 import { vehicleService, getAllPersonnel, transferVehicleService } from '../../services/supabase';
+import { checkVersion, saveVersion, APP_VERSION } from '../../utils/versionCheck';
 
 const MobileApp = () => {
+  // Bakım modu - Projeye ara verildi
+  const MAINTENANCE_MODE = true;
+
+  // Bakım modu kontrolü - HER ŞEYDEN ÖNCE (loading'den önce)
+  if (MAINTENANCE_MODE) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
+            <div className="mb-6">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
+                <AlertTriangle className="w-10 h-10 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-4 animate-pulse">
+                Üzgünüz
+              </h1>
+              <div className="w-20 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto mb-6"></div>
+            </div>
+            
+            <div className="space-y-3 text-white/90">
+              <p className="text-lg font-medium">
+                Sistem şu anda bakım modunda
+              </p>
+              <p className="text-base text-white/70">
+                Projeye ara verildi
+              </p>
+              <p className="text-sm text-white/60 mt-4">
+                Lütfen daha sonra tekrar deneyin
+              </p>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-white/20">
+              <div className="flex items-center justify-center">
+                <a 
+                  href="https://www.melihkochan.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-white/80 hover:text-white text-xs font-medium transition-colors underline underline-offset-4 hover:underline-offset-2"
+                >
+                  Developed by Melih Kochan
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [currentScreen, setCurrentScreen] = useState('driver-selection'); // 'driver-selection', 'receipt-form', 'receipt-history', 'shell-map', 'vehicle-tracking', 'success'
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [vehicleData, setVehicleData] = useState([]);
   const [personnelData, setPersonnelData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [versionChecked, setVersionChecked] = useState(false);
+  const [versionError, setVersionError] = useState(null);
+
+  // Versiyon kontrolü - component mount olduğunda hemen çalıştır (loading'den bağımsız)
+  useEffect(() => {
+    if (!versionChecked) {
+      const versionResult = checkVersion();
+      
+      if (!versionResult.isValid) {
+        // Versiyon eski veya yok - hemen uyarı göster
+        setVersionError({
+          currentVersion: versionResult.currentVersion,
+          storedVersion: versionResult.storedVersion
+        });
+        
+        // Versiyonu kaydet ve sayfayı yenile
+        saveVersion();
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      } else {
+        // Versiyon geçerli - kaydet (yoksa)
+        saveVersion();
+      }
+      
+      setVersionChecked(true);
+    }
+  }, []); // Sadece mount olduğunda çalış
 
   // Veri yükleme
   React.useEffect(() => {
@@ -150,16 +228,6 @@ const MobileApp = () => {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="mobile-app">

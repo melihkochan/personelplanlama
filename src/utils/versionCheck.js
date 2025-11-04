@@ -1,22 +1,47 @@
-// Version check utility for cache busting
-export const checkForUpdates = () => {
-  // Version kontrolü için timestamp kullan
-  const currentVersion = process.env.REACT_APP_VERSION || Date.now().toString();
+// Uygulama versiyonu - package.json'dan alınmalı
+export const APP_VERSION = '1.0.1';
+
+// Versiyon kontrolü - eski versiyonda olanları tespit et ve logout et
+export const checkVersion = () => {
+  const storedVersion = localStorage.getItem('app-version');
   
-  // LocalStorage'dan son bilinen versiyonu al
-  const lastKnownVersion = localStorage.getItem('app-version');
-  
-  // Eğer versiyon değişmişse, sayfayı yenile
-  if (lastKnownVersion && lastKnownVersion !== currentVersion) {
-    console.log('Yeni sürüm tespit edildi, sayfa yenileniyor...');
-    localStorage.setItem('app-version', currentVersion);
-    window.location.reload();
-    return true;
+  // Versiyon yoksa veya eski versiyondaysa
+  if (!storedVersion || storedVersion !== APP_VERSION) {
+    // Eski versiyonu temizle
+    localStorage.removeItem('app-version');
+    localStorage.removeItem('sb-auth-token');
+    localStorage.removeItem('supabase.auth.token');
+    sessionStorage.clear();
+    
+    return {
+      isValid: false,
+      currentVersion: APP_VERSION,
+      storedVersion: storedVersion || 'yok'
+    };
   }
   
-  // İlk ziyarette versiyonu kaydet
-  if (!lastKnownVersion) {
-    localStorage.setItem('app-version', currentVersion);
+  return {
+    isValid: true,
+    currentVersion: APP_VERSION,
+    storedVersion: storedVersion
+  };
+};
+
+// Versiyonu kaydet
+export const saveVersion = () => {
+  localStorage.setItem('app-version', APP_VERSION);
+};
+
+// Version check utility for cache busting (eski kullanım - geriye uyumluluk için)
+export const checkForUpdates = () => {
+  const versionCheck = checkVersion();
+  
+  if (!versionCheck.isValid) {
+    // Yeni versiyonu kaydet
+    saveVersion();
+    // Sayfayı yenile
+    window.location.reload();
+    return true;
   }
   
   return false;
@@ -39,8 +64,8 @@ export const clearCache = () => {
     });
   }
   
-  // LocalStorage temizle (opsiyonel)
-  // localStorage.clear();
+  // Versiyon bilgisini de temizle
+  localStorage.removeItem('app-version');
   
   // Sayfayı yenile
   window.location.reload();
